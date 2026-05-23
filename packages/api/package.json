@@ -15,7 +15,13 @@
     "./schemas/media": "./src/schemas/media.ts",
     "./auth": "./src/auth/index.ts",
     "./auth/password": "./src/auth/password.ts",
-    "./auth/edge": "./src/auth/config.edge.ts"
+    "./auth/edge": "./src/auth/config.edge.ts",
+    "./db/models/playlist": "./src/db/models/playlist.model.ts",
+    "./db/models/track": "./src/db/models/track.model.ts",
+    "./db/models/media": "./src/db/models/media.model.ts",
+    "./repositories/playlist": "./src/repositories/playlist.repo.ts",
+    "./repositories/track": "./src/repositories/track.repo.ts",
+    "./repositories/media": "./src/repositories/media.repo.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
