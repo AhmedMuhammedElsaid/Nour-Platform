@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { AppError } from "@repo/api/errors";
+import { appErrorStatus } from "@/lib/route-helpers";
 import { requireSession } from "@repo/api/auth";
 import { confirmMedia } from "@repo/api/services/media";
 
@@ -18,19 +19,6 @@ import { confirmMedia } from "@repo/api/services/media";
 const confirmBodySchema = z.object({
   mediaId: z.string().regex(/^[0-9a-f]{24}$/, "mediaId must be a 24-char hex ObjectId"),
 });
-
-function appErrorStatus(e: AppError): number {
-  const map: Record<string, number> = {
-    UNAUTHORIZED: 401,
-    FORBIDDEN: 403,
-    NOT_FOUND: 404,
-    VALIDATION: 422,
-    CONFLICT: 409,
-    RATE_LIMITED: 429,
-    INTERNAL: 500,
-  };
-  return map[e.code] ?? 500;
-}
 
 export async function POST(request: Request): Promise<NextResponse> {
   try {

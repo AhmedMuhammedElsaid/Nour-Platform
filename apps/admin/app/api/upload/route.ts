@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { AppError } from "@repo/api/errors";
+import { appErrorStatus } from "@/lib/route-helpers";
 import { ALLOWED_AUDIO_MIME_TYPES, createPresignedUpload } from "@repo/api/media/r2-client";
 import { requireSession } from "@repo/api/auth";
 import { createMedia } from "@repo/api/services/media";
@@ -27,19 +28,6 @@ const uploadBodySchema = z.object({
   mimeType: z.enum(ALLOWED_AUDIO_MIME_TYPES),
   sizeBytes: z.number().int().positive(),
 });
-
-function appErrorStatus(e: AppError): number {
-  const map: Record<string, number> = {
-    UNAUTHORIZED: 401,
-    FORBIDDEN: 403,
-    NOT_FOUND: 404,
-    VALIDATION: 422,
-    CONFLICT: 409,
-    RATE_LIMITED: 429,
-    INTERNAL: 500,
-  };
-  return map[e.code] ?? 500;
-}
 
 export async function POST(request: Request): Promise<NextResponse> {
   try {
