@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
+jobs:
+  ci:
+    name: lint · typecheck · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Fetch full history so Turborepo can compute affected packages
+          # against `main` on pull requests.
+          fetch-depth: 2
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore Turborepo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
+      # Filter against the merge base on PRs; run everything on push to main.
+      - name: Lint
+        run: pnpm turbo run lint ${{ github.event_name == 'pull_request' && '--filter=...[origin/main]' || '' }}
+
+      - name: Typecheck
+        run: pnpm turbo run typecheck ${{ github.event_name == 'pull_request' && '--filter=...[origin/main]' || '' }}
+
+      - name: Build
+        run: pnpm turbo run build ${{ github.event_name == 'pull_request' && '--filter=...[origin/main]' || '' }}
+        env:
+          # MVP CI doesn't talk to MongoDB/R2 during build; provide a dummy
+          # URI so the env Zod parser passes. Real values land in Vercel
+          # at deploy time (DEPLOYMENT.md).
+          MONGODB_URI: mongodb://localhost:27017/ci
+          NEXT_TELEMETRY_DISABLED: 1
