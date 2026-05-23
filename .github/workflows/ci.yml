@@ -15,7 +15,7 @@ env:
 
 jobs:
   ci:
-    name: lint · typecheck · build
+    name: lint · typecheck · test · build
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -56,6 +56,9 @@ jobs:
 
       - name: Typecheck
         run: pnpm turbo run typecheck ${{ github.event_name == 'pull_request' && '--filter=...[origin/main]' || '' }}
+
+      - name: Test
+        run: pnpm turbo run test ${{ github.event_name == 'pull_request' && '--filter=...[origin/main]' || '' }}
 
       - name: Build
         run: pnpm turbo run build ${{ github.event_name == 'pull_request' && '--filter=...[origin/main]' || '' }}
