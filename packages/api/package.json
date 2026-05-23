@@ -11,6 +11,7 @@
     "./services/auth": "./src/services/auth.service.ts",
     "./schemas/user": "./src/schemas/user.ts",
     "./auth": "./src/auth/index.ts",
+    "./auth/password": "./src/auth/password.ts",
     "./auth/edge": "./src/auth/config.edge.ts"
   },
   "scripts": {

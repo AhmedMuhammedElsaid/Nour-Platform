@@ -3,7 +3,7 @@
 import { parseArgs } from "node:util";
 import { disconnectDb, getDb } from "@repo/api";
 import { hashPassword } from "@repo/api/auth/password";
-import { UserModel } from "@repo/api/db/models/user.model";
+import { createAdminUser } from "@repo/api/services/auth";
 import { credentialsSchema } from "@repo/api/schemas/user";
 import { ZodError } from "zod";
 
@@ -23,6 +23,8 @@ async function main(): Promise<void> {
     strict: true,
   });
 
+  // parseArgs returns string|boolean|undefined per arg — SeedOptions narrows to
+  // the expected string shape; required args are validated below before use.
   const opts = options.values as SeedOptions;
 
   if (opts.help) {
@@ -53,27 +55,19 @@ Example:
       password: opts.password,
     });
 
-    // Connect to MongoDB
+    // Connect to MongoDB (getDb is called inside createAdminUser, but we also
+    // call it here so disconnectDb in finally has an active connection handle)
     await getDb();
 
-    // Check if admin already exists
-    const existingAdmin = await UserModel.findOne({ email: credentials.email });
-    if (existingAdmin) {
-      console.log(`Admin user with email "${credentials.email}" already exists.`);
-      process.exit(0);
-    }
-
-    // Hash password and create admin
-    const passwordHash = await hashPassword(credentials.password);
-    const newAdmin = await UserModel.create({
+    // Hash password first, then delegate DB work to the service layer
+    const hashedPassword = await hashPassword(credentials.password);
+    const result = await createAdminUser({
       email: credentials.email,
-      passwordHash,
-      name: "Admin",
-      role: "admin",
+      hashedPassword,
     });
 
-    console.log(`Successfully created admin user: ${newAdmin.email}`);
-    console.log(`Admin ID: ${newAdmin._id}`);
+    console.log(`Successfully created admin user: ${result.email}`);
+    console.log(`Admin ID: ${result.id}`);
   } catch (error) {
     if (error instanceof ZodError) {
       const issues = error.issues

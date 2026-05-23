@@ -60,3 +60,24 @@ export async function verifyCredentials(
 
   return toDto(doc);
 }
+
+export async function createAdminUser({
+  email,
+  hashedPassword,
+}: {
+  email: string;
+  hashedPassword: string;
+}): Promise<{ id: string; email: string }> {
+  await getDb();
+  const existing = await UserModel.findOne({ email }).lean();
+  if (existing) return { id: String(existing._id), email: existing.email };
+
+  // Destructure immediately so the Mongoose Document does not escape this function.
+  const { _id, email: createdEmail } = await UserModel.create({
+    email,
+    passwordHash: hashedPassword,
+    name: "Admin",
+    role: "admin" as const,
+  });
+  return { id: String(_id), email: createdEmail };
+}
