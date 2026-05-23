@@ -16,7 +16,7 @@
 - **Data fetching**: RSC + service call + Suspense; TanStack Query on client islands
 - **Media uploads**: 2-step handshake — `POST /api/upload` (presign + create pending Media) → client PUT to R2 → `POST /api/media/confirm` (headObject + flip to confirmed)
 - **Cache invalidation**: `revalidateTag` from `next/cache` called in services after public-affecting mutations
-- **CI**: `.github/workflows/ci.yml` — lint/typecheck/build via turbo affected filter
+- **CI**: `.github/workflows/ci.yml` — lint/typecheck/test/build via turbo affected filter; `packages/api` has its own vitest suite (run by `pnpm turbo run test`)
 
 ---
 
@@ -28,7 +28,7 @@ See **CLAUDE.md §5** — non-negotiable list. Summary: apps call services only 
 
 ## Completed waves (Audio MVP)
 
-All 5 waves shipped + 1 pre-deploy fixup batch. Head of `main` = `1a4c895`.
+All 5 waves shipped + 1 pre-deploy fixup batch + 1 hardening batch. Head of `main` ≈ `1a4c895` (hardening uncommitted at time of write).
 
 | Wave | Range | Notes (only what's non-obvious for a future session) |
 |---|---|---|
@@ -36,15 +36,16 @@ All 5 waves shipped + 1 pre-deploy fixup batch. Head of `main` = `1a4c895`.
 | 1 — Auth | `26ea693`–`6dcea3d` | Auth.js v5 split into Node (`config.ts`) + Edge (`config.edge.ts`) — Mongo adapter needs Node, middleware needs Edge. argon2id passwords. `requireSession(roles?)` throws `AppError.Unauthorized/Forbidden`. `scripts/seed-admin.ts` + `scripts/migrate.ts`. |
 | 2 — Data + Media | `1235356`–`0ccab79` | Zod schemas + Mongoose models + lean repos for Playlist/Track/Media. R2 client with `createPresignedUpload` + `headObject` + `ALLOWED_AUDIO_MIME_TYPES`. 2-step upload handshake (`/api/upload` presigns + creates pending Media → client PUTs to R2 → `/api/media/confirm` headObject + flip). All services use `requireSession` + `revalidateTag`. |
 | 3 — Admin CMS | `bdf4787`–`55ac779` | `apps/admin` playlist list (TanStack Table, status filter), create+edit form (shared `PlaylistForm`, TanStack Form + Zod), drag-drop track uploader (`use-track-upload.ts` hook with retry-on-PUT), dnd-kit reorder with optimistic update, publish toggle. RSC pages serialize Dates to ISO strings before passing to client islands (see `SerializedPlaylist`). |
-| 4 — Public Web + Player | `8748484`–`79f50da` + `6ac0053` | `apps/web` layout (header/footer, skip-link), homepage grid (RSC + `next/image`), playlist detail (RSC + `generateMetadata`). `packages/ui/blocks/audio-player` — single `HTMLAudioElement` ref in `PlayerProvider` wrapped at root layout so the player survives navigation. Keyboard: space (play/pause), ←/→ (seek ±5s). URL hash mirrors current track. A11y: semantic landmarks, focus rings, ARIA on transport. |
-| 5 — Deploy + Smoke ⚠️ | `1b97c53` + `806f2ca` fixup | `next.config.ts` per app: `images.remotePatterns` for R2 + CSP/HSTS/X-Frame/Permissions-Policy headers (CSP uses `'unsafe-inline'` script-src as a known TODO). Playwright smoke tests in `tests/e2e/`. Health endpoints return `{ ok, version, time }` (version from `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA`). **Sentry SDK install deferred** — env var stubbed only. |
+| 4 — Public Web + Player | `8748484`–`79f50da` + `6ac0053` | `apps/web` layout (header/footer, skip-link), homepage grid (RSC + `next/image`), playlist detail (RSC + `generateMetadata`). `packages/ui/blocks/audio-player` — single `HTMLAudioElement` ref in `PlayerProvider` wrapped at root layout so the player survives navigation. Keyboard: space (play/pause), ←/→ (seek ±10s); keydown listener bails on editable targets so form input isn't hijacked. URL hash mirrors current track. A11y: semantic landmarks, focus rings, ARIA on transport. |
+| 5 — Deploy + Smoke ⚠️ | `1b97c53` + `806f2ca` fixup | Per-app `next.config.ts`: `images.remotePatterns` for R2 + static security headers (HSTS, X-Frame, Permissions-Policy). CSP moved to middleware after hardening — see below. Playwright smoke tests in `tests/e2e/`. Health endpoints return `{ ok, version, time }`. **Sentry SDK install deferred** — env var stubbed only. |
 | Pre-deploy fixups | `dfae606` · `e693862` · `1fe8f69` · `1a4c895` | `media.service.ts` createMedia/confirmMedia call `requireSession(['admin'])`. `seed-admin.ts` refuses `NODE_ENV=production` without `--force`. Per-app `vercel.json` (turbo `--filter=app...` build). CI runs `pnpm test`. Root `README.md`. **`deploy.md`** step-by-step runbook. |
+| Hardening sprint | uncommitted | Closed soft gaps from `feedback.md`: (A) `packages/api` now has 19 vitest unit tests across all 4 services (mocks repos + `requireSession` + `next/cache`); (B) **CSP is now nonce-based** — `middleware.ts` in both apps generates a per-request nonce, sets `script-src 'self' 'nonce-…' 'strict-dynamic'` so we dropped `'unsafe-inline'` from script-src (style-src keeps it intentionally); static `Content-Security-Policy` header removed from both `next.config.ts`. (D) APP_CONTEXT seek-amount corrected to ±10s. (E) auth side-effect import replaced with `/// <reference path="../types/next-auth.d.ts" />` directive — IDE-resistant; ESLint override allows the triple-slash on those two files only. Pre-existing build-blockers fixed: Turbopack "use server" re-export bug in playlist actions (now imports schema directly), `/` + `/playlists/[slug]` marked `dynamic = "force-dynamic"` (required because nonce-CSP and because the build runs without Atlas). |
 
 ---
 
 ## Next phase
 
-MVP is **deploy-ready**. All pre-deploy code gaps are closed (commits `dfae606..1fe8f69`). Wave 5.4 stays ⚠️ Partial because Sentry SDK install is intentionally deferred (env var stubbed; optional per `.env.example`). To actually go live: open **`deploy.md`** at repo root and walk the 11 steps top-to-bottom — no more code changes needed.
+MVP is **deploy-ready**. All pre-deploy code gaps are closed (commits `dfae606..1fe8f69`) and the soft-gap hardening sprint shipped (see row above). Wave 5.4 stays ⚠️ Partial because Sentry SDK install is intentionally deferred (env var stubbed; optional per `.env.example`). To actually go live: open **`deploy.md`** at repo root and walk the 11 steps top-to-bottom — no more code changes needed.
 
 Next phase after go-live: **P2-A Scholars + Categories** (PLAN.md §13). Tickets not yet written; brainstorm + write a wave plan before coding (use `superpowers:brainstorming` then `superpowers:writing-plans`).
 
@@ -56,10 +57,14 @@ Next phase after go-live: **P2-A Scholars + Categories** (PLAN.md §13). Tickets
 packages/api/src/
   auth/
     index.ts              → exports: auth, handlers, signIn, signOut, requireSession
+                            (uses /// <reference> to load types/next-auth.d.ts)
     config.ts             → full Node config (Credentials + Mongo adapter)
     config.edge.ts        → Edge config (JWT callbacks, pages.signIn: '/login')
+                            (also has /// <reference> for the augmentation)
     require-session.ts    → requireSession(roles?) — throws AppError if not authed
     password.ts           → hashPassword / verifyPassword (argon2id)
+  types/next-auth.d.ts    → declare module augmentation adding `role` to Session/User/JWT
+  services/*.test.ts      → vitest unit tests (mock repos + requireSession + next/cache)
   db/
     client.ts             → getDb() / disconnectDb()
     models/
@@ -110,8 +115,11 @@ apps/admin/
   app/api/upload/route.ts                → POST presign + create pending Media
   app/api/media/confirm/route.ts         → POST confirm Media (headObject + status flip)
   app/api/health/route.ts                → GET → { ok, version, time } (UptimeRobot target)
-  middleware.ts                          → Edge auth gate (protects all routes except /login /api/auth)
-  next.config.ts                         → images.remotePatterns + headers (CSP, HSTS, X-Content-Type-Options)
+  proxy.ts                               → Edge proxy: auth gate + per-request CSP nonce
+                                            (file used to be `middleware.ts` — renamed for Next 16)
+  lib/csp.ts                             → buildAdminCsp(nonce) — emits dynamic CSP
+  next.config.ts                         → images.remotePatterns + static security headers
+                                            (CSP itself is emitted by the proxy, not here)
   features/auth/
     actions/sign-in.action.ts            → signInAction(credentials, redirectTo?)
     components/login-form.tsx            → LoginForm (TanStack Form v1 + Zod)
@@ -143,9 +151,15 @@ apps/admin/
 apps/web/
   app/layout.tsx                         → RootLayout wraps children in <PlayerProvider> so player survives navigation
   app/page.tsx                           → RSC homepage: getPublishedPlaylists → grid of PlaylistCard
+                                            (export const dynamic = "force-dynamic")
   app/playlists/[slug]/page.tsx          → RSC detail: meta + track list (uses TrackListPlayer client island); generateMetadata
+                                            (export const dynamic = "force-dynamic")
   app/api/health/route.ts                → GET → { ok, version, time }
-  next.config.ts                         → images.remotePatterns + CSP/HSTS headers (R2 host allowed in media-src)
+  proxy.ts                               → Edge proxy: per-request CSP nonce (no auth gate; web is public)
+                                            (file used to be `middleware.ts` — renamed for Next 16)
+  lib/csp.ts                             → buildWebCsp(nonce, r2Hostname) — emits dynamic CSP
+  next.config.ts                         → images.remotePatterns + static security headers
+                                            (CSP itself is emitted by the proxy, not here)
   features/layout/components/
     site-header.tsx                      → header (logo + skip link target)
     site-footer.tsx                      → footer
@@ -204,5 +218,9 @@ Root docs (read in this order for new sessions)
 - Vitest in admin: use `@testing-library/jest-dom/vitest` (not bare import), add explicit `afterEach(cleanup)` in setup; `vite-tsconfig-paths` is ESM-only and cannot load in `vitest.config.ts`
 - `scripts/seed-admin.ts` env-validation order: `parseEnv()` runs at module load (via `@repo/config/env`), BEFORE the production guard. So a real prod run needs `MONGODB_URI` + `AUTH_SECRET` already set; the guard only fires once env is valid. Acceptable for the deploy path documented in `deploy.md` step 7.
 - `media.service.ts` calls `requireSession(['admin'])` itself even though both route handlers (`/api/upload`, `/api/media/confirm`) also enforce auth. This is defense-in-depth per CLAUDE.md §5 ("Always check in services") — do not remove either layer.
-- `next.config.ts` CSP uses `'unsafe-inline'` for script-src to support Next App Router inline hydration scripts — switch to nonce-based CSP in a post-MVP hardening pass (already flagged as a TODO in both `next.config.ts` files).
-- `packages/api/src/auth/index.ts` side-effect import `import "../types/next-auth";` is fragile — IDE "remove unused imports" actions strip it because it has no named binding, and the Session/User/JWT `role` augmentation silently stops applying. A `DO NOT REMOVE` comment guards it; verify it survives any edit to this file.
+- CSP is **nonce-based**, emitted by `proxy.ts` in both apps (`lib/csp.ts` builds the directive). The static security headers in `next.config.ts` no longer include CSP — do not add it there or you'll get duplicate headers. The hardening sprint forced `dynamic = "force-dynamic"` on web RSC pages because a per-request nonce is incompatible with static prerendered HTML. Adopting ISR/static caching in Phase 2 needs a different CSP strategy (subresource hashes or removing the nonce constraint).
+- Auth module augmentation (`packages/api/src/types/next-auth.d.ts`) is loaded into both auth entries via `/// <reference path="…"/>` directives. The directive is whitelisted in `packages/api/eslint.config.mjs` for `auth/index.ts` and `auth/config.edge.ts` only. Don't switch back to a side-effect `import "../types/next-auth"` — IDE "organize imports" actions strip it silently and the `role` field disappears from `session.user`.
+- Health endpoints (`apps/web` + `apps/admin`) intentionally read `process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA` directly instead of importing `@repo/config/env`. Reason: the env barrel parses at module load and requires `MONGODB_URI` + `AUTH_SECRET`, which aren't set during `next build`'s page-data collection step. The git SHA is build metadata, not a runtime secret. This is the canonical exception to CLAUDE.md §5; same pattern in `next.config.ts` files.
+- `packages/api` tests run via `pnpm --filter @repo/api test` (vitest with node env). Setup file primes `MONGODB_URI` + `AUTH_SECRET` because importing `@repo/config/env` transitively at test load would otherwise throw. The `any` type is allowed in `src/**/*.test.ts` via an ESLint override so lean-doc fixtures stay terse — production code keeps `no-explicit-any: error`.
+- Next 16 file convention: `middleware.ts` was renamed to `proxy.ts` in both apps. Next 16 supports both, but the deprecation warning goes away with `proxy.ts`. The exported function name (`middleware` in web, default `auth(...)` callback in admin) is still accepted — only the filename changed.
+- Server Actions in admin: never re-export schemas/types from a `"use server"` file. Next 16 + Turbopack rejects the build with "The module has no exports at all". Importers must pull `playlistFormSchema` and friends directly from `features/playlists/schemas/playlist-form.schema.ts`.
