@@ -16,7 +16,8 @@
     "./primitives/sheet": "./src/primitives/sheet.tsx",
     "./primitives/progress": "./src/primitives/progress.tsx",
     "./primitives/slider": "./src/primitives/slider.tsx",
-    "./primitives/toaster": "./src/primitives/toaster.tsx"
+    "./primitives/toaster": "./src/primitives/toaster.tsx",
+    "./patterns/form-field": "./src/patterns/form-field.tsx"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",

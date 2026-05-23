@@ -11,10 +11,14 @@
     "clean": "rm -rf .next .turbo"
   },
   "dependencies": {
+    "@repo/api": "workspace:*",
     "@repo/ui": "workspace:*",
+    "@tanstack/react-form": "^1.0.0",
     "next": "16.2.0",
+    "next-auth": "5.0.0-beta.25",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
