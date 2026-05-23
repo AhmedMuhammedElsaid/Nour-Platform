@@ -1,10 +1,9 @@
+/// <reference path="../types/next-auth.d.ts" />
+// Triple-slash reference (above) loads the `role` module augmentation on
+// Session/User/JWT. Prefer this to a side-effect `import "../types/next-auth"`
+// because IDE "organize imports" / "remove unused imports" actions strip
+// import statements with no bindings but leave reference directives alone.
 import NextAuth from "next-auth";
-
-// Side-effect import — registers the module augmentation that adds `role` to
-// Session/User/JWT. DO NOT REMOVE: IDE "organize imports" or "remove unused
-// imports" actions tend to delete this because it has no named binding; the
-// session object loses its typed `role` field if it goes.
-import "../types/next-auth";
 import { authConfig } from "./config";
 
 /*

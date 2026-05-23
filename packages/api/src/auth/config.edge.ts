@@ -1,3 +1,4 @@
+/// <reference path="../types/next-auth.d.ts" />
 import type { NextAuthConfig } from "next-auth";
 
 import { env } from "@repo/config/env";
