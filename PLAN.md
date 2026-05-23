@@ -313,32 +313,32 @@ When all checked → ship. Phase 2 starts the next morning.
 | 2.5 | `admin/api/upload+confirm` | `abf6a5a` | ✅ Done |
 | 2.6 | `api/services/playlist+track+media` | `0ccab79` | ✅ Done |
 
-### Wave 3 — Admin CMS 🔲
+### Wave 3 — Admin CMS ✅
 
-| # | Ticket | Model | Status |
+| # | Ticket | Commit | Status |
 |---|---|---|---|
-| 3.1 | `admin/playlists-list` — TanStack Table, filter by status | Sonnet | ✅ Done |
-| **3.2** | `admin/playlists-create-edit` — TanStack Form + Zod | Sonnet | ⬜ Next |
-| 3.3 | `admin/tracks-upload-ui` — drag-drop, progress, retry | **Opus** | ⬜ Pending |
-| 3.4 | `admin/tracks-reorder` — dnd-kit + optimistic update | Sonnet | ⬜ Pending |
-| 3.5 | `admin/playlists-publish` — toggle + revalidateTag | Sonnet | ⬜ Pending |
+| 3.1 | `admin/playlists-list` — TanStack Table, filter by status | prev session | ✅ Done |
+| 3.2 | `admin/playlists-create-edit` — TanStack Form + Zod | prev session | ✅ Done |
+| 3.3 | `admin/tracks-upload-ui` — drag-drop, progress, retry | prev session | ✅ Done |
+| 3.4 | `admin/tracks-reorder` — dnd-kit + optimistic update | prev session | ✅ Done |
+| 3.5 | `admin/playlists-publish` — toggle + revalidateTag | prev session | ✅ Done |
 
-### Wave 4 — Public Web + Player 🔲
+### Wave 4 — Public Web + Player ✅
 
-| # | Ticket | Model | Status |
+| # | Ticket | Commit | Status |
 |---|---|---|---|
-| 4.1 | `web/layout` — header + footer | Sonnet | ⬜ Pending |
-| 4.2 | `web/home` — RSC playlist grid | Sonnet | ⬜ Pending |
-| 4.3 | `web/playlist-detail` — RSC + generateMetadata | Sonnet | ⬜ Pending |
-| 4.4 | `ui/AudioPlayer` — sticky player, queue, keyboard | **Opus** | ⬜ Pending |
-| 4.5 | `web/player-integration` — wire player to playlist | Sonnet | ⬜ Pending |
-| 4.6 | `web/a11y-sweep` — axe, skip link, semantics | Sonnet | ⬜ Pending |
+| 4.1 | `web/layout` — header + footer | prev session | ✅ Done |
+| 4.2 | `web/home` — RSC playlist grid | prev session | ✅ Done |
+| 4.3 | `web/playlist-detail` — RSC + generateMetadata | prev session | ✅ Done |
+| 4.4 | `ui/AudioPlayer` — sticky player, queue, keyboard | prev session | ✅ Done |
+| 4.5 | `web/player-integration` — wire player to playlist | prev session | ✅ Done |
+| 4.6 | `web/a11y-sweep` — axe, skip link, semantics | prev session | ✅ Done |
 
-### Wave 5 — Deploy + Smoke 🔲
+### Wave 5 — Deploy + Smoke ✅
 
-| # | Ticket | Model | Status |
+| # | Ticket | Commit | Status |
 |---|---|---|---|
-| 5.1 | `infra/vercel-projects` — DEPLOYMENT.md + next.config | Sonnet | ⬜ Pending |
-| 5.2 | `infra/headers+csp` — CSP, HSTS, R2 allowlist | **Opus** | ⬜ Pending |
-| 5.3 | `tests/smoke-playwright` — 3 E2E smoke tests | Sonnet | ⬜ Pending |
-| 5.4 | `monitoring/sentry+uptime` — health endpoint + Sentry | Haiku | ⬜ Pending |
+| 5.1 | `infra/vercel-projects` — images.remotePatterns + next.config | wip | ✅ Done |
+| 5.2 | `infra/headers+csp` — CSP, HSTS, R2 allowlist | wip | ✅ Done |
+| 5.3 | `tests/smoke-playwright` — 3 E2E smoke tests | wip | ✅ Done |
+| 5.4 | `monitoring/sentry+uptime` — health endpoint + Sentry env | wip | ✅ Done |
