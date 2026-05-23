@@ -3,8 +3,13 @@ import { notFound } from "next/navigation";
 
 import { requireSession } from "@repo/api/auth";
 import { getPlaylistById } from "@repo/api/services/playlist";
+import { getTracksByPlaylist } from "@repo/api/services/track";
 
 import { PlaylistForm } from "../../../../features/playlists/components/playlist-form";
+import {
+  TrackList,
+  type SerializedTrack,
+} from "../../../../features/playlists/components/track-list";
 import { TrackUploader } from "../../../../features/playlists/components/track-uploader";
 
 interface Props {
@@ -14,9 +19,19 @@ interface Props {
 export default async function EditPlaylistPage({ params }: Props) {
   const { id } = await params;
   const session = await requireSession(["admin"]);
-  const playlist = await getPlaylistById(id, session);
+  const [playlist, tracks] = await Promise.all([
+    getPlaylistById(id, session),
+    getTracksByPlaylist(id),
+  ]);
 
   if (!playlist) notFound();
+
+  const serializedTracks: SerializedTrack[] = tracks.map((t) => ({
+    id: t.id,
+    title: t.title,
+    order: t.order,
+    ...(t.durationSecs != null ? { durationSecs: t.durationSecs } : {}),
+  }));
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -43,7 +58,13 @@ export default async function EditPlaylistPage({ params }: Props) {
 
       <section>
         <h2 className="mb-4 text-lg font-semibold">Tracks</h2>
-        <TrackUploader playlistId={playlist.id} />
+        <TrackList
+          playlistId={playlist.id}
+          initialTracks={serializedTracks}
+        />
+        <div className="mt-6">
+          <TrackUploader playlistId={playlist.id} />
+        </div>
       </section>
     </main>
   );
