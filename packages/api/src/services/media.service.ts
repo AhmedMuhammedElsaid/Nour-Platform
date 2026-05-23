@@ -1,3 +1,4 @@
+import { requireSession } from "../auth/require-session";
 import { headObject } from "../media/r2-client";
 import {
   createMedia as repoCreateMedia,
@@ -8,12 +9,12 @@ import type { MediaCreateInput, MediaMimeType } from "../schemas/media";
 import { AppError } from "../errors";
 
 /*
- * Media service — Wave 2.5 stub. Owns the lifecycle transitions for Media
- * records (pending → confirmed) and delegates R2 metadata reads to the
- * r2-client. Will be expanded in Wave 2.6 with audio-analyzer integration.
+ * Media service. Owns the lifecycle transitions for Media records
+ * (pending → confirmed) and delegates R2 metadata reads to the r2-client.
  *
- * Services are the only layer apps interact with; they may not import from
- * db/* or repositories/* directly (CLAUDE.md §5).
+ * Both mutations call requireSession(['admin']) before any I/O — the route
+ * handlers in apps/admin enforce the same gate, but services must defend
+ * their own boundary per CLAUDE.md §5.
  */
 
 export interface MediaDto {
@@ -53,6 +54,8 @@ export async function createMedia(input: {
   sizeBytes: number;
   uploadedBy: string;
 }): Promise<MediaDto> {
+  await requireSession(["admin"]);
+
   const data: MediaCreateInput = {
     key: input.key,
     bucket: input.bucket,
@@ -67,6 +70,8 @@ export async function createMedia(input: {
 }
 
 export async function confirmMedia(mediaId: string): Promise<MediaDto> {
+  await requireSession(["admin"]);
+
   const existing = await findMediaById(mediaId);
   if (!existing) {
     throw AppError.NotFound("Media");
