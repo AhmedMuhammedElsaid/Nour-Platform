@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { parseArgs } from "node:util";
-import { disconnectDb, getDb } from "@repo/api";
+import { disconnectDb, getDb } from "@repo/api/db/client";
 import { hashPassword } from "@repo/api/auth/password";
 import { createAdminUser } from "@repo/api/services/auth";
 import { credentialsSchema } from "@repo/api/schemas/user";

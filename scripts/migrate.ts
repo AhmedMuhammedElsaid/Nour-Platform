@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { parseArgs } from "node:util";
-import { getDb, disconnectDb } from "@repo/api";
+import { getDb, disconnectDb } from "@repo/api/db/client";
 import * as migration0001 from "@repo/api/db/migrations/0001-indexes";
 
 /*

@@ -4,7 +4,12 @@
     "baseUrl": ".",
     "paths": {
       "@repo/api": ["../packages/api/src"],
+      "@repo/api/services/auth": ["../packages/api/src/services/auth.service"],
+      "@repo/api/services/playlist": ["../packages/api/src/services/playlist.service"],
+      "@repo/api/services/track": ["../packages/api/src/services/track.service"],
+      "@repo/api/services/media": ["../packages/api/src/services/media.service"],
       "@repo/api/*": ["../packages/api/src/*"],
+      "@repo/config/env": ["../packages/config/src/env"],
       "@repo/*": ["../packages/*"]
     },
     "typeRoots": [
