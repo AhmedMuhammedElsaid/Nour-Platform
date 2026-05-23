@@ -2,6 +2,8 @@
   "extends": "@repo/tsconfig/node.json",
   "compilerOptions": {
     "baseUrl": ".",
+    "declaration": false,
+    "declarationMap": false,
     "paths": {
       "@/*": ["./src/*"]
     }

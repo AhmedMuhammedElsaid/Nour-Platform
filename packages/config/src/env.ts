@@ -17,8 +17,9 @@ const envSchema = z.object({
   // Database — required everywhere DB code runs.
   MONGODB_URI: z.string().url().min(1),
 
-  // Auth.js (Wave 1) — optional at boot so other waves can dev without it.
-  AUTH_SECRET: z.string().min(16).optional(),
+  // Auth.js — required wherever the auth config is loaded. The
+  // 32-character minimum matches `openssl rand -base64 32`.
+  AUTH_SECRET: z.string().min(32),
 
   // Cloudflare R2 (Wave 2) — all optional pre-upload setup.
   R2_ACCESS_KEY_ID: z.string().optional(),

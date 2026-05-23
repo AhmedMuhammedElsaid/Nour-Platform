@@ -7,7 +7,11 @@
     ".": "./src/index.ts",
     "./db/client": "./src/db/client.ts",
     "./errors": "./src/errors/index.ts",
-    "./services": "./src/services/index.ts"
+    "./services": "./src/services/index.ts",
+    "./services/auth": "./src/services/auth.service.ts",
+    "./schemas/user": "./src/schemas/user.ts",
+    "./auth": "./src/auth/index.ts",
+    "./auth/edge": "./src/auth/config.edge.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
@@ -15,8 +19,12 @@
     "clean": "rm -rf .turbo node_modules"
   },
   "dependencies": {
+    "@auth/mongodb-adapter": "^3.7.4",
+    "@node-rs/argon2": "^2.0.2",
     "@repo/config": "workspace:*",
+    "mongodb": "^6.12.0",
     "mongoose": "^8.9.0",
+    "next-auth": "5.0.0-beta.25",
     "zod": "^3.23.8"
   },
   "devDependencies": {

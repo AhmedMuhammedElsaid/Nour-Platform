@@ -64,4 +64,5 @@ jobs:
           # URI so the env Zod parser passes. Real values land in Vercel
           # at deploy time (DEPLOYMENT.md).
           MONGODB_URI: mongodb://localhost:27017/ci
+          AUTH_SECRET: ci-only-dummy-secret-that-is-thirty-two-or-more-chars
           NEXT_TELEMETRY_DISABLED: 1
