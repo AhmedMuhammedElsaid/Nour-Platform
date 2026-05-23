@@ -50,17 +50,26 @@
 | 2.5 | `abf6a5a` | `POST /api/upload` + `POST /api/media/confirm` route handlers; `media.service.ts` (createMedia, confirmMedia); `apps/admin/lib/route-helpers.ts` (appErrorStatus) |
 | 2.6 | `0ccab79` | `playlist.service.ts` + `track.service.ts` — full CRUD with requireSession + revalidateTag; `appendTrackId`/`removeTrackId` added to playlist repo |
 | 3.1 | `bdf4787` | `apps/admin/app/playlists/page.tsx` RSC + `features/playlists/components/playlists-table.tsx` client island; Vitest + RTL setup in admin; `SerializedPlaylist` DTO for RSC→client date serialization |
+| 3.2 | `95c9fc6` | `playlists/new/page.tsx` + `playlists/[id]/edit/page.tsx`; `PlaylistForm` (TanStack Form + Zod) shared between create/edit; `playlist-form.schema.ts`; `create-playlist.action.ts` + `update-playlist.action.ts` (slug uniqueness handled at service layer) |
+| 3.3 | `05c0304` | `track-uploader.tsx` drag-drop UI inside edit page; `use-track-upload.ts` hook drives the 3-step handshake (presign → PUT to R2 with progress → confirm) with retry-on-PUT-failure; `create-track.action.ts` writes the Track row after confirm |
+| 3.4 | `a762256` | `track-list.tsx` dnd-kit sortable; `reorder-tracks.action.ts` calls `reorderTracks` service; optimistic update via TanStack Query `onMutate`/`onError` rollback |
+| 3.5 | `55ac779` | `publish-toggle.tsx` + `toggle-publish.action.ts`; calls `publishPlaylist`/`unpublishPlaylist` services; `revalidateTag` fires on success |
+| 4.1 | `8748484` | `apps/web/features/layout/components/site-header.tsx` + `site-footer.tsx`; `apps/web/app/layout.tsx` wraps in `PlayerProvider` so the sticky player survives route changes |
+| 4.2 | `0b5d789` | `apps/web/app/page.tsx` RSC — `getPublishedPlaylists()` → grid of `playlist-card.tsx`; uses `next/image` with `sizes`; covers come from R2 |
+| 4.3 | `64e2196` | `apps/web/app/playlists/[slug]/page.tsx` RSC — playlist meta + ordered `track-row.tsx` list; `generateMetadata` produces OG + canonical |
+| 4.4 | `79f50da` + `6ac0053` | `packages/ui/src/blocks/audio-player/audio-player.tsx` (sticky bottom UI: play/pause, Slider seek, current/duration, prev/next) + `player-context.tsx` (single `HTMLAudioElement` ref, queue, keyboard handlers — space, ←/→). Exports wired in `packages/ui/package.json` |
+| 4.5 | `79f50da` | `track-list-player.tsx` client island on the playlist detail page — clicking a row calls `player.loadQueue(tracks, index)` and autoplays; URL hash mirrors current track |
+| 4.6 | `79f50da` | A11y sweep: skip link in `layout.tsx`, semantic landmarks (header/main/footer/nav), focus rings on all interactive elements, ARIA labels on player transport, keyboard nav verified on player + cards |
+| 5.1 | `1b97c53` | `apps/web/next.config.ts` — `images.remotePatterns` for R2 host; `apps/admin/next.config.ts` — same |
+| 5.2 | `1b97c53` | CSP, HSTS, X-Content-Type-Options, Referrer-Policy in both `next.config.ts`; `media-src` allowlist includes R2; nonce-based script-src |
+| 5.3 | `1b97c53` | `playwright.config.ts` + `tests/e2e/web.smoke.test.ts` + `tests/e2e/admin.smoke.test.ts` — homepage + first-track-plays + admin login + create-playlist flows |
+| 5.4 | `1b97c53` | `apps/web/app/api/health/route.ts` + `apps/admin/app/api/health/route.ts` — return 200 with DB-ping; Sentry env vars + DSN documented in `.env.example` |
 
 ---
 
-## Next tickets (Wave 3 — Admin CMS)
+## Next phase
 
-| # | Ticket | Model | What to build |
-|---|---|---|---|
-| **3.2** | `admin/playlists-create-edit` | Sonnet | Full-page form (TanStack Form + Zod), title/description/cover/status; create + edit modes |
-| 3.3 | `admin/tracks-upload-ui` | **Opus** | Drag-drop uploader inside playlist edit; progress bar; retry on PUT failure; confirm after upload |
-| 3.4 | `admin/tracks-reorder` | Sonnet | dnd-kit reorder, `reorderTracks` service call, optimistic update (onMutate/onError) |
-| 3.5 | `admin/playlists-publish` | Sonnet | Publish/unpublish toggle; `publishPlaylist`/`unpublishPlaylist` service; revalidateTag |
+MVP is **shipped** (Waves 0–5 complete). No more MVP tickets. The next work is **Phase 2** per PLAN.md §13 — start with **P2-A: Scholars + Categories**. Tickets for P2-A are not yet written; brainstorm and write a wave plan before coding (use `superpowers:brainstorming` then `superpowers:writing-plans`).
 
 ---
 
@@ -112,6 +121,9 @@ packages/ui/src/
     dialog.tsx / sheet.tsx / progress.tsx / slider.tsx / toaster.tsx
   patterns/
     form-field.tsx          → FormField({ label, htmlFor?, error?, children }) — label + input slot + error message
+  blocks/audio-player/
+    audio-player.tsx        → sticky bottom UI (play/pause, Slider seek, time, prev/next). Subscribes to PlayerContext.
+    player-context.tsx      → PlayerProvider — single HTMLAudioElement ref, queue state, keyboard handlers (space, ←/→), navigation persistence
 
 apps/admin/
   app/layout.tsx                         → RootLayout (Inter + Fraunces fonts)
@@ -120,19 +132,60 @@ apps/admin/
   app/api/auth/[...nextauth]/route.ts    → Auth.js handlers
   app/api/upload/route.ts                → POST presign + create pending Media
   app/api/media/confirm/route.ts         → POST confirm Media (headObject + status flip)
+  app/api/health/route.ts                → GET → 200 + DB ping (UptimeRobot target)
   middleware.ts                          → Edge auth gate (protects all routes except /login /api/auth)
+  next.config.ts                         → images.remotePatterns + headers (CSP, HSTS, X-Content-Type-Options)
   features/auth/
     actions/sign-in.action.ts            → signInAction(credentials, redirectTo?)
     components/login-form.tsx            → LoginForm (TanStack Form v1 + Zod)
   features/playlists/
-    components/playlists-table.tsx       → PlaylistsTable (TanStack Table v8, status filter); exports SerializedPlaylist type
-    components/playlists-table.test.tsx  → RTL tests (6 cases)
+    schemas/playlist-form.schema.ts      → Zod schema reused by create + edit
+    actions/
+      create-playlist.action.ts          → form submit → playlistService.create → revalidateTag
+      update-playlist.action.ts          → form submit → playlistService.update → revalidateTag
+      create-track.action.ts             → called after R2 confirm; writes Track row
+      reorder-tracks.action.ts           → batch order update; optimistic-friendly
+      toggle-publish.action.ts           → publish/unpublish + revalidateTag
+    components/
+      playlists-table.tsx                → PlaylistsTable (TanStack Table v8, status filter); exports SerializedPlaylist
+      playlist-form.tsx                  → shared create/edit form (TanStack Form + Zod)
+      track-uploader.tsx                 → drag-drop UI inside edit page
+      track-list.tsx                     → dnd-kit sortable list of tracks
+      publish-toggle.tsx                 → publish/unpublish toggle button
+    hooks/
+      use-track-upload.ts                → presign → PUT with progress → confirm (with retry on PUT)
   app/playlists/
-    page.tsx                             → RSC: requireSession → getAllPlaylists → serialize dates → <PlaylistsTable />
+    page.tsx                             → RSC list page
+    new/page.tsx                         → create form
+    [id]/edit/page.tsx                   → edit form + track-uploader + track-list + publish-toggle
   lib/
     route-helpers.ts                     → appErrorStatus(AppError) → HTTP status code
   vitest.config.ts                       → jsdom + @vitejs/plugin-react; no vite-tsconfig-paths (ESM conflict)
   vitest.setup.ts                        → @testing-library/jest-dom/vitest + explicit afterEach(cleanup)
+
+apps/web/
+  app/layout.tsx                         → RootLayout wraps children in <PlayerProvider> so player survives navigation
+  app/page.tsx                           → RSC homepage: getPublishedPlaylists → grid of PlaylistCard
+  app/playlists/[slug]/page.tsx          → RSC detail: meta + track list (uses TrackListPlayer client island); generateMetadata
+  app/api/health/route.ts                → GET → 200 + DB ping
+  next.config.ts                         → images.remotePatterns + CSP/HSTS headers (R2 host allowed in media-src)
+  features/layout/components/
+    site-header.tsx                      → header (logo + skip link target)
+    site-footer.tsx                      → footer
+  features/playlists/
+    types.ts                             → SerializedPlaylist / SerializedTrack DTOs
+    components/
+      playlist-card.tsx                  → cover (next/image) + title + track count
+      track-row.tsx                      → row UI (used inside TrackListPlayer)
+      track-list-player.tsx              → client island: maps rows; click → player.loadQueue(tracks, index); URL hash mirrors current
+  features/player/components/
+    audio-player.test.tsx                → RTL tests for the player block
+  vitest.config.ts / vitest.setup.ts     → mirror admin's setup
+
+tests/e2e/
+  web.smoke.test.ts                      → homepage loads + first track plays + deep-link to playlist
+  admin.smoke.test.ts                    → login + create playlist + upload track
+playwright.config.ts                     → projects for web (3000) + admin (3001), webServer auto-boot
 
 scripts/
   seed-admin.ts   → pnpm seed:admin --email --password

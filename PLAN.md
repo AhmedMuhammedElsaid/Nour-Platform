@@ -282,7 +282,7 @@ When all checked → ship. Phase 2 starts the next morning.
 ## 16. Implementation Status
 
 > Last updated automatically. On resume: read this section + APP_CONTEXT.md instead of exploring the repo.
-> Next ticket to implement: **3.2** `admin/playlists-create-edit`
+> MVP **shipped** — Waves 0–5 all complete. Next phase: **P2-A** Scholars + Categories (PLAN.md §13). No P2 tickets written yet; brainstorm + plan before coding.
 
 ### Wave 0 — Foundations ✅
 
