@@ -1,31 +1,36 @@
 # APP_CONTEXT.md
 
-> Drop-in context for AI sessions. Read this + the relevant PLAN.md ticket. Do NOT read the whole repo.
-> Update this file after each wave ticket is committed.
+> Drop-in context for AI sessions. Read this + the relevant PLAN.md ticket (§16 for status). Do NOT explore the repo — use the file locations below.
+> Updated after every committed wave.
 
 ---
 
 ## Stack snapshot
 
-- **Monorepo**: Turborepo, pnpm workspaces
+- **Monorepo**: Turborepo, pnpm workspaces, TypeScript strict everywhere
 - **Apps**: `apps/web` (public, port 3000), `apps/admin` (CMS, port 3001)
-- **Shared packages**: `packages/api` (DB, auth, services, schemas), `packages/ui` (tokens + primitives), `packages/config` (env Zod parser), `packages/tsconfig`, `packages/eslint-config`
-- **DB**: MongoDB Atlas via Mongoose; repositories return `.lean()` DTOs only
-- **Auth**: Auth.js v5 (Credentials + JWT sessions, `@node-rs/argon2`, single admin user)
-- **UI**: Tailwind v4, shadcn-style primitives in `packages/ui`, tokens in `packages/ui/src/styles/tokens.css`
-- **Forms**: TanStack Form v1 + Zod validators (no separate adapter needed); field layout via `@repo/ui/patterns/form-field`
+- **Shared packages**: `packages/api` · `packages/ui` · `packages/config` · `packages/tsconfig` · `packages/eslint-config`
+- **DB**: MongoDB Atlas via Mongoose; repos always `.lean()` → plain DTOs; models use hot-reload guard
+- **Auth**: Auth.js v5 Credentials + JWT sessions; `requireSession(['admin'])` enforced in every mutating service; Edge config in `config.edge.ts`
+- **UI**: Tailwind v4, tokens in `packages/ui/src/styles/tokens.css`, shadcn-style primitives in `packages/ui/src/primitives/`; form layout via `@repo/ui/patterns/form-field`
+- **Forms**: TanStack Form v1 + Zod native validators (no adapter); `FormField` wrapper from `@repo/ui/patterns/form-field`
 - **Data fetching**: RSC + service call + Suspense; TanStack Query on client islands
-- **CI**: GitHub Actions `.github/workflows/ci.yml` — lint / typecheck / build (turbo affected filter on PRs)
+- **Media uploads**: 2-step handshake — `POST /api/upload` (presign + create pending Media) → client PUT to R2 → `POST /api/media/confirm` (headObject + flip to confirmed)
+- **Cache invalidation**: `revalidateTag` from `next/cache` called in services after public-affecting mutations
+- **CI**: `.github/workflows/ci.yml` — lint/typecheck/build via turbo affected filter
 
 ---
 
-## Key boundaries (hard rules from CLAUDE.md)
+## Hard boundaries (CLAUDE.md §5 — non-negotiable)
 
-- Apps import `services` from `@repo/api`, never `@repo/api/db` or `@repo/api/repositories`
-- `process.env` only in `packages/config`; everywhere else use `env` from `@repo/config/env`
-- No hex colors or arbitrary Tailwind values — tokens only
-- Mutations → Server Actions; reading → RSC + service
-- Every service method: Zod validate → RBAC check → mutate → revalidate
+| ✗ Never | ✓ Always |
+|---|---|
+| Import Mongoose / models inside `apps/*` | Call services from `@repo/api/services/*` |
+| `process.env.X` outside `packages/config` | `env` from `@repo/config/env` |
+| Raw `throw new Error(...)` at boundaries | `AppError` instances |
+| Hex colors / arbitrary Tailwind values | Tokens from `tokens.css` |
+| Bypass `requireSession` in services | Always check auth before mutating |
+| Import from `@repo/api/db` or `@repo/api/repositories` in apps | Services only |
 
 ---
 
@@ -33,74 +38,111 @@
 
 | Ticket | Commit | What was built |
 |---|---|---|
-| 0.1 `repo/init-turborepo` | `6c5202f` | Turborepo init, both apps boot |
-| 0.2 `pkg/ui-bootstrap` | `60c8e5c` | `packages/ui`: tokens.css, Tailwind v4, Button/Input/Dialog/Sheet/Progress/Slider/Toaster |
-| 0.3 `pkg/api/skeleton` | `97b68b9` | `packages/api`: db/client (Mongoose), AppError, services/, `packages/config` env Zod parser |
-| 0.4 `infra/ci-baseline` | `af0683b` | `.github/workflows/ci.yml` lint/typecheck/build |
-| 1.1 `api/auth/setup-credentials-only` | `26ea693` | Auth.js v5 config (Node + Edge slices), Credentials provider, argon2id helpers, requireSession, User model + Zod schema |
-| 1.2 `admin/login-page` | `f74d8ba` | `app/api/auth/[...nextauth]/route.ts` (handlers), `features/auth/actions/sign-in.action.ts`, `features/auth/components/login-form.tsx` (TanStack Form + Zod), `app/(auth)/login/page.tsx`, `packages/ui/patterns/form-field` |
+| 0.1–0.4 | `6c5202f`–`af0683b` | Turborepo init, UI bootstrap (tokens + primitives), API skeleton (db/client, AppError, services/), CI |
+| 1.1 | `26ea693` | Auth.js v5 (Node + Edge configs), Credentials provider, argon2id, requireSession, User model + schema |
+| 1.2 | `f74d8ba` | Admin login page: handlers route, signInAction, LoginForm (TanStack Form v1 + Zod), `packages/ui/patterns/form-field` |
+| 1.3 | `f8f1d83` | `apps/admin/middleware.ts` — Edge auth gate, matcher excludes /login /api/auth /_next; ?from= preserves full pathname+search |
+| 1.4 | `6dcea3d` | `scripts/seed-admin.ts` + `createAdminUser` service method; `scripts/migrate.ts` + `0001-indexes` migration |
+| 2.1 | `1235356` | Zod schemas: `playlist.ts`, `track.ts`, `media.ts` — full + create + update variants, all types exported |
+| 2.2 | `37a47ad` | Mongoose models (Playlist, Track, Media) + lean repos (7/7/3 methods); models in `packages/api/src/db/models/`, repos in `packages/api/src/repositories/` |
+| 2.3 | `1140bf0` | `0001-indexes` migration + `scripts/migrate.ts` runner; scripts tsconfig paths fixed (subpath aliases for .service.ts files) |
+| 2.4 | `70d507a` | R2 client: `createPresignedUpload`, `headObject`, `ALLOWED_AUDIO_MIME_TYPES`; R2 env vars in config; `.env.example` updated |
+| 2.5 | `abf6a5a` | `POST /api/upload` + `POST /api/media/confirm` route handlers; `media.service.ts` (createMedia, confirmMedia); `apps/admin/lib/route-helpers.ts` (appErrorStatus) |
+| 2.6 | `0ccab79` | `playlist.service.ts` + `track.service.ts` — full CRUD with requireSession + revalidateTag; `appendTrackId`/`removeTrackId` added to playlist repo |
 
 ---
 
-## Next tickets
+## Next tickets (Wave 3 — Admin CMS)
 
 | # | Ticket | Model | What to build |
 |---|---|---|---|
-| **1.3** | `admin/middleware-gate` | Sonnet | `apps/admin/middleware.ts` — protect `/admin/*`, redirect unauthenticated → `/login?from=<path>` using Edge auth config |
-| 1.4 | `scripts/seed-admin` | Haiku | `scripts/seed-admin.ts` — CLI `pnpm seed:admin --email --password` creates single admin user |
-| 2.1 | `pkg/schemas-playlists-tracks` | Sonnet (Opus for schemas) | Zod schemas + Mongoose models for Playlist + Track |
-| 2.2 | `pkg/api/playlist-service` | Sonnet | CRUD service methods for playlists |
-| 2.3 | `pkg/api/track-service` | Sonnet | CRUD service methods for tracks |
-| 2.4 | `infra/r2-client` | Sonnet (Opus) | Cloudflare R2 client, upload helper |
-| 2.5 | `admin/playlist-management` | Sonnet | Admin list/create/edit/delete playlists |
-| 2.6 | `admin/track-upload` | Sonnet | Admin track upload UX + R2 |
-| 3.x | Wave 3 — Web frontend | Sonnet | Public playlist/track pages |
-| 4.x | Wave 4 — Audio Player | Sonnet (Opus for 4.4) | AudioPlayer block, queue, persistence |
-| 5.x | Wave 5 — Deploy | Sonnet (Opus for 5.2) | Vercel deploy, CSP/headers, Sentry |
+| **3.1** | `admin/playlists-list` | **Sonnet** | `apps/admin/features/playlists/` — TanStack Table list, filter by status, link to edit page |
+| 3.2 | `admin/playlists-create-edit` | Sonnet | Full-page form (TanStack Form + Zod), title/description/cover/status; create + edit modes |
+| 3.3 | `admin/tracks-upload-ui` | **Opus** | Drag-drop uploader inside playlist edit; progress bar; retry on PUT failure; confirm after upload |
+| 3.4 | `admin/tracks-reorder` | Sonnet | dnd-kit reorder, `reorderTracks` service call, optimistic update (onMutate/onError) |
+| 3.5 | `admin/playlists-publish` | Sonnet | Publish/unpublish toggle; `publishPlaylist`/`unpublishPlaylist` service; revalidateTag |
 
 ---
 
-## Key file locations (quick reference)
+## Key file locations (quick-ref for implementers)
 
 ```
 packages/api/src/
-  auth/index.ts          → exports: auth, handlers, signIn, signOut, requireSession
-  auth/config.ts         → full Node config (Credentials + Mongo adapter)
-  auth/config.edge.ts    → Edge-safe config (JWT callbacks, pages: { signIn: "/login" })
-  auth/require-session.ts → requireSession() helper
-  auth/password.ts       → hashPassword / verifyPassword (argon2id)
-  db/client.ts           → getDb() / disconnectDb()
-  db/models/user.model.ts → UserModel
-  schemas/user.ts        → User, UserRole, Credentials Zod schemas
-  services/auth.service.ts → verifyCredentials()
-  errors/index.ts        → AppError + AppErrorCode
-  index.ts               → public barrel
+  auth/
+    index.ts              → exports: auth, handlers, signIn, signOut, requireSession
+    config.ts             → full Node config (Credentials + Mongo adapter)
+    config.edge.ts        → Edge config (JWT callbacks, pages.signIn: '/login')
+    require-session.ts    → requireSession(roles?) — throws AppError if not authed
+    password.ts           → hashPassword / verifyPassword (argon2id)
+  db/
+    client.ts             → getDb() / disconnectDb()
+    models/
+      user.model.ts       → UserModel
+      playlist.model.ts   → PlaylistModel
+      track.model.ts      → TrackModel
+      media.model.ts      → MediaModel
+    migrations/
+      0001-indexes.ts     → ensureIndexes on all three models
+  repositories/
+    playlist.repo.ts      → findPlaylistById/Slug/Published/All, create/update/delete + appendTrackId/removeTrackId
+    track.repo.ts         → findTrackById/ByPlaylistId/BySlug, create/update/delete, updateTrackOrder (bulkWrite)
+    media.repo.ts         → findMediaById, create, updateById
+  schemas/
+    user.ts               → User, UserRole, Credentials
+    playlist.ts           → Playlist, PlaylistStatus, PlaylistCreateInput, PlaylistUpdateInput
+    track.ts              → Track, TrackCreateInput, TrackUpdateInput
+    media.ts              → Media, MediaMimeType, MediaStatus, MediaCreateInput, MediaUpdateInput
+  services/
+    auth.service.ts       → verifyCredentials, createAdminUser
+    playlist.service.ts   → getPublishedPlaylists, getAllPlaylists, getPlaylistBySlug/ById, create/update/delete/publish/unpublish
+    track.service.ts      → getTracksByPlaylist, getTrackById, create/update/delete, reorderTracks
+    media.service.ts      → createMedia, confirmMedia
+  media/
+    r2-client.ts          → createPresignedUpload(key, mime, bytes), headObject(key), ALLOWED_AUDIO_MIME_TYPES
+  errors/index.ts         → AppError + codes (UNAUTHORIZED/FORBIDDEN/NOT_FOUND/VALIDATION/CONFLICT/RATE_LIMITED/INTERNAL)
+  index.ts                → public barrel (getDb, disconnectDb, auth, signIn, signOut, handlers, requireSession + all schema types)
+
+packages/config/src/env.ts  → Zod-parsed env (MONGODB_URI, AUTH_SECRET, R2_* vars)
 
 packages/ui/src/
-  styles/tokens.css      → design tokens (colors, spacing, fonts)
-  primitives/button.tsx  → Button (cva variants: default/secondary/outline/ghost/destructive/link)
-  primitives/input.tsx   → Input
-  primitives/dialog.tsx  → Dialog
-  primitives/sheet.tsx   → Sheet
-  primitives/toaster.tsx → Toaster (sonner)
-  patterns/form-field.tsx → FormField (label + children + error)
+  styles/tokens.css         → design tokens (colors, spacing, fonts, radii, shadows)
+  primitives/
+    button.tsx              → Button (cva: default/secondary/outline/ghost/destructive/link × sm/default/lg/icon)
+    input.tsx               → Input (aria-invalid for error state)
+    dialog.tsx / sheet.tsx / progress.tsx / slider.tsx / toaster.tsx
+  patterns/
+    form-field.tsx          → FormField({ label, htmlFor?, error?, children }) — label + input slot + error message
 
 apps/admin/
-  app/layout.tsx                        → RootLayout (fonts: Inter + Fraunces)
-  app/page.tsx                          → placeholder home
-  app/(auth)/login/page.tsx             → login page (RSC, reads searchParams.from)
-  app/api/auth/[...nextauth]/route.ts   → Auth.js route handler
+  app/layout.tsx                         → RootLayout (Inter + Fraunces fonts)
+  app/page.tsx                           → placeholder home (will become dashboard)
+  app/(auth)/login/page.tsx              → login page (RSC, awaits searchParams.from)
+  app/api/auth/[...nextauth]/route.ts    → Auth.js handlers
+  app/api/upload/route.ts                → POST presign + create pending Media
+  app/api/media/confirm/route.ts         → POST confirm Media (headObject + status flip)
+  middleware.ts                          → Edge auth gate (protects all routes except /login /api/auth)
   features/auth/
-    actions/sign-in.action.ts           → signInAction(credentials, redirectTo?)
-    components/login-form.tsx           → LoginForm client component (TanStack Form + Zod)
+    actions/sign-in.action.ts            → signInAction(credentials, redirectTo?)
+    components/login-form.tsx            → LoginForm (TanStack Form v1 + Zod)
+  lib/
+    route-helpers.ts                     → appErrorStatus(AppError) → HTTP status code
+
+scripts/
+  seed-admin.ts   → pnpm seed:admin --email --password
+  migrate.ts      → pnpm migrate [--dry-run]
+  tsconfig.json   → path aliases for @repo/* (explicit .service.ts mappings)
 ```
 
 ---
 
-## Known issues / gotchas
+## Known gotchas
 
-- `next-auth@5.0.0-beta.25` peer warns against Next 16 — expected, works fine
-- Auth.js `signIn()` throws a Next.js redirect on success — always re-throw non-AuthError errors
-- `searchParams` is a `Promise<{...}>` in Next 15+ — always `await searchParams`
-- Mongoose model re-registration: check `mongoose.models.X ?? mongoose.model(...)` pattern
-- `@tanstack/react-form` v1: Zod schemas work natively in `validators` — no separate adapter needed
+- `next-auth@5.0.0-beta.25` peer-warns against Next 16 — expected, works fine
+- Auth.js `signIn()` throws a Next.js redirect on success — always re-throw non-AuthError errors in server actions
+- `searchParams` is `Promise<{...}>` in Next 15+ — always `await searchParams`
+- Mongoose hot-reload guard: `mongoose.models.X ?? mongoose.model('X', schema)` in every model
+- R2 client is a lazy singleton — `getClient()` creates it once; dev sessions without R2 env still boot
+- `revalidateTag` imported from `next/cache` inside `packages/api/services/` — valid because Next.js apps consume this package
+- `scripts/tsconfig.json` has explicit path aliases for `.service.ts` files because `@repo/api/*` glob only covers direct filename matches
+- TanStack Form v1: Zod schemas work natively in `validators` — no `@tanstack/zod-form-adapter` needed
+- `appErrorStatus` shared helper lives in `apps/admin/lib/route-helpers.ts` — use it in all new admin route handlers
