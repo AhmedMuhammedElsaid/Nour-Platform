@@ -1,5 +1,9 @@
 import NextAuth from "next-auth";
 
+// Side-effect import — registers the module augmentation that adds `role` to
+// Session/User/JWT. DO NOT REMOVE: IDE "organize imports" or "remove unused
+// imports" actions tend to delete this because it has no named binding; the
+// session object loses its typed `role` field if it goes.
 import "../types/next-auth";
 import { authConfig } from "./config";
 
