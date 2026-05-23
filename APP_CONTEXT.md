@@ -20,50 +20,25 @@
 
 ---
 
-## Hard boundaries (CLAUDE.md §5 — non-negotiable)
+## Hard boundaries
 
-| ✗ Never | ✓ Always |
-|---|---|
-| Import Mongoose / models inside `apps/*` | Call services from `@repo/api/services/*` |
-| `process.env.X` outside `packages/config` | `env` from `@repo/config/env` |
-| Raw `throw new Error(...)` at boundaries | `AppError` instances |
-| Hex colors / arbitrary Tailwind values | Tokens from `tokens.css` |
-| Bypass `requireSession` in services | Always check auth before mutating |
-| Import from `@repo/api/db` or `@repo/api/repositories` in apps | Services only |
+See **CLAUDE.md §5** — non-negotiable list. Summary: apps call services only (no `db/`, no `repositories/`); env reads go through `@repo/config/env`; throw `AppError`, not strings; UI uses tokens, not arbitrary values; every service mutation calls `requireSession` AND `revalidateTag`.
 
 ---
 
-## Completed tickets
+## Completed waves (Audio MVP)
 
-| Ticket | Commit | What was built |
+All 5 waves shipped + 1 pre-deploy fixup batch. Head of `main` = `1a4c895`.
+
+| Wave | Range | Notes (only what's non-obvious for a future session) |
 |---|---|---|
-| 0.1–0.4 | `6c5202f`–`af0683b` | Turborepo init, UI bootstrap (tokens + primitives), API skeleton (db/client, AppError, services/), CI |
-| 1.1 | `26ea693` | Auth.js v5 (Node + Edge configs), Credentials provider, argon2id, requireSession, User model + schema |
-| 1.2 | `f74d8ba` | Admin login page: handlers route, signInAction, LoginForm (TanStack Form v1 + Zod), `packages/ui/patterns/form-field` |
-| 1.3 | `f8f1d83` | `apps/admin/middleware.ts` — Edge auth gate, matcher excludes /login /api/auth /_next; ?from= preserves full pathname+search |
-| 1.4 | `6dcea3d` | `scripts/seed-admin.ts` + `createAdminUser` service method; `scripts/migrate.ts` + `0001-indexes` migration |
-| 2.1 | `1235356` | Zod schemas: `playlist.ts`, `track.ts`, `media.ts` — full + create + update variants, all types exported |
-| 2.2 | `37a47ad` | Mongoose models (Playlist, Track, Media) + lean repos (7/7/3 methods); models in `packages/api/src/db/models/`, repos in `packages/api/src/repositories/` |
-| 2.3 | `1140bf0` | `0001-indexes` migration + `scripts/migrate.ts` runner; scripts tsconfig paths fixed (subpath aliases for .service.ts files) |
-| 2.4 | `70d507a` | R2 client: `createPresignedUpload`, `headObject`, `ALLOWED_AUDIO_MIME_TYPES`; R2 env vars in config; `.env.example` updated |
-| 2.5 | `abf6a5a` | `POST /api/upload` + `POST /api/media/confirm` route handlers; `media.service.ts` (createMedia, confirmMedia); `apps/admin/lib/route-helpers.ts` (appErrorStatus) |
-| 2.6 | `0ccab79` | `playlist.service.ts` + `track.service.ts` — full CRUD with requireSession + revalidateTag; `appendTrackId`/`removeTrackId` added to playlist repo |
-| 3.1 | `bdf4787` | `apps/admin/app/playlists/page.tsx` RSC + `features/playlists/components/playlists-table.tsx` client island; Vitest + RTL setup in admin; `SerializedPlaylist` DTO for RSC→client date serialization |
-| 3.2 | `95c9fc6` | `playlists/new/page.tsx` + `playlists/[id]/edit/page.tsx`; `PlaylistForm` (TanStack Form + Zod) shared between create/edit; `playlist-form.schema.ts`; `create-playlist.action.ts` + `update-playlist.action.ts` (slug uniqueness handled at service layer) |
-| 3.3 | `05c0304` | `track-uploader.tsx` drag-drop UI inside edit page; `use-track-upload.ts` hook drives the 3-step handshake (presign → PUT to R2 with progress → confirm) with retry-on-PUT-failure; `create-track.action.ts` writes the Track row after confirm |
-| 3.4 | `a762256` | `track-list.tsx` dnd-kit sortable; `reorder-tracks.action.ts` calls `reorderTracks` service; optimistic update via TanStack Query `onMutate`/`onError` rollback |
-| 3.5 | `55ac779` | `publish-toggle.tsx` + `toggle-publish.action.ts`; calls `publishPlaylist`/`unpublishPlaylist` services; `revalidateTag` fires on success |
-| 4.1 | `8748484` | `apps/web/features/layout/components/site-header.tsx` + `site-footer.tsx`; `apps/web/app/layout.tsx` wraps in `PlayerProvider` so the sticky player survives route changes |
-| 4.2 | `0b5d789` | `apps/web/app/page.tsx` RSC — `getPublishedPlaylists()` → grid of `playlist-card.tsx`; uses `next/image` with `sizes`; covers come from R2 |
-| 4.3 | `64e2196` | `apps/web/app/playlists/[slug]/page.tsx` RSC — playlist meta + ordered `track-row.tsx` list; `generateMetadata` produces OG + canonical |
-| 4.4 | `79f50da` + `6ac0053` | `packages/ui/src/blocks/audio-player/audio-player.tsx` (sticky bottom UI: play/pause, Slider seek, current/duration, prev/next) + `player-context.tsx` (single `HTMLAudioElement` ref, queue, keyboard handlers — space, ←/→). Exports wired in `packages/ui/package.json` |
-| 4.5 | `79f50da` | `track-list-player.tsx` client island on the playlist detail page — clicking a row calls `player.loadQueue(tracks, index)` and autoplays; URL hash mirrors current track |
-| 4.6 | `79f50da` | A11y sweep: skip link in `layout.tsx`, semantic landmarks (header/main/footer/nav), focus rings on all interactive elements, ARIA labels on player transport, keyboard nav verified on player + cards |
-| 5.1 | `1b97c53` | `apps/web/next.config.ts` — `images.remotePatterns` for R2 host; `apps/admin/next.config.ts` — same |
-| 5.2 | `1b97c53` | CSP, HSTS, X-Content-Type-Options, Referrer-Policy in both `next.config.ts`; `media-src` allowlist includes R2; nonce-based script-src |
-| 5.3 | `1b97c53` | `playwright.config.ts` + `tests/e2e/web.smoke.test.ts` + `tests/e2e/admin.smoke.test.ts` — homepage + first-track-plays + admin login + create-playlist flows |
-| 5.4 ⚠️ | `1b97c53` (+ `806f2ca` fixup) | `apps/web/app/api/health/route.ts` + `apps/admin/app/api/health/route.ts` — return `{ ok, version, time }` per DEPLOYMENT.md §6 (version = `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA[0..7]` ?? "dev"). Sentry SDK install **deferred** — env var stubbed only; UptimeRobot wiring is a manual external step |
-| Pre-deploy fixups | `dfae606` · `e693862` · `1fe8f69` | `media.service.ts` createMedia/confirmMedia now call `requireSession(['admin'])`; `seed-admin.ts` refuses NODE_ENV=production without `--force`; per-app `vercel.json` (turbo `--filter=app...` build); CI runs `pnpm test`; root `README.md`; **`deploy.md`** step-by-step runbook |
+| 0 — Foundations | `6c5202f`–`af0683b` | Turborepo, Tailwind v4 tokens, `@repo/api` skeleton (db/client, AppError, services/), CI baseline. |
+| 1 — Auth | `26ea693`–`6dcea3d` | Auth.js v5 split into Node (`config.ts`) + Edge (`config.edge.ts`) — Mongo adapter needs Node, middleware needs Edge. argon2id passwords. `requireSession(roles?)` throws `AppError.Unauthorized/Forbidden`. `scripts/seed-admin.ts` + `scripts/migrate.ts`. |
+| 2 — Data + Media | `1235356`–`0ccab79` | Zod schemas + Mongoose models + lean repos for Playlist/Track/Media. R2 client with `createPresignedUpload` + `headObject` + `ALLOWED_AUDIO_MIME_TYPES`. 2-step upload handshake (`/api/upload` presigns + creates pending Media → client PUTs to R2 → `/api/media/confirm` headObject + flip). All services use `requireSession` + `revalidateTag`. |
+| 3 — Admin CMS | `bdf4787`–`55ac779` | `apps/admin` playlist list (TanStack Table, status filter), create+edit form (shared `PlaylistForm`, TanStack Form + Zod), drag-drop track uploader (`use-track-upload.ts` hook with retry-on-PUT), dnd-kit reorder with optimistic update, publish toggle. RSC pages serialize Dates to ISO strings before passing to client islands (see `SerializedPlaylist`). |
+| 4 — Public Web + Player | `8748484`–`79f50da` + `6ac0053` | `apps/web` layout (header/footer, skip-link), homepage grid (RSC + `next/image`), playlist detail (RSC + `generateMetadata`). `packages/ui/blocks/audio-player` — single `HTMLAudioElement` ref in `PlayerProvider` wrapped at root layout so the player survives navigation. Keyboard: space (play/pause), ←/→ (seek ±5s). URL hash mirrors current track. A11y: semantic landmarks, focus rings, ARIA on transport. |
+| 5 — Deploy + Smoke ⚠️ | `1b97c53` + `806f2ca` fixup | `next.config.ts` per app: `images.remotePatterns` for R2 + CSP/HSTS/X-Frame/Permissions-Policy headers (CSP uses `'unsafe-inline'` script-src as a known TODO). Playwright smoke tests in `tests/e2e/`. Health endpoints return `{ ok, version, time }` (version from `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA`). **Sentry SDK install deferred** — env var stubbed only. |
+| Pre-deploy fixups | `dfae606` · `e693862` · `1fe8f69` · `1a4c895` | `media.service.ts` createMedia/confirmMedia call `requireSession(['admin'])`. `seed-admin.ts` refuses `NODE_ENV=production` without `--force`. Per-app `vercel.json` (turbo `--filter=app...` build). CI runs `pnpm test`. Root `README.md`. **`deploy.md`** step-by-step runbook. |
 
 ---
 
