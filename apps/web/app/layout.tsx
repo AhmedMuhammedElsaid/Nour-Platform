@@ -1,5 +1,22 @@
+import "./globals.css";
+
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { Fraunces, Inter } from "next/font/google";
+
+import { cn } from "@repo/ui/lib/utils";
+
+const fontSans = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-sans",
+});
+
+const fontDisplay = Fraunces({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-display",
+});
 
 export const metadata: Metadata = {
   title: "Nour — Audio Platform",
@@ -8,15 +25,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body
-        style={{
-          fontFamily: "system-ui, -apple-system, sans-serif",
-          margin: 0,
-          background: "#FCFCF9",
-          color: "#13201A",
-        }}
-      >
+    <html
+      lang="en"
+      className={cn(fontSans.variable, fontDisplay.variable)}
+      suppressHydrationWarning
+    >
+      <body className="min-h-dvh bg-bg text-foreground font-sans antialiased">
         {children}
       </body>
     </html>

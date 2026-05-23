@@ -1,0 +1,78 @@
+/*
+ * Design tokens — MVP subset of DESIGN.md §2–§4.
+ * Tokens live in CSS variables; Tailwind v4 utilities are produced by the
+ * `@theme inline` bridge in globals.css. Apps must consume these — never
+ * hardcode colors, sizes, or radii.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* Colors — light */
+  --color-bg: #fcfcf9;
+  --color-surface: #ffffff;
+  --color-surface-2: #f4f2ec;
+  --color-border: #e6e2d7;
+  --color-text: #13201a;
+  --color-text-2: #3f4a44;
+  --color-muted: #6b7670;
+  --color-primary: #0e6e59;
+  --color-primary-fg: #ffffff;
+  --color-accent: #a8884a;
+  --color-danger: #b3261e;
+  --color-focus: #0e6e59;
+
+  /* Typography */
+  --font-display: "Fraunces Fallback", ui-serif, Georgia, serif;
+  --font-sans:
+    "Inter Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
+    monospace;
+
+  --fs-2xs: 0.6875rem;
+  --fs-xs: 0.8125rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.25rem;
+  --fs-2xl: 1.5rem;
+  --fs-3xl: 1.875rem;
+  --fs-4xl: 2.25rem;
+  --fs-5xl: 3rem;
+  --fs-6xl: 4rem;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  /* Shadows */
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 4%), 0 1px 1px rgb(0 0 0 / 3%);
+  --shadow-2: 0 4px 12px rgb(0 0 0 / 6%);
+  --shadow-3: 0 16px 40px rgb(0 0 0 / 8%);
+
+  /* Motion */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 320ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasis: cubic-bezier(0, 0, 0.2, 1);
+}
+
+[data-theme="dark"] {
+  --color-bg: #0e1311;
+  --color-surface: #141a18;
+  --color-surface-2: #1a211e;
+  --color-border: #222b27;
+  --color-text: #e7eeea;
+  --color-text-2: #a8b5af;
+  --color-muted: #7e8c86;
+  --color-primary: #36a089;
+  --color-primary-fg: #0e1311;
+  --color-accent: #c6a266;
+  --color-danger: #e26a63;
+  --color-focus: #9fe0cf;
+}
