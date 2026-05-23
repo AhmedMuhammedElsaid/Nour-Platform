@@ -49,6 +49,7 @@
 | 2.4 | `70d507a` | R2 client: `createPresignedUpload`, `headObject`, `ALLOWED_AUDIO_MIME_TYPES`; R2 env vars in config; `.env.example` updated |
 | 2.5 | `abf6a5a` | `POST /api/upload` + `POST /api/media/confirm` route handlers; `media.service.ts` (createMedia, confirmMedia); `apps/admin/lib/route-helpers.ts` (appErrorStatus) |
 | 2.6 | `0ccab79` | `playlist.service.ts` + `track.service.ts` — full CRUD with requireSession + revalidateTag; `appendTrackId`/`removeTrackId` added to playlist repo |
+| 3.1 | `bdf4787` | `apps/admin/app/playlists/page.tsx` RSC + `features/playlists/components/playlists-table.tsx` client island; Vitest + RTL setup in admin; `SerializedPlaylist` DTO for RSC→client date serialization |
 
 ---
 
@@ -56,8 +57,7 @@
 
 | # | Ticket | Model | What to build |
 |---|---|---|---|
-| **3.1** | `admin/playlists-list` | **Sonnet** | `apps/admin/features/playlists/` — TanStack Table list, filter by status, link to edit page |
-| 3.2 | `admin/playlists-create-edit` | Sonnet | Full-page form (TanStack Form + Zod), title/description/cover/status; create + edit modes |
+| **3.2** | `admin/playlists-create-edit` | Sonnet | Full-page form (TanStack Form + Zod), title/description/cover/status; create + edit modes |
 | 3.3 | `admin/tracks-upload-ui` | **Opus** | Drag-drop uploader inside playlist edit; progress bar; retry on PUT failure; confirm after upload |
 | 3.4 | `admin/tracks-reorder` | Sonnet | dnd-kit reorder, `reorderTracks` service call, optimistic update (onMutate/onError) |
 | 3.5 | `admin/playlists-publish` | Sonnet | Publish/unpublish toggle; `publishPlaylist`/`unpublishPlaylist` service; revalidateTag |
@@ -124,8 +124,15 @@ apps/admin/
   features/auth/
     actions/sign-in.action.ts            → signInAction(credentials, redirectTo?)
     components/login-form.tsx            → LoginForm (TanStack Form v1 + Zod)
+  features/playlists/
+    components/playlists-table.tsx       → PlaylistsTable (TanStack Table v8, status filter); exports SerializedPlaylist type
+    components/playlists-table.test.tsx  → RTL tests (6 cases)
+  app/playlists/
+    page.tsx                             → RSC: requireSession → getAllPlaylists → serialize dates → <PlaylistsTable />
   lib/
     route-helpers.ts                     → appErrorStatus(AppError) → HTTP status code
+  vitest.config.ts                       → jsdom + @vitejs/plugin-react; no vite-tsconfig-paths (ESM conflict)
+  vitest.setup.ts                        → @testing-library/jest-dom/vitest + explicit afterEach(cleanup)
 
 scripts/
   seed-admin.ts   → pnpm seed:admin --email --password
@@ -146,3 +153,5 @@ scripts/
 - `scripts/tsconfig.json` has explicit path aliases for `.service.ts` files because `@repo/api/*` glob only covers direct filename matches
 - TanStack Form v1: Zod schemas work natively in `validators` — no `@tanstack/zod-form-adapter` needed
 - `appErrorStatus` shared helper lives in `apps/admin/lib/route-helpers.ts` — use it in all new admin route handlers
+- RSC→client Date serialization: `Date` objects cannot cross the RSC boundary; map to ISO strings before passing as props. Pattern: `type SerializedX = Omit<X, 'createdAt'|'updatedAt'> & { createdAt: string; updatedAt: string }` — see `SerializedPlaylist` in `playlists-table.tsx`
+- Vitest in admin: use `@testing-library/jest-dom/vitest` (not bare import), add explicit `afterEach(cleanup)` in setup; `vite-tsconfig-paths` is ESM-only and cannot load in `vitest.config.ts`

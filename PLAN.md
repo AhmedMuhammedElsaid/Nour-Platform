@@ -282,7 +282,7 @@ When all checked → ship. Phase 2 starts the next morning.
 ## 16. Implementation Status
 
 > Last updated automatically. On resume: read this section + APP_CONTEXT.md instead of exploring the repo.
-> Next ticket to implement: **3.1** `admin/playlists-list`
+> Next ticket to implement: **3.2** `admin/playlists-create-edit`
 
 ### Wave 0 — Foundations ✅
 
@@ -317,8 +317,8 @@ When all checked → ship. Phase 2 starts the next morning.
 
 | # | Ticket | Model | Status |
 |---|---|---|---|
-| **3.1** | `admin/playlists-list` — TanStack Table, filter by status | Sonnet | ⬜ Next |
-| 3.2 | `admin/playlists-create-edit` — TanStack Form + Zod | Sonnet | ⬜ Pending |
+| 3.1 | `admin/playlists-list` — TanStack Table, filter by status | Sonnet | ✅ Done |
+| **3.2** | `admin/playlists-create-edit` — TanStack Form + Zod | Sonnet | ⬜ Next |
 | 3.3 | `admin/tracks-upload-ui` — drag-drop, progress, retry | **Opus** | ⬜ Pending |
 | 3.4 | `admin/tracks-reorder` — dnd-kit + optimistic update | Sonnet | ⬜ Pending |
 | 3.5 | `admin/playlists-publish` — toggle + revalidateTag | Sonnet | ⬜ Pending |
