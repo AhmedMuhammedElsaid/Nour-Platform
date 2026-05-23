@@ -5,7 +5,7 @@ import { z } from "zod";
 import { AppError } from "@repo/api/errors";
 import { updatePlaylist } from "@repo/api/services/playlist";
 
-import { playlistFormSchema } from "./create-playlist.action";
+import { playlistFormSchema } from "../schemas/playlist-form.schema";
 
 export type UpdatePlaylistResult = { error: string } | undefined;
 

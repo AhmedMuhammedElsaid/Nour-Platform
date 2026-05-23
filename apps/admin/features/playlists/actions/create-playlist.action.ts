@@ -5,14 +5,16 @@ import { redirect } from "next/navigation";
 import { AppError } from "@repo/api/errors";
 import { createPlaylist } from "@repo/api/services/playlist";
 
+// Next 16 / Turbopack rejects non-action re-exports from "use server" files.
+// Importers must pull `playlistFormSchema` / `PlaylistFormValues` directly
+// from `../schemas/playlist-form.schema`. The type below stays inline because
+// it's specific to this action's return shape.
 import {
   playlistFormSchema,
   type PlaylistFormValues,
 } from "../schemas/playlist-form.schema";
 
-export type { PlaylistFormValues } from "../schemas/playlist-form.schema";
-export { playlistFormSchema } from "../schemas/playlist-form.schema";
-export type CreatePlaylistResult = { error: string } | undefined;
+type CreatePlaylistResult = { error: string } | undefined;
 
 export async function createPlaylistAction(
   input: PlaylistFormValues,
