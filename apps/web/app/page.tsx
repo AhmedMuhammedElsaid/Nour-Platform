@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 
 import { getPublishedPlaylists } from "@repo/api/services/playlist";
+
+// Opt out of static prerendering. middleware.ts sets a per-request CSP nonce,
+// which would mismatch a cached static HTML body; forcing dynamic rendering
+// is also what the deploy build (no Atlas connection at build time) requires.
+export const dynamic = "force-dynamic";
 import { PlaylistCard } from "@/features/playlists/components/playlist-card";
 import type { SerializedPlaylist } from "@/features/playlists/types";
 import type { Playlist } from "@repo/api/schemas/playlist";

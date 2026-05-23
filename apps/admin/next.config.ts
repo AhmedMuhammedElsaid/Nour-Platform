@@ -13,25 +13,11 @@ if (r2Base) {
   }
 }
 
-function buildCsp(r2Host: string): string {
-  const r2Origin = r2Host ? `https://${r2Host}` : "";
-  return [
-    "default-src 'self'",
-    // 'unsafe-inline' is required for Next.js App Router inline hydration scripts.
-    // Upgrade to nonce-based CSP in a post-MVP security hardening pass.
-    "script-src 'self' 'unsafe-inline'",
-    "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' data:${r2Origin ? ` ${r2Origin}` : ""}`,
-    // next/font/google serves fonts from /_next/static/media/ — no external font host needed.
-    "font-src 'self'",
-    `media-src 'self'${r2Origin ? ` ${r2Origin}` : ""}`,
-    "connect-src 'self'",
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-  ].join("; ");
-}
-
+/*
+ * Static security headers applied to every response. The Content-Security-Policy
+ * header is NOT set here — it's emitted by `middleware.ts` with a per-request
+ * nonce so we can drop `'unsafe-inline'` from script-src (see `lib/csp.ts`).
+ */
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
@@ -44,7 +30,6 @@ const securityHeaders = [
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
   },
-  { key: "Content-Security-Policy", value: buildCsp(r2Hostname) },
 ];
 
 const nextConfig: NextConfig = {
