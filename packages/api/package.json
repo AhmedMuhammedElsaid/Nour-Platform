@@ -10,6 +10,9 @@
     "./services": "./src/services/index.ts",
     "./services/auth": "./src/services/auth.service.ts",
     "./schemas/user": "./src/schemas/user.ts",
+    "./schemas/playlist": "./src/schemas/playlist.ts",
+    "./schemas/track": "./src/schemas/track.ts",
+    "./schemas/media": "./src/schemas/media.ts",
     "./auth": "./src/auth/index.ts",
     "./auth/password": "./src/auth/password.ts",
     "./auth/edge": "./src/auth/config.edge.ts"

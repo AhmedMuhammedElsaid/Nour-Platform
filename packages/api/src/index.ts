@@ -7,3 +7,21 @@ export type { AppErrorCode, SerializedAppError } from "./errors/index";
 export { getDb, disconnectDb } from "./db/client";
 export { auth, signIn, signOut, handlers, requireSession } from "./auth/index";
 export type { User, UserRole, Credentials } from "./schemas/user";
+export type {
+  Playlist,
+  PlaylistStatus,
+  PlaylistCreateInput,
+  PlaylistUpdateInput,
+} from "./schemas/playlist";
+export type {
+  Track,
+  TrackCreateInput,
+  TrackUpdateInput,
+} from "./schemas/track";
+export type {
+  Media,
+  MediaMimeType,
+  MediaStatus,
+  MediaCreateInput,
+  MediaUpdateInput,
+} from "./schemas/media";
