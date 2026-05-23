@@ -5,6 +5,8 @@ import type { ReactNode } from "react";
 import { Fraunces, Inter } from "next/font/google";
 
 import { cn } from "@repo/ui/lib/utils";
+import { SiteFooter } from "@/features/layout/components/site-footer";
+import { SiteHeader } from "@/features/layout/components/site-header";
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -30,8 +32,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       className={cn(fontSans.variable, fontDisplay.variable)}
       suppressHydrationWarning
     >
-      <body className="min-h-dvh bg-bg text-foreground font-sans antialiased">
-        {children}
+      <body className="flex flex-col min-h-dvh bg-bg text-foreground font-sans antialiased">
+        <SiteHeader />
+        <main className="flex-1">{children}</main>
+        <SiteFooter />
       </body>
     </html>
   );
