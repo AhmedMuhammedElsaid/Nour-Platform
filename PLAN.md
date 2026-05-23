@@ -282,7 +282,7 @@ When all checked → ship. Phase 2 starts the next morning.
 ## 16. Implementation Status
 
 > Last updated automatically. On resume: read this section + APP_CONTEXT.md instead of exploring the repo.
-> MVP **shipped** — Waves 0–5 all complete. Next phase: **P2-A** Scholars + Categories (PLAN.md §13). No P2 tickets written yet; brainstorm + plan before coding.
+> MVP code complete — Waves 0–5 all merged. **Wave 5.4 is partial**: health endpoints match DEPLOYMENT.md §6 spec, but Sentry SDK is not wired (deferred to post-MVP; env var is stubbed only). Manual go-live steps in DEPLOYMENT.md §0.1 are out of code scope. Next phase: **P2-A** Scholars + Categories (PLAN.md §13). No P2 tickets written yet; brainstorm + plan before coding.
 
 ### Wave 0 — Foundations ✅
 
@@ -341,4 +341,4 @@ When all checked → ship. Phase 2 starts the next morning.
 | 5.1 | `infra/vercel-projects` — images.remotePatterns + next.config | wip | ✅ Done |
 | 5.2 | `infra/headers+csp` — CSP, HSTS, R2 allowlist | wip | ✅ Done |
 | 5.3 | `tests/smoke-playwright` — 3 E2E smoke tests | wip | ✅ Done |
-| 5.4 | `monitoring/sentry+uptime` — health endpoint + Sentry env | wip | ✅ Done |
+| 5.4 | `monitoring/sentry+uptime` — health endpoint `{ok,version,time}` | wip | ⚠️ Partial — health endpoints done; Sentry SDK install deferred (env var stubbed, `.env.example` notes it as optional). UptimeRobot wiring is a manual external step (DEPLOYMENT.md §0.1 step 6). |

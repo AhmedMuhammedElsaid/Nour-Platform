@@ -63,13 +63,13 @@
 | 5.1 | `1b97c53` | `apps/web/next.config.ts` — `images.remotePatterns` for R2 host; `apps/admin/next.config.ts` — same |
 | 5.2 | `1b97c53` | CSP, HSTS, X-Content-Type-Options, Referrer-Policy in both `next.config.ts`; `media-src` allowlist includes R2; nonce-based script-src |
 | 5.3 | `1b97c53` | `playwright.config.ts` + `tests/e2e/web.smoke.test.ts` + `tests/e2e/admin.smoke.test.ts` — homepage + first-track-plays + admin login + create-playlist flows |
-| 5.4 | `1b97c53` | `apps/web/app/api/health/route.ts` + `apps/admin/app/api/health/route.ts` — return 200 with DB-ping; Sentry env vars + DSN documented in `.env.example` |
+| 5.4 ⚠️ | `1b97c53` (+ fixup) | `apps/web/app/api/health/route.ts` + `apps/admin/app/api/health/route.ts` — return `{ ok, version, time }` per DEPLOYMENT.md §6 (version = `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA[0..7]` ?? "dev"). Sentry SDK install **deferred** — env var stubbed only; UptimeRobot wiring is a manual external step |
 
 ---
 
 ## Next phase
 
-MVP is **shipped** (Waves 0–5 complete). No more MVP tickets. The next work is **Phase 2** per PLAN.md §13 — start with **P2-A: Scholars + Categories**. Tickets for P2-A are not yet written; brainstorm and write a wave plan before coding (use `superpowers:brainstorming` then `superpowers:writing-plans`).
+MVP code complete (Waves 0–5 merged). **Wave 5.4 is partial**: health endpoints match spec, Sentry SDK install deferred (env var stubbed only; treat as optional per `.env.example`). UptimeRobot + Vercel + Cloudflare + admin seed are manual go-live steps in DEPLOYMENT.md §0.1 — out of code scope. Next phase: **P2-A Scholars + Categories** (PLAN.md §13). Tickets not yet written; brainstorm + write a wave plan before coding (use `superpowers:brainstorming` then `superpowers:writing-plans`).
 
 ---
 
@@ -132,7 +132,7 @@ apps/admin/
   app/api/auth/[...nextauth]/route.ts    → Auth.js handlers
   app/api/upload/route.ts                → POST presign + create pending Media
   app/api/media/confirm/route.ts         → POST confirm Media (headObject + status flip)
-  app/api/health/route.ts                → GET → 200 + DB ping (UptimeRobot target)
+  app/api/health/route.ts                → GET → { ok, version, time } (UptimeRobot target)
   middleware.ts                          → Edge auth gate (protects all routes except /login /api/auth)
   next.config.ts                         → images.remotePatterns + headers (CSP, HSTS, X-Content-Type-Options)
   features/auth/
@@ -167,7 +167,7 @@ apps/web/
   app/layout.tsx                         → RootLayout wraps children in <PlayerProvider> so player survives navigation
   app/page.tsx                           → RSC homepage: getPublishedPlaylists → grid of PlaylistCard
   app/playlists/[slug]/page.tsx          → RSC detail: meta + track list (uses TrackListPlayer client island); generateMetadata
-  app/api/health/route.ts                → GET → 200 + DB ping
+  app/api/health/route.ts                → GET → { ok, version, time }
   next.config.ts                         → images.remotePatterns + CSP/HSTS headers (R2 host allowed in media-src)
   features/layout/components/
     site-header.tsx                      → header (logo + skip link target)
