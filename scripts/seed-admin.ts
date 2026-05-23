@@ -10,6 +10,7 @@ import { ZodError } from "zod";
 interface SeedOptions {
   email?: string;
   password?: string;
+  force?: boolean;
   help?: boolean;
 }
 
@@ -18,6 +19,7 @@ async function main(): Promise<void> {
     options: {
       email: { type: "string" },
       password: { type: "string" },
+      force: { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
     strict: true,
@@ -29,17 +31,37 @@ async function main(): Promise<void> {
 
   if (opts.help) {
     console.log(`
-Usage: pnpm seed:admin --email <email> --password <password>
+Usage: pnpm seed:admin --email <email> --password <password> [--force]
 
 Options:
   --email <email>         Admin email address (required)
   --password <password>   Admin password (required, min 8 chars)
+  --force                 Allow running when NODE_ENV=production
   --help, -h              Show this help message
 
 Example:
   pnpm seed:admin --email admin@example.com --password MySecurePassword123
+
+Production note:
+  By default the script refuses to run when NODE_ENV=production to prevent
+  accidental admin creation against a live database. Pass --force from a
+  trusted shell to override (then disable the script per DEPLOYMENT.md §0.1
+  step 3).
     `);
     process.exit(0);
+  }
+
+  // Refuse to run against a production environment unless the operator has
+  // explicitly opted in. Once the first admin is seeded the script should be
+  // disabled (delete the file or remove its package.json entry).
+  if (process.env.NODE_ENV === "production" && !opts.force) {
+    console.error(
+      "Error: refusing to run with NODE_ENV=production without --force.\n",
+    );
+    console.error(
+      "Pass --force only after confirming you are pointed at the intended database.",
+    );
+    process.exit(1);
   }
 
   if (!opts.email || !opts.password) {
