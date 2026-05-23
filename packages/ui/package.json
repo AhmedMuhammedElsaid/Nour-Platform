@@ -17,7 +17,9 @@
     "./primitives/progress": "./src/primitives/progress.tsx",
     "./primitives/slider": "./src/primitives/slider.tsx",
     "./primitives/toaster": "./src/primitives/toaster.tsx",
-    "./patterns/form-field": "./src/patterns/form-field.tsx"
+    "./patterns/form-field": "./src/patterns/form-field.tsx",
+    "./blocks/audio-player": "./src/blocks/audio-player/audio-player.tsx",
+    "./blocks/player-context": "./src/blocks/audio-player/player-context.tsx"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
