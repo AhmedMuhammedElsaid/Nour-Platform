@@ -9,6 +9,7 @@
     "./errors": "./src/errors/index.ts",
     "./services": "./src/services/index.ts",
     "./services/auth": "./src/services/auth.service.ts",
+    "./services/media": "./src/services/media.service.ts",
     "./schemas/user": "./src/schemas/user.ts",
     "./schemas/playlist": "./src/schemas/playlist.ts",
     "./schemas/track": "./src/schemas/track.ts",
