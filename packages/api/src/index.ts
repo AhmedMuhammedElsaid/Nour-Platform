@@ -1,0 +1,7 @@
+// Curated public barrel for @repo/api. ARCHITECTURE.md §2: this is the
+// only place outside `apps/*` that may re-export across subpaths. Apps
+// should still prefer the subpath imports (e.g., `@repo/api/errors`) so
+// tree-shaking stays effective.
+export { AppError } from "./errors/index";
+export type { AppErrorCode, SerializedAppError } from "./errors/index";
+export { getDb, disconnectDb } from "./db/client";

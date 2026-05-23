@@ -1,0 +1,29 @@
+{
+  "name": "@repo/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./db/client": "./src/db/client.ts",
+    "./errors": "./src/errors/index.ts",
+    "./services": "./src/services/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .turbo node_modules"
+  },
+  "dependencies": {
+    "@repo/config": "workspace:*",
+    "mongoose": "^8.9.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/tsconfig": "workspace:*",
+    "@types/node": "^22.10.0",
+    "eslint": "^9.15.0",
+    "typescript": "5.6.3"
+  }
+}
