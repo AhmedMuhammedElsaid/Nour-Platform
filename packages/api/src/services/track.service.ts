@@ -1,6 +1,9 @@
 import { revalidateTag } from "next/cache";
 
+import { env } from "@repo/config/env";
+
 import { requireSession } from "../auth/require-session";
+import { findMediaById } from "../repositories/media.repo";
 import {
   appendTrackId,
   findPlaylistById,
@@ -23,6 +26,10 @@ import {
   type TrackCreateInput,
   type TrackUpdateInput,
 } from "../schemas/track";
+
+export interface PlayableTrack extends Track {
+  srcUrl: string | null;
+}
 
 /*
  * Track service — Wave 2.6. Owns track CRUD and playlist-trackIds
@@ -79,6 +86,25 @@ function slugify(title: string): string {
 export async function getTracksByPlaylist(playlistId: string): Promise<Track[]> {
   const docs = await findTracksByPlaylistId(playlistId);
   return docs.map(toDto);
+}
+
+export async function getTracksWithUrls(
+  playlistId: string,
+): Promise<PlayableTrack[]> {
+  const docs = await findTracksByPlaylistId(playlistId);
+  const tracks = docs.map(toDto);
+
+  const base = env.R2_PUBLIC_BASE;
+  if (!base) return tracks.map((t) => ({ ...t, srcUrl: null }));
+
+  const mediaDocs = await Promise.all(
+    docs.map((doc) => findMediaById(doc.mediaId.toString())),
+  );
+
+  return tracks.map((t, i) => {
+    const media = mediaDocs[i];
+    return { ...t, srcUrl: media?.key ? `${base}/${media.key}` : null };
+  });
 }
 
 export async function getTrackById(id: string): Promise<Track | null> {

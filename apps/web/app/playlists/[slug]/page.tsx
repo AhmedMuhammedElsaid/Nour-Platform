@@ -2,45 +2,36 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { getPlaylistBySlug } from "@repo/api/services/playlist";
-import { getTracksByPlaylist } from "@repo/api/services/track";
+import { getTracksWithUrls } from "@repo/api/services/track";
 import type { Playlist } from "@repo/api/schemas/playlist";
-import type { Track } from "@repo/api/schemas/track";
-import { TrackRow } from "@/features/playlists/components/track-row";
+import type { PlayableTrack } from "@repo/api/services/track";
+import { TrackListPlayer } from "@/features/playlists/components/track-list-player";
 import type {
   SerializedPlaylist,
-  SerializedTrack,
+  SerializedPlayableTrack,
 } from "@/features/playlists/types";
 
 // ---------------------------------------------------------------------------
-// Serialization helpers — guards against Dates arriving as either Date objects
-// or ISO strings depending on whether Mongoose serialized them early.
+// Serialization helpers
 // ---------------------------------------------------------------------------
 
 function serializePlaylist(p: Playlist): SerializedPlaylist {
   return {
     ...p,
     createdAt:
-      typeof p.createdAt === "string"
-        ? p.createdAt
-        : p.createdAt.toISOString(),
+      typeof p.createdAt === "string" ? p.createdAt : p.createdAt.toISOString(),
     updatedAt:
-      typeof p.updatedAt === "string"
-        ? p.updatedAt
-        : p.updatedAt.toISOString(),
+      typeof p.updatedAt === "string" ? p.updatedAt : p.updatedAt.toISOString(),
   };
 }
 
-function serializeTrack(t: Track): SerializedTrack {
+function serializePlayableTrack(t: PlayableTrack): SerializedPlayableTrack {
   return {
     ...t,
     createdAt:
-      typeof t.createdAt === "string"
-        ? t.createdAt
-        : t.createdAt.toISOString(),
+      typeof t.createdAt === "string" ? t.createdAt : t.createdAt.toISOString(),
     updatedAt:
-      typeof t.updatedAt === "string"
-        ? t.updatedAt
-        : t.updatedAt.toISOString(),
+      typeof t.updatedAt === "string" ? t.updatedAt : t.updatedAt.toISOString(),
   };
 }
 
@@ -83,19 +74,22 @@ export default async function PlaylistDetailPage({
     notFound();
   }
 
-  const tracks = await getTracksByPlaylist(playlist.id);
+  const tracks = await getTracksWithUrls(playlist.id);
 
   const serializedPlaylist = serializePlaylist(playlist);
-  const serializedTracks = tracks.map(serializeTrack);
+  const serializedTracks = tracks.map(serializePlayableTrack);
 
-  const publishedDate = new Date(serializedPlaylist.createdAt).toLocaleDateString(
-    "en-US",
-    { year: "numeric", month: "long", day: "numeric" },
-  );
+  const publishedDate = new Date(
+    serializedPlaylist.createdAt,
+  ).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
   const trackCount = serializedTracks.length;
 
   return (
-    <main className="max-w-3xl mx-auto px-6 py-10">
+    <div className="max-w-3xl mx-auto px-6 py-10">
       <header>
         <h1 className="font-display text-4xl tracking-tight">
           {serializedPlaylist.title}
@@ -110,23 +104,11 @@ export default async function PlaylistDetailPage({
       </header>
 
       <section aria-labelledby="tracks-heading">
-        <h2
-          id="tracks-heading"
-          className="text-lg font-semibold mt-10 mb-4"
-        >
+        <h2 id="tracks-heading" className="text-lg font-semibold mt-10 mb-4">
           Tracks
         </h2>
-
-        {serializedTracks.length === 0 ? (
-          <p className="text-text-2">No tracks yet.</p>
-        ) : (
-          <ol>
-            {serializedTracks.map((track, i) => (
-              <TrackRow key={track.id} track={track} index={i + 1} />
-            ))}
-          </ol>
-        )}
+        <TrackListPlayer tracks={serializedTracks} />
       </section>
-    </main>
+    </div>
   );
 }
