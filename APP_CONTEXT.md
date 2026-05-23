@@ -1,7 +1,6 @@
 # APP_CONTEXT.md
 
-> Drop-in context for AI sessions. Read this + the relevant PLAN.md ticket (§16 for status). Do NOT explore the repo — use the file locations below.
-> Updated after every committed wave.
+> **AI agents: load this file FIRST at the start of every session in this project**, then read the relevant PLAN.md ticket (§16 for status). Do NOT explore the repo — use the file locations below. Re-exploring wastes tokens; this file is kept current after every committed wave.
 
 ---
 
@@ -63,13 +62,16 @@
 | 5.1 | `1b97c53` | `apps/web/next.config.ts` — `images.remotePatterns` for R2 host; `apps/admin/next.config.ts` — same |
 | 5.2 | `1b97c53` | CSP, HSTS, X-Content-Type-Options, Referrer-Policy in both `next.config.ts`; `media-src` allowlist includes R2; nonce-based script-src |
 | 5.3 | `1b97c53` | `playwright.config.ts` + `tests/e2e/web.smoke.test.ts` + `tests/e2e/admin.smoke.test.ts` — homepage + first-track-plays + admin login + create-playlist flows |
-| 5.4 ⚠️ | `1b97c53` (+ fixup) | `apps/web/app/api/health/route.ts` + `apps/admin/app/api/health/route.ts` — return `{ ok, version, time }` per DEPLOYMENT.md §6 (version = `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA[0..7]` ?? "dev"). Sentry SDK install **deferred** — env var stubbed only; UptimeRobot wiring is a manual external step |
+| 5.4 ⚠️ | `1b97c53` (+ `806f2ca` fixup) | `apps/web/app/api/health/route.ts` + `apps/admin/app/api/health/route.ts` — return `{ ok, version, time }` per DEPLOYMENT.md §6 (version = `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA[0..7]` ?? "dev"). Sentry SDK install **deferred** — env var stubbed only; UptimeRobot wiring is a manual external step |
+| Pre-deploy fixups | `dfae606` · `e693862` · `1fe8f69` | `media.service.ts` createMedia/confirmMedia now call `requireSession(['admin'])`; `seed-admin.ts` refuses NODE_ENV=production without `--force`; per-app `vercel.json` (turbo `--filter=app...` build); CI runs `pnpm test`; root `README.md`; **`deploy.md`** step-by-step runbook |
 
 ---
 
 ## Next phase
 
-MVP code complete (Waves 0–5 merged). **Wave 5.4 is partial**: health endpoints match spec, Sentry SDK install deferred (env var stubbed only; treat as optional per `.env.example`). UptimeRobot + Vercel + Cloudflare + admin seed are manual go-live steps in DEPLOYMENT.md §0.1 — out of code scope. Next phase: **P2-A Scholars + Categories** (PLAN.md §13). Tickets not yet written; brainstorm + write a wave plan before coding (use `superpowers:brainstorming` then `superpowers:writing-plans`).
+MVP is **deploy-ready**. All pre-deploy code gaps are closed (commits `dfae606..1fe8f69`). Wave 5.4 stays ⚠️ Partial because Sentry SDK install is intentionally deferred (env var stubbed; optional per `.env.example`). To actually go live: open **`deploy.md`** at repo root and walk the 11 steps top-to-bottom — no more code changes needed.
+
+Next phase after go-live: **P2-A Scholars + Categories** (PLAN.md §13). Tickets not yet written; brainstorm + write a wave plan before coding (use `superpowers:brainstorming` then `superpowers:writing-plans`).
 
 ---
 
@@ -105,7 +107,7 @@ packages/api/src/
     auth.service.ts       → verifyCredentials, createAdminUser
     playlist.service.ts   → getPublishedPlaylists, getAllPlaylists, getPlaylistBySlug/ById, create/update/delete/publish/unpublish
     track.service.ts      → getTracksByPlaylist, getTrackById, create/update/delete, reorderTracks
-    media.service.ts      → createMedia, confirmMedia
+    media.service.ts      → createMedia, confirmMedia (both call requireSession(['admin']) — defense in depth on top of route handlers)
   media/
     r2-client.ts          → createPresignedUpload(key, mime, bytes), headObject(key), ALLOWED_AUDIO_MIME_TYPES
   errors/index.ts         → AppError + codes (UNAUTHORIZED/FORBIDDEN/NOT_FOUND/VALIDATION/CONFLICT/RATE_LIMITED/INTERNAL)
@@ -188,9 +190,26 @@ tests/e2e/
 playwright.config.ts                     → projects for web (3000) + admin (3001), webServer auto-boot
 
 scripts/
-  seed-admin.ts   → pnpm seed:admin --email --password
+  seed-admin.ts   → pnpm seed:admin --email --password [--force]  (--force required when NODE_ENV=production)
   migrate.ts      → pnpm migrate [--dry-run]
   tsconfig.json   → path aliases for @repo/* (explicit .service.ts mappings)
+
+apps/web/vercel.json + apps/admin/vercel.json
+  → framework: nextjs, buildCommand uses `cd ../.. && pnpm turbo run build --filter=<app>...`
+    so each Vercel project only rebuilds what it owns. Headers stay in next.config.ts.
+
+.github/workflows/ci.yml
+  → lint · typecheck · test · build (turbo affected filter on PRs).
+    Test step runs vitest in jsdom (no Mongo/R2 needed); uses dummy MONGODB_URI + AUTH_SECRET for build only.
+
+Root docs (read in this order for new sessions)
+  README.md          → quickstart + verify commands + doc index
+  APP_CONTEXT.md     → this file (load FIRST every session)
+  PLAN.md            → wave-by-wave status (§16)
+  deploy.md          → step-by-step first-deploy runbook (11 steps + rollback)
+  DEPLOYMENT.md      → strategy/architecture reference; deploy.md expands its §0.1
+  CLAUDE.md          → rules for AI agents (§5 boundaries are hard rules)
+  ARCHITECTURE.md / SECURITY.md / DATABASE.md / API.md / DESIGN.md
 ```
 
 ---
@@ -208,3 +227,6 @@ scripts/
 - `appErrorStatus` shared helper lives in `apps/admin/lib/route-helpers.ts` — use it in all new admin route handlers
 - RSC→client Date serialization: `Date` objects cannot cross the RSC boundary; map to ISO strings before passing as props. Pattern: `type SerializedX = Omit<X, 'createdAt'|'updatedAt'> & { createdAt: string; updatedAt: string }` — see `SerializedPlaylist` in `playlists-table.tsx`
 - Vitest in admin: use `@testing-library/jest-dom/vitest` (not bare import), add explicit `afterEach(cleanup)` in setup; `vite-tsconfig-paths` is ESM-only and cannot load in `vitest.config.ts`
+- `scripts/seed-admin.ts` env-validation order: `parseEnv()` runs at module load (via `@repo/config/env`), BEFORE the production guard. So a real prod run needs `MONGODB_URI` + `AUTH_SECRET` already set; the guard only fires once env is valid. Acceptable for the deploy path documented in `deploy.md` step 7.
+- `media.service.ts` calls `requireSession(['admin'])` itself even though both route handlers (`/api/upload`, `/api/media/confirm`) also enforce auth. This is defense-in-depth per CLAUDE.md §5 ("Always check in services") — do not remove either layer.
+- `next.config.ts` CSP uses `'unsafe-inline'` for script-src to support Next App Router inline hydration scripts — switch to nonce-based CSP in a post-MVP hardening pass (already flagged as a TODO in both `next.config.ts` files).
