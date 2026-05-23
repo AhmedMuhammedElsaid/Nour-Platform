@@ -1,0 +1,132 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+
+import { getPlaylistBySlug } from "@repo/api/services/playlist";
+import { getTracksByPlaylist } from "@repo/api/services/track";
+import type { Playlist } from "@repo/api/schemas/playlist";
+import type { Track } from "@repo/api/schemas/track";
+import { TrackRow } from "@/features/playlists/components/track-row";
+import type {
+  SerializedPlaylist,
+  SerializedTrack,
+} from "@/features/playlists/types";
+
+// ---------------------------------------------------------------------------
+// Serialization helpers — guards against Dates arriving as either Date objects
+// or ISO strings depending on whether Mongoose serialized them early.
+// ---------------------------------------------------------------------------
+
+function serializePlaylist(p: Playlist): SerializedPlaylist {
+  return {
+    ...p,
+    createdAt:
+      typeof p.createdAt === "string"
+        ? p.createdAt
+        : p.createdAt.toISOString(),
+    updatedAt:
+      typeof p.updatedAt === "string"
+        ? p.updatedAt
+        : p.updatedAt.toISOString(),
+  };
+}
+
+function serializeTrack(t: Track): SerializedTrack {
+  return {
+    ...t,
+    createdAt:
+      typeof t.createdAt === "string"
+        ? t.createdAt
+        : t.createdAt.toISOString(),
+    updatedAt:
+      typeof t.updatedAt === "string"
+        ? t.updatedAt
+        : t.updatedAt.toISOString(),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// generateMetadata
+// ---------------------------------------------------------------------------
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const playlist = await getPlaylistBySlug(slug);
+
+  if (!playlist || playlist.status !== "published") {
+    return { title: "Not Found — Nour" };
+  }
+
+  return {
+    title: `${playlist.title} — Nour`,
+    description: playlist.description ?? "Listen on Nour Islamic Audio",
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
+export default async function PlaylistDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+
+  const playlist = await getPlaylistBySlug(slug);
+
+  if (!playlist || playlist.status !== "published") {
+    notFound();
+  }
+
+  const tracks = await getTracksByPlaylist(playlist.id);
+
+  const serializedPlaylist = serializePlaylist(playlist);
+  const serializedTracks = tracks.map(serializeTrack);
+
+  const publishedDate = new Date(serializedPlaylist.createdAt).toLocaleDateString(
+    "en-US",
+    { year: "numeric", month: "long", day: "numeric" },
+  );
+  const trackCount = serializedTracks.length;
+
+  return (
+    <main className="max-w-3xl mx-auto px-6 py-10">
+      <header>
+        <h1 className="font-display text-4xl tracking-tight">
+          {serializedPlaylist.title}
+        </h1>
+        {serializedPlaylist.description != null && (
+          <p className="mt-2 text-text-2">{serializedPlaylist.description}</p>
+        )}
+        <p className="mt-1 text-sm text-text-2">
+          {trackCount} {trackCount === 1 ? "track" : "tracks"} &middot;{" "}
+          {publishedDate}
+        </p>
+      </header>
+
+      <section aria-labelledby="tracks-heading">
+        <h2
+          id="tracks-heading"
+          className="text-lg font-semibold mt-10 mb-4"
+        >
+          Tracks
+        </h2>
+
+        {serializedTracks.length === 0 ? (
+          <p className="text-text-2">No tracks yet.</p>
+        ) : (
+          <ol>
+            {serializedTracks.map((track, i) => (
+              <TrackRow key={track.id} track={track} index={i + 1} />
+            ))}
+          </ol>
+        )}
+      </section>
+    </main>
+  );
+}
