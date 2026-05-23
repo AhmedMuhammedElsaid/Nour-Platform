@@ -59,9 +59,9 @@ export const mediaCreateInputSchema = z.object({
 export type MediaCreateInput = z.infer<typeof mediaCreateInputSchema>;
 
 /*
- * Update-input: in practice only `status` and `durationSecs` ever change
- * after creation (lifecycle transitions + analyzer write-back). Kept as a
- * partial so future fields don't force a schema bump.
+ * Update-input: primary mutations are `status` (lifecycle transitions) and
+ * `durationSecs` (analyzer write-back). `mimeType` and `sizeBytes` are
+ * included to allow admin corrections if detection was wrong at upload time.
  */
 export const mediaUpdateInputSchema = z
   .object({
