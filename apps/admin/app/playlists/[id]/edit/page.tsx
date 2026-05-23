@@ -5,6 +5,7 @@ import { requireSession } from "@repo/api/auth";
 import { getPlaylistById } from "@repo/api/services/playlist";
 
 import { PlaylistForm } from "../../../../features/playlists/components/playlist-form";
+import { TrackUploader } from "../../../../features/playlists/components/track-uploader";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -37,6 +38,13 @@ export default async function EditPlaylistPage({ params }: Props) {
           status: playlist.status,
         }}
       />
+
+      <hr className="my-8 border-border" />
+
+      <section>
+        <h2 className="mb-4 text-lg font-semibold">Tracks</h2>
+        <TrackUploader playlistId={playlist.id} />
+      </section>
     </main>
   );
 }
