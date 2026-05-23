@@ -10,6 +10,8 @@
     "./services": "./src/services/index.ts",
     "./services/auth": "./src/services/auth.service.ts",
     "./services/media": "./src/services/media.service.ts",
+    "./services/playlist": "./src/services/playlist.service.ts",
+    "./services/track": "./src/services/track.service.ts",
     "./schemas/user": "./src/schemas/user.ts",
     "./schemas/playlist": "./src/schemas/playlist.ts",
     "./schemas/track": "./src/schemas/track.ts",
@@ -42,11 +44,15 @@
     "next-auth": "5.0.0-beta.25",
     "zod": "^3.23.8"
   },
+  "peerDependencies": {
+    "next": ">=15"
+  },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/tsconfig": "workspace:*",
     "@types/node": "^22.10.0",
     "eslint": "^9.15.0",
+    "next": "16.2.0",
     "typescript": "5.6.3"
   }
 }

@@ -64,3 +64,35 @@ export async function deletePlaylistById(id: string): Promise<boolean> {
   const result = await PlaylistModel.deleteOne({ _id: id });
   return result.deletedCount === 1;
 }
+
+/*
+ * Appends a single trackId to the playlist's ordered trackIds array.
+ * $addToSet is not used here because the ordered list must allow the service
+ * to control position; $push preserves insertion order.
+ */
+export async function appendTrackId(
+  playlistId: string,
+  trackId: string,
+): Promise<void> {
+  await getDb();
+  await PlaylistModel.updateOne(
+    { _id: playlistId },
+    { $push: { trackIds: trackId } },
+  );
+}
+
+/*
+ * Removes a single trackId from the playlist's trackIds array.
+ * $pull removes all matching elements; there should only ever be one instance
+ * of a given trackId in the array, so this is effectively a remove-by-value.
+ */
+export async function removeTrackId(
+  playlistId: string,
+  trackId: string,
+): Promise<void> {
+  await getDb();
+  await PlaylistModel.updateOne(
+    { _id: playlistId },
+    { $pull: { trackIds: trackId } },
+  );
+}
