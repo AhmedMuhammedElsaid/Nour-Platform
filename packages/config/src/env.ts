@@ -44,6 +44,10 @@ const envSchema = z.object({
 
   // Observability (Wave 5).
   SENTRY_DSN: z.string().url().optional(),
+
+  // Vercel-injected build metadata. Available in production builds; absent in
+  // local dev. Health endpoints expose the short SHA as `version`.
+  NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
