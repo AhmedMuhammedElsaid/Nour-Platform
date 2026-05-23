@@ -21,12 +21,22 @@ const envSchema = z.object({
   // 32-character minimum matches `openssl rand -base64 32`.
   AUTH_SECRET: z.string().min(32),
 
-  // Cloudflare R2 (Wave 2) — all optional pre-upload setup.
+  // Cloudflare R2 (Wave 2) — all optional pre-upload setup. The r2-client
+  // module throws `AppError.Internal` if it's invoked without the credentials
+  // configured, so dev sessions that don't touch uploads still boot.
   R2_ACCESS_KEY_ID: z.string().optional(),
   R2_SECRET_ACCESS_KEY: z.string().optional(),
   R2_BUCKET: z.string().optional(),
   R2_ENDPOINT: z.string().url().optional(),
   R2_PUBLIC_BASE: z.string().url().optional(),
+  // 50 MiB default ceiling for any single audio upload. Override per-env
+  // (e.g. lower for shared staging buckets) by setting the env var to a
+  // positive integer count of bytes.
+  R2_MAX_UPLOAD_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(52_428_800),
 
   // Public URLs — Next.js inlines NEXT_PUBLIC_* at build time.
   NEXT_PUBLIC_WEB_URL: z.string().url().default("http://localhost:3000"),
