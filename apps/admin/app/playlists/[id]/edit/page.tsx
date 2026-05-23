@@ -6,6 +6,7 @@ import { getPlaylistById } from "@repo/api/services/playlist";
 import { getTracksByPlaylist } from "@repo/api/services/track";
 
 import { PlaylistForm } from "../../../../features/playlists/components/playlist-form";
+import { PublishToggle } from "../../../../features/playlists/components/publish-toggle";
 import {
   TrackList,
   type SerializedTrack,
@@ -35,14 +36,20 @@ export default async function EditPlaylistPage({ params }: Props) {
 
   return (
     <main className="container mx-auto px-4 py-8">
-      <div className="mb-6 flex items-center gap-4">
-        <Link
-          href="/playlists"
-          className="text-sm text-muted-foreground hover:underline"
-        >
-          ← Playlists
-        </Link>
-        <h1 className="text-2xl font-semibold">Edit playlist</h1>
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Link
+            href="/playlists"
+            className="text-sm text-muted-foreground hover:underline"
+          >
+            ← Playlists
+          </Link>
+          <h1 className="text-2xl font-semibold">Edit playlist</h1>
+        </div>
+        <PublishToggle
+          playlistId={playlist.id}
+          initialStatus={playlist.status}
+        />
       </div>
       <PlaylistForm
         mode="edit"
