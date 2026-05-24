@@ -30,6 +30,7 @@ const playlistSchema = new Schema(
       default: "draft",
     },
     trackIds: { type: [Schema.Types.ObjectId], ref: "Track", default: [] },
+    categoryIds: [{ type: Schema.Types.ObjectId, ref: "Category", default: [] }],
   },
   { timestamps: true, collection: "playlists" },
 );

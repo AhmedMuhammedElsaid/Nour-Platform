@@ -26,9 +26,18 @@ export async function findPlaylistBySlug(
   return PlaylistModel.findOne({ slug }).lean<PlaylistLean>();
 }
 
-export async function findPublishedPlaylists(): Promise<PlaylistLean[]> {
+export async function findPublishedPlaylists(
+  filter?: { categoryId?: string },
+): Promise<PlaylistLean[]> {
   await getDb();
-  return PlaylistModel.find({ status: "published" })
+  const query: Record<string, unknown> = { status: "published" };
+  // When a categoryId filter is supplied, match playlists whose categoryIds
+  // array contains the given ObjectId. MongoDB automatically handles the $in
+  // semantics for array fields when a scalar equality is used.
+  if (filter?.categoryId != null) {
+    query["categoryIds"] = filter.categoryId;
+  }
+  return PlaylistModel.find(query)
     .sort({ updatedAt: -1 })
     .lean<PlaylistLean[]>();
 }

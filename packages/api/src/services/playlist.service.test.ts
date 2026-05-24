@@ -70,6 +70,7 @@ describe("playlist.service", () => {
         title: "My Playlist!",
         status: "draft",
         trackIds: [],
+        categoryIds: [],
       });
 
       expect(requireSession).toHaveBeenCalledWith(["admin"]);

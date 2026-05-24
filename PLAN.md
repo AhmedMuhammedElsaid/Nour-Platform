@@ -389,10 +389,10 @@ When all checked → ship. Phase 2 starts the next morning.
 
 | # | Ticket | Commit | Status |
 |---|---|---|---|
-| P2-A.1 | `api/schemas/category` — Zod schema + Mongoose model + repo | — | 🔲 Pending |
-| P2-A.2 | `api/db/migrations/0002-category-indexes` | — | 🔲 Pending |
-| P2-A.3 | `api/services/category` — category.service.ts | — | 🔲 Pending |
-| P2-A.4 | `api/services/playlist-update` — categoryIds filter + assign | — | 🔲 Pending |
+| P2-A.1 | `api/schemas/category` — Zod schema + Mongoose model + repo | `c73e7e4` | ✅ Done |
+| P2-A.2 | `api/db/migrations/0002-category-indexes` | `c73e7e4` | ✅ Done |
+| P2-A.3 | `api/services/category` — category.service.ts | — | ✅ Done |
+| P2-A.4 | `api/services/playlist-update` — categoryIds filter + assign | — | ✅ Done |
 | P2-A.5 | `admin/categories-crud` — pages + form + table + actions | — | 🔲 Pending |
 | P2-A.6 | `admin/playlists-category-field` — categoryIds multi-select | — | 🔲 Pending |
 | P2-A.7 | `web/category-filter` — CategoryFilterBar + homepage wiring | — | 🔲 Pending |

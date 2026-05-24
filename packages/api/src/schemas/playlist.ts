@@ -32,6 +32,7 @@ export const playlistSchema = z.object({
   coverMediaId: objectIdSchema.optional(),
   status: playlistStatusSchema,
   trackIds: z.array(objectIdSchema),
+  categoryIds: z.array(objectIdSchema),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -50,6 +51,7 @@ export const playlistCreateInputSchema = z.object({
   coverMediaId: objectIdSchema.optional(),
   status: playlistStatusSchema.default("draft"),
   trackIds: z.array(objectIdSchema).default([]),
+  categoryIds: z.array(objectIdSchema).default([]),
 });
 export type PlaylistCreateInput = z.infer<typeof playlistCreateInputSchema>;
 
@@ -66,6 +68,7 @@ export const playlistUpdateInputSchema = z
     coverMediaId: objectIdSchema.nullable(),
     status: playlistStatusSchema,
     trackIds: z.array(objectIdSchema),
+    categoryIds: z.array(objectIdSchema),
   })
   .partial();
 export type PlaylistUpdateInput = z.infer<typeof playlistUpdateInputSchema>;

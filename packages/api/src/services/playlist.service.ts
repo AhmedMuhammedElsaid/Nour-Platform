@@ -10,6 +10,10 @@ import {
   findPublishedPlaylists,
   updatePlaylistById,
 } from "../repositories/playlist.repo";
+// Cross-service validation: we call category.repo directly (not via a service)
+// because this is a lightweight existence check, not a full service boundary
+// crossing. Importing the service would risk circular module dependencies.
+import { findById as findCategoryById } from "../repositories/category.repo";
 import { AppError } from "../errors";
 import {
   playlistCreateInputSchema,
@@ -37,6 +41,7 @@ function toDto(doc: {
   coverMediaId?: { toString(): string } | null;
   status: string;
   trackIds: Array<{ toString(): string }>;
+  categoryIds?: Array<{ toString(): string }>;
   createdAt: Date;
   updatedAt: Date;
 }): Playlist {
@@ -52,6 +57,7 @@ function toDto(doc: {
     // constraint enforces the allowed values at the DB layer.
     status: doc.status as Playlist["status"],
     trackIds: doc.trackIds.map((id) => id.toString()),
+    categoryIds: (doc.categoryIds ?? []).map((id) => id.toString()),
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };
@@ -75,8 +81,12 @@ function slugify(title: string): string {
 // Public reads (no session required)
 // ---------------------------------------------------------------------------
 
-export async function getPublishedPlaylists(): Promise<Playlist[]> {
-  const docs = await findPublishedPlaylists();
+export async function getPublishedPlaylists(
+  filter?: { categoryId?: string },
+): Promise<Playlist[]> {
+  const docs = await findPublishedPlaylists(
+    filter?.categoryId != null ? { categoryId: filter.categoryId } : undefined,
+  );
   return docs.map(toDto);
 }
 
@@ -127,6 +137,18 @@ export async function createPlaylist(
   // Zod parse throws AppError.Validation on bad input (CLAUDE.md §4).
   const parsed = playlistCreateInputSchema.parse(input);
 
+  // Cross-service validation: confirm every supplied categoryId exists in the
+  // categories collection before writing. We check individually so we can
+  // surface which ID is missing in the error message.
+  if (parsed.categoryIds.length > 0) {
+    for (const categoryId of parsed.categoryIds) {
+      const exists = await findCategoryById(categoryId);
+      if (exists === null) {
+        throw AppError.NotFound(`Category not found: ${categoryId}`);
+      }
+    }
+  }
+
   // Auto-generate slug from title when the caller omits it.
   const slug = parsed.slug ?? slugify(parsed.title);
 
@@ -141,6 +163,18 @@ export async function updatePlaylist(
   await requireSession(["admin"]);
 
   const parsed = playlistUpdateInputSchema.parse(input);
+
+  // Cross-service validation: confirm every supplied categoryId exists before
+  // writing. `categoryIds` is optional in the update schema (via .partial()),
+  // so we guard on its presence first.
+  if (parsed.categoryIds != null && parsed.categoryIds.length > 0) {
+    for (const categoryId of parsed.categoryIds) {
+      const exists = await findCategoryById(categoryId);
+      if (exists === null) {
+        throw AppError.NotFound(`Category not found: ${categoryId}`);
+      }
+    }
+  }
 
   const lean = await updatePlaylistById(id, parsed);
   if (!lean) throw AppError.NotFound("Playlist");
