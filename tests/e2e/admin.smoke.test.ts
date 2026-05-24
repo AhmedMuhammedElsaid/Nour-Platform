@@ -46,4 +46,42 @@ test.describe("Admin — smoke", () => {
       page.getByRole("heading", { name: /tracks/i }),
     ).toBeVisible();
   });
+
+  test("admin can create a category and it appears in the categories list", async ({
+    page,
+  }) => {
+    // ── Login ──────────────────────────────────────────────────────────────
+    await page.goto(`${adminUrl}/login`);
+
+    await page.getByLabel("Email").fill(ADMIN_EMAIL);
+    await page.getByLabel("Password").fill(ADMIN_PASSWORD);
+    await page.getByRole("button", { name: /sign in/i }).click();
+
+    await expect(page).toHaveURL(/playlists|\/$/);
+
+    // ── Navigate to /categories/new ────────────────────────────────────────
+    await page.goto(`${adminUrl}/categories/new`);
+
+    await expect(page).toHaveURL(/categories\/new/);
+    await expect(
+      page.getByRole("heading", { name: /new category/i }),
+    ).toBeVisible();
+
+    // ── Fill name; leave slug auto-derived ─────────────────────────────────
+    const nameInput = page.getByLabel(/name/i);
+    await nameInput.fill("Test Category");
+    await expect(nameInput).toHaveValue("Test Category");
+
+    // The slug field must have been auto-derived from the name.
+    await expect(page.getByLabel(/slug/i)).toHaveValue("test-category");
+
+    // ── Submit ─────────────────────────────────────────────────────────────
+    await page.getByRole("button", { name: /create category/i }).click();
+
+    // A successful create redirects to /categories.
+    await expect(page).toHaveURL(/\/categories$/, { timeout: 10_000 });
+
+    // The newly created category must appear in the list.
+    await expect(page.getByText("Test Category")).toBeVisible();
+  });
 });

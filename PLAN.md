@@ -385,7 +385,7 @@ When all checked → ship. Phase 2 starts the next morning.
 | 5.3 | `tests/smoke-playwright` — 3 E2E smoke tests | wip | ✅ Done |
 | 5.4 | `monitoring/sentry+uptime` — health endpoint `{ok,version,time}` | wip | ⚠️ Partial — health endpoints done; Sentry SDK install deferred (env var stubbed, `.env.example` notes it as optional). UptimeRobot wiring is a manual external step (DEPLOYMENT.md §0.1 step 6). |
 
-### Wave P2-A — Categories 🔄
+### Wave P2-A — Categories ✅
 
 | # | Ticket | Commit | Status |
 |---|---|---|---|
@@ -396,4 +396,4 @@ When all checked → ship. Phase 2 starts the next morning.
 | P2-A.5 | `admin/categories-crud` — pages + form + table + actions | — | ✅ Done |
 | P2-A.6 | `admin/playlists-category-field` — categoryIds multi-select | — | ✅ Done |
 | P2-A.7 | `web/category-filter` — CategoryFilterBar + homepage wiring | — | ✅ Done |
-| P2-A.8 | `tests/p2a-categories` — unit + integration + RTL + E2E | — | 🔲 Pending |
+| P2-A.8 | `tests/p2a-categories` — unit + integration + RTL + E2E | — | ✅ Done |
