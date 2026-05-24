@@ -165,18 +165,16 @@ export async function deleteCategory(id: string): Promise<void> {
 
   /*
    * Cross-collection cascade: remove this category's ObjectId from every
-   * playlist that references it. This is the one place the service layer
-   * touches a Mongoose model directly, rather than going through a repo,
-   * because the cascade crosses collection boundaries and belongs to the
-   * service-layer's transaction coordination responsibility. A future
-   * refactor could expose `pullCategoryFromPlaylists(id)` in playlist.repo.ts
-   * once the PlaylistModel includes categoryIds in its schema.
+   * playlist that references it. PlaylistModel.schema defines `categoryIds`
+   * (added in P2-A.4), so this $pull is load-bearing — without it, deleting
+   * a category would leave dangling references in every playlist that listed
+   * it, and the public homepage filter would surface a "0 results" facet
+   * pointing at a non-existent category. Do not remove.
    *
-   * NOTE: PlaylistModel.schema does not currently define `categoryIds`.
-   * The $pull is harmless today (updateMany matches no paths) and will
-   * become load-bearing once P2-A.4 adds the `categoryIds` field to the
-   * Playlist schema. The call is placed here now so the cascade is in place
-   * before playlists start storing category references.
+   * This is the one place the service layer touches a Mongoose model
+   * directly instead of going through a repo, because the cascade crosses
+   * collection boundaries. A future refactor could move it to
+   * `pullCategoryFromPlaylists(id)` in playlist.repo.ts.
    */
   await getDb();
   await PlaylistModel.updateMany(
