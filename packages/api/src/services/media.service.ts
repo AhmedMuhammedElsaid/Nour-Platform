@@ -108,6 +108,28 @@ export async function confirmMedia(mediaId: string): Promise<MediaDto> {
     );
   }
 
+  /*
+   * Defense-in-depth: cross-check the stored object metadata against the
+   * pending Media record before flipping status. The presigned PUT pinned
+   * Content-Type / Content-Length at sign time, so any drift here means a
+   * client tampered with the upload or the record. Refuse the confirm.
+   */
+  if (
+    meta.contentLength !== existing.sizeBytes ||
+    meta.contentType !== existing.mimeType
+  ) {
+    throw AppError.Validation(
+      [
+        {
+          code: "custom",
+          path: ["mediaId"],
+          message: `Uploaded object metadata does not match the pending record (expected ${existing.sizeBytes}B/${existing.mimeType}, got ${meta.contentLength ?? "?"}B/${meta.contentType ?? "?"}).`,
+        },
+      ],
+      "Upload metadata mismatch.",
+    );
+  }
+
   const updated = await updateMediaById(mediaId, { status: "confirmed" });
   if (!updated) {
     // Race condition: document disappeared between find and update.

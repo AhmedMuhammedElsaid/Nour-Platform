@@ -55,10 +55,13 @@ describe("media.service", () => {
   });
 
   describe("confirmMedia", () => {
-    it("flips status to confirmed when the R2 object exists", async () => {
+    it("flips status to confirmed when the R2 object exists and matches", async () => {
       vi.mocked(requireSession).mockResolvedValueOnce({} as any);
       vi.mocked(repo.findMediaById).mockResolvedValueOnce(mediaLean());
-      vi.mocked(r2.headObject).mockResolvedValueOnce({ size: 1024 } as any);
+      vi.mocked(r2.headObject).mockResolvedValueOnce({
+        contentLength: 1024,
+        contentType: "audio/mpeg",
+      } as any);
       vi.mocked(repo.updateMediaById).mockResolvedValueOnce(
         mediaLean({ status: "confirmed" }),
       );
@@ -75,6 +78,34 @@ describe("media.service", () => {
       vi.mocked(requireSession).mockResolvedValueOnce({} as any);
       vi.mocked(repo.findMediaById).mockResolvedValueOnce(mediaLean());
       vi.mocked(r2.headObject).mockResolvedValueOnce(null);
+
+      await expect(service.confirmMedia("m1")).rejects.toMatchObject({
+        code: "VALIDATION",
+      });
+      expect(repo.updateMediaById).not.toHaveBeenCalled();
+    });
+
+    it("throws Validation when the uploaded size does not match the record", async () => {
+      vi.mocked(requireSession).mockResolvedValueOnce({} as any);
+      vi.mocked(repo.findMediaById).mockResolvedValueOnce(mediaLean());
+      vi.mocked(r2.headObject).mockResolvedValueOnce({
+        contentLength: 999_999_999,
+        contentType: "audio/mpeg",
+      } as any);
+
+      await expect(service.confirmMedia("m1")).rejects.toMatchObject({
+        code: "VALIDATION",
+      });
+      expect(repo.updateMediaById).not.toHaveBeenCalled();
+    });
+
+    it("throws Validation when the uploaded mime type does not match the record", async () => {
+      vi.mocked(requireSession).mockResolvedValueOnce({} as any);
+      vi.mocked(repo.findMediaById).mockResolvedValueOnce(mediaLean());
+      vi.mocked(r2.headObject).mockResolvedValueOnce({
+        contentLength: 1024,
+        contentType: "application/octet-stream",
+      } as any);
 
       await expect(service.confirmMedia("m1")).rejects.toMatchObject({
         code: "VALIDATION",
