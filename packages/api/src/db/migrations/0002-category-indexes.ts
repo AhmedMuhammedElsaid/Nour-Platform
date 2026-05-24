@@ -28,7 +28,6 @@ export async function up(): Promise<void> {
   // `connection.db`. The `!` assertion is safe here — Mongoose sets `db` on
   // the connection object immediately after `connect()` resolves, which is
   // guaranteed by the time `getDb()` returns (see db/client.ts).
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const db = mongoose.connection.db!;
 
   // 1. categories.slug — unique

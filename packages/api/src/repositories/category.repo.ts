@@ -2,7 +2,7 @@ import type mongoose from "mongoose";
 
 import { getDb } from "../db/client";
 import { CategoryModel, type CategoryDoc } from "../db/models/Category.model";
-import type { Category, CategoryCreateInput, CategoryUpdateInput } from "../schemas/category";
+import type { CategoryCreateInput, CategoryUpdateInput } from "../schemas/category";
 
 /*
  * Lean repository for the `categories` collection. All methods return plain
