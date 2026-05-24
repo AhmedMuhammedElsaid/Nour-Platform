@@ -223,7 +223,6 @@ The web suite tolerates an empty homepage. The admin suite creates a `Smoke Test
 Track these in [`PLAN.md`](./PLAN.md) §13 (Phase 2) or open separate tickets:
 
 - **Sentry** — `pnpm add @sentry/nextjs` in both apps, create `instrumentation.ts` + `instrumentation-client.ts`, wrap each `next.config.ts` with `withSentryConfig`, extend CSP `connect-src` to allow `*.ingest.sentry.io`.
-- **Nonce-based CSP** — replace the `'unsafe-inline'` script-src with per-request nonces (Next 15+ middleware pattern). The current CSP comment in `next.config.ts` flags this as a known follow-up.
 - **Nightly E2E** — add `.github/workflows/e2e.yml` running Playwright against `<domain>` on a cron schedule.
 - **Backups** — `mongodump` to an R2 backups bucket per [`DEPLOYMENT.md`](./DEPLOYMENT.md) §9.
 - **Performance budgets in CI** — Lighthouse CI + bundlemon per [`DEPLOYMENT.md`](./DEPLOYMENT.md) §10.
