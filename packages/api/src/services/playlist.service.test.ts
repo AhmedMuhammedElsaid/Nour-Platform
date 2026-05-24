@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { PLAYLISTS_HOME } from "../cache/tags";
 import { AppError } from "../errors";
 
 // Module-level mocks. Hoisted by vitest before service import.
@@ -102,7 +103,7 @@ describe("playlist.service", () => {
       expect(repo.updatePlaylistById).toHaveBeenCalledWith("p1", {
         status: "published",
       });
-      expect(revalidateTag).toHaveBeenCalledWith("playlists:home", "default");
+      expect(revalidateTag).toHaveBeenCalledWith(PLAYLISTS_HOME, "default");
       expect(revalidateTag).toHaveBeenCalledWith("playlist:alpha", "default");
     });
 

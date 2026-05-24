@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { PLAYLISTS_HOME } from "../cache/tags";
 import { AppError } from "../errors";
 
 // Module-level mocks. Hoisted by vitest before service import.
@@ -230,7 +231,7 @@ describe("category.service", () => {
         { $pull: { categoryIds: "c1" } },
       );
       expect(revalidateTag).toHaveBeenCalledWith("categories", "default");
-      expect(revalidateTag).toHaveBeenCalledWith("playlists:home", "default");
+      expect(revalidateTag).toHaveBeenCalledWith(PLAYLISTS_HOME, "default");
     });
 
     it("throws AppError NOT_FOUND when deleteById returns false", async () => {

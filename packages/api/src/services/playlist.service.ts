@@ -1,6 +1,7 @@
 import { revalidateTag } from "next/cache";
 
 import { requireSession } from "../auth/require-session";
+import { PLAYLISTS_HOME } from "../cache/tags";
 import {
   createPlaylist as repoCreatePlaylist,
   deletePlaylistById,
@@ -153,6 +154,10 @@ export async function createPlaylist(
   const slug = parsed.slug ?? slugify(parsed.title);
 
   const lean = await repoCreatePlaylist({ ...parsed, slug });
+
+  // No revalidateTag here: new playlists default to status="draft" and are
+  // invisible on the public homepage / detail pages, so no cached entry needs
+  // invalidating. The first publish (publishPlaylist) emits PLAYLISTS_HOME.
   return toDto(lean);
 }
 
@@ -179,7 +184,7 @@ export async function updatePlaylist(
   const lean = await updatePlaylistById(id, parsed);
   if (!lean) throw AppError.NotFound("Playlist");
 
-  revalidateTag("playlists:home", "default");
+  revalidateTag(PLAYLISTS_HOME, "default");
   revalidateTag(`playlist:${lean.slug}`, "default");
 
   return toDto(lean);
@@ -194,7 +199,7 @@ export async function deletePlaylist(id: string): Promise<void> {
 
   await deletePlaylistById(id);
 
-  revalidateTag("playlists:home", "default");
+  revalidateTag(PLAYLISTS_HOME, "default");
   revalidateTag(`playlist:${existing.slug}`, "default");
 }
 
@@ -204,7 +209,7 @@ export async function publishPlaylist(id: string): Promise<Playlist> {
   const lean = await updatePlaylistById(id, { status: "published" });
   if (!lean) throw AppError.NotFound("Playlist");
 
-  revalidateTag("playlists:home", "default");
+  revalidateTag(PLAYLISTS_HOME, "default");
   revalidateTag(`playlist:${lean.slug}`, "default");
 
   return toDto(lean);
@@ -216,7 +221,7 @@ export async function unpublishPlaylist(id: string): Promise<Playlist> {
   const lean = await updatePlaylistById(id, { status: "draft" });
   if (!lean) throw AppError.NotFound("Playlist");
 
-  revalidateTag("playlists:home", "default");
+  revalidateTag(PLAYLISTS_HOME, "default");
   revalidateTag(`playlist:${lean.slug}`, "default");
 
   return toDto(lean);
