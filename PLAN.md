@@ -234,7 +234,7 @@ The original 8-wave plan from the first draft becomes Phase 2. Reordered to star
 
 | Phase 2 Wave | Theme | Notes |
 |---|---|---|
-| **P2-A** | Scholars + Categories | One-vertical-at-a-time. Adds scholar profile pages and category filter on playlists. |
+| **P2-A** | Categories | Category filter on playlists (many-to-many). Scholars deferred to a later wave. **Detailed plan: §13.1.** |
 | **P2-B** | Lectures (as distinct content type) | Audio/video/transcript trio. Reuses MVP player. |
 | **P2-C** | Articles | TipTap editor, markdown rendering, reading time. |
 | **P2-D** | Books / PDFs | PDF.js inline reader. |
@@ -246,6 +246,48 @@ The original 8-wave plan from the first draft becomes Phase 2. Reordered to star
 | **P2-J** | Public API + mobile shell | External consumers. |
 
 Each Phase 2 wave follows the **same model rubric** as Wave 0–5 above. The repository layout, services, and design system from the MVP are reused without refactor.
+
+---
+
+### 13.1 P2-A — Categories (detailed plan)
+
+**Goal**: Add a Category resource. Admins manage categories via full CRUD in the admin CMS. Playlists can belong to multiple categories (many-to-many). The public homepage gains a URL-param-driven filter bar.
+
+**Exit criteria**:
+- Admin can create, edit, delete categories (name, slug, description, optional cover image).
+- Deleting a category silently removes it from all playlists (`$pull`) — no orphaned `categoryIds`.
+- Playlist create/edit form shows a category multi-select; saved selections persist on reload.
+- Homepage renders a filter bar; selecting a category narrows the playlist grid.
+- Selecting "All" restores the full unfiltered grid.
+- `/?category=unknown-slug` shows an empty-state message — not a 404 or error.
+- All tests green; lint and typecheck clean.
+
+**Token budget**: ~360–490k
+
+| # | Ticket | Model | Why this model |
+|---|---|---|---|
+| P2-A.1 | `api/schemas/category` — Zod schema (`packages/api/src/schemas/category.ts`), Mongoose model (`Category.model.ts`), repo (`category.repo.ts`) | **Sonnet** | Pattern is mature from MVP; direct sibling clone of playlist schema + model + repo. |
+| P2-A.2 | `api/db/migrations/0002-category-indexes` — unique index on `categories.slug`, `categoryIds` array index on `playlists` | **Haiku** | Mechanical clone of `0001-indexes`. |
+| P2-A.3 | `api/services/category` — `category.service.ts`: `listCategories`, `getCategoryBySlug`, `createCategory` (slug collision → append `-2`, `-3`), `updateCategory`, `deleteCategory` (hard-delete + `$pull` from playlists + `revalidateTag`) | **Sonnet** | CRUD service; follows `playlist.service.ts` exactly. |
+| P2-A.4 | `api/services/playlist-update` — extend `playlist.service.ts`: `createPlaylist`/`updatePlaylist` accept `categoryIds?: string[]` (validates IDs exist); `getPublishedPlaylists` accepts `categoryId` filter (returns `[]` if no match) | **Sonnet** | Additive change to existing service; no new pattern. |
+| P2-A.5 | `admin/categories-crud` — route pages (`/categories`, `/categories/new`, `/categories/[id]/edit`), `CategoriesTable` (TanStack Table), `CategoryForm` (TanStack Form + Zod, cover image via existing MediaPicker), three server actions | **Sonnet** | Sibling pattern: `playlists-create-edit` + `playlists-list` are the reference. |
+| P2-A.6 | `admin/playlists-category-field` — add `categoryIds` checkbox-group multi-select to `playlist-form.tsx`; RSC page fetches `availableCategories: { id, name }[]` and passes as prop | **Haiku** | Additive field on existing form; no new pattern. |
+| P2-A.7 | `web/category-filter` — `CategoryFilterBar` client island (`"use client"`, reads/writes `?category` URL param); homepage wires parallel fetch of categories + filtered playlists; empty-state message when grid is empty | **Sonnet** | First instance of URL-param filter pattern; new client island. |
+| P2-A.8 | `tests/p2a-categories` — unit + integration + RTL + E2E per DoD | **Sonnet** | Writing tests for completed code. |
+
+**Definition of Done** (every ticket):
+- TypeScript strict passes — no `any`, no unexplained `as` casts.
+- Zod schema lives in `packages/api/src/schemas/category.ts`.
+- Mutating service methods call `requireSession(['admin'])` and `revalidateTag` after success.
+- UI uses Tailwind tokens only — no hex codes, no arbitrary values.
+- ≥ 1 unit + ≥ 1 integration test per ticket.
+- Manual smoke pass before merge.
+
+**Data model**:
+- New `categories` collection: `name` (1–100), `slug` (unique), `description` (≤500, optional), `coverMediaId` (optional ref → Media), timestamps.
+- `playlists` gets `categoryIds: ObjectId[]` defaulting to `[]`.
+- Migration `0002`: `{ slug: 1 }` unique on categories, `{ categoryIds: 1 }` on playlists.
+- New cache tag `CATEGORIES = 'categories'` in `packages/api/src/cache/tags.ts`.
 
 ---
 
@@ -282,7 +324,7 @@ When all checked → ship. Phase 2 starts the next morning.
 ## 16. Implementation Status
 
 > Last updated automatically. On resume: read this section + APP_CONTEXT.md instead of exploring the repo.
-> MVP code complete — Waves 0–5 all merged. **Wave 5.4 is partial**: health endpoints match DEPLOYMENT.md §6 spec, but Sentry SDK is not wired (deferred to post-MVP; env var is stubbed only). Manual go-live steps in DEPLOYMENT.md §0.1 are out of code scope. Next phase: **P2-A** Scholars + Categories (PLAN.md §13). No P2 tickets written yet; brainstorm + plan before coding.
+> MVP code complete — Waves 0–5 all merged. Wave 5.4 partial (Sentry deferred). **Active: P2-A Categories** — tickets written, implementation in progress (see §13.1).
 
 ### Wave 0 — Foundations ✅
 
@@ -342,3 +384,16 @@ When all checked → ship. Phase 2 starts the next morning.
 | 5.2 | `infra/headers+csp` — CSP, HSTS, R2 allowlist | wip | ✅ Done |
 | 5.3 | `tests/smoke-playwright` — 3 E2E smoke tests | wip | ✅ Done |
 | 5.4 | `monitoring/sentry+uptime` — health endpoint `{ok,version,time}` | wip | ⚠️ Partial — health endpoints done; Sentry SDK install deferred (env var stubbed, `.env.example` notes it as optional). UptimeRobot wiring is a manual external step (DEPLOYMENT.md §0.1 step 6). |
+
+### Wave P2-A — Categories 🔄
+
+| # | Ticket | Commit | Status |
+|---|---|---|---|
+| P2-A.1 | `api/schemas/category` — Zod schema + Mongoose model + repo | — | 🔲 Pending |
+| P2-A.2 | `api/db/migrations/0002-category-indexes` | — | 🔲 Pending |
+| P2-A.3 | `api/services/category` — category.service.ts | — | 🔲 Pending |
+| P2-A.4 | `api/services/playlist-update` — categoryIds filter + assign | — | 🔲 Pending |
+| P2-A.5 | `admin/categories-crud` — pages + form + table + actions | — | 🔲 Pending |
+| P2-A.6 | `admin/playlists-category-field` — categoryIds multi-select | — | 🔲 Pending |
+| P2-A.7 | `web/category-filter` — CategoryFilterBar + homepage wiring | — | 🔲 Pending |
+| P2-A.8 | `tests/p2a-categories` — unit + integration + RTL + E2E | — | 🔲 Pending |
