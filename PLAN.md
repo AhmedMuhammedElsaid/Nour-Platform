@@ -324,7 +324,7 @@ When all checked → ship. Phase 2 starts the next morning.
 ## 16. Implementation Status
 
 > Last updated automatically. On resume: read this section + APP_CONTEXT.md instead of exploring the repo.
-> MVP code complete — Waves 0–5 all merged. Wave 5.4 partial (Sentry deferred). **Active: P2-A Categories** — tickets written, implementation in progress (see §13.1).
+> MVP code complete — Waves 0–5 all merged. Wave 5.4 partial (Sentry deferred). Hardening sprint shipped (`58550ba..e6493ca`). **P2-A Categories complete** (`c73e7e4..273e518`). **Next: P2-B Lectures** — tickets not written; brainstorm + write a wave plan before coding.
 
 ### Wave 0 — Foundations ✅
 

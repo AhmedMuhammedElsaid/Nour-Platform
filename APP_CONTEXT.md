@@ -26,9 +26,9 @@ See **CLAUDE.md §5** — non-negotiable list. Summary: apps call services only 
 
 ---
 
-## Completed waves (Audio MVP)
+## Completed waves
 
-All 5 waves shipped + 1 pre-deploy fixup batch + 1 hardening batch. Head of `main` ≈ `1a4c895` (hardening uncommitted at time of write).
+Audio MVP (Waves 0–5) + pre-deploy fixups + hardening sprint + **P2-A Categories** all landed. Head of `main` = `f3567d1`.
 
 | Wave | Range | Notes (only what's non-obvious for a future session) |
 |---|---|---|
@@ -40,14 +40,17 @@ All 5 waves shipped + 1 pre-deploy fixup batch + 1 hardening batch. Head of `mai
 | 5 — Deploy + Smoke ⚠️ | `1b97c53` + `806f2ca` fixup | Per-app `next.config.ts`: `images.remotePatterns` for R2 + static security headers (HSTS, X-Frame, Permissions-Policy). CSP moved to middleware after hardening — see below. Playwright smoke tests in `tests/e2e/`. Health endpoints return `{ ok, version, time }`. **Sentry SDK install deferred** — env var stubbed only. |
 | Pre-deploy fixups | `dfae606` · `e693862` · `1fe8f69` · `1a4c895` | `media.service.ts` createMedia/confirmMedia call `requireSession(['admin'])`. `seed-admin.ts` refuses `NODE_ENV=production` without `--force`. Per-app `vercel.json` (turbo `--filter=app...` build). CI runs `pnpm test`. Root `README.md`. **`deploy.md`** step-by-step runbook. |
 | Hardening sprint | `58550ba` · `40ef84c` · `577a6a9` · `41c26a8` · `e6493ca` | (A) `packages/api` now has 19 vitest unit tests across all 4 services (mocks repos + `requireSession` + `next/cache`). (B) **CSP is now nonce-based** — `proxy.ts` in both apps (renamed from `middleware.ts` for Next 16) generates a per-request nonce, sets `script-src 'self' 'nonce-…' 'strict-dynamic'` so we dropped `'unsafe-inline'` from script-src (style-src keeps it intentionally); static `Content-Security-Policy` header removed from both `next.config.ts`. (D) APP_CONTEXT seek-amount corrected to ±10s. (E) auth side-effect import replaced with `/// <reference path="../types/next-auth.d.ts" />` directive — IDE-resistant; ESLint override allows the triple-slash on those two files only. Pre-existing build-blockers fixed: Turbopack "use server" re-export bug in playlist actions (now imports schema directly), `/` + `/playlists/[slug]` marked `dynamic = "force-dynamic"` (required because nonce-CSP and because the build runs without Atlas). |
+| P2-A — Categories ✅ | `c73e7e4` · `82d3e81` · `6972e87` · `273e518` (+ spec `c9cadef` · `7f97d40` · `8e57352`) | New `Category` resource with full admin CRUD + many-to-many on `Playlist` + public homepage filter. Spec lives in **PLAN.md §13.1**. Files: `schemas/category.ts`, `db/models/Category.model.ts` (note PascalCase filename — outlier from the lowercase models), `repositories/category.repo.ts`, `services/category.service.ts` (`listCategories` · `getCategoryBySlug` · `getCategoryById` · `createCategory` · `updateCategory` · `deleteCategory`), migration `0002-category-indexes.ts` (unique `categories.slug` + `playlists.categoryIds` array index). `playlist.service.ts` extended: `createPlaylist`/`updatePlaylist` now accept `categoryIds?: string[]` (validates IDs exist); `getPublishedPlaylists` accepts `{ categoryId }` filter. Slug collisions auto-append `-2`/`-3`. Hard delete `$pull`s the id from every playlist's `categoryIds`. New cache tag `CATEGORIES = "categories"` in `cache/tags.ts` (first central tag file). Admin: `/categories`, `/categories/new`, `/categories/[id]/edit` + `CategoriesTable` + `CategoryForm` + 3 server actions + a `categoryIds` multi-select field on the playlist form. Web: `CategoryFilterBar` client island reads/writes `?category=<slug>` URL param; homepage resolves slug → ObjectId before calling the playlist service; empty-state message on unknown slug (no 404). Tests: 34 API unit + 38 admin RTL + 1 E2E green. |
 
 ---
 
 ## Next phase
 
-MVP is **deploy-ready**. All pre-deploy code gaps are closed (commits `dfae606..1fe8f69`) and the soft-gap hardening sprint shipped (see row above). Wave 5.4 stays ⚠️ Partial because Sentry SDK install is intentionally deferred (env var stubbed; optional per `.env.example`). To actually go live: open **`deploy.md`** at repo root and walk the 11 steps top-to-bottom — no more code changes needed.
+MVP is **deploy-ready** (Wave 5.4 stays ⚠️ Partial because Sentry SDK install is intentionally deferred — env var stubbed; optional per `.env.example`). To actually go live: open **`deploy.md`** and walk the 11 steps top-to-bottom — no more code changes needed.
 
-Next phase after go-live: **P2-A Scholars + Categories** (PLAN.md §13). Tickets not yet written; brainstorm + write a wave plan before coding (use `superpowers:brainstorming` then `superpowers:writing-plans`).
+P2-A Categories is **complete** (`c73e7e4..273e518`, see waves row above). The category vertical is the canonical sibling for the next P2 verticals — clone its layout (`schemas/<x>.ts` + `db/models/<x>.model.ts` + `repositories/<x>.repo.ts` + `services/<x>.service.ts` + `admin/features/<x>/` + cache-tag constant) rather than re-deriving the pattern.
+
+**Next: P2-B Lectures** (PLAN.md §13). Tickets not yet written; brainstorm + write a wave plan before coding (use `superpowers:brainstorming` then `superpowers:writing-plans`).
 
 ---
 
@@ -72,22 +75,31 @@ packages/api/src/
       playlist.model.ts   → PlaylistModel
       track.model.ts      → TrackModel
       media.model.ts      → MediaModel
+    models/Category.model.ts (PascalCase outlier — every other model is lowercase)
     migrations/
-      0001-indexes.ts     → ensureIndexes on all three models
+      0001-indexes.ts     → ensureIndexes on Playlist/Track/Media/User
+      0002-category-indexes.ts → unique categories.slug + playlists.categoryIds array index
   repositories/
     playlist.repo.ts      → findPlaylistById/Slug/Published/All, create/update/delete + appendTrackId/removeTrackId
+                            (Published/All also accept { categoryId } filter; create/update accept categoryIds)
     track.repo.ts         → findTrackById/ByPlaylistId/BySlug, create/update/delete, updateTrackOrder (bulkWrite)
     media.repo.ts         → findMediaById, create, updateById
+    category.repo.ts      → findAll/ById/BySlug, create/update/delete, pullCategoryFromPlaylists
   schemas/
     user.ts               → User, UserRole, Credentials
-    playlist.ts           → Playlist, PlaylistStatus, PlaylistCreateInput, PlaylistUpdateInput
+    playlist.ts           → Playlist (now with categoryIds: string[]), PlaylistStatus, *Input
     track.ts              → Track, TrackCreateInput, TrackUpdateInput
-    media.ts              → Media, MediaMimeType, MediaStatus, MediaCreateInput, MediaUpdateInput
+    media.ts              → Media, MediaMimeType, MediaStatus, *Input
+    category.ts           → Category, CategoryCreateInput, CategoryUpdateInput
   services/
     auth.service.ts       → verifyCredentials, createAdminUser
-    playlist.service.ts   → getPublishedPlaylists, getAllPlaylists, getPlaylistBySlug/ById, create/update/delete/publish/unpublish
+    playlist.service.ts   → getPublishedPlaylists({categoryId?}), getAllPlaylists, getPlaylistBySlug/ById,
+                            create/update (accept categoryIds — validated against existing categories), delete/publish/unpublish
     track.service.ts      → getTracksByPlaylist, getTrackById, create/update/delete, reorderTracks
-    media.service.ts      → createMedia, confirmMedia (both call requireSession(['admin']) — defense in depth on top of route handlers)
+    media.service.ts      → createMedia, confirmMedia (both call requireSession(['admin']) — defense in depth)
+    category.service.ts   → listCategories, getCategoryBySlug, getCategoryById, create/update (slug collision → -2/-3),
+                            delete (hard delete + $pull from every playlist + revalidateTag CATEGORIES + PLAYLISTS_HOME)
+  cache/tags.ts           → central tag constants — PLAYLISTS_HOME, CATEGORIES (use these, not raw strings)
   media/
     r2-client.ts          → createPresignedUpload(key, mime, bytes), headObject(key), ALLOWED_AUDIO_MIME_TYPES
   errors/index.ts         → AppError + codes (UNAUTHORIZED/FORBIDDEN/NOT_FOUND/VALIDATION/CONFLICT/RATE_LIMITED/INTERNAL)
@@ -124,7 +136,7 @@ apps/admin/
     actions/sign-in.action.ts            → signInAction(credentials, redirectTo?)
     components/login-form.tsx            → LoginForm (TanStack Form v1 + Zod)
   features/playlists/
-    schemas/playlist-form.schema.ts      → Zod schema reused by create + edit
+    schemas/playlist-form.schema.ts      → Zod schema reused by create + edit (now with categoryIds)
     actions/
       create-playlist.action.ts          → form submit → playlistService.create → revalidateTag
       update-playlist.action.ts          → form submit → playlistService.update → revalidateTag
@@ -133,16 +145,29 @@ apps/admin/
       toggle-publish.action.ts           → publish/unpublish + revalidateTag
     components/
       playlists-table.tsx                → PlaylistsTable (TanStack Table v8, status filter); exports SerializedPlaylist
-      playlist-form.tsx                  → shared create/edit form (TanStack Form + Zod)
+      playlist-form.tsx                  → shared create/edit form (TanStack Form + Zod) — now renders categoryIds multi-select
       track-uploader.tsx                 → drag-drop UI inside edit page
       track-list.tsx                     → dnd-kit sortable list of tracks
       publish-toggle.tsx                 → publish/unpublish toggle button
     hooks/
       use-track-upload.ts                → presign → PUT with progress → confirm (with retry on PUT)
+  features/categories/
+    schemas/category-form.schema.ts      → Zod schema reused by create + edit
+    actions/
+      create-category.action.ts          → form submit → categoryService.create → revalidateTag(CATEGORIES)
+      update-category.action.ts          → form submit → categoryService.update → revalidateTag
+      delete-category.action.ts          → categoryService.delete → revalidateTag(CATEGORIES + PLAYLISTS_HOME)
+    components/
+      categories-table.tsx               → TanStack Table; delete button per row
+      category-form.tsx                  → shared create/edit (TanStack Form + Zod); cover image via MediaPicker
   app/playlists/
     page.tsx                             → RSC list page
+    new/page.tsx                         → create form (passes availableCategories to PlaylistForm)
+    [id]/edit/page.tsx                   → edit form (with availableCategories) + track-uploader + track-list + publish-toggle
+  app/categories/
+    page.tsx                             → RSC list page
     new/page.tsx                         → create form
-    [id]/edit/page.tsx                   → edit form + track-uploader + track-list + publish-toggle
+    [id]/edit/page.tsx                   → edit form
   lib/
     route-helpers.ts                     → appErrorStatus(AppError) → HTTP status code
   vitest.config.ts                       → jsdom + @vitejs/plugin-react; no vite-tsconfig-paths (ESM conflict)
@@ -150,8 +175,9 @@ apps/admin/
 
 apps/web/
   app/layout.tsx                         → RootLayout wraps children in <PlayerProvider> so player survives navigation
-  app/page.tsx                           → RSC homepage: getPublishedPlaylists → grid of PlaylistCard
-                                            (export const dynamic = "force-dynamic")
+  app/page.tsx                           → RSC homepage: resolves ?category slug → ObjectId, then getPublishedPlaylists
+                                            ({ categoryId? }) → grid of PlaylistCard; renders CategoryFilterBar above grid;
+                                            empty-state message for unknown slug. (export const dynamic = "force-dynamic")
   app/playlists/[slug]/page.tsx          → RSC detail: meta + track list (uses TrackListPlayer client island); generateMetadata
                                             (export const dynamic = "force-dynamic")
   app/api/health/route.ts                → GET → { ok, version, time }
@@ -169,6 +195,9 @@ apps/web/
       playlist-card.tsx                  → cover (next/image) + title + track count
       track-row.tsx                      → row UI (used inside TrackListPlayer)
       track-list-player.tsx              → client island: maps rows; click → player.loadQueue(tracks, index); URL hash mirrors current
+  features/categories/
+    components/
+      category-filter-bar.tsx            → client island: pill list reads/writes ?category URL param via useSearchParams + router.replace
   features/player/components/
     audio-player.test.tsx                → RTL tests for the player block
   vitest.config.ts / vitest.setup.ts     → mirror admin's setup
@@ -224,3 +253,7 @@ Root docs (read in this order for new sessions)
 - `packages/api` tests run via `pnpm --filter @repo/api test` (vitest with node env). Setup file primes `MONGODB_URI` + `AUTH_SECRET` because importing `@repo/config/env` transitively at test load would otherwise throw. The `any` type is allowed in `src/**/*.test.ts` via an ESLint override so lean-doc fixtures stay terse — production code keeps `no-explicit-any: error`.
 - Next 16 file convention: `middleware.ts` was renamed to `proxy.ts` in both apps. Next 16 supports both, but the deprecation warning goes away with `proxy.ts`. The exported function name (`middleware` in web, default `auth(...)` callback in admin) is still accepted — only the filename changed.
 - Server Actions in admin: never re-export schemas/types from a `"use server"` file. Next 16 + Turbopack rejects the build with "The module has no exports at all". Importers must pull `playlistFormSchema` and friends directly from `features/playlists/schemas/playlist-form.schema.ts`.
+- **Filename inconsistency**: `packages/api/src/db/models/Category.model.ts` is PascalCase; every other model file (`user.model.ts`, `playlist.model.ts`, `track.model.ts`, `media.model.ts`) is lowercase. When cloning P2-A as the sibling pattern for P2-B+, use lowercase for the new model file (`lecture.model.ts` etc) — the Category outlier is not the convention.
+- **Many-to-many slug→ObjectId resolution lives in the RSC, not the service.** `apps/web/app/page.tsx` calls `listCategories()` first, finds the matching `{ id }` by slug, then calls `getPublishedPlaylists({ categoryId })`. The playlist service intentionally takes an ObjectId, not a slug, because validating + casting belongs at the request boundary. Phase-2 verticals that filter by slug should follow this same pattern.
+- **Public service methods never throw on unknown slug.** `getCategoryBySlug` is the exception (throws `AppError.NotFound`), but the homepage filter path resolves slug locally and falls back to "show everything" → empty-state on no match, never a 404. When adding new filterable verticals, decide explicitly: throw-on-miss (detail pages) vs. ignore-on-miss (filter facets).
+- **Central cache tags**: `packages/api/src/cache/tags.ts` exports `PLAYLISTS_HOME` and `CATEGORIES`. New verticals must add their tag here, not pass raw strings to `revalidateTag`. Item-level tags (`playlist:<slug>`) are still inline because they're parameterised.
