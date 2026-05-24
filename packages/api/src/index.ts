@@ -25,3 +25,16 @@ export type {
   MediaCreateInput,
   MediaUpdateInput,
 } from "./schemas/media";
+export type {
+  Category,
+  CategoryCreateInput,
+  CategoryUpdateInput,
+} from "./schemas/category";
+export {
+  findAll as findAllCategories,
+  findBySlug as findCategoryBySlug,
+  findById as findCategoryById,
+  create as createCategory,
+  updateById as updateCategoryById,
+  deleteById as deleteCategoryById,
+} from "./repositories/category.repo";
