@@ -15,7 +15,7 @@ if (r2Base) {
 
 /*
  * Static security headers applied to every response. The Content-Security-Policy
- * header is NOT set here — it's emitted by `middleware.ts` with a per-request
+ * header is NOT set here — it's emitted by `proxy.ts` with a per-request
  * nonce so we can drop `'unsafe-inline'` from script-src (see `lib/csp.ts`).
  */
 const securityHeaders = [

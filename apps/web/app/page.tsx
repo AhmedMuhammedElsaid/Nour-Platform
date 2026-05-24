@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { getPublishedPlaylists } from "@repo/api/services/playlist";
 import { listCategories } from "@repo/api/services/category";
 
-// Opt out of static prerendering. middleware.ts sets a per-request CSP nonce,
+// Opt out of static prerendering. proxy.ts sets a per-request CSP nonce,
 // which would mismatch a cached static HTML body; forcing dynamic rendering
 // is also what the deploy build (no Atlas connection at build time) requires.
 export const dynamic = "force-dynamic";

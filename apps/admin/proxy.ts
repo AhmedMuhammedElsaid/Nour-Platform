@@ -7,7 +7,7 @@ import { authConfigEdge } from "@repo/api/auth/edge";
 import { buildAdminCsp } from "@/lib/csp";
 
 /*
- * Edge-runtime middleware gate for the admin app.
+ * Edge-runtime proxy for the admin app.
  * Uses the Edge-safe config slice (no Mongoose / argon2) so that it
  * runs in the Next.js Edge runtime where Node.js APIs are unavailable.
  *
@@ -26,8 +26,11 @@ function withCspNonce(response: NextResponse): NextResponse {
   return response;
 }
 
-// TS2742: next-auth's .auth() return type resolves through internal paths
-// the compiler refuses to inline; cast here to keep the public type clean.
+// Adapter cast: next-auth's .auth() return type resolves through internal
+// paths the TS compiler refuses to inline (TS2742), so the inferred return
+// type leaks `next-auth/lib/index.d.ts`. Casting through `unknown` to the
+// Next runtime's `NextMiddleware` keeps the public type clean and is safe
+// because Auth.js callbacks already return a NextResponse-shaped value.
 export const proxy = NextAuth(authConfigEdge).auth((req) => {
   const path = req.nextUrl.pathname;
   const isLoggedIn = !!req.auth;

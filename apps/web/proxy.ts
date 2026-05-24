@@ -13,11 +13,11 @@ if (r2Base) {
 }
 
 /*
- * Edge-runtime middleware for the public web app. Generates a per-request
+ * Edge-runtime proxy for the public web app. Generates a per-request
  * nonce and attaches it to a dynamic CSP response header so we can drop
- * 'unsafe-inline' from script-src. Adding middleware forces dynamic
- * rendering on all matched routes — accepted trade-off for the security
- * win; revisit ISR/static-cache strategy in Phase 2 if traffic grows.
+ * 'unsafe-inline' from script-src. A proxy forces dynamic rendering on
+ * all matched routes — accepted trade-off for the security win; revisit
+ * ISR/static-cache strategy in Phase 2 if traffic grows.
  */
 export function proxy(request: NextRequest): NextResponse {
   // Web Crypto is available in the Edge runtime; no Node imports needed.
@@ -40,7 +40,7 @@ export const config = {
    *   /_next/static/*  — JS/CSS bundles (immutable, no inline scripts)
    *   /_next/image/*   — optimized images
    *   /favicon.ico     — browser default
-   * Excluding these keeps the middleware cost off the hot static-asset path.
+   * Excluding these keeps the proxy cost off the hot static-asset path.
    */
   matcher: ["/((?!_next/static|_next/image|favicon\\.ico).*)"],
 };
