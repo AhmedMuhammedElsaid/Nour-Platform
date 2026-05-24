@@ -42,6 +42,9 @@ class MockAudio extends EventTarget {
 }
 
 if (typeof window !== 'undefined') {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(window as any).Audio = MockAudio
+  // Cast via `unknown` because MockAudio's `vi.fn()`-typed methods don't
+  // overlap with the standard HTMLAudioElement signatures TS expects on
+  // window.Audio. jsdom doesn't ship a real Audio so any cast is necessarily
+  // an adapter boundary; this one narrows to a typed shape for the assignment.
+  ;(window as unknown as { Audio: typeof MockAudio }).Audio = MockAudio
 }
