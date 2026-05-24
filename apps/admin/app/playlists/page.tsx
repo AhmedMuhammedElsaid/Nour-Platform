@@ -6,6 +6,11 @@ import { getAllPlaylists } from '@repo/api/services/playlist'
 import type { SerializedPlaylist } from '../../features/playlists/components/playlists-table'
 import { PlaylistsTable } from '../../features/playlists/components/playlists-table'
 
+// Opt out of static prerendering. proxy.ts sets a per-request CSP nonce that
+// would mismatch a cached static body, and the deploy build runs without an
+// Atlas connection — both reasons require dynamic rendering.
+export const dynamic = 'force-dynamic'
+
 export default async function PlaylistsPage() {
   const session = await requireSession(['admin'])
   const playlists = await getAllPlaylists(session)

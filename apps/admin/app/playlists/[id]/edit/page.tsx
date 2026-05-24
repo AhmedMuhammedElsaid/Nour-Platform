@@ -14,6 +14,11 @@ import {
 } from "../../../../features/playlists/components/track-list";
 import { TrackUploader } from "../../../../features/playlists/components/track-uploader";
 
+// Opt out of static prerendering. proxy.ts sets a per-request CSP nonce that
+// would mismatch a cached static body, and the deploy build runs without an
+// Atlas connection — both reasons require dynamic rendering.
+export const dynamic = "force-dynamic";
+
 interface Props {
   params: Promise<{ id: string }>;
 }
