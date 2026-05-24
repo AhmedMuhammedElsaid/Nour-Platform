@@ -3,14 +3,13 @@
  * separate so each app can evolve its directives independently (admin
  * doesn't load R2 media; web doesn't talk to internal admin APIs).
  *
- * See apps/web/lib/csp.ts for the rationale on 'strict-dynamic' +
- * 'unsafe-inline' (fallback) and the deliberate retention of style-src
- * 'unsafe-inline'.
+ * See apps/web/lib/csp.ts for the rationale on dropping 'unsafe-inline'
+ * from script-src while keeping it in style-src.
  */
 export function buildAdminCsp(nonce: string): string {
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-inline'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self'",

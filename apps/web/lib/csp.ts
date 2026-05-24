@@ -1,5 +1,5 @@
 /*
- * CSP builder for the web app. Called from middleware on every request so
+ * CSP builder for the web app. Called from proxy.ts on every request so
  * each response carries a unique nonce — that's what allows us to drop
  * `'unsafe-inline'` from script-src. Next.js's framework runtime scripts
  * pick up the nonce automatically from the response header.
@@ -14,10 +14,11 @@ export function buildWebCsp(nonce: string, r2Hostname: string): string {
   return [
     "default-src 'self'",
     // 'strict-dynamic' lets the nonce-trusted root script load further
-    // scripts without re-listing every CDN; 'unsafe-inline' stays as a
-    // CSP1/2 fallback that modern browsers ignore once 'strict-dynamic'
-    // is present.
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-inline'`,
+    // scripts without re-listing every CDN. We intentionally do NOT keep
+    // 'unsafe-inline' as a fallback: CSP2-only clients would honor it and
+    // silently disable nonce enforcement. Next 16 nonce propagation is
+    // reliable enough that this trade-off favors stricter security.
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data:${r2Origin ? ` ${r2Origin}` : ""}`,
     "font-src 'self'",
