@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { Fraunces, Inter } from "next/font/google";
 
 import { cn } from "@repo/ui/lib/utils";
+import { AdminNav } from "../features/layout/components/admin-nav";
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       suppressHydrationWarning
     >
       <body className="min-h-dvh bg-bg text-foreground font-sans antialiased">
+        <AdminNav />
         {children}
       </body>
     </html>

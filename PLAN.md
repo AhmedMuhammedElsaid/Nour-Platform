@@ -393,7 +393,7 @@ When all checked → ship. Phase 2 starts the next morning.
 | P2-A.2 | `api/db/migrations/0002-category-indexes` | `c73e7e4` | ✅ Done |
 | P2-A.3 | `api/services/category` — category.service.ts | — | ✅ Done |
 | P2-A.4 | `api/services/playlist-update` — categoryIds filter + assign | — | ✅ Done |
-| P2-A.5 | `admin/categories-crud` — pages + form + table + actions | — | 🔲 Pending |
-| P2-A.6 | `admin/playlists-category-field` — categoryIds multi-select | — | 🔲 Pending |
-| P2-A.7 | `web/category-filter` — CategoryFilterBar + homepage wiring | — | 🔲 Pending |
+| P2-A.5 | `admin/categories-crud` — pages + form + table + actions | — | ✅ Done |
+| P2-A.6 | `admin/playlists-category-field` — categoryIds multi-select | — | ✅ Done |
+| P2-A.7 | `web/category-filter` — CategoryFilterBar + homepage wiring | — | ✅ Done |
 | P2-A.8 | `tests/p2a-categories` — unit + integration + RTL + E2E | — | 🔲 Pending |

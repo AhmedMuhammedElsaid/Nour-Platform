@@ -30,6 +30,7 @@ export async function createPlaylistAction(
       description: parsed.data.description || undefined,
       status: parsed.data.status,
       trackIds: [],
+      categoryIds: parsed.data.categoryIds,
     });
     redirect(`/playlists/${playlist.id}/edit`);
   } catch (error) {

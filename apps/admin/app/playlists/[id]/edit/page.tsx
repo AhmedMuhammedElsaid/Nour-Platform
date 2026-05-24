@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { requireSession } from "@repo/api/auth";
+import { listCategories } from "@repo/api/services/category";
 import { getPlaylistById } from "@repo/api/services/playlist";
 import { getTracksByPlaylist } from "@repo/api/services/track";
 
@@ -20,10 +21,16 @@ interface Props {
 export default async function EditPlaylistPage({ params }: Props) {
   const { id } = await params;
   const session = await requireSession(["admin"]);
-  const [playlist, tracks] = await Promise.all([
+  const [playlist, tracks, categories] = await Promise.all([
     getPlaylistById(id, session),
     getTracksByPlaylist(id),
+    listCategories(),
   ]);
+
+  const availableCategories = categories.map((c) => ({
+    id: c.id,
+    name: c.name,
+  }));
 
   if (!playlist) notFound();
 
@@ -54,10 +61,12 @@ export default async function EditPlaylistPage({ params }: Props) {
       <PlaylistForm
         mode="edit"
         playlistId={playlist.id}
+        availableCategories={availableCategories}
         defaultValues={{
           title: playlist.title,
-          description: playlist.description,
+          description: playlist.description ?? "",
           status: playlist.status,
+          categoryIds: playlist.categoryIds ?? [],
         }}
       />
 

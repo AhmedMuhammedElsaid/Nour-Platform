@@ -23,6 +23,7 @@ export async function updatePlaylistAction(
       title: parsed.data.title,
       description: parsed.data.description || undefined,
       status: parsed.data.status,
+      categoryIds: parsed.data.categoryIds,
     });
   } catch (error) {
     if (error instanceof AppError) return { error: error.message };

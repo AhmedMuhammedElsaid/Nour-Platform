@@ -30,12 +30,14 @@ interface PlaylistFormProps {
   mode: "create" | "edit";
   defaultValues?: Partial<PlaylistFormValues>;
   playlistId?: string;
+  availableCategories: { id: string; name: string }[];
 }
 
 export function PlaylistForm({
   mode,
   defaultValues,
   playlistId,
+  availableCategories,
 }: PlaylistFormProps) {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -45,6 +47,7 @@ export function PlaylistForm({
       title: defaultValues?.title ?? "",
       description: defaultValues?.description ?? "",
       status: defaultValues?.status ?? ("draft" as const),
+      categoryIds: defaultValues?.categoryIds ?? [],
     } satisfies PlaylistFormValues,
     validators: { onChange: playlistFormSchema },
     onSubmit: async ({ value }) => {
@@ -156,6 +159,52 @@ export function PlaylistForm({
           </FormField>
         )}
       </form.Field>
+
+      {availableCategories.length > 0 && (
+        <form.Field name="categoryIds">
+          {(field) => (
+            <FormField
+              label="Categories"
+              error={
+                field.state.meta.isTouched
+                  ? fieldError(field.state.meta.errors)
+                  : undefined
+              }
+            >
+              <div
+                role="group"
+                aria-label="Categories"
+                className="flex flex-col gap-2"
+              >
+                {availableCategories.map((cat) => {
+                  const checked = field.state.value.includes(cat.id);
+                  return (
+                    <label
+                      key={cat.id}
+                      className="flex cursor-pointer items-center gap-2 text-sm text-foreground"
+                    >
+                      <input
+                        type="checkbox"
+                        value={cat.id}
+                        checked={checked}
+                        onChange={() => {
+                          const next = checked
+                            ? field.state.value.filter((id) => id !== cat.id)
+                            : [...field.state.value, cat.id];
+                          field.handleChange(next);
+                        }}
+                        onBlur={field.handleBlur}
+                        className="h-4 w-4 rounded border-input accent-primary"
+                      />
+                      {cat.name}
+                    </label>
+                  );
+                })}
+              </div>
+            </FormField>
+          )}
+        </form.Field>
+      )}
 
       <form.Subscribe selector={(s) => s.isSubmitting}>
         {(isSubmitting) => (

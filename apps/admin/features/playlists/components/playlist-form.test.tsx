@@ -29,7 +29,7 @@ beforeEach(() => {
 
 describe("PlaylistForm — create mode", () => {
   it("renders empty form with create button", () => {
-    render(<PlaylistForm mode="create" />);
+    render(<PlaylistForm mode="create" availableCategories={[]} />);
     expect(screen.getByLabelText(/title/i)).toHaveValue("");
     expect(
       screen.getByRole("button", { name: /create playlist/i }),
@@ -38,7 +38,7 @@ describe("PlaylistForm — create mode", () => {
 
   it("shows validation error when title is cleared after typing", async () => {
     const user = userEvent.setup();
-    render(<PlaylistForm mode="create" />);
+    render(<PlaylistForm mode="create" availableCategories={[]} />);
     const titleInput = screen.getByLabelText(/title/i);
     await user.type(titleInput, "a");
     await user.clear(titleInput);
@@ -47,7 +47,7 @@ describe("PlaylistForm — create mode", () => {
 
   it("calls createPlaylistAction with form values on valid submit", async () => {
     const user = userEvent.setup();
-    render(<PlaylistForm mode="create" />);
+    render(<PlaylistForm mode="create" availableCategories={[]} />);
     await user.type(screen.getByLabelText(/title/i), "My Playlist");
     await user.click(screen.getByRole("button", { name: /create playlist/i }));
     await waitFor(() =>
@@ -60,7 +60,7 @@ describe("PlaylistForm — create mode", () => {
   it("shows server error when action returns error", async () => {
     mockCreate.mockResolvedValueOnce({ error: "Duplicate slug." });
     const user = userEvent.setup();
-    render(<PlaylistForm mode="create" />);
+    render(<PlaylistForm mode="create" availableCategories={[]} />);
     await user.type(screen.getByLabelText(/title/i), "My Playlist");
     await user.click(screen.getByRole("button", { name: /create playlist/i }));
     expect(await screen.findByText("Duplicate slug.")).toBeInTheDocument();
@@ -71,10 +71,12 @@ describe("PlaylistForm — edit mode", () => {
   const editProps = {
     mode: "edit" as const,
     playlistId: "aaaaaaaaaaaaaaaaaaaaaaaa",
+    availableCategories: [],
     defaultValues: {
       title: "Existing Title",
       description: "Existing desc",
       status: "published" as const,
+      categoryIds: [] as string[],
     },
   };
 

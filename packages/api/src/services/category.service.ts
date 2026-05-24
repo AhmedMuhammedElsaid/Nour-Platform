@@ -5,6 +5,7 @@ import {
   create as repoCreate,
   deleteById as repoDeleteById,
   findAll,
+  findById as repoFindById,
   findBySlug,
   updateById as repoUpdateById,
 } from "../repositories/category.repo";
@@ -74,6 +75,12 @@ export async function listCategories(): Promise<Category[]> {
 export async function getCategoryBySlug(slug: string): Promise<Category> {
   const doc = await findBySlug(slug);
   if (!doc) throw AppError.NotFound("Category");
+  return toDto(doc);
+}
+
+export async function getCategoryById(id: string): Promise<Category | null> {
+  const doc = await repoFindById(id);
+  if (!doc) return null;
   return toDto(doc);
 }
 
