@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 
 import type { Playlist, PlaylistStatus } from '@repo/api/schemas/playlist'
+import type { Locale } from '@repo/api/schemas/locale'
 
 // Date fields are serialized to ISO strings at the RSC→client boundary.
 // Next.js cannot pass Date objects through props to client components.
@@ -20,7 +21,13 @@ export type SerializedPlaylist = Omit<Playlist, 'createdAt' | 'updatedAt'> & {
   updatedAt: string
 }
 
-const columnHelper = createColumnHelper<SerializedPlaylist>()
+// Row enriched server-side with the locale this program is still missing, so
+// we can offer an "Add translation" link (undefined when both locales exist).
+export type PlaylistRow = SerializedPlaylist & {
+  addTranslationLocale?: Locale
+}
+
+const columnHelper = createColumnHelper<PlaylistRow>()
 
 const columns = [
   columnHelper.accessor('title', {
@@ -33,6 +40,28 @@ const columns = [
         {info.getValue()}
       </Link>
     ),
+  }),
+  columnHelper.accessor('locale', {
+    header: 'Language',
+    enableSorting: false,
+    cell: (info) => {
+      const { contentId, addTranslationLocale } = info.row.original
+      return (
+        <div className="flex items-center gap-2">
+          <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground uppercase">
+            {info.getValue()}
+          </span>
+          {addTranslationLocale && (
+            <Link
+              href={`/playlists/new?contentId=${contentId}&locale=${addTranslationLocale}`}
+              className="text-xs text-primary hover:underline"
+            >
+              + Add {addTranslationLocale.toUpperCase()}
+            </Link>
+          )}
+        </div>
+      )
+    },
   }),
   columnHelper.accessor('status', {
     header: 'Status',
@@ -51,12 +80,6 @@ const columns = [
         </span>
       )
     },
-  }),
-  columnHelper.accessor('trackIds', {
-    id: 'trackCount',
-    header: 'Tracks',
-    enableSorting: false,
-    cell: (info) => info.getValue().length,
   }),
   columnHelper.accessor('createdAt', {
     header: 'Created',
@@ -82,7 +105,7 @@ const columns = [
 ]
 
 interface Props {
-  playlists: SerializedPlaylist[]
+  playlists: PlaylistRow[]
 }
 
 export function PlaylistsTable({ playlists }: Props) {

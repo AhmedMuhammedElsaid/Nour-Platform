@@ -1,6 +1,13 @@
 import { z } from "zod";
 
 export const playlistFormSchema = z.object({
+  // The locale this document represents. Immutable after create; carried
+  // through so the "create translation" flow can target a specific language.
+  locale: z.enum(["ar", "en"]),
+  // Shared identity across locale variants. Empty string on a first-locale
+  // create (the service mints one); set when adding a translation. Converted
+  // to undefined at the action boundary.
+  contentId: z.string(),
   title: z.string().min(1, "Title is required.").max(200, "Title is too long."),
   // Always a string in the form; empty string is converted to undefined at
   // the action boundary before passing to the service.

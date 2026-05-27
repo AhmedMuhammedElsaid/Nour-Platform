@@ -44,25 +44,25 @@ const tracks: SerializedTrack[] = [
 
 describe('TrackList', () => {
   it('renders all track titles', () => {
-    render(<TrackList playlistId="pl-1" initialTracks={tracks} />)
+    render(<TrackList playlistContentId="pl-1" locale="ar" initialTracks={tracks} />)
     expect(screen.getByText('Opening Recitation')).toBeInTheDocument()
     expect(screen.getByText('First Verse')).toBeInTheDocument()
     expect(screen.getByText('Second Verse')).toBeInTheDocument()
   })
 
   it('shows empty state when no tracks', () => {
-    render(<TrackList playlistId="pl-1" initialTracks={[]} />)
+    render(<TrackList playlistContentId="pl-1" locale="ar" initialTracks={[]} />)
     expect(screen.getByText(/no tracks yet/i)).toBeInTheDocument()
   })
 
   it('displays formatted duration for tracks that have it', () => {
-    render(<TrackList playlistId="pl-1" initialTracks={tracks} />)
+    render(<TrackList playlistContentId="pl-1" locale="ar" initialTracks={tracks} />)
     expect(screen.getByText('2:05')).toBeInTheDocument()
     expect(screen.getByText('1:13')).toBeInTheDocument()
   })
 
   it('omits duration for tracks without durationSecs', () => {
-    render(<TrackList playlistId="pl-1" initialTracks={tracks} />)
+    render(<TrackList playlistContentId="pl-1" locale="ar" initialTracks={tracks} />)
     const items = screen.getAllByRole('listitem')
     // 'First Verse' has no duration — its row should not show a time string
     const firstVerseItem = items.find((el) =>

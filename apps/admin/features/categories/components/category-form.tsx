@@ -34,7 +34,7 @@ function autoSlug(name: string): string {
   return name
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/[^\p{L}\p{N}\s-]/gu, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
@@ -63,6 +63,8 @@ export function CategoryForm({
 
   const form = useForm({
     defaultValues: {
+      locale: initialValues?.locale ?? ("ar" as const),
+      contentId: initialValues?.contentId ?? "",
       name: initialValues?.name ?? "",
       slug: initialValues?.slug ?? "",
       description: initialValues?.description ?? "",
@@ -104,6 +106,37 @@ export function CategoryForm({
           {serverError}
         </p>
       )}
+
+      <form.Field name="locale">
+        {(field) => (
+          <FormField label="Language" htmlFor="category-locale">
+            {mode === "edit" ? (
+              <p
+                id="category-locale"
+                className="text-sm text-muted-foreground"
+              >
+                {field.state.value === "ar" ? "Arabic (ar)" : "English (en)"}
+                <span className="ms-2 text-xs">— language is immutable</span>
+              </p>
+            ) : (
+              <select
+                id="category-locale"
+                value={field.state.value}
+                onChange={(e) =>
+                  field.handleChange(
+                    e.target.value as CategoryFormValues["locale"],
+                  )
+                }
+                onBlur={field.handleBlur}
+                className="flex h-10 w-full min-w-0 rounded-md border border-input bg-surface px-3 py-2 text-sm text-foreground shadow-1 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+              >
+                <option value="ar">Arabic (ar)</option>
+                <option value="en">English (en)</option>
+              </select>
+            )}
+          </FormField>
+        )}
+      </form.Field>
 
       <form.Field name="name">
         {(field) => (

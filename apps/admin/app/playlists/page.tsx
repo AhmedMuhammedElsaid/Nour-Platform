@@ -2,8 +2,9 @@ import Link from 'next/link'
 
 import { requireSession } from '@repo/api/auth'
 import { getAllPlaylists } from '@repo/api/services/playlist'
+import { LOCALES } from '@repo/api/schemas/locale'
 
-import type { SerializedPlaylist } from '../../features/playlists/components/playlists-table'
+import type { PlaylistRow } from '../../features/playlists/components/playlists-table'
 import { PlaylistsTable } from '../../features/playlists/components/playlists-table'
 
 // Opt out of static prerendering. proxy.ts sets a per-request CSP nonce that
@@ -15,12 +16,22 @@ export default async function PlaylistsPage() {
   const session = await requireSession(['admin'])
   const playlists = await getAllPlaylists(session)
 
+  // Track which locales already exist per program so the table can offer an
+  // "Add translation" link only for a genuinely missing locale.
+  const present = new Set(playlists.map((p) => `${p.contentId}:${p.locale}`))
+
   // Date objects cannot cross the RSC→client boundary; serialize to ISO strings.
-  const rows: SerializedPlaylist[] = playlists.map((p) => ({
-    ...p,
-    createdAt: p.createdAt.toISOString(),
-    updatedAt: p.updatedAt.toISOString(),
-  }))
+  const rows: PlaylistRow[] = playlists.map((p) => {
+    const missing = LOCALES.find(
+      (l) => l !== p.locale && !present.has(`${p.contentId}:${l}`),
+    )
+    return {
+      ...p,
+      createdAt: p.createdAt.toISOString(),
+      updatedAt: p.updatedAt.toISOString(),
+      ...(missing ? { addTranslationLocale: missing } : {}),
+    }
+  })
 
   return (
     <main className="container mx-auto px-4 py-8">

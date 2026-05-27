@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { listCategories } from "@repo/api/services/category";
+import { DEFAULT_LOCALE, isLocale, type Locale } from "@repo/api/schemas/locale";
 
 import { PlaylistForm } from "../../../features/playlists/components/playlist-form";
 
@@ -9,10 +10,20 @@ import { PlaylistForm } from "../../../features/playlists/components/playlist-fo
 // Atlas connection — both reasons require dynamic rendering.
 export const dynamic = "force-dynamic";
 
-export default async function NewPlaylistPage() {
-  const categories = await listCategories();
+interface Props {
+  // `?contentId=&locale=` seed the "create translation" flow: a new document
+  // linked to an existing program's contentId in the requested locale.
+  searchParams: Promise<{ contentId?: string; locale?: string }>;
+}
+
+export default async function NewPlaylistPage({ searchParams }: Props) {
+  const { contentId, locale: localeParam } = await searchParams;
+  const locale: Locale =
+    localeParam && isLocale(localeParam) ? localeParam : DEFAULT_LOCALE;
+
+  const categories = await listCategories(locale);
   const availableCategories = categories.map((c) => ({
-    id: c.id,
+    id: c.contentId,
     name: c.name,
   }));
 
@@ -25,9 +36,15 @@ export default async function NewPlaylistPage() {
         >
           ← Playlists
         </Link>
-        <h1 className="text-2xl font-semibold">New playlist</h1>
+        <h1 className="text-2xl font-semibold">
+          {contentId ? "New playlist translation" : "New playlist"}
+        </h1>
       </div>
-      <PlaylistForm mode="create" availableCategories={availableCategories} />
+      <PlaylistForm
+        mode="create"
+        availableCategories={availableCategories}
+        defaultValues={{ locale, ...(contentId ? { contentId } : {}) }}
+      />
     </main>
   );
 }

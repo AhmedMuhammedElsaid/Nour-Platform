@@ -26,10 +26,13 @@ export async function createPlaylistAction(
 
   try {
     const playlist = await createPlaylist({
+      locale: parsed.data.locale,
+      // Empty string means "first locale of a new program" — let the service
+      // mint the contentId. A non-empty value links a translation.
+      ...(parsed.data.contentId ? { contentId: parsed.data.contentId } : {}),
       title: parsed.data.title,
       description: parsed.data.description || undefined,
       status: parsed.data.status,
-      trackIds: [],
       categoryIds: parsed.data.categoryIds,
     });
     redirect(`/playlists/${playlist.id}/edit`);

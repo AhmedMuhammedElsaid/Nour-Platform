@@ -44,6 +44,8 @@ export function PlaylistForm({
 
   const form = useForm({
     defaultValues: {
+      locale: defaultValues?.locale ?? ("ar" as const),
+      contentId: defaultValues?.contentId ?? "",
       title: defaultValues?.title ?? "",
       description: defaultValues?.description ?? "",
       status: defaultValues?.status ?? ("draft" as const),
@@ -85,6 +87,37 @@ export function PlaylistForm({
           {serverError}
         </p>
       )}
+
+      <form.Field name="locale">
+        {(field) => (
+          <FormField label="Language" htmlFor="playlist-locale">
+            {mode === "edit" ? (
+              <p
+                id="playlist-locale"
+                className="text-sm text-muted-foreground"
+              >
+                {field.state.value === "ar" ? "Arabic (ar)" : "English (en)"}
+                <span className="ms-2 text-xs">— language is immutable</span>
+              </p>
+            ) : (
+              <select
+                id="playlist-locale"
+                value={field.state.value}
+                onChange={(e) =>
+                  field.handleChange(
+                    e.target.value as PlaylistFormValues["locale"],
+                  )
+                }
+                onBlur={field.handleBlur}
+                className="flex h-10 w-full min-w-0 rounded-md border border-input bg-surface px-3 py-2 text-sm text-foreground shadow-1 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+              >
+                <option value="ar">Arabic (ar)</option>
+                <option value="en">English (en)</option>
+              </select>
+            )}
+          </FormField>
+        )}
+      </form.Field>
 
       <form.Field name="title">
         {(field) => (

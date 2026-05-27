@@ -29,11 +29,12 @@ function statusLabel(item: UploadItem): string {
 }
 
 interface Props {
-  playlistId: string;
+  playlistContentId: string;
+  locale: "ar" | "en";
 }
 
-export function TrackUploader({ playlistId }: Props) {
-  const { items, addFiles, retry } = useTrackUpload(playlistId);
+export function TrackUploader({ playlistContentId, locale }: Props) {
+  const { items, addFiles, retry } = useTrackUpload(playlistContentId, locale);
   const inputRef = useRef<HTMLInputElement>(null);
   const isDraggingRef = useRef(false);
 

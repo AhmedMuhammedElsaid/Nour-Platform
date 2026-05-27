@@ -29,7 +29,7 @@ vi.mock("../actions/delete-category.action", () => ({
 }));
 
 import { CategoriesTable } from "./categories-table";
-import type { SerializedCategory } from "./categories-table";
+import type { CategoryRow } from "./categories-table";
 import { deleteCategoryAction } from "../actions/delete-category.action";
 
 const mockDelete = deleteCategoryAction as ReturnType<typeof vi.fn>;
@@ -43,9 +43,11 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const rows: SerializedCategory[] = [
+const rows: CategoryRow[] = [
   {
     id: "aaaaaaaaaaaaaaaaaaaaaaaa",
+    contentId: "111111111111111111111111",
+    locale: "ar",
     name: "Quran Studies",
     slug: "quran-studies",
     createdAt: "2024-01-15T00:00:00.000Z",
@@ -53,6 +55,8 @@ const rows: SerializedCategory[] = [
   },
   {
     id: "bbbbbbbbbbbbbbbbbbbbbbbb",
+    contentId: "222222222222222222222222",
+    locale: "en",
     name: "Islamic Finance",
     slug: "islamic-finance",
     description: "Finance topics",

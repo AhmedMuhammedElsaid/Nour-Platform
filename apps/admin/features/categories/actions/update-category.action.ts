@@ -3,18 +3,16 @@
 import { AppError } from "@repo/api/errors";
 import { updateCategory } from "@repo/api/services/category";
 
-import { categoryFormSchema } from "../schemas/category-form.schema";
+import {
+  categoryFormSchema,
+  type CategoryFormValues,
+} from "../schemas/category-form.schema";
 
 export type UpdateCategoryResult = { error: string } | undefined;
 
 export async function updateCategoryAction(
   id: string,
-  input: {
-    name: string;
-    slug: string;
-    description: string;
-    coverMediaId: string;
-  },
+  input: CategoryFormValues,
 ): Promise<UpdateCategoryResult> {
   const parsed = categoryFormSchema.safeParse(input);
   if (!parsed.success) {

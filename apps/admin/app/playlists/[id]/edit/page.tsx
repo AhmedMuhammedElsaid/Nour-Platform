@@ -27,18 +27,21 @@ interface Props {
 export default async function EditPlaylistPage({ params }: Props) {
   const { id } = await params;
   const session = await requireSession(["admin"]);
-  const [playlist, tracks, categories] = await Promise.all([
-    getPlaylistById(id, session),
-    getTracksWithUrls(id),
-    listCategories(),
+  const playlist = await getPlaylistById(id, session);
+  if (!playlist) notFound();
+
+  // Tracks + categories are locale-scoped — resolve them in the playlist's locale.
+  const [tracks, categories] = await Promise.all([
+    getTracksWithUrls(playlist.locale, playlist.contentId),
+    listCategories(playlist.locale),
   ]);
 
+  // categoryIds reference category contentIds, so the multi-select value is the
+  // category's contentId (not its per-locale _id).
   const availableCategories = categories.map((c) => ({
-    id: c.id,
+    id: c.contentId,
     name: c.name,
   }));
-
-  if (!playlist) notFound();
 
   const serializedTracks: SerializedTrack[] = tracks.map((t) => ({
     id: t.id,
@@ -75,6 +78,8 @@ export default async function EditPlaylistPage({ params }: Props) {
         playlistId={playlist.id}
         availableCategories={availableCategories}
         defaultValues={{
+          locale: playlist.locale,
+          contentId: playlist.contentId,
           title: playlist.title,
           description: playlist.description ?? "",
           status: playlist.status,
@@ -87,12 +92,16 @@ export default async function EditPlaylistPage({ params }: Props) {
       <section>
         <h2 className="mb-4 text-lg font-semibold">Tracks</h2>
         <TrackList
-          playlistId={playlist.id}
+          playlistContentId={playlist.contentId}
+          locale={playlist.locale}
           initialTracks={serializedTracks}
         />
         <TrackDurationBackfill tracks={backfillTracks} />
         <div className="mt-6">
-          <TrackUploader playlistId={playlist.id} />
+          <TrackUploader
+            playlistContentId={playlist.contentId}
+            locale={playlist.locale}
+          />
         </div>
       </section>
     </main>

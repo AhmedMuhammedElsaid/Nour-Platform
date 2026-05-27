@@ -26,6 +26,10 @@ export async function createCategoryAction(
 
   try {
     await createCategory({
+      locale: parsed.data.locale,
+      // Empty string means "first locale of a new program" — let the service
+      // mint the contentId. A non-empty value links a translation.
+      ...(parsed.data.contentId ? { contentId: parsed.data.contentId } : {}),
       name: parsed.data.name,
       // Provide the slug only when the user has supplied one; otherwise the
       // service auto-derives it from the name.

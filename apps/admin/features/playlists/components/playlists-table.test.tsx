@@ -21,29 +21,28 @@ vi.mock('next/link', () => ({
 }))
 
 import { PlaylistsTable } from './playlists-table'
-import type { SerializedPlaylist } from './playlists-table'
+import type { PlaylistRow } from './playlists-table'
 
-const rows: SerializedPlaylist[] = [
+const rows: PlaylistRow[] = [
   {
     id: 'aaaaaaaaaaaaaaaaaaaaaaaa',
+    contentId: '111111111111111111111111',
+    locale: 'ar',
     title: 'Quran Recitations',
     slug: 'quran-recitations',
     status: 'published',
-    trackIds: [
-      'bbbbbbbbbbbbbbbbbbbbbbbb',
-      'cccccccccccccccccccccccc',
-      'dddddddddddddddddddddddd',
-    ],
     categoryIds: [],
     createdAt: '2024-01-15T00:00:00.000Z',
     updatedAt: '2024-01-15T00:00:00.000Z',
+    addTranslationLocale: 'en',
   },
   {
     id: 'eeeeeeeeeeeeeeeeeeeeeeee',
+    contentId: '222222222222222222222222',
+    locale: 'en',
     title: 'Islamic Lectures',
     slug: 'islamic-lectures',
     status: 'draft',
-    trackIds: ['ffffffffffffffffffffffff'],
     categoryIds: [],
     createdAt: '2024-02-20T00:00:00.000Z',
     updatedAt: '2024-02-20T00:00:00.000Z',
@@ -93,9 +92,18 @@ describe('PlaylistsTable', () => {
     )
   })
 
-  it('shows track count per row', () => {
+  it('shows a language badge per row', () => {
     render(<PlaylistsTable playlists={rows} />)
-    expect(screen.getByText('3')).toBeInTheDocument()
-    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(screen.getByText('ar')).toBeInTheDocument()
+    expect(screen.getByText('en')).toBeInTheDocument()
+  })
+
+  it('offers an add-translation link for a missing locale', () => {
+    render(<PlaylistsTable playlists={rows} />)
+    const link = screen.getByRole('link', { name: /add en/i })
+    expect(link).toHaveAttribute(
+      'href',
+      '/playlists/new?contentId=111111111111111111111111&locale=en',
+    )
   })
 })

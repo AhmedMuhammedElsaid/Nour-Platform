@@ -37,6 +37,8 @@ export default async function EditCategoryPage({ params }: Props) {
         mode="edit"
         categoryId={category.id}
         initialValues={{
+          locale: category.locale,
+          contentId: category.contentId,
           name: category.name,
           slug: category.slug,
           description: category.description ?? "",

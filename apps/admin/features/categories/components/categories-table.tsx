@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import type { Category } from "@repo/api/schemas/category";
+import type { Locale } from "@repo/api/schemas/locale";
 
 import { deleteCategoryAction } from "../actions/delete-category.action";
 
@@ -21,7 +22,13 @@ export type SerializedCategory = Omit<Category, "createdAt" | "updatedAt"> & {
   updatedAt: string;
 };
 
-const columnHelper = createColumnHelper<SerializedCategory>();
+// Row enriched server-side with the locale this category is still missing, so
+// we can offer an "Add translation" link (undefined when both locales exist).
+export type CategoryRow = SerializedCategory & {
+  addTranslationLocale?: Locale;
+};
+
+const columnHelper = createColumnHelper<CategoryRow>();
 
 function truncate(text: string | undefined, max: number): string {
   if (!text) return "—";
@@ -83,6 +90,27 @@ const columns = [
       </Link>
     ),
   }),
+  columnHelper.accessor("locale", {
+    header: "Language",
+    cell: (info) => {
+      const { contentId, addTranslationLocale } = info.row.original;
+      return (
+        <div className="flex items-center gap-2">
+          <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground uppercase">
+            {info.getValue()}
+          </span>
+          {addTranslationLocale && (
+            <Link
+              href={`/categories/new?contentId=${contentId}&locale=${addTranslationLocale}`}
+              className="text-xs text-primary hover:underline"
+            >
+              + Add {addTranslationLocale.toUpperCase()}
+            </Link>
+          )}
+        </div>
+      );
+    },
+  }),
   columnHelper.accessor("slug", {
     header: "Slug",
     cell: (info) => (
@@ -116,7 +144,7 @@ const columns = [
 ];
 
 interface Props {
-  categories: SerializedCategory[];
+  categories: CategoryRow[];
 }
 
 export function CategoriesTable({ categories }: Props) {
