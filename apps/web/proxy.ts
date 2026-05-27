@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
+import createMiddleware from "next-intl/middleware";
 
 import { buildWebCsp } from "@/lib/csp";
+import { routing } from "@/i18n/routing";
 
 const r2Base = process.env.R2_PUBLIC_BASE ?? "";
 let r2Hostname = "";
@@ -12,35 +14,43 @@ if (r2Base) {
   }
 }
 
+const handleI18nRouting = createMiddleware(routing);
+
 /*
- * Edge-runtime proxy for the public web app. Generates a per-request
- * nonce and attaches it to a dynamic CSP response header so we can drop
- * 'unsafe-inline' from script-src. A proxy forces dynamic rendering on
- * all matched routes — accepted trade-off for the security win; revisit
- * ISR/static-cache strategy in Phase 2 if traffic grows.
+ * Edge-runtime proxy for the public web app. Two responsibilities, composed:
+ *
+ *  1. Locale routing (next-intl): redirects `/` to the Accept-Language match
+ *     (defaulting to Arabic) and rewrites `/ar|/en/...` to the [locale] tree.
+ *  2. CSP nonce: a per-request nonce attached to a dynamic CSP header so we can
+ *     drop 'unsafe-inline' from script-src (see lib/csp.ts).
+ *
+ * Order matters: we mutate the incoming request headers with `x-nonce` BEFORE
+ * next-intl builds its rewrite response, so the nonce is forwarded to the app;
+ * then we set the CSP header on whatever response next-intl returns (including
+ * the root redirect). Replacing this proxy with the bare next-intl middleware
+ * would silently drop the nonce and break CSP on every page.
  */
 export function proxy(request: NextRequest): NextResponse {
   // Web Crypto is available in the Edge runtime; no Node imports needed.
   const nonce = btoa(crypto.randomUUID());
   const csp = buildWebCsp(nonce, r2Hostname);
 
-  const forwardedHeaders = new Headers(request.headers);
-  forwardedHeaders.set("x-nonce", nonce);
+  // Forwarded to the rendered request so server components can read the nonce.
+  // next-intl rewrites reuse the request headers, so this propagates.
+  request.headers.set("x-nonce", nonce);
 
-  const response = NextResponse.next({
-    request: { headers: forwardedHeaders },
-  });
+  const response = handleI18nRouting(request);
   response.headers.set("Content-Security-Policy", csp);
   return response;
 }
 
 export const config = {
   /*
-   * Match every route EXCEPT static assets:
+   * Match every route EXCEPT API routes and static assets:
+   *   /api/*           — JSON endpoints (health, etc.); must NOT be locale-redirected
    *   /_next/static/*  — JS/CSS bundles (immutable, no inline scripts)
    *   /_next/image/*   — optimized images
    *   /favicon.ico     — browser default
-   * Excluding these keeps the proxy cost off the hot static-asset path.
    */
-  matcher: ["/((?!_next/static|_next/image|favicon\\.ico).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon\\.ico).*)"],
 };

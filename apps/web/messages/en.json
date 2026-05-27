@@ -1,0 +1,28 @@
+{
+  "metadata": {
+    "homeTitle": "Nour — Islamic Audio",
+    "homeDescription": "Browse playlists",
+    "notFound": "Not Found — Nour"
+  },
+  "nav": {
+    "home": "Nour — home",
+    "skipToContent": "Skip to main content"
+  },
+  "footer": {
+    "copyright": "© 2025 Nour"
+  },
+  "home": {
+    "heading": "Playlists",
+    "empty": "No playlists in this category yet."
+  },
+  "categories": {
+    "filterLabel": "Filter playlists by category",
+    "all": "All"
+  },
+  "playlist": {
+    "tracksHeading": "Tracks",
+    "trackCount": "{count, plural, =1 {# track} other {# tracks}}",
+    "listenOn": "Listen on Nour Islamic Audio",
+    "published": "Published"
+  }
+}

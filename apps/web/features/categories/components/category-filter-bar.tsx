@@ -1,6 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+
+import { useRouter } from "@/i18n/navigation";
 
 interface CategoryPill {
   id: string;
@@ -26,10 +28,11 @@ export function CategoryFilterBar({
   activeSlug,
 }: CategoryFilterBarProps) {
   const router = useRouter();
+  const t = useTranslations("categories");
 
   return (
     <nav
-      aria-label="Filter playlists by category"
+      aria-label={t("filterLabel")}
       className="flex flex-wrap gap-2 mt-6"
     >
       {/* "All" pill — clears the category filter */}
@@ -43,7 +46,7 @@ export function CategoryFilterBar({
             : "inline-flex items-center rounded-full px-4 py-1.5 text-sm font-medium border border-input hover:bg-accent transition-colors"
         }
       >
-        All
+        {t("all")}
       </button>
 
       {categories.map((cat) => {

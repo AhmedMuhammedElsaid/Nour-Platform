@@ -1,0 +1,28 @@
+{
+  "metadata": {
+    "homeTitle": "نور — صوتيات إسلامية",
+    "homeDescription": "تصفّح قوائم التشغيل",
+    "notFound": "غير موجود — نور"
+  },
+  "nav": {
+    "home": "نور — الرئيسية",
+    "skipToContent": "تخطّ إلى المحتوى الرئيسي"
+  },
+  "footer": {
+    "copyright": "© 2025 نور"
+  },
+  "home": {
+    "heading": "قوائم التشغيل",
+    "empty": "لا توجد قوائم تشغيل في هذا التصنيف بعد."
+  },
+  "categories": {
+    "filterLabel": "تصفية قوائم التشغيل حسب التصنيف",
+    "all": "الكل"
+  },
+  "playlist": {
+    "tracksHeading": "المقاطع",
+    "trackCount": "{count, plural, other {# مقطع}}",
+    "listenOn": "استمع على نور",
+    "published": "منشور"
+  }
+}

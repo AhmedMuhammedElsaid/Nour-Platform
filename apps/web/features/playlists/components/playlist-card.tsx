@@ -1,13 +1,14 @@
-import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
+import { Link } from "@/i18n/navigation";
 import type { SerializedPlaylist } from "@/features/playlists/types";
 
 interface PlaylistCardProps {
   playlist: SerializedPlaylist;
 }
 
-export function PlaylistCard({ playlist }: PlaylistCardProps) {
-  const trackCount = playlist.trackIds.length;
+export async function PlaylistCard({ playlist }: PlaylistCardProps) {
+  const t = await getTranslations("playlist");
 
   return (
     <Link
@@ -24,7 +25,7 @@ export function PlaylistCard({ playlist }: PlaylistCardProps) {
               aria-hidden="true"
               className="size-1.5 rounded-full bg-success"
             />
-            Published
+            {t("published")}
           </span>
         )}
       </div>
@@ -34,10 +35,6 @@ export function PlaylistCard({ playlist }: PlaylistCardProps) {
           {playlist.description}
         </p>
       )}
-
-      <p className="text-xs text-text-2 mt-auto">
-        {trackCount} {trackCount === 1 ? "track" : "tracks"}
-      </p>
     </Link>
   );
 }

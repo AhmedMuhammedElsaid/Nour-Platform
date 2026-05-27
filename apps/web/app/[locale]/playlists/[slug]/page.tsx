@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { getPlaylistBySlug } from "@repo/api/services/playlist";
 
@@ -9,6 +10,7 @@ import { getPlaylistBySlug } from "@repo/api/services/playlist";
 export const dynamic = "force-dynamic";
 import { getTracksWithUrls } from "@repo/api/services/track";
 import { getMediaUrlById } from "@repo/api/services/media";
+import type { Locale } from "@repo/api/schemas/locale";
 import type { Playlist } from "@repo/api/schemas/playlist";
 import type { PlayableTrack } from "@repo/api/services/track";
 import { TrackListPlayer } from "@/features/playlists/components/track-list-player";
@@ -48,18 +50,20 @@ function serializePlayableTrack(t: PlayableTrack): SerializedPlayableTrack {
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ locale: Locale; slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
-  const playlist = await getPlaylistBySlug(slug);
+  const { locale, slug } = await params;
+  const t = await getTranslations({ locale, namespace: "metadata" });
+  const playlist = await getPlaylistBySlug(locale, slug);
 
   if (!playlist || playlist.status !== "published") {
-    return { title: "Not Found — Nour" };
+    return { title: t("notFound") };
   }
 
+  const tp = await getTranslations({ locale, namespace: "playlist" });
   return {
     title: `${playlist.title} — Nour`,
-    description: playlist.description ?? "Listen on Nour Islamic Audio",
+    description: playlist.description ?? tp("listenOn"),
   };
 }
 
@@ -70,17 +74,19 @@ export async function generateMetadata({
 export default async function PlaylistDetailPage({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ locale: Locale; slug: string }>;
 }) {
-  const { slug } = await params;
+  const { locale, slug } = await params;
+  setRequestLocale(locale);
+  const t = await getTranslations("playlist");
 
-  const playlist = await getPlaylistBySlug(slug);
+  const playlist = await getPlaylistBySlug(locale, slug);
 
   if (!playlist || playlist.status !== "published") {
     notFound();
   }
 
-  const tracks = await getTracksWithUrls(playlist.id);
+  const tracks = await getTracksWithUrls(locale, playlist.contentId);
   const coverUrl = playlist.coverMediaId
     ? await getMediaUrlById(playlist.coverMediaId)
     : null;
@@ -90,7 +96,7 @@ export default async function PlaylistDetailPage({
 
   const publishedDate = new Date(
     serializedPlaylist.createdAt,
-  ).toLocaleDateString("en-US", {
+  ).toLocaleDateString(locale === "ar" ? "ar" : "en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -107,14 +113,13 @@ export default async function PlaylistDetailPage({
           <p className="mt-2 text-text-2">{serializedPlaylist.description}</p>
         )}
         <p className="mt-1 text-sm text-text-2">
-          {trackCount} {trackCount === 1 ? "track" : "tracks"} &middot;{" "}
-          {publishedDate}
+          {t("trackCount", { count: trackCount })} &middot; {publishedDate}
         </p>
       </header>
 
       <section aria-labelledby="tracks-heading">
         <h2 id="tracks-heading" className="text-lg font-semibold mt-10 mb-4">
-          Tracks
+          {t("tracksHeading")}
         </h2>
         <TrackListPlayer
           tracks={serializedTracks}

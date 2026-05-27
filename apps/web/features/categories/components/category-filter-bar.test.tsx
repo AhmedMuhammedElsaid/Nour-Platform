@@ -2,11 +2,17 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-// Mock next/navigation so useRouter works without the Next.js app context.
+// Mock the locale-aware router so useRouter works without the Next.js app
+// context, and next-intl so useTranslations returns the English labels.
 const mockPush = vi.fn();
 
-vi.mock("next/navigation", () => ({
+vi.mock("@/i18n/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
+}));
+
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string) =>
+    ({ all: "All", filterLabel: "Filter playlists by category" })[key] ?? key,
 }));
 
 import { CategoryFilterBar } from "./category-filter-bar";
