@@ -61,6 +61,21 @@ export async function verifyCredentials(
   return toDto(doc);
 }
 
+export async function resetAdminPassword({
+  email,
+  hashedPassword,
+}: {
+  email: string;
+  hashedPassword: string;
+}): Promise<boolean> {
+  await getDb();
+  const result = await UserModel.updateOne(
+    { email },
+    { $set: { passwordHash: hashedPassword } },
+  );
+  return result.matchedCount > 0;
+}
+
 export async function createAdminUser({
   email,
   hashedPassword,
