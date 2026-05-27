@@ -28,58 +28,31 @@ beforeEach(() => {
 });
 
 describe("CategoryForm — create mode", () => {
-  it("renders empty form with create button", () => {
+  it("renders empty form with AR and EN name fields and create button", () => {
     render(<CategoryForm mode="create" />);
-    expect(screen.getByLabelText(/name/i)).toHaveValue("");
-    expect(screen.getByLabelText(/slug/i)).toHaveValue("");
+    expect(screen.getByLabelText(/name \(arabic\)/i)).toHaveValue("");
+    expect(screen.getByLabelText(/name \(english\)/i)).toHaveValue("");
     expect(
       screen.getByRole("button", { name: /create category/i }),
     ).toBeInTheDocument();
   });
 
-  it("auto-derives slug from name while slug has not been manually edited", async () => {
-    const user = userEvent.setup();
-    render(<CategoryForm mode="create" />);
-    const nameInput = screen.getByLabelText(/name/i);
-    const slugInput = screen.getByLabelText(/slug/i);
-
-    await user.type(nameInput, "My Islamic Topic");
-
-    // The slug field should reflect the auto-derived value.
-    expect(slugInput).toHaveValue("my-islamic-topic");
-  });
-
-  it("stops auto-deriving slug once slug field is edited directly", async () => {
-    const user = userEvent.setup();
-    render(<CategoryForm mode="create" />);
-    const nameInput = screen.getByLabelText(/name/i);
-    const slugInput = screen.getByLabelText(/slug/i);
-
-    // Type a name first so slug gets auto-derived.
-    await user.type(nameInput, "Quran");
-    expect(slugInput).toHaveValue("quran");
-
-    // Now edit the slug directly — this should lock it.
-    await user.clear(slugInput);
-    await user.type(slugInput, "my-custom-slug");
-
-    // Changing the name after manual slug edit must not update slug.
-    await user.type(nameInput, " Studies");
-    expect(slugInput).toHaveValue("my-custom-slug");
-  });
-
-  it("calls createCategoryAction with form values on valid submit", async () => {
+  it("calls createCategoryAction with bilingual form values on valid submit", async () => {
     const user = userEvent.setup();
     render(<CategoryForm mode="create" />);
 
-    await user.type(screen.getByLabelText(/name/i), "Islamic Finance");
+    await user.type(screen.getByLabelText(/name \(arabic\)/i), "تمويل إسلامي");
+    await user.type(screen.getByLabelText(/name \(english\)/i), "Islamic Finance");
     await user.click(
       screen.getByRole("button", { name: /create category/i }),
     );
 
     await waitFor(() =>
       expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ name: "Islamic Finance" }),
+        expect.objectContaining({
+          ar: expect.objectContaining({ name: "تمويل إسلامي" }),
+          en: expect.objectContaining({ name: "Islamic Finance" }),
+        }),
       ),
     );
   });
@@ -89,7 +62,8 @@ describe("CategoryForm — create mode", () => {
     const user = userEvent.setup();
     render(<CategoryForm mode="create" />);
 
-    await user.type(screen.getByLabelText(/name/i), "Fiqh");
+    await user.type(screen.getByLabelText(/name \(arabic\)/i), "فقه");
+    await user.type(screen.getByLabelText(/name \(english\)/i), "Fiqh");
     await user.click(
       screen.getByRole("button", { name: /create category/i }),
     );
@@ -103,18 +77,17 @@ describe("CategoryForm — edit mode", () => {
     mode: "edit" as const,
     categoryId: "aaaaaaaaaaaaaaaaaaaaaaaa",
     initialValues: {
-      name: "Existing Category",
-      slug: "existing-category",
-      description: "An existing description",
+      ar: { name: "فئة موجودة", description: "وصف موجود" },
+      en: { name: "Existing Category", description: "An existing description" },
       coverMediaId: "",
     },
   };
 
   it("renders in edit mode with initialValues pre-filled", () => {
     render(<CategoryForm {...editProps} />);
-    expect(screen.getByLabelText(/name/i)).toHaveValue("Existing Category");
-    expect(screen.getByLabelText(/slug/i)).toHaveValue("existing-category");
-    expect(screen.getByLabelText(/description/i)).toHaveValue(
+    expect(screen.getByLabelText(/name \(arabic\)/i)).toHaveValue("فئة موجودة");
+    expect(screen.getByLabelText(/name \(english\)/i)).toHaveValue("Existing Category");
+    expect(screen.getByLabelText(/description \(english\)/i)).toHaveValue(
       "An existing description",
     );
     expect(
@@ -122,18 +95,20 @@ describe("CategoryForm — edit mode", () => {
     ).toBeInTheDocument();
   });
 
-  it("calls updateCategoryAction with id and form values on submit", async () => {
+  it("calls updateCategoryAction with id and updated form values on submit", async () => {
     const user = userEvent.setup();
     render(<CategoryForm {...editProps} />);
-    const nameInput = screen.getByLabelText(/name/i);
-    await user.clear(nameInput);
-    await user.type(nameInput, "Updated Category");
+    const enName = screen.getByLabelText(/name \(english\)/i);
+    await user.clear(enName);
+    await user.type(enName, "Updated Category");
     await user.click(screen.getByRole("button", { name: /save changes/i }));
 
     await waitFor(() =>
       expect(mockUpdate).toHaveBeenCalledWith(
         "aaaaaaaaaaaaaaaaaaaaaaaa",
-        expect.objectContaining({ name: "Updated Category" }),
+        expect.objectContaining({
+          en: expect.objectContaining({ name: "Updated Category" }),
+        }),
       ),
     );
   });

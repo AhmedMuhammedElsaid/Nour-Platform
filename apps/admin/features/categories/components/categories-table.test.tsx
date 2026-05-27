@@ -46,32 +46,27 @@ afterEach(() => {
 const rows: CategoryRow[] = [
   {
     id: "aaaaaaaaaaaaaaaaaaaaaaaa",
-    contentId: "111111111111111111111111",
-    locale: "ar",
-    name: "Quran Studies",
-    slug: "quran-studies",
+    ar: { name: "دراسات قرآنية", slug: "دراسات-قرآنية" },
+    en: { name: "Quran Studies", slug: "quran-studies" },
     createdAt: "2024-01-15T00:00:00.000Z",
     updatedAt: "2024-01-15T00:00:00.000Z",
   },
   {
     id: "bbbbbbbbbbbbbbbbbbbbbbbb",
-    contentId: "222222222222222222222222",
-    locale: "en",
-    name: "Islamic Finance",
-    slug: "islamic-finance",
-    description: "Finance topics",
+    ar: { name: "تمويل إسلامي", slug: "تمويل-إسلامي" },
+    en: { name: "Islamic Finance", slug: "islamic-finance", description: "Finance topics" },
     createdAt: "2024-02-20T00:00:00.000Z",
     updatedAt: "2024-02-20T00:00:00.000Z",
   },
 ];
 
 describe("CategoriesTable", () => {
-  it("renders rows with correct name and slug columns", () => {
+  it("renders rows with correct AR name and EN name columns", () => {
     render(<CategoriesTable categories={rows} />);
+    expect(screen.getByText("دراسات قرآنية")).toBeInTheDocument();
     expect(screen.getByText("Quran Studies")).toBeInTheDocument();
-    expect(screen.getByText("quran-studies")).toBeInTheDocument();
+    expect(screen.getByText("تمويل إسلامي")).toBeInTheDocument();
     expect(screen.getByText("Islamic Finance")).toBeInTheDocument();
-    expect(screen.getByText("islamic-finance")).toBeInTheDocument();
   });
 
   it("shows empty state when no categories are provided", () => {
@@ -79,9 +74,9 @@ describe("CategoriesTable", () => {
     expect(screen.getByText("No categories found.")).toBeInTheDocument();
   });
 
-  it("name cell links to the edit page", () => {
+  it("AR name cell links to the edit page", () => {
     render(<CategoriesTable categories={rows} />);
-    const link = screen.getByRole("link", { name: "Quran Studies" });
+    const link = screen.getByRole("link", { name: "دراسات قرآنية" });
     expect(link).toHaveAttribute(
       "href",
       "/categories/aaaaaaaaaaaaaaaaaaaaaaaa/edit",

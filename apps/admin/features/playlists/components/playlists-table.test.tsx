@@ -26,22 +26,17 @@ import type { PlaylistRow } from './playlists-table'
 const rows: PlaylistRow[] = [
   {
     id: 'aaaaaaaaaaaaaaaaaaaaaaaa',
-    contentId: '111111111111111111111111',
-    locale: 'ar',
-    title: 'Quran Recitations',
-    slug: 'quran-recitations',
+    ar: { title: 'تلاوات قرآنية', slug: 'تلاوات-قرآنية' },
+    en: { title: 'Quran Recitations', slug: 'quran-recitations' },
     status: 'published',
     categoryIds: [],
     createdAt: '2024-01-15T00:00:00.000Z',
     updatedAt: '2024-01-15T00:00:00.000Z',
-    addTranslationLocale: 'en',
   },
   {
     id: 'eeeeeeeeeeeeeeeeeeeeeeee',
-    contentId: '222222222222222222222222',
-    locale: 'en',
-    title: 'Islamic Lectures',
-    slug: 'islamic-lectures',
+    ar: { title: 'محاضرات إسلامية', slug: 'محاضرات-إسلامية' },
+    en: { title: 'Islamic Lectures', slug: 'islamic-lectures' },
     status: 'draft',
     categoryIds: [],
     createdAt: '2024-02-20T00:00:00.000Z',
@@ -52,8 +47,8 @@ const rows: PlaylistRow[] = [
 describe('PlaylistsTable', () => {
   it('renders all rows when no filter applied', () => {
     render(<PlaylistsTable playlists={rows} />)
-    expect(screen.getByText('Quran Recitations')).toBeInTheDocument()
-    expect(screen.getByText('Islamic Lectures')).toBeInTheDocument()
+    expect(screen.getByText('تلاوات قرآنية')).toBeInTheDocument()
+    expect(screen.getByText('محاضرات إسلامية')).toBeInTheDocument()
   })
 
   it('shows empty state when no playlists provided', () => {
@@ -68,8 +63,8 @@ describe('PlaylistsTable', () => {
       screen.getByLabelText(/filter by status/i),
       'draft',
     )
-    expect(screen.queryByText('Quran Recitations')).not.toBeInTheDocument()
-    expect(screen.getByText('Islamic Lectures')).toBeInTheDocument()
+    expect(screen.queryByText('تلاوات قرآنية')).not.toBeInTheDocument()
+    expect(screen.getByText('محاضرات إسلامية')).toBeInTheDocument()
   })
 
   it('filters to published rows only', async () => {
@@ -79,31 +74,22 @@ describe('PlaylistsTable', () => {
       screen.getByLabelText(/filter by status/i),
       'published',
     )
-    expect(screen.getByText('Quran Recitations')).toBeInTheDocument()
-    expect(screen.queryByText('Islamic Lectures')).not.toBeInTheDocument()
+    expect(screen.getByText('تلاوات قرآنية')).toBeInTheDocument()
+    expect(screen.queryByText('محاضرات إسلامية')).not.toBeInTheDocument()
   })
 
-  it('title cell links to the edit page', () => {
+  it('AR title cell links to the edit page', () => {
     render(<PlaylistsTable playlists={rows} />)
-    const link = screen.getByRole('link', { name: 'Quran Recitations' })
+    const link = screen.getByRole('link', { name: 'تلاوات قرآنية' })
     expect(link).toHaveAttribute(
       'href',
       '/playlists/aaaaaaaaaaaaaaaaaaaaaaaa/edit',
     )
   })
 
-  it('shows a language badge per row', () => {
+  it('displays EN titles in the second column', () => {
     render(<PlaylistsTable playlists={rows} />)
-    expect(screen.getByText('ar')).toBeInTheDocument()
-    expect(screen.getByText('en')).toBeInTheDocument()
-  })
-
-  it('offers an add-translation link for a missing locale', () => {
-    render(<PlaylistsTable playlists={rows} />)
-    const link = screen.getByRole('link', { name: /add en/i })
-    expect(link).toHaveAttribute(
-      'href',
-      '/playlists/new?contentId=111111111111111111111111&locale=en',
-    )
+    expect(screen.getByText('Quran Recitations')).toBeInTheDocument()
+    expect(screen.getByText('Islamic Lectures')).toBeInTheDocument()
   })
 })

@@ -74,7 +74,7 @@ describe('useTrackUpload', () => {
         .mockResolvedValueOnce({ ok: true, json: async () => ({}) }),
     )
 
-    const { result } = renderHook(() => useTrackUpload('pl-1', 'ar'))
+    const { result } = renderHook(() => useTrackUpload('pl-1'))
 
     await act(async () => {
       result.current.addFiles([makeFile()])
@@ -109,7 +109,7 @@ describe('useTrackUpload', () => {
       json: async () => ({ message: 'Storage unavailable' }),
     }))
 
-    const { result } = renderHook(() => useTrackUpload('pl-1', 'ar'))
+    const { result } = renderHook(() => useTrackUpload('pl-1'))
 
     await act(async () => {
       result.current.addFiles([makeFile()])
@@ -129,7 +129,7 @@ describe('useTrackUpload', () => {
       }),
     }))
 
-    const { result } = renderHook(() => useTrackUpload('pl-1', 'ar'))
+    const { result } = renderHook(() => useTrackUpload('pl-1'))
 
     await act(async () => {
       result.current.addFiles([makeFile()])
@@ -163,7 +163,7 @@ describe('useTrackUpload', () => {
         }),
     )
 
-    const { result } = renderHook(() => useTrackUpload('pl-1', 'ar'))
+    const { result } = renderHook(() => useTrackUpload('pl-1'))
 
     await act(async () => {
       result.current.addFiles([makeFile()])
@@ -198,7 +198,7 @@ describe('useTrackUpload', () => {
         .mockResolvedValueOnce({ ok: true, json: async () => ({}) }),
     )
 
-    const { result } = renderHook(() => useTrackUpload('pl-1', 'ar'))
+    const { result } = renderHook(() => useTrackUpload('pl-1'))
 
     await act(async () => {
       result.current.addFiles([makeFile()])

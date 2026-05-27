@@ -28,31 +28,28 @@ beforeEach(() => {
 });
 
 describe("PlaylistForm — create mode", () => {
-  it("renders empty form with create button", () => {
+  it("renders empty form with AR and EN title fields and create button", () => {
     render(<PlaylistForm mode="create" availableCategories={[]} />);
-    expect(screen.getByLabelText(/title/i)).toHaveValue("");
+    expect(screen.getByLabelText(/title \(arabic\)/i)).toHaveValue("");
+    expect(screen.getByLabelText(/title \(english\)/i)).toHaveValue("");
     expect(
       screen.getByRole("button", { name: /create playlist/i }),
     ).toBeInTheDocument();
   });
 
-  it("shows validation error when title is cleared after typing", async () => {
+  it("calls createPlaylistAction with bilingual form values on valid submit", async () => {
     const user = userEvent.setup();
     render(<PlaylistForm mode="create" availableCategories={[]} />);
-    const titleInput = screen.getByLabelText(/title/i);
-    await user.type(titleInput, "a");
-    await user.clear(titleInput);
-    expect(await screen.findByText("Title is required.")).toBeInTheDocument();
-  });
-
-  it("calls createPlaylistAction with form values on valid submit", async () => {
-    const user = userEvent.setup();
-    render(<PlaylistForm mode="create" availableCategories={[]} />);
-    await user.type(screen.getByLabelText(/title/i), "My Playlist");
+    await user.type(screen.getByLabelText(/title \(arabic\)/i), "عنوان عربي");
+    await user.type(screen.getByLabelText(/title \(english\)/i), "English Title");
     await user.click(screen.getByRole("button", { name: /create playlist/i }));
     await waitFor(() =>
       expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "My Playlist", status: "draft" }),
+        expect.objectContaining({
+          ar: expect.objectContaining({ title: "عنوان عربي" }),
+          en: expect.objectContaining({ title: "English Title" }),
+          status: "draft",
+        }),
       ),
     );
   });
@@ -61,7 +58,8 @@ describe("PlaylistForm — create mode", () => {
     mockCreate.mockResolvedValueOnce({ error: "Duplicate slug." });
     const user = userEvent.setup();
     render(<PlaylistForm mode="create" availableCategories={[]} />);
-    await user.type(screen.getByLabelText(/title/i), "My Playlist");
+    await user.type(screen.getByLabelText(/title \(arabic\)/i), "عنوان");
+    await user.type(screen.getByLabelText(/title \(english\)/i), "Title");
     await user.click(screen.getByRole("button", { name: /create playlist/i }));
     expect(await screen.findByText("Duplicate slug.")).toBeInTheDocument();
   });
@@ -73,8 +71,8 @@ describe("PlaylistForm — edit mode", () => {
     playlistId: "aaaaaaaaaaaaaaaaaaaaaaaa",
     availableCategories: [],
     defaultValues: {
-      title: "Existing Title",
-      description: "Existing desc",
+      ar: { title: "عنوان موجود", description: "" },
+      en: { title: "Existing Title", description: "Existing desc" },
       status: "published" as const,
       categoryIds: [] as string[],
     },
@@ -82,23 +80,26 @@ describe("PlaylistForm — edit mode", () => {
 
   it("pre-populates form with defaultValues", () => {
     render(<PlaylistForm {...editProps} />);
-    expect(screen.getByLabelText(/title/i)).toHaveValue("Existing Title");
-    expect(screen.getByLabelText(/description/i)).toHaveValue("Existing desc");
+    expect(screen.getByLabelText(/title \(arabic\)/i)).toHaveValue("عنوان موجود");
+    expect(screen.getByLabelText(/title \(english\)/i)).toHaveValue("Existing Title");
     expect(
       screen.getByRole("button", { name: /save changes/i }),
     ).toBeInTheDocument();
   });
 
-  it("calls updatePlaylistAction with id and form values on submit", async () => {
+  it("calls updatePlaylistAction with id and updated form values on submit", async () => {
     const user = userEvent.setup();
     render(<PlaylistForm {...editProps} />);
-    await user.clear(screen.getByLabelText(/title/i));
-    await user.type(screen.getByLabelText(/title/i), "Updated Title");
+    const enTitle = screen.getByLabelText(/title \(english\)/i);
+    await user.clear(enTitle);
+    await user.type(enTitle, "Updated Title");
     await user.click(screen.getByRole("button", { name: /save changes/i }));
     await waitFor(() =>
       expect(mockUpdate).toHaveBeenCalledWith(
         "aaaaaaaaaaaaaaaaaaaaaaaa",
-        expect.objectContaining({ title: "Updated Title" }),
+        expect.objectContaining({
+          en: expect.objectContaining({ title: "Updated Title" }),
+        }),
       ),
     );
   });

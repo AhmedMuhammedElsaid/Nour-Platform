@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PLAYLISTS_HOME, playlistTag } from "../cache/tags";
 import { AppError } from "../errors";
+import type { PlaylistLean } from "../repositories/playlist.repo";
 
 // Module-level mocks. Hoisted by vitest before service import.
 vi.mock("next/cache", () => ({
@@ -31,16 +32,9 @@ const { requireSession } = await import("../auth/require-session");
 const repo = await import("../repositories/playlist.repo");
 const service = await import("./playlist.service");
 
-function makeLean(overrides: Record<string, unknown> = {}): {
-  _id: { toString: () => string };
-  ar: { title: string; slug: string; description?: string };
-  en: { title: string; slug: string; description?: string };
-  coverMediaId: null;
-  status: string;
-  categoryIds: never[];
-  createdAt: Date;
-  updatedAt: Date;
-} {
+// Adapter boundary: cast lean fixture to PlaylistLean so Vitest mocks satisfy
+// the repo's return type. The fixture supplies all fields the service reads.
+function makeLean(overrides: Record<string, unknown> = {}): PlaylistLean {
   return {
     _id: { toString: () => "playlist123456789012" },
     ar: { title: "عنوان", slug: "عنوان" },
@@ -51,7 +45,7 @@ function makeLean(overrides: Record<string, unknown> = {}): {
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
     ...overrides,
-  } as ReturnType<typeof makeLean>;
+  } as unknown as PlaylistLean;
 }
 
 beforeEach(() => {

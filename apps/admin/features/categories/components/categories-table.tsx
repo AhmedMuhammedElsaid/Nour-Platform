@@ -11,7 +11,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import type { Category } from "@repo/api/schemas/category";
-import type { Locale } from "@repo/api/schemas/locale";
 
 import { deleteCategoryAction } from "../actions/delete-category.action";
 
@@ -22,11 +21,8 @@ export type SerializedCategory = Omit<Category, "createdAt" | "updatedAt"> & {
   updatedAt: string;
 };
 
-// Row enriched server-side with the locale this category is still missing, so
-// we can offer an "Add translation" link (undefined when both locales exist).
-export type CategoryRow = SerializedCategory & {
-  addTranslationLocale?: Locale;
-};
+// Alias kept for backward compatibility with page imports.
+export type CategoryRow = SerializedCategory;
 
 const columnHelper = createColumnHelper<CategoryRow>();
 
@@ -79,8 +75,8 @@ function RowActions({ id }: ActionsProps) {
 }
 
 const columns = [
-  columnHelper.accessor("name", {
-    header: "Name",
+  columnHelper.accessor("ar.name", {
+    header: "Name (AR)",
     cell: (info) => (
       <Link
         href={`/categories/${info.row.original.id}/edit`}
@@ -90,37 +86,30 @@ const columns = [
       </Link>
     ),
   }),
-  columnHelper.accessor("locale", {
-    header: "Language",
-    cell: (info) => {
-      const { contentId, addTranslationLocale } = info.row.original;
-      return (
-        <div className="flex items-center gap-2">
-          <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground uppercase">
-            {info.getValue()}
-          </span>
-          {addTranslationLocale && (
-            <Link
-              href={`/categories/new?contentId=${contentId}&locale=${addTranslationLocale}`}
-              className="text-xs text-primary hover:underline"
-            >
-              + Add {addTranslationLocale.toUpperCase()}
-            </Link>
-          )}
-        </div>
-      );
-    },
+  columnHelper.accessor("en.name", {
+    header: "Name (EN)",
+    cell: (info) => (
+      <span className="text-muted-foreground">{info.getValue()}</span>
+    ),
   }),
-  columnHelper.accessor("slug", {
-    header: "Slug",
+  columnHelper.accessor("ar.slug", {
+    header: "Slug (AR)",
     cell: (info) => (
       <span className="font-mono text-xs text-muted-foreground">
         {info.getValue()}
       </span>
     ),
   }),
-  columnHelper.accessor("description", {
-    header: "Description",
+  columnHelper.accessor("en.slug", {
+    header: "Slug (EN)",
+    cell: (info) => (
+      <span className="font-mono text-xs text-muted-foreground">
+        {info.getValue()}
+      </span>
+    ),
+  }),
+  columnHelper.accessor("ar.description", {
+    header: "Description (AR)",
     cell: (info) => (
       <span className="text-muted-foreground">
         {truncate(info.getValue(), 60)}

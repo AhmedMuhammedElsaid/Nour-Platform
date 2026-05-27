@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import { requireSession } from "@repo/api/auth";
 import { listCategories } from "@repo/api/services/category";
-import { LOCALES } from "@repo/api/schemas/locale";
 
 import type { CategoryRow } from "../../features/categories/components/categories-table";
 import { CategoriesTable } from "../../features/categories/components/categories-table";
@@ -15,26 +14,14 @@ export const dynamic = "force-dynamic";
 export default async function CategoriesPage() {
   // Gate the page to admin users only; listCategories() is a public-read service.
   await requireSession(["admin"]);
-  // Show every locale variant so the admin can author both languages.
-  const perLocale = await Promise.all(LOCALES.map((l) => listCategories(l)));
-  const categories = perLocale.flat();
-
-  // Track which locales exist per program so the table offers an "Add
-  // translation" link only for a genuinely missing locale.
-  const present = new Set(categories.map((c) => `${c.contentId}:${c.locale}`));
+  const categories = await listCategories();
 
   // Date objects cannot cross the RSC→client boundary; serialize to ISO strings.
-  const rows: CategoryRow[] = categories.map((c) => {
-    const missing = LOCALES.find(
-      (l) => l !== c.locale && !present.has(`${c.contentId}:${l}`),
-    );
-    return {
-      ...c,
-      createdAt: c.createdAt.toISOString(),
-      updatedAt: c.updatedAt.toISOString(),
-      ...(missing ? { addTranslationLocale: missing } : {}),
-    };
-  });
+  const rows: CategoryRow[] = categories.map((c) => ({
+    ...c,
+    createdAt: c.createdAt.toISOString(),
+    updatedAt: c.updatedAt.toISOString(),
+  }));
 
   return (
     <main className="container mx-auto px-4 py-8">
