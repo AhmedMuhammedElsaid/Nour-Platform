@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-import { getPlaylistBySlug } from "@repo/api/services/playlist";
+import {
+  getPlaylistBySlug,
+  getPlaylistSlugForLocale,
+} from "@repo/api/services/playlist";
+import { LOCALES } from "@repo/api/schemas/locale";
 
 // Opt out of static prerendering. proxy.ts sets a per-request CSP nonce,
 // which would mismatch a cached static HTML body; forcing dynamic rendering
@@ -47,6 +51,12 @@ function serializePlayableTrack(t: PlayableTrack): SerializedPlayableTrack {
 // generateMetadata
 // ---------------------------------------------------------------------------
 
+// Public site origin for absolute SEO URLs. Read directly (not via the env
+// barrel) because this runs during build's page-data collection where the
+// barrel's required secrets aren't present — same documented exception as the
+// health route / next.config (NEXT_PUBLIC_* is build-inlined, not a secret).
+const baseUrl = process.env.NEXT_PUBLIC_WEB_URL ?? "http://localhost:3000";
+
 export async function generateMetadata({
   params,
 }: {
@@ -60,10 +70,32 @@ export async function generateMetadata({
     return { title: t("notFound") };
   }
 
+  // hreflang alternates: resolve each locale's own (published) slug via the
+  // shared contentId — slugs differ per locale, so we can't swap the prefix.
+  const languages: Record<string, string> = {};
+  for (const l of LOCALES) {
+    const altSlug =
+      l === locale
+        ? playlist.slug
+        : await getPlaylistSlugForLocale(playlist.contentId, l);
+    if (altSlug) {
+      languages[l] = `${baseUrl}/${l}/playlists/${altSlug}`;
+    }
+  }
+
   const tp = await getTranslations({ locale, namespace: "playlist" });
+  const canonical = `${baseUrl}/${locale}/playlists/${playlist.slug}`;
   return {
     title: `${playlist.title} — Nour`,
     description: playlist.description ?? tp("listenOn"),
+    alternates: { canonical, languages },
+    openGraph: {
+      type: "website",
+      locale,
+      url: canonical,
+      title: playlist.title,
+      ...(playlist.description ? { description: playlist.description } : {}),
+    },
   };
 }
 

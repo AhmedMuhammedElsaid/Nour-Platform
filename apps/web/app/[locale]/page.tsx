@@ -1,8 +1,9 @@
+import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { getPublishedPlaylists } from "@repo/api/services/playlist";
 import { listCategories } from "@repo/api/services/category";
-import type { Locale } from "@repo/api/schemas/locale";
+import { LOCALES, type Locale } from "@repo/api/schemas/locale";
 import type { Playlist } from "@repo/api/schemas/playlist";
 
 // Opt out of static prerendering. proxy.ts sets a per-request CSP nonce,
@@ -27,6 +28,25 @@ function serializePlaylist(p: Playlist): SerializedPlaylist {
       typeof p.updatedAt === "string"
         ? p.updatedAt
         : p.updatedAt.toISOString(),
+  };
+}
+
+// Public site origin for absolute SEO URLs — read directly (not via the env
+// barrel) for the same build-time reason as the detail page.
+const baseUrl = process.env.NEXT_PUBLIC_WEB_URL ?? "http://localhost:3000";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: Locale }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  // Homepage path is identical across locales — only the prefix changes.
+  const languages = Object.fromEntries(
+    LOCALES.map((l) => [l, `${baseUrl}/${l}`]),
+  );
+  return {
+    alternates: { canonical: `${baseUrl}/${locale}`, languages },
   };
 }
 

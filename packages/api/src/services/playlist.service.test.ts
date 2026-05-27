@@ -18,6 +18,7 @@ vi.mock("../repositories/playlist.repo", () => ({
   findAllPlaylists: vi.fn(),
   findPlaylistById: vi.fn(),
   findPlaylistBySlug: vi.fn(),
+  findPlaylistsByContentId: vi.fn(),
   findPublishedPlaylists: vi.fn(),
   updatePlaylistById: vi.fn(),
 }));
@@ -155,6 +156,36 @@ describe("playlist.service", () => {
         AppError,
       );
       expect(revalidateTag).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getPlaylistSlugForLocale", () => {
+    it("returns the published slug of the requested locale variant", async () => {
+      vi.mocked(repo.findPlaylistsByContentId).mockResolvedValueOnce([
+        makeLean({ locale: "ar", slug: "سورة", status: "published" }),
+        makeLean({ locale: "en", slug: "surah", status: "published" }),
+      ]);
+
+      const slug = await service.getPlaylistSlugForLocale("c1", "en");
+      expect(slug).toBe("surah");
+    });
+
+    it("returns null when the variant exists but is not published", async () => {
+      vi.mocked(repo.findPlaylistsByContentId).mockResolvedValueOnce([
+        makeLean({ locale: "en", slug: "surah", status: "draft" }),
+      ]);
+
+      const slug = await service.getPlaylistSlugForLocale("c1", "en");
+      expect(slug).toBeNull();
+    });
+
+    it("returns null when no variant exists for the locale", async () => {
+      vi.mocked(repo.findPlaylistsByContentId).mockResolvedValueOnce([
+        makeLean({ locale: "ar", slug: "سورة", status: "published" }),
+      ]);
+
+      const slug = await service.getPlaylistSlugForLocale("c1", "en");
+      expect(slug).toBeNull();
     });
   });
 

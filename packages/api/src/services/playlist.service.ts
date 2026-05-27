@@ -8,6 +8,7 @@ import {
   findAllPlaylists,
   findPlaylistById,
   findPlaylistBySlug,
+  findPlaylistsByContentId,
   findPublishedPlaylists,
   updatePlaylistById,
 } from "../repositories/playlist.repo";
@@ -93,6 +94,23 @@ export async function getPlaylistBySlug(
 ): Promise<Playlist | null> {
   const doc = await findPlaylistBySlug(locale, slug);
   return doc ? toDto(doc) : null;
+}
+
+/*
+ * Resolves the published slug of a program in a given locale, keyed by the
+ * shared contentId. Used for hreflang alternates: slugs differ per locale, so
+ * the alternate URL cannot be derived by swapping the path prefix. Returns null
+ * when that locale variant doesn't exist or isn't published (no alternate link).
+ */
+export async function getPlaylistSlugForLocale(
+  contentId: string,
+  locale: Locale,
+): Promise<string | null> {
+  const variants = await findPlaylistsByContentId(contentId);
+  const variant = variants.find(
+    (p) => p.locale === locale && p.status === "published",
+  );
+  return variant ? variant.slug : null;
 }
 
 // ---------------------------------------------------------------------------
