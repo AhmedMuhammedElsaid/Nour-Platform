@@ -26,11 +26,17 @@ interface Migration {
 }
 
 // Ordered list of all migrations. Append new entries here as waves ship.
+// NOTE: 0003 must precede 0001/0002 because PlaylistModel/CategoryModel now
+// declare per-locale compound unique indexes ({contentId,locale} etc.) that
+// would fail to build while existing documents still have null for those fields.
+// 0004 must follow 0003 for the same reason, and before 0001/0002 so the old
+// bare-slug unique indexes are dropped before ensureIndexes() rebuilds them
+// as compound ones.
 const migrations: Migration[] = [
-  migration0001,
-  migration0002,
   migration0003,
   migration0004,
+  migration0001,
+  migration0002,
 ];
 
 async function main(): Promise<void> {
