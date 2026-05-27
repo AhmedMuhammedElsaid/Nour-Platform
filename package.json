@@ -8,13 +8,16 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
+    "dev:admin": "turbo run dev --filter=admin",
+    "dev:web": "turbo run dev --filter=web",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:e2e": "playwright test",
     "clean": "turbo run clean",
-    "seed:admin": "tsx scripts/seed-admin.ts",
-    "migrate": "tsx scripts/migrate.ts"
+    "seed:admin": "tsx --env-file-if-exists=.env.local scripts/seed-admin.ts",
+    "migrate": "tsx --env-file-if-exists=.env.local scripts/migrate.ts",
+    "reset:admin-password": "tsx --env-file-if-exists=.env.local scripts/reset-admin-password.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",

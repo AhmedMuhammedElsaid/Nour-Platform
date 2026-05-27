@@ -35,6 +35,18 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Keep these heavy/native/CJS deps (pulled in transitively via @repo/api
+  // services) out of the bundler graph — they're require()'d at runtime
+  // instead. Cuts per-route dev compile cost (and prod build time); mongoose
+  // in particular does not bundle cleanly.
+  serverExternalPackages: [
+    "mongoose",
+    "mongodb",
+    "@aws-sdk/client-s3",
+    "@aws-sdk/s3-request-presigner",
+    "@node-rs/argon2",
+    "@auth/mongodb-adapter",
+  ],
   ...(r2Hostname && {
     images: {
       remotePatterns: [{ protocol: "https", hostname: r2Hostname }],
