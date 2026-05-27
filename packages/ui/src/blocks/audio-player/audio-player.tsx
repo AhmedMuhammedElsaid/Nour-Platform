@@ -81,28 +81,41 @@ export function AudioPlayer() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [hasQueue, toggle, seek, currentTime, next, prev]);
 
-  if (!hasQueue || !currentTrack) return null;
-
-  const sliderMax = duration > 0 ? duration : currentTrack.durationSecs ?? 0;
+  const sliderMax =
+    currentTrack != null
+      ? duration > 0
+        ? duration
+        : currentTrack.durationSecs ?? 0
+      : 0;
   // Show the dragged position while scrubbing; otherwise track playback.
   const displayTime = scrubValue ?? currentTime;
   const sliderValue = sliderMax > 0 ? Math.min(displayTime, sliderMax) : 0;
 
+  // Render the bar even when idle so it slides out via CSS (DESIGN.md
+  // §17.1/§17.5) instead of unmounting. Inner content guards on currentTrack.
   return (
     <section
       role="region"
       aria-label="Audio player"
+      aria-hidden={!hasQueue}
       className={cn(
-        "fixed bottom-0 inset-x-0 z-50",
-        "bg-surface border-t border-border shadow-3",
+        "fixed bottom-0 inset-x-0 z-40",
+        "bg-surface border-t border-border shadow-up-2",
+        "transition-transform transition-opacity",
+        "duration-[var(--motion-base)] ease-[var(--ease-standard)]",
+        hasQueue
+          ? "translate-y-0 opacity-100"
+          : "translate-y-full opacity-0 pointer-events-none",
       )}
     >
-      {/* Announce track changes to assistive tech — DESIGN.md §17.3. */}
-      <p className="sr-only" aria-live="polite">
-        Now playing: {currentTrack.title}
-      </p>
-      <div className="max-w-5xl mx-auto px-6 py-3 flex items-center gap-4">
-        <div className="min-w-0 flex-1">
+      {currentTrack && (
+        <>
+          {/* Announce track changes to assistive tech — DESIGN.md §17.3. */}
+          <p className="sr-only" aria-live="polite">
+            Now playing: {currentTrack.title}
+          </p>
+          <div className="max-w-5xl mx-auto px-6 h-16 md:h-[72px] flex items-center gap-4">
+            <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-foreground">
             {currentTrack.title}
           </p>
@@ -173,7 +186,9 @@ export function AudioPlayer() {
             </span>
           </div>
         </div>
-      </div>
+          </div>
+        </>
+      )}
     </section>
   );
 }

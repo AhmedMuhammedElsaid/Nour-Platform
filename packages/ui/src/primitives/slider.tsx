@@ -11,6 +11,10 @@ function Slider({
   value,
   min = 0,
   max = 100,
+  // Radix puts role="slider" on the Thumb, not the Root. Forward the label
+  // and value text there so assistive tech announces them (DESIGN.md §17.3).
+  "aria-label": ariaLabel,
+  "aria-valuetext": ariaValueText,
   ...props
 }: React.ComponentProps<typeof SliderPrimitive.Root>) {
   const resolvedValues = React.useMemo<number[]>(() => {
@@ -55,6 +59,8 @@ function Slider({
         <SliderPrimitive.Thumb
           key={index}
           data-slot="slider-thumb"
+          aria-label={ariaLabel}
+          aria-valuetext={ariaValueText}
           className={cn(
             "block size-4 shrink-0 rounded-full border-2 border-primary bg-surface shadow-1 transition-[color,box-shadow]",
             "hover:ring-4 hover:ring-primary/15",

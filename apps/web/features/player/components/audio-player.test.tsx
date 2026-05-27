@@ -55,17 +55,81 @@ function AutoLoad() {
 }
 
 describe('AudioPlayer', () => {
-  it('renders null when no queue is loaded', () => {
+  it('stays mounted but hidden when no queue is loaded', () => {
     const { container } = render(
       <PlayerProvider>
         <AudioPlayer />
       </PlayerProvider>,
     )
+    // Hidden from the accessibility tree while idle…
     expect(
       screen.queryByRole('region', { name: /audio player/i }),
     ).not.toBeInTheDocument()
-    // No bar should be in the DOM at all when idle.
-    expect(container.querySelector('section')).toBeNull()
+    // …but the bar stays in the DOM so it can slide out via CSS rather than
+    // unmount (DESIGN.md §17.1/§17.5).
+    const section = container.querySelector('section')
+    expect(section).not.toBeNull()
+    expect(section).toHaveClass('translate-y-full', 'pointer-events-none')
+    expect(section).toHaveAttribute('aria-hidden', 'true')
+    // No track content is rendered while idle.
+    expect(screen.queryByText('Surah Al-Fatiha')).not.toBeInTheDocument()
+  })
+
+  it('exposes a mm:ss aria-valuetext on the seek slider', async () => {
+    const user = userEvent.setup()
+    render(
+      <PlayerProvider>
+        <Harness />
+        <AudioPlayer />
+      </PlayerProvider>,
+    )
+
+    await user.click(screen.getByTestId('load'))
+
+    // durationSecs 90 → "1:30"; currentTime starts at 0 → "0:00".
+    expect(screen.getByRole('slider', { name: /seek/i })).toHaveAttribute(
+      'aria-valuetext',
+      '0:00 of 1:30',
+    )
+  })
+
+  it('announces the current track in a polite live region', async () => {
+    const user = userEvent.setup()
+    render(
+      <PlayerProvider>
+        <Harness />
+        <AudioPlayer />
+      </PlayerProvider>,
+    )
+
+    await user.click(screen.getByTestId('load'))
+
+    expect(
+      screen.getByText(/now playing: surah al-fatiha/i),
+    ).toBeInTheDocument()
+  })
+
+  it('changes track with the n / p keyboard shortcuts', async () => {
+    const user = userEvent.setup()
+    render(
+      <PlayerProvider>
+        <Harness />
+        <AudioPlayer />
+      </PlayerProvider>,
+    )
+
+    await user.click(screen.getByTestId('load'))
+    expect(screen.getByTestId('current-index')).toHaveTextContent('0')
+
+    await act(async () => {
+      await user.keyboard('n')
+    })
+    expect(screen.getByTestId('current-index')).toHaveTextContent('1')
+
+    await act(async () => {
+      await user.keyboard('p')
+    })
+    expect(screen.getByTestId('current-index')).toHaveTextContent('0')
   })
 
   it('renders the player bar after loadQueue is called', async () => {

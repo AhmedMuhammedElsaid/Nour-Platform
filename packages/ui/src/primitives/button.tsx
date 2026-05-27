@@ -16,14 +16,14 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98]",
+          "bg-primary text-primary-foreground hover:[background:color-mix(in_oklab,var(--color-primary)_90%,black)] active:scale-[0.98]",
         secondary:
           "bg-surface-2 text-foreground hover:bg-surface-2/80 border border-border",
         outline:
           "border border-border bg-transparent text-foreground hover:bg-surface-2",
         ghost: "bg-transparent text-foreground hover:bg-surface-2",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+          "bg-destructive text-destructive-foreground hover:[background:color-mix(in_oklab,var(--color-danger)_90%,black)]",
         link: "bg-transparent text-primary underline-offset-4 hover:underline",
       },
       size: {
