@@ -180,6 +180,30 @@ describe('AudioPlayer', () => {
     expect(screen.getByTestId('is-playing')).toHaveTextContent('true')
   })
 
+  it('switches track from the queue sheet', async () => {
+    const user = userEvent.setup()
+    render(
+      <PlayerProvider>
+        <Harness />
+        <AudioPlayer />
+      </PlayerProvider>,
+    )
+
+    await user.click(screen.getByTestId('load'))
+    expect(screen.getByTestId('current-index')).toHaveTextContent('0')
+
+    await user.click(screen.getByRole('button', { name: /queue/i }))
+
+    // The sheet lists every track; pick the second one.
+    await act(async () => {
+      await user.click(
+        screen.getByRole('button', { name: /surah al-baqarah/i }),
+      )
+    })
+
+    expect(screen.getByTestId('current-index')).toHaveTextContent('1')
+  })
+
   it('advances to the next track via the Next button', async () => {
     const user = userEvent.setup()
     render(

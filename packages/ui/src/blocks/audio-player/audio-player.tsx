@@ -1,11 +1,28 @@
 "use client";
 
 import * as React from "react";
-import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
+import {
+  ListMusic,
+  Loader2,
+  Pause,
+  Play,
+  RotateCw,
+  SkipBack,
+  SkipForward,
+} from "lucide-react";
 
 import { cn } from "../../lib/utils";
 import { Button } from "../../primitives/button";
 import { Slider } from "../../primitives/slider";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "../../primitives/sheet";
+import { toast } from "../../primitives/toaster";
 import { usePlayer } from "./player-context";
 
 function formatTime(totalSeconds: number): string {
@@ -29,6 +46,8 @@ export function AudioPlayer() {
   const {
     hasQueue,
     isPlaying,
+    isBuffering,
+    errorMessage,
     currentTime,
     duration,
     currentTrack,
@@ -38,7 +57,15 @@ export function AudioPlayer() {
     seek,
     next,
     prev,
+    goTo,
+    retry,
   } = usePlayer();
+
+  // Mirror playback errors to a transient toast (DESIGN.md §17.1); the inline
+  // chip remains the persistent, in-bar surface.
+  React.useEffect(() => {
+    if (errorMessage) toast.error(errorMessage);
+  }, [errorMessage]);
 
   // While the user drags the seek slider we track the pending value locally and
   // only commit it (seek the audio element) on release — DESIGN.md §17.2 wants
@@ -115,14 +142,31 @@ export function AudioPlayer() {
             Now playing: {currentTrack.title}
           </p>
           <div className="max-w-5xl mx-auto px-6 h-16 md:h-[72px] flex items-center gap-4">
-            <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-foreground">
-            {currentTrack.title}
-          </p>
-          <p className="text-xs text-muted">
-            Track {currentIndex + 1} / {queue.length}
-          </p>
-        </div>
+            <div className="min-w-0 flex-1 flex items-center gap-3">
+              {currentTrack.coverUrl && (
+                // Decorative — the adjacent track title carries the label.
+                // next/image is unavailable inside packages/ui; a sized, lazy
+                // <img> satisfies DESIGN.md §17.5 (40px, not priority).
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={currentTrack.coverUrl}
+                  alt=""
+                  width={40}
+                  height={40}
+                  loading="lazy"
+                  className="size-10 rounded-sm object-cover shrink-0"
+                />
+              )}
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-foreground">
+                  {currentTrack.title}
+                </p>
+                <p className="truncate text-xs text-muted">
+                  {currentTrack.playlistTitle ??
+                    `Track ${currentIndex + 1} / ${queue.length}`}
+                </p>
+              </div>
+            </div>
 
         <div className="flex-1 flex flex-col items-center gap-1">
           <div className="flex items-center gap-2">
@@ -141,7 +185,14 @@ export function AudioPlayer() {
               aria-label={isPlaying ? "Pause" : "Play"}
               onClick={toggle}
             >
-              {isPlaying ? <Pause /> : <Play />}
+              {/* Spinner while buffering; control stays enabled (§17.1). */}
+              {isBuffering ? (
+                <Loader2 className="animate-spin" aria-hidden="true" />
+              ) : isPlaying ? (
+                <Pause />
+              ) : (
+                <Play />
+              )}
             </Button>
             <Button
               variant="ghost"
@@ -185,6 +236,58 @@ export function AudioPlayer() {
               {formatTime(sliderMax)}
             </span>
           </div>
+        </div>
+
+        <div className="shrink-0 flex items-center gap-1">
+          {errorMessage && (
+            <button
+              type="button"
+              onClick={retry}
+              className="inline-flex items-center gap-1 rounded-sm px-2 py-1 text-xs font-medium text-destructive hover:bg-surface-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+            >
+              <RotateCw className="size-3.5" aria-hidden="true" />
+              Retry
+            </button>
+          )}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Queue">
+                <ListMusic />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" aria-label="Play queue">
+              <SheetHeader>
+                <SheetTitle>Queue</SheetTitle>
+              </SheetHeader>
+              <ol className="-mx-2 overflow-y-auto">
+                {queue.map((track, index) => (
+                  <li key={track.id}>
+                    <SheetClose asChild>
+                      <button
+                        type="button"
+                        onClick={() => goTo(index)}
+                        aria-current={
+                          index === currentIndex ? "true" : undefined
+                        }
+                        className={cn(
+                          "w-full flex items-center gap-3 rounded-md px-2 py-2 text-start text-sm outline-none",
+                          "hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg",
+                          index === currentIndex
+                            ? "text-primary font-medium"
+                            : "text-foreground",
+                        )}
+                      >
+                        <span className="w-5 shrink-0 text-2xs text-muted tabular-nums text-end">
+                          {index + 1}
+                        </span>
+                        <span className="truncate">{track.title}</span>
+                      </button>
+                    </SheetClose>
+                  </li>
+                ))}
+              </ol>
+            </SheetContent>
+          </Sheet>
         </div>
           </div>
         </>

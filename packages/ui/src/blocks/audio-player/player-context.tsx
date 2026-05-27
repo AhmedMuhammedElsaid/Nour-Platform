@@ -17,6 +17,8 @@ export type PlayerContextValue = {
   queue: QueueTrack[];
   currentIndex: number;
   isPlaying: boolean;
+  isBuffering: boolean;
+  errorMessage: string | null;
   currentTime: number;
   duration: number;
   hasQueue: boolean;
@@ -28,6 +30,8 @@ export type PlayerContextValue = {
   seek: (seconds: number) => void;
   next: () => void;
   prev: () => void;
+  goTo: (index: number) => void;
+  retry: () => void;
 };
 
 const PlayerContext = React.createContext<PlayerContextValue | null>(null);
@@ -56,6 +60,8 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   const [queue, setQueue] = React.useState<QueueTrack[]>([]);
   const [currentIndex, setCurrentIndex] = React.useState<number>(-1);
   const [isPlaying, setIsPlaying] = React.useState<boolean>(false);
+  const [isBuffering, setIsBuffering] = React.useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [currentTime, setCurrentTime] = React.useState<number>(0);
   const [duration, setDuration] = React.useState<number>(0);
 
@@ -88,6 +94,19 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     };
     const onPlay = (): void => setIsPlaying(true);
     const onPause = (): void => setIsPlaying(false);
+    // Buffering: `waiting` fires when playback stalls for data; `playing` and
+    // `canplay` mean we have enough to proceed. `error` surfaces a load/decode
+    // failure (DESIGN.md §17.1 error state).
+    const onWaiting = (): void => setIsBuffering(true);
+    const onPlaying = (): void => {
+      setIsBuffering(false);
+      setErrorMessage(null);
+    };
+    const onCanPlay = (): void => setIsBuffering(false);
+    const onError = (): void => {
+      setIsBuffering(false);
+      setErrorMessage("Couldn't play this track.");
+    };
     const onEnded = (): void => {
       setIsPlaying(false);
       // Auto-advance only after a prior user gesture this session; mobile
@@ -107,6 +126,10 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     audio.addEventListener("play", onPlay);
     audio.addEventListener("pause", onPause);
     audio.addEventListener("ended", onEnded);
+    audio.addEventListener("waiting", onWaiting);
+    audio.addEventListener("playing", onPlaying);
+    audio.addEventListener("canplay", onCanPlay);
+    audio.addEventListener("error", onError);
 
     return () => {
       audio.removeEventListener("timeupdate", onTimeUpdate);
@@ -115,6 +138,10 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
       audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("waiting", onWaiting);
+      audio.removeEventListener("playing", onPlaying);
+      audio.removeEventListener("canplay", onCanPlay);
+      audio.removeEventListener("error", onError);
     };
   }, []);
 
@@ -139,6 +166,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       audio.load();
       setCurrentTime(0);
       setDuration(track.durationSecs ?? 0);
+      setErrorMessage(null);
     }
     if (hasInteractedRef.current) {
       void audio.play().catch(() => {
@@ -214,6 +242,27 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     });
   }, []);
 
+  const goTo = React.useCallback(
+    (index: number): void => {
+      setCurrentIndex((idx) =>
+        index >= 0 && index < queue.length ? index : idx,
+      );
+    },
+    [queue.length],
+  );
+
+  // Re-attempt the current track after an error (DESIGN.md §17.1 retry).
+  const retry = React.useCallback((): void => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    setErrorMessage(null);
+    hasInteractedRef.current = true;
+    audio.load();
+    void audio.play().catch(() => {
+      /* see note above */
+    });
+  }, []);
+
   const hasQueue = queue.length > 0 && currentIndex >= 0;
   const currentTrack: QueueTrack | null =
     currentIndex >= 0 && currentIndex < queue.length
@@ -225,6 +274,8 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       queue,
       currentIndex,
       isPlaying,
+      isBuffering,
+      errorMessage,
       currentTime,
       duration,
       hasQueue,
@@ -236,11 +287,15 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       seek,
       next,
       prev,
+      goTo,
+      retry,
     }),
     [
       queue,
       currentIndex,
       isPlaying,
+      isBuffering,
+      errorMessage,
       currentTime,
       duration,
       hasQueue,
@@ -252,6 +307,8 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       seek,
       next,
       prev,
+      goTo,
+      retry,
     ],
   );
 
