@@ -19,6 +19,8 @@
   --color-primary: #0e6e59;
   --color-primary-fg: #ffffff;
   --color-accent: #a8884a;
+  --color-success: #147d4a;
+  --color-warning: #a66400;
   --color-danger: #b3261e;
   --color-focus: #0e6e59;
 
@@ -53,6 +55,8 @@
   --shadow-1: 0 1px 2px rgb(0 0 0 / 4%), 0 1px 1px rgb(0 0 0 / 3%);
   --shadow-2: 0 4px 12px rgb(0 0 0 / 6%);
   --shadow-3: 0 16px 40px rgb(0 0 0 / 8%);
+  /* Upward elevation for the bottom-fixed audio player (DESIGN.md §17.1). */
+  --shadow-up-2: 0 -4px 12px rgb(0 0 0 / 6%);
 
   /* Motion */
   --motion-fast: 120ms;
@@ -73,6 +77,8 @@
   --color-primary: #36a089;
   --color-primary-fg: #0e1311;
   --color-accent: #c6a266;
+  --color-success: #48b57c;
+  --color-warning: #e0a14a;
   --color-danger: #e26a63;
   --color-focus: #9fe0cf;
 }

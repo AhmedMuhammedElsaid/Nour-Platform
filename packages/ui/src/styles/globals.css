@@ -29,6 +29,8 @@
   --color-primary: var(--color-primary);
   --color-primary-fg: var(--color-primary-fg);
   --color-accent: var(--color-accent);
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
   --color-danger: var(--color-danger);
   --color-focus: var(--color-focus);
 
@@ -78,6 +80,7 @@
   --shadow-1: var(--shadow-1);
   --shadow-2: var(--shadow-2);
   --shadow-3: var(--shadow-3);
+  --shadow-up-2: var(--shadow-up-2);
 }
 
 @layer base {
