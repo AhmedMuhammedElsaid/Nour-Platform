@@ -40,9 +40,14 @@ export function AudioPlayer() {
     prev,
   } = usePlayer();
 
-  // Keyboard shortcuts: Space toggles play/pause, Arrow keys jog ±10s.
-  // Suppress when the user is typing into an editable element so we don't
-  // hijack form input.
+  // While the user drags the seek slider we track the pending value locally and
+  // only commit it (seek the audio element) on release — DESIGN.md §17.2 wants
+  // seek-on-commit, not scrub-on-drag, to avoid per-tick seek latency.
+  const [scrubValue, setScrubValue] = React.useState<number | null>(null);
+
+  // Keyboard shortcuts: Space toggles play/pause, ←/→ jog ±10s, n/p change
+  // track. Suppress when the user is typing into an editable element so we
+  // don't hijack form input (DESIGN.md §17.2).
   React.useEffect(() => {
     if (!hasQueue) return;
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -60,16 +65,28 @@ export function AudioPlayer() {
       if (event.key === "ArrowRight") {
         event.preventDefault();
         seek(currentTime + 10);
+        return;
+      }
+      if (event.key === "n" || event.key === "N") {
+        event.preventDefault();
+        next();
+        return;
+      }
+      if (event.key === "p" || event.key === "P") {
+        event.preventDefault();
+        prev();
       }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [hasQueue, toggle, seek, currentTime]);
+  }, [hasQueue, toggle, seek, currentTime, next, prev]);
 
   if (!hasQueue || !currentTrack) return null;
 
   const sliderMax = duration > 0 ? duration : currentTrack.durationSecs ?? 0;
-  const sliderValue = sliderMax > 0 ? Math.min(currentTime, sliderMax) : 0;
+  // Show the dragged position while scrubbing; otherwise track playback.
+  const displayTime = scrubValue ?? currentTime;
+  const sliderValue = sliderMax > 0 ? Math.min(displayTime, sliderMax) : 0;
 
   return (
     <section
@@ -80,6 +97,10 @@ export function AudioPlayer() {
         "bg-surface border-t border-border shadow-3",
       )}
     >
+      {/* Announce track changes to assistive tech — DESIGN.md §17.3. */}
+      <p className="sr-only" aria-live="polite">
+        Now playing: {currentTrack.title}
+      </p>
       <div className="max-w-5xl mx-auto px-6 py-3 flex items-center gap-4">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-foreground">
@@ -124,10 +145,11 @@ export function AudioPlayer() {
               className="text-2xs text-text-2 tabular-nums w-10 text-end"
               aria-hidden="true"
             >
-              {formatTime(currentTime)}
+              {formatTime(displayTime)}
             </span>
             <Slider
               aria-label="Seek"
+              aria-valuetext={`${formatTime(sliderValue)} of ${formatTime(sliderMax)}`}
               className="flex-1"
               min={0}
               max={sliderMax > 0 ? sliderMax : 1}
@@ -135,7 +157,12 @@ export function AudioPlayer() {
               value={[sliderValue]}
               onValueChange={(values) => {
                 const v = values[0];
+                if (typeof v === "number") setScrubValue(v);
+              }}
+              onValueCommit={(values) => {
+                const v = values[0];
                 if (typeof v === "number") seek(v);
+                setScrubValue(null);
               }}
             />
             <span
