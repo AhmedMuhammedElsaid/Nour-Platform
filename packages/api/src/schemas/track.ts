@@ -40,7 +40,9 @@ export type Track = z.infer<typeof trackSchema>;
 /*
  * Create-input: timestamps and id come from Mongo. `slug` is optional and
  * derived from `title` by the service when omitted. `durationSecs` is
- * never set by the caller — it lands via the media-analysis pipeline.
+ * optional: the admin uploader reads it client-side from the audio element's
+ * metadata and passes it through. (A future media-analysis pipeline may
+ * overwrite it server-side; until then this is the only source.)
  */
 export const trackCreateInputSchema = z.object({
   title: z.string().min(1).max(200),
@@ -49,6 +51,7 @@ export const trackCreateInputSchema = z.object({
   mediaId: objectIdSchema,
   playlistId: objectIdSchema,
   order: z.number().int().nonnegative().optional(),
+  durationSecs: z.number().positive().optional(),
 });
 export type TrackCreateInput = z.infer<typeof trackCreateInputSchema>;
 
