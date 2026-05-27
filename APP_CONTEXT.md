@@ -28,7 +28,7 @@ See **CLAUDE.md §5** — non-negotiable list. Summary: apps call services only 
 
 ## Completed waves
 
-Audio MVP (Waves 0–5) + pre-deploy fixups + hardening sprint + **P2-A Categories** all landed. Head of `main` = `f3567d1`.
+Audio MVP (Waves 0–5) + pre-deploy fixups + hardening sprint + **P2-A Categories** + **i18n A+B (AR/EN)** all landed and merged. Head of `main` = `7787906`. Atlas migrations applied.
 
 | Wave | Range | Notes (only what's non-obvious for a future session) |
 |---|---|---|
@@ -40,18 +40,16 @@ Audio MVP (Waves 0–5) + pre-deploy fixups + hardening sprint + **P2-A Categori
 | 5 — Deploy + Smoke ⚠️ | `1b97c53` + `806f2ca` fixup | Per-app `next.config.ts`: `images.remotePatterns` for R2 + static security headers (HSTS, X-Frame, Permissions-Policy). CSP moved to middleware after hardening — see below. Playwright smoke tests in `tests/e2e/`. Health endpoints return `{ ok, version, time }`. **Sentry SDK install deferred** — env var stubbed only. |
 | Pre-deploy fixups | `dfae606` · `e693862` · `1fe8f69` · `1a4c895` | `media.service.ts` createMedia/confirmMedia call `requireSession(['admin'])`. `seed-admin.ts` refuses `NODE_ENV=production` without `--force`. Per-app `vercel.json` (turbo `--filter=app...` build). CI runs `pnpm test`. Root `README.md`. **`deploy.md`** step-by-step runbook. |
 | Hardening sprint | `58550ba` · `40ef84c` · `577a6a9` · `41c26a8` · `e6493ca` | (A) `packages/api` now has 19 vitest unit tests across all 4 services (mocks repos + `requireSession` + `next/cache`) — P2-A added 15 more for category service, total now 34. (B) **CSP is now nonce-based** — `proxy.ts` in both apps (renamed from `middleware.ts` for Next 16) generates a per-request nonce, sets `script-src 'self' 'nonce-…' 'strict-dynamic'` so we dropped `'unsafe-inline'` from script-src (style-src keeps it intentionally); static `Content-Security-Policy` header removed from both `next.config.ts`. (D) APP_CONTEXT seek-amount corrected to ±10s. (E) auth side-effect import replaced with `/// <reference path="../types/next-auth.d.ts" />` directive — IDE-resistant; ESLint override allows the triple-slash on those two files only. Pre-existing build-blockers fixed: Turbopack "use server" re-export bug in playlist actions (now imports schema directly), `/` + `/playlists/[slug]` marked `dynamic = "force-dynamic"` (required because nonce-CSP and because the build runs without Atlas). |
-| i18n A+B (AR/EN) 🚧 on branch `feat/i18n-wave-a` | `2358620`..`38b7a3d` | **Bilingual content + web UI**, NOT yet merged to `main`. Plan in **`localization.md`**; decisions in **`docs/adr/0001-next-intl.md`** + **`0002-arabic-slugs.md`**. Data model = **per-locale documents** (DATABASE.md §3): `playlists`/`categories`/`tracks` gained `contentId` + `locale`; slug regex widened to Unicode (Arabic); `playlist.trackIds` **dropped** (`Track.order` is sole ordering); `track.playlistId` → `playlistContentId`; `playlist.categoryIds` now hold category **contentIds**. New compound unique indexes `{locale,slug}` + `{contentId,locale}`; migrations `0003-i18n-backfill` (locale=ar + mint contentId + relink tracks) + `0004-i18n-indexes`. Services take a `locale` param; cache tags are locale-scoped (`playlistsHomeTag`/`playlistTag`/`categoriesTag` in `cache/tags.ts`). Shared `slugify` in `utils/slug.ts`, `newObjectIdString` in `utils/id.ts`, `schemas/locale.ts` (`LOCALES`/`DEFAULT_LOCALE='ar'`). Admin chrome stays English but authors both locales ("create translation" flow: list pages group by contentId + "Add EN/AR" link → `/<res>/new?contentId=&locale=`). Web uses **next-intl**: `/ar`+`/en` always-prefixed (`localePrefix:'always'`), `apps/web/i18n/{routing,request,navigation}.ts`, `messages/{ar,en}.json`, `app/[locale]/` tree, RTL via `<html dir>` + IBM Plex Sans Arabic swapped into `--font-sans` for ar, `proxy.ts` composes next-intl middleware with the CSP nonce. hreflang via `getPlaylistSlugForLocale`. **Remaining**: Phase 6 E2E/Lighthouse + deferred `packages/ui` `use-dir` hook & audio-player RTL polish. Tests: api 49 · admin 41 · web 14; web prod build ✓. |
+| i18n A+B (AR/EN) ✅ | `2358620`..`7787906` | **Bilingual content + web UI**, merged to `main`; Atlas migrations applied. Plan in **`localization.md`**; decisions in **`docs/adr/0001-next-intl.md`** + **`0002-arabic-slugs.md`**. Data model = **per-locale documents** (DATABASE.md §3): `playlists`/`categories`/`tracks` gained `contentId` + `locale`; slug regex widened to Unicode (Arabic); `playlist.trackIds` **dropped** (`Track.order` is sole ordering); `track.playlistId` → `playlistContentId`; `playlist.categoryIds` now hold category **contentIds**. New compound unique indexes `{locale,slug}` + `{contentId,locale}`; migrations `0003-i18n-backfill` (locale=ar + mint contentId + relink tracks) + `0004-i18n-indexes`. **Migration runner order is `0003→0004→0001→0002`** — 0003 must backfill `locale`/`contentId` before any `ensureIndexes()` call or the compound unique fails on null docs; 0002 no longer recreates the bare `categories.slug` unique (dropped by 0004 and replaced with the compound version). Services take a `locale` param; cache tags are locale-scoped (`playlistsHomeTag`/`playlistTag`/`categoriesTag` in `cache/tags.ts` — old bare constants removed). Shared `slugify` in `utils/slug.ts`, `newObjectIdString` in `utils/id.ts`, `schemas/locale.ts` (`LOCALES`/`DEFAULT_LOCALE='ar'`). `packages/ui/src/hooks/use-dir.ts` — `useDir()` hook reads `<html dir>` via MutationObserver (SSR-safe, for client islands). Audio player: skip icons carry `rtl:scale-x-[-1]`; queue Sheet opens from `left` in RTL. Admin chrome stays English but authors both locales ("create translation" flow: list pages group by contentId + "Add EN/AR" link → `/<res>/new?contentId=&locale=`). Web uses **next-intl**: `/ar`+`/en` always-prefixed (`localePrefix:'always'`), `apps/web/i18n/{routing,request,navigation}.ts`, `messages/{ar,en}.json`, `app/[locale]/` tree, RTL via `<html dir>` + IBM Plex Sans Arabic swapped into `--font-sans` for ar, `proxy.ts` composes next-intl middleware with the CSP nonce. hreflang via `getPlaylistSlugForLocale`. **Postponed**: Phase 6 E2E/Lighthouse (Playwright `/`→`/ar` redirect + locale switch + RTL + a11y). Tests: api 49 · admin 41 · web 14; web prod build ✓. |
 | P2-A — Categories ✅ | `c73e7e4` · `82d3e81` · `6972e87` · `273e518` (+ spec `c9cadef` · `7f97d40` · `8e57352`) | New `Category` resource with full admin CRUD + many-to-many on `Playlist` + public homepage filter. Spec lives in **PLAN.md §13.1**. Files: `schemas/category.ts`, `db/models/Category.model.ts` (note PascalCase filename — outlier from the lowercase models), `repositories/category.repo.ts`, `services/category.service.ts` (`listCategories` · `getCategoryBySlug` · `getCategoryById` · `createCategory` · `updateCategory` · `deleteCategory`), migration `0002-category-indexes.ts` (unique `categories.slug` + `playlists.categoryIds` array index). `playlist.service.ts` extended: `createPlaylist`/`updatePlaylist` now accept `categoryIds?: string[]` (validates IDs exist); `getPublishedPlaylists` accepts `{ categoryId }` filter. Slug collisions auto-append `-2`/`-3`. Hard delete `$pull`s the id from every playlist's `categoryIds`. New cache tag `CATEGORIES = "categories"` in `cache/tags.ts` (first central tag file). Admin: `/categories`, `/categories/new`, `/categories/[id]/edit` + `CategoriesTable` + `CategoryForm` + 3 server actions + a `categoryIds` multi-select field on the playlist form. Web: `CategoryFilterBar` client island reads/writes `?category=<slug>` URL param; homepage resolves slug → ObjectId before calling the playlist service; empty-state message on unknown slug (no 404). Tests: 34 API unit + 38 admin RTL + 1 E2E green. |
 
 ---
 
 ## Next phase
 
-MVP is **deploy-ready** (Wave 5.4 stays ⚠️ Partial because Sentry SDK install is intentionally deferred — env var stubbed; optional per `.env.example`). To actually go live: open **`deploy.md`** and walk the 11 steps top-to-bottom — no more code changes needed.
+MVP is **deploy-ready** (Wave 5.4 stays ⚠️ Partial because Sentry SDK install is intentionally deferred — env var stubbed; optional per `.env.example`). To actually go live: open **`deploy.md`** and walk the 11 steps top-to-bottom.
 
-P2-A Categories is **complete** (`c73e7e4..273e518`, see waves row above). The category vertical is the canonical sibling for the next P2 verticals — clone its layout (`schemas/<x>.ts` + `db/models/<x>.model.ts` + `repositories/<x>.repo.ts` + `services/<x>.service.ts` + `admin/features/<x>/` + cache-tag constant) rather than re-deriving the pattern.
-
-**In flight: i18n A+B** on branch `feat/i18n-wave-a` (see waves row + `localization.md`). Bilingual content model + web AR/EN routing are done and green; **not merged to `main`**. Before merging: finish Phase 6 (E2E for `/`→`/ar` redirect + locale switch + RTL; Lighthouse) and the deferred `packages/ui` work (`use-dir` hook + audio-player RTL/aria — left untouched to avoid colliding with concurrent audio-player edits). A real Atlas DB needs `pnpm migrate` to run `0003`+`0004` (backfills existing rows to `locale='ar'`).
+**i18n A+B is complete** — bilingual AR/EN public site + admin bilingual authoring all merged to `main`; Atlas migrated. See waves row above. Postponed item: Phase 6 E2E/Lighthouse (Playwright RTL + redirect; non-blocking).
 
 **Next: P2-B Lectures** (PLAN.md §13). Tickets not yet written; brainstorm + write a wave plan before coding (use `superpowers:brainstorming` then `superpowers:writing-plans`).
 
@@ -80,29 +78,40 @@ packages/api/src/
       media.model.ts      → MediaModel
     models/Category.model.ts (PascalCase outlier — every other model is lowercase)
     migrations/
-      0001-indexes.ts     → ensureIndexes on Playlist/Track/Media/User
-      0002-category-indexes.ts → unique categories.slug + playlists.categoryIds array index
+      0001-indexes.ts            → ensureIndexes on Playlist/Track/Media (safe no-op after 0004)
+      0002-category-indexes.ts   → playlists.categoryIds array index + PlaylistModel.ensureIndexes (no-op after 0004)
+      0003-i18n-backfill.ts      → sets locale='ar', mints contentId, relinks tracks (idempotent; skips docs with locale set)
+      0004-i18n-indexes.ts       → drops old bare-slug unique indexes, rebuilds compound {locale,slug}+{contentId,locale}
+      ⚠️ Runner order in scripts/migrate.ts: [0003, 0004, 0001, 0002] — 0003 MUST precede ensureIndexes
   repositories/
-    playlist.repo.ts      → findPlaylistById/Slug/Published/All, create/update/delete + appendTrackId/removeTrackId
-                            (Published/All also accept { categoryId } filter; create/update accept categoryIds)
-    track.repo.ts         → findTrackById/ByPlaylistId/BySlug, create/update/delete, updateTrackOrder (bulkWrite)
+    playlist.repo.ts      → findPlaylistById/BySlug/Published/All/ByContentId, create/update/delete
+                            (no appendTrackId/removeTrackId — dropped; Published/All take locale param + {categoryContentId?} filter)
+    track.repo.ts         → findTrackById/ByPlaylistContentId/BySlug, create/update/delete, updateTrackOrder (bulkWrite)
     media.repo.ts         → findMediaById, create, updateById
-    category.repo.ts      → findAll/ById/BySlug, create/update/delete, pullCategoryFromPlaylists
+    category.repo.ts      → findAll/ById/BySlug/ByContentId, create/update/delete, pullCategoryFromPlaylists
   schemas/
+    locale.ts             → localeSchema, LOCALES=['ar','en'], DEFAULT_LOCALE='ar', Locale type, isLocale()
     user.ts               → User, UserRole, Credentials
-    playlist.ts           → Playlist (now with categoryIds: string[]), PlaylistStatus, *Input
-    track.ts              → Track, TrackCreateInput, TrackUpdateInput
+    playlist.ts           → Playlist (contentId, locale, categoryIds hold category contentIds), PlaylistStatus, *Input
+    track.ts              → Track (contentId, locale, playlistContentId), TrackCreateInput, TrackUpdateInput
     media.ts              → Media, MediaMimeType, MediaStatus, *Input
-    category.ts           → Category, CategoryCreateInput, CategoryUpdateInput
+    category.ts           → Category (contentId, locale), CategoryCreateInput, CategoryUpdateInput
+  utils/
+    slug.ts               → slugify(input, contentIdFallback?) — Unicode-aware, Arabic-safe, de-duped from 3 old services
+    id.ts                 → newObjectIdString() — mints a fresh Mongoose ObjectId as a hex string
   services/
     auth.service.ts       → verifyCredentials, createAdminUser
-    playlist.service.ts   → getPublishedPlaylists({categoryId?}), getAllPlaylists, getPlaylistBySlug/ById,
-                            create/update (accept categoryIds — validated against existing categories), delete/publish/unpublish
-    track.service.ts      → getTracksByPlaylist, getTrackById, create/update/delete, reorderTracks
-    media.service.ts      → createMedia, confirmMedia (both call requireSession(['admin']) — defense in depth)
-    category.service.ts   → listCategories, getCategoryBySlug, getCategoryById, create/update (slug collision → -2/-3),
-                            delete (hard delete + $pull from every playlist + revalidateTag CATEGORIES + PLAYLISTS_HOME)
-  cache/tags.ts           → central tag constants — PLAYLISTS_HOME, CATEGORIES (use these, not raw strings)
+    playlist.service.ts   → getPublishedPlaylists(locale, {categoryContentId?}), getAllPlaylists(session),
+                            getPlaylistBySlug(locale, slug), getPlaylistById(id, session),
+                            getPlaylistSlugForLocale(contentId, locale) — for hreflang alternates,
+                            create/update (categoryIds validated), delete/publish/unpublish
+    track.service.ts      → getTracksWithUrls(locale, playlistContentId), getTrackById, create/update/delete,
+                            reorderTracks(locale, playlistContentId, orderedTrackIds) — writes Track.order only
+    media.service.ts      → createMedia, confirmMedia, getMediaUrlById (both create/confirm call requireSession — defense in depth)
+    category.service.ts   → listCategories(locale), getCategoryBySlug(locale, slug), getCategoryById, create/update,
+                            delete (cascade $pull only when last locale variant gone; revalidates all locales)
+  cache/tags.ts           → locale-scoped tag FUNCTIONS — playlistsHomeTag(locale), playlistTag(locale,slug), categoriesTag(locale)
+                            (old bare PLAYLISTS_HOME/CATEGORIES constants removed — always use the functions)
   media/
     r2-client.ts          → createPresignedUpload(key, mime, bytes), headObject(key), ALLOWED_AUDIO_MIME_TYPES
   errors/index.ts         → AppError + codes (UNAUTHORIZED/FORBIDDEN/NOT_FOUND/VALIDATION/CONFLICT/RATE_LIMITED/INTERNAL)
@@ -120,7 +129,10 @@ packages/ui/src/
     form-field.tsx          → FormField({ label, htmlFor?, error?, children }) — label + input slot + error message
   blocks/audio-player/
     audio-player.tsx        → sticky bottom UI (play/pause, Slider seek, time, prev/next). Subscribes to PlayerContext.
+                              RTL: skip icons mirror via rtl:scale-x-[-1]; queue Sheet opens from left in RTL (via useDir).
     player-context.tsx      → PlayerProvider — single HTMLAudioElement ref, queue state, keyboard handlers (space, ←/→), navigation persistence
+  hooks/
+    use-dir.ts              → useDir() — returns 'rtl'|'ltr' by reading <html dir>; SSR-safe; for client islands only
 
 apps/admin/
   app/layout.tsx                         → RootLayout (Inter + Fraunces fonts)
@@ -177,33 +189,42 @@ apps/admin/
   vitest.setup.ts                        → @testing-library/jest-dom/vitest + explicit afterEach(cleanup)
 
 apps/web/
-  app/layout.tsx                         → RootLayout wraps children in <PlayerProvider> so player survives navigation
-  app/page.tsx                           → RSC homepage: resolves ?category slug → ObjectId, then getPublishedPlaylists
-                                            ({ categoryId? }) → grid of PlaylistCard; renders CategoryFilterBar above grid;
-                                            empty-state message for unknown slug. (export const dynamic = "force-dynamic")
-  app/playlists/[slug]/page.tsx          → RSC detail: meta + track list (uses TrackListPlayer client island); generateMetadata
+  app/layout.tsx                         → passthrough root (wraps children only); <html lang dir> set in [locale]/layout.tsx
+  app/[locale]/layout.tsx                → sets <html lang={locale} dir>, loads IBM Plex Sans Arabic (swaps --font-sans for ar),
+                                            wraps NextIntlClientProvider + PlayerProvider
+  app/[locale]/page.tsx                  → RSC homepage: listCategories(locale) → resolve ?category slug → categoryContentId
+                                            → getPublishedPlaylists(locale, {categoryContentId?}) → grid + CategoryFilterBar
+                                            (export const dynamic = "force-dynamic")
+  app/[locale]/playlists/[slug]/page.tsx → RSC detail: getPlaylistBySlug(locale,slug) + getTracksWithUrls(locale,contentId);
+                                            generateMetadata emits hreflang via getPlaylistSlugForLocale per locale
                                             (export const dynamic = "force-dynamic")
   app/api/health/route.ts                → GET → { ok, version, time }
-  proxy.ts                               → Edge proxy: per-request CSP nonce (no auth gate; web is public)
-                                            (file used to be `middleware.ts` — renamed for Next 16)
+  i18n/
+    routing.ts                           → defineRouting({ locales:['ar','en'], defaultLocale:'ar', localePrefix:'always' })
+    request.ts                           → getRequestConfig — loads messages/{locale}.json
+    navigation.ts                        → locale-aware Link, useRouter, usePathname, redirect (re-export from next-intl/navigation)
+  messages/
+    ar.json / en.json                    → ~30 chrome strings (common, nav, home, playlist, player, metadata namespaces)
+  proxy.ts                               → Edge proxy: composes next-intl routing middleware + per-request CSP nonce
+                                            (mutates request.headers x-nonce BEFORE calling intl handler; attaches CSP to response)
   lib/csp.ts                             → buildWebCsp(nonce, r2Hostname) — emits dynamic CSP
-  next.config.ts                         → images.remotePatterns + static security headers
-                                            (CSP itself is emitted by the proxy, not here)
+  next.config.ts                         → wrapped with createNextIntlPlugin('./i18n/request.ts'); images.remotePatterns + headers
+  vitest.config.ts                       → jsdom + @vitejs/plugin-react + explicit '@' → app-root alias (vite-tsconfig-paths can't load here)
+  vitest.setup.ts                        → @testing-library/jest-dom/vitest + afterEach(cleanup)
   features/layout/components/
-    site-header.tsx                      → header (logo + skip link target)
-    site-footer.tsx                      → footer
+    site-header.tsx                      → header (logo + skip link target; uses useTranslations)
+    site-footer.tsx                      → footer (uses useTranslations)
   features/playlists/
-    types.ts                             → SerializedPlaylist / SerializedTrack DTOs
+    types.ts                             → SerializedPlaylist / SerializedPlayableTrack / SerializedTrack DTOs
     components/
-      playlist-card.tsx                  → cover (next/image) + title + track count
-      track-row.tsx                      → row UI (used inside TrackListPlayer)
-      track-list-player.tsx              → client island: maps rows; click → player.loadQueue(tracks, index); URL hash mirrors current
+      playlist-card.tsx                  → server component — cover + title (getTranslations for listenOn label)
+      track-row.tsx                      → row UI; track number uses text-end (logical, RTL-safe)
+      track-list-player.tsx              → client island: maps rows; click → player.loadQueue; track number text-end
   features/categories/
     components/
-      category-filter-bar.tsx            → client island: pill list reads/writes ?category URL param via useSearchParams + router.replace
+      category-filter-bar.tsx            → client island: pill list reads/writes ?category URL param; uses Link from @/i18n/navigation
   features/player/components/
-    audio-player.test.tsx                → RTL tests for the player block
-  vitest.config.ts / vitest.setup.ts     → mirror admin's setup
+    audio-player.test.tsx                → RTL tests for the player block; mocks next-intl + @/i18n/navigation
 
 tests/e2e/
   web.smoke.test.ts                      → homepage loads + first track plays + deep-link to playlist
@@ -264,6 +285,8 @@ Root docs (read in this order for new sessions)
 - **`confirmMedia` cross-checks the upload**: `media.service.confirmMedia` compares R2 `headObject()` `contentLength` + `contentType` against the pending Media record's `sizeBytes`/`mimeType` before flipping status. R2's signed PUT already enforces these at upload time; the second check is defense-in-depth and catches client tampering / record drift. Both must match or the confirm rejects with `AppError.Validation`.
 - **Standalone scripts auto-load `.env.local`**: `pnpm migrate` / `pnpm seed:admin` pass `--env-file-if-exists=.env.local` to `tsx` (Next.js apps auto-load it; raw `tsx` does not). `--env-file-if-exists` (not `--env-file`) so prod runs that set env inline — `MONGODB_URI="…" pnpm migrate` — don't break on a missing file; Node won't override a shell-set var with the file's value, so inline env still wins. Pass flags WITHOUT the npm `--` separator: `pnpm migrate --dry-run`, not `pnpm migrate -- --dry-run` (pnpm forwards the literal `--` and the script's strict `parseArgs` rejects it as a positional).
 - **Every migration needs an `exports` entry**: `scripts/migrate.ts` imports each migration by subpath from `@repo/api`, so a new `db/migrations/NNNN-*.ts` MUST be added to `packages/api/package.json` `exports` (mirroring `0001`/`0002`) or the script fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`. `0002` was missing this until the first real Atlas run surfaced it.
+- **Migration runner order is `[0003, 0004, 0001, 0002]`** (not numeric). `0003` backfills `locale`/`contentId` on all existing docs first. If `0001` runs before `0003`, `PlaylistModel.ensureIndexes()` tries to build the `{contentId,locale}` compound unique while all existing docs have `null` for both → E11000 duplicate key. `0004` drops the old bare-slug unique indexes before `0001`/`0002` call `ensureIndexes()` with the new compound specs. `0002` intentionally does NOT recreate the bare `categories.slug` unique (doing so after `0004` drops it would wrongly block two locales from sharing a category slug).
+- **(i18n) Un-migrated DB → admin `/playlists` crashes in `toDto`**: symptom is `TypeError: Cannot read properties of undefined (reading 'toString')` at `playlist.service.ts` `toDto` (`doc.contentId.toString()`). Cause is data, not code — repos return raw docs via `.lean()` (Mongoose `required`/defaults do NOT apply on read), so legacy pre-i18n rows that lack `contentId`/`locale` surface as `undefined`. Fix: run `pnpm migrate` (0003 backfill is idempotent). Do NOT add a null-guard to `toDto` — the schema + 0003 backfill are the invariant; guarding would mask "migration not run". Affects fresh clones, restored dumps, or any DB created before the i18n wave. Atlas itself is already backfilled.
 - **(i18n) Per-locale documents, not embedded `{ar,en}`**: a logical playlist/category/track has ONE doc per locale, tied by a shared `contentId`. Public service reads REQUIRE a `locale` param (`getPublishedPlaylists(locale, …)`, `getPlaylistBySlug(locale, slug)`, `listCategories(locale)`, `getTracksWithUrls(locale, playlistContentId)`). `playlist.categoryIds` store category **contentIds** (locale-agnostic links), resolved slug→contentId in the RSC. `playlist.trackIds` no longer exists — query tracks by `{playlistContentId, locale}` sorted by `order`.
 - **(i18n) Slugs are Unicode + unique per `(locale, slug)`**: the old ASCII-only `slugify` produced empty slugs for Arabic titles (ADR 0002). The shared `utils/slug.ts` keeps any-script letters; empty normalization falls back to `item-<contentId tail>`. The same slug may exist in both locales without collision.
 - **(i18n) Cache tags are locale-scoped**: use `playlistsHomeTag(locale)` / `playlistTag(locale, slug)` / `categoriesTag(locale)` from `cache/tags.ts` — never the old bare `PLAYLISTS_HOME`/`CATEGORIES` constants (removed). Category delete pulls its contentId from playlists only when the LAST locale variant is gone.
