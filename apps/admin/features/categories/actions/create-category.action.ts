@@ -5,10 +5,6 @@ import { redirect } from "next/navigation";
 import { AppError } from "@repo/api/errors";
 import { createCategory } from "@repo/api/services/category";
 
-// Next 16 / Turbopack rejects non-action re-exports from "use server" files.
-// Importers must pull `categoryFormSchema` / `CategoryFormValues` directly
-// from `../schemas/category-form.schema`. The type below stays inline because
-// it's specific to this action's return shape.
 import {
   categoryFormSchema,
   type CategoryFormValues,
@@ -26,21 +22,19 @@ export async function createCategoryAction(
 
   try {
     await createCategory({
-      locale: parsed.data.locale,
-      // Empty string means "first locale of a new program" — let the service
-      // mint the contentId. A non-empty value links a translation.
-      ...(parsed.data.contentId ? { contentId: parsed.data.contentId } : {}),
-      name: parsed.data.name,
-      // Provide the slug only when the user has supplied one; otherwise the
-      // service auto-derives it from the name.
-      slug: parsed.data.slug || undefined,
-      description: parsed.data.description || undefined,
+      ar: {
+        name: parsed.data.ar.name,
+        description: parsed.data.ar.description || undefined,
+      },
+      en: {
+        name: parsed.data.en.name,
+        description: parsed.data.en.description || undefined,
+      },
       coverMediaId: parsed.data.coverMediaId || undefined,
     });
     redirect("/categories");
   } catch (error) {
     if (error instanceof AppError) return { error: error.message };
-    // Re-throw Next.js redirect — it is the success path, not an error.
     throw error;
   }
 }

@@ -6,9 +6,6 @@ import { getCategoryById } from "@repo/api/services/category";
 
 import { CategoryForm } from "../../../../features/categories/components/category-form";
 
-// Opt out of static prerendering. proxy.ts sets a per-request CSP nonce that
-// would mismatch a cached static body, and the deploy build runs without an
-// Atlas connection — both reasons require dynamic rendering.
 export const dynamic = "force-dynamic";
 
 interface Props {
@@ -19,16 +16,12 @@ export default async function EditCategoryPage({ params }: Props) {
   const { id } = await params;
   await requireSession(["admin"]);
   const category = await getCategoryById(id);
-
   if (!category) notFound();
 
   return (
     <main className="container mx-auto px-4 py-8">
       <div className="mb-6 flex items-center gap-4">
-        <Link
-          href="/categories"
-          className="text-sm text-muted-foreground hover:underline"
-        >
+        <Link href="/categories" className="text-sm text-muted-foreground hover:underline">
           ← Categories
         </Link>
         <h1 className="text-2xl font-semibold">Edit category</h1>
@@ -37,11 +30,8 @@ export default async function EditCategoryPage({ params }: Props) {
         mode="edit"
         categoryId={category.id}
         initialValues={{
-          locale: category.locale,
-          contentId: category.contentId,
-          name: category.name,
-          slug: category.slug,
-          description: category.description ?? "",
+          ar: { name: category.ar.name, description: category.ar.description ?? "" },
+          en: { name: category.en.name, description: category.en.description ?? "" },
           coverMediaId: category.coverMediaId ?? "",
         }}
       />

@@ -21,11 +21,14 @@ export async function updateCategoryAction(
 
   try {
     await updateCategory(id, {
-      name: parsed.data.name,
-      slug: parsed.data.slug,
-      description: parsed.data.description || undefined,
-      // null clears the field in the DB; undefined leaves it unchanged.
-      // An empty string from the form means "remove cover".
+      ar: {
+        name: parsed.data.ar.name,
+        description: parsed.data.ar.description || undefined,
+      },
+      en: {
+        name: parsed.data.en.name,
+        description: parsed.data.en.description || undefined,
+      },
       coverMediaId: parsed.data.coverMediaId || undefined,
     });
   } catch (error) {
