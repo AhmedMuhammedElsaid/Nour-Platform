@@ -1,17 +1,16 @@
 "use server";
 
-import { z } from "zod";
-
 import { AppError } from "@repo/api/errors";
 import { updatePlaylist } from "@repo/api/services/playlist";
 
 import { playlistFormSchema } from "../schemas/playlist-form.schema";
+import type { PlaylistFormValues } from "../schemas/playlist-form.schema";
 
 export type UpdatePlaylistResult = { error: string } | undefined;
 
 export async function updatePlaylistAction(
   id: string,
-  input: z.infer<typeof playlistFormSchema>,
+  input: PlaylistFormValues,
 ): Promise<UpdatePlaylistResult> {
   const parsed = playlistFormSchema.safeParse(input);
   if (!parsed.success) {
@@ -20,8 +19,14 @@ export async function updatePlaylistAction(
 
   try {
     await updatePlaylist(id, {
-      title: parsed.data.title,
-      description: parsed.data.description || undefined,
+      ar: {
+        title: parsed.data.ar.title,
+        description: parsed.data.ar.description || undefined,
+      },
+      en: {
+        title: parsed.data.en.title,
+        description: parsed.data.en.description || undefined,
+      },
       status: parsed.data.status,
       categoryIds: parsed.data.categoryIds,
     });
