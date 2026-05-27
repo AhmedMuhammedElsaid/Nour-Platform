@@ -1,7 +1,7 @@
-import type { SerializedTrack } from "@/features/playlists/types";
+import type { DisplayTrack } from "@/features/playlists/types";
 
 interface TrackRowProps {
-  track: SerializedTrack;
+  track: DisplayTrack;
   index: number;
 }
 

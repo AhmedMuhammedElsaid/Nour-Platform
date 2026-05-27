@@ -2,10 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-import {
-  getPlaylistBySlug,
-  getPlaylistSlugForLocale,
-} from "@repo/api/services/playlist";
+import { getPlaylistBySlug } from "@repo/api/services/playlist";
 import { LOCALES } from "@repo/api/schemas/locale";
 
 // Opt out of static prerendering. proxy.ts sets a per-request CSP nonce,
@@ -20,7 +17,7 @@ import type { PlayableTrack } from "@repo/api/services/track";
 import { TrackListPlayer } from "@/features/playlists/components/track-list-player";
 import type {
   SerializedPlaylist,
-  SerializedPlayableTrack,
+  DisplayTrack,
 } from "@/features/playlists/types";
 
 // ---------------------------------------------------------------------------
@@ -30,20 +27,24 @@ import type {
 function serializePlaylist(p: Playlist): SerializedPlaylist {
   return {
     ...p,
-    createdAt:
-      typeof p.createdAt === "string" ? p.createdAt : p.createdAt.toISOString(),
-    updatedAt:
-      typeof p.updatedAt === "string" ? p.updatedAt : p.updatedAt.toISOString(),
+    createdAt: typeof p.createdAt === "string" ? p.createdAt : p.createdAt.toISOString(),
+    updatedAt: typeof p.updatedAt === "string" ? p.updatedAt : p.updatedAt.toISOString(),
   };
 }
 
-function serializePlayableTrack(t: PlayableTrack): SerializedPlayableTrack {
+function toDisplayTrack(t: PlayableTrack, locale: Locale): DisplayTrack {
   return {
-    ...t,
-    createdAt:
-      typeof t.createdAt === "string" ? t.createdAt : t.createdAt.toISOString(),
-    updatedAt:
-      typeof t.updatedAt === "string" ? t.updatedAt : t.updatedAt.toISOString(),
+    id: t.id,
+    title: t[locale].title,
+    slug: t[locale].slug,
+    description: t[locale].description,
+    mediaId: t.mediaId,
+    playlistId: t.playlistId,
+    order: t.order,
+    ...(t.durationSecs != null ? { durationSecs: t.durationSecs } : {}),
+    srcUrl: t.srcUrl,
+    createdAt: typeof t.createdAt === "string" ? t.createdAt : t.createdAt.toISOString(),
+    updatedAt: typeof t.updatedAt === "string" ? t.updatedAt : t.updatedAt.toISOString(),
   };
 }
 
@@ -70,31 +71,28 @@ export async function generateMetadata({
     return { title: t("notFound") };
   }
 
-  // hreflang alternates: resolve each locale's own (published) slug via the
-  // shared contentId — slugs differ per locale, so we can't swap the prefix.
+  // hreflang alternates: both locale slugs are on the single document.
   const languages: Record<string, string> = {};
   for (const l of LOCALES) {
-    const altSlug =
-      l === locale
-        ? playlist.slug
-        : await getPlaylistSlugForLocale(playlist.contentId, l);
+    const altSlug = playlist[l].slug;
     if (altSlug) {
       languages[l] = `${baseUrl}/${l}/playlists/${altSlug}`;
     }
   }
 
   const tp = await getTranslations({ locale, namespace: "playlist" });
-  const canonical = `${baseUrl}/${locale}/playlists/${playlist.slug}`;
+  const display = playlist[locale];
+  const canonical = `${baseUrl}/${locale}/playlists/${display.slug}`;
   return {
-    title: `${playlist.title} — Nour`,
-    description: playlist.description ?? tp("listenOn"),
+    title: `${display.title} — Nour`,
+    description: display.description ?? tp("listenOn"),
     alternates: { canonical, languages },
     openGraph: {
       type: "website",
       locale,
       url: canonical,
-      title: playlist.title,
-      ...(playlist.description ? { description: playlist.description } : {}),
+      title: display.title,
+      ...(display.description ? { description: display.description } : {}),
     },
   };
 }
@@ -113,39 +111,31 @@ export default async function PlaylistDetailPage({
   const t = await getTranslations("playlist");
 
   const playlist = await getPlaylistBySlug(locale, slug);
+  if (!playlist || playlist.status !== "published") notFound();
 
-  if (!playlist || playlist.status !== "published") {
-    notFound();
-  }
-
-  const tracks = await getTracksWithUrls(locale, playlist.contentId);
+  const tracks = await getTracksWithUrls(playlist.id);
   const coverUrl = playlist.coverMediaId
     ? await getMediaUrlById(playlist.coverMediaId)
     : null;
 
+  const display = playlist[locale];
   const serializedPlaylist = serializePlaylist(playlist);
-  const serializedTracks = tracks.map(serializePlayableTrack);
+  const displayTracks = tracks.map((t) => toDisplayTrack(t, locale));
 
-  const publishedDate = new Date(
-    serializedPlaylist.createdAt,
-  ).toLocaleDateString(locale === "ar" ? "ar" : "en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-  const trackCount = serializedTracks.length;
+  const publishedDate = new Date(serializedPlaylist.createdAt).toLocaleDateString(
+    locale === "ar" ? "ar" : "en-US",
+    { year: "numeric", month: "long", day: "numeric" },
+  );
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
       <header>
-        <h1 className="font-display text-4xl tracking-tight">
-          {serializedPlaylist.title}
-        </h1>
-        {serializedPlaylist.description != null && (
-          <p className="mt-2 text-text-2">{serializedPlaylist.description}</p>
+        <h1 className="font-display text-4xl tracking-tight">{display.title}</h1>
+        {display.description != null && (
+          <p className="mt-2 text-text-2">{display.description}</p>
         )}
         <p className="mt-1 text-sm text-text-2">
-          {t("trackCount", { count: trackCount })} &middot; {publishedDate}
+          {t("trackCount", { count: displayTracks.length })} &middot; {publishedDate}
         </p>
       </header>
 
@@ -154,8 +144,8 @@ export default async function PlaylistDetailPage({
           {t("tracksHeading")}
         </h2>
         <TrackListPlayer
-          tracks={serializedTracks}
-          playlistTitle={serializedPlaylist.title}
+          tracks={displayTracks}
+          playlistTitle={display.title}
           coverUrl={coverUrl ?? undefined}
         />
       </section>

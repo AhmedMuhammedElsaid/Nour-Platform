@@ -6,10 +6,10 @@ import { Button } from "@repo/ui/primitives/button";
 import { usePlayer } from "@repo/ui/blocks/player-context";
 import type { QueueTrack } from "@repo/ui/blocks/player-context";
 
-import type { SerializedPlayableTrack } from "@/features/playlists/types";
+import type { DisplayTrack } from "@/features/playlists/types";
 
 interface Props {
-  tracks: SerializedPlayableTrack[];
+  tracks: DisplayTrack[];
   playlistTitle?: string;
   coverUrl?: string;
 }
@@ -22,7 +22,7 @@ function formatDuration(secs: number): string {
 }
 
 function toQueueTrack(
-  t: SerializedPlayableTrack,
+  t: DisplayTrack,
   meta: { playlistTitle?: string; coverUrl?: string },
 ): QueueTrack {
   return {

@@ -20,14 +20,8 @@ import type { SerializedPlaylist } from "@/features/playlists/types";
 function serializePlaylist(p: Playlist): SerializedPlaylist {
   return {
     ...p,
-    createdAt:
-      typeof p.createdAt === "string"
-        ? p.createdAt
-        : p.createdAt.toISOString(),
-    updatedAt:
-      typeof p.updatedAt === "string"
-        ? p.updatedAt
-        : p.updatedAt.toISOString(),
+    createdAt: typeof p.createdAt === "string" ? p.createdAt : p.createdAt.toISOString(),
+    updatedAt: typeof p.updatedAt === "string" ? p.updatedAt : p.updatedAt.toISOString(),
   };
 }
 
@@ -42,12 +36,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   // Homepage path is identical across locales — only the prefix changes.
-  const languages = Object.fromEntries(
-    LOCALES.map((l) => [l, `${baseUrl}/${l}`]),
-  );
-  return {
-    alternates: { canonical: `${baseUrl}/${locale}`, languages },
-  };
+  const languages = Object.fromEntries(LOCALES.map((l) => [l, `${baseUrl}/${l}`]));
+  return { alternates: { canonical: `${baseUrl}/${locale}`, languages } };
 }
 
 export default async function HomePage({
@@ -63,27 +53,24 @@ export default async function HomePage({
   const { category } = await searchParams;
   const t = await getTranslations("home");
 
-  // Fetch categories (for this locale) first so we can resolve the slug → the
-  // playlist filter, which keys on the locale-agnostic category contentId.
-  const categories = await listCategories(locale);
+  // Fetch all categories (no locale param — embedded ar/en on each doc).
+  const categories = await listCategories();
 
+  // Match the ?category= slug against the locale-specific slug field.
   const matchedCategory =
-    category != null
-      ? categories.find((c) => c.slug === category)
-      : undefined;
-  const categoryContentId = matchedCategory?.contentId;
+    category != null ? categories.find((c) => c[locale].slug === category) : undefined;
+  const categoryId = matchedCategory?.id;
 
   const playlists = await getPublishedPlaylists(
-    locale,
-    categoryContentId != null ? { categoryContentId } : undefined,
+    categoryId != null ? { categoryId } : undefined,
   );
   const serialized = playlists.map(serializePlaylist);
 
-  // Shape passed to the client island — slug + name only (no Dates).
+  // Pass locale-resolved slug + name to the CategoryFilterBar client island.
   const categoryPills = categories.map((c) => ({
     id: c.id,
-    slug: c.slug,
-    name: c.name,
+    slug: c[locale].slug,
+    name: c[locale].name,
   }));
 
   return (

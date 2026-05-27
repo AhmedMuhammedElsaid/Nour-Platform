@@ -33,3 +33,18 @@ export type SerializedPlayableTrack = Omit<
   createdAt: string;
   updatedAt: string;
 };
+
+// Locale-resolved shape passed to client components that don't know the locale.
+export type DisplayTrack = {
+  id: string;
+  title: string;
+  slug: string;
+  description?: string;
+  mediaId: string;
+  playlistId: string;
+  order: number;
+  durationSecs?: number;
+  srcUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
