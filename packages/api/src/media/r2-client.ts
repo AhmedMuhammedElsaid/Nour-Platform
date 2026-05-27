@@ -104,6 +104,12 @@ function getClient(): S3Client {
     // R2 expects path-style addressing; virtual-hosted-style buckets
     // aren't supported on the default `*.r2.cloudflarestorage.com` host.
     forcePathStyle: true,
+    // SDK v3 defaults to "when_supported" which injects x-amz-sdk-checksum-algorithm
+    // into presigned URLs. The browser XHR never sends the matching checksum header,
+    // so R2 rejects the PUT with 403. "when_required" skips the checksum for
+    // plain PutObject, which R2 does not require it for.
+    requestChecksumCalculation: "when_required",
+    responseChecksumValidation: "when_required",
   });
   return cachedClient;
 }
