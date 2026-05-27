@@ -5,16 +5,6 @@ import { TrackModel, type TrackDoc } from "../db/models/track.model";
 import type { Locale } from "../schemas/locale";
 import type { TrackCreateInput, TrackUpdateInput } from "../schemas/track";
 
-/*
- * Lean repository for the `tracks` collection. All methods return plain
- * JS objects (`.lean()`) — never Mongoose Documents. Services own the
- * `_id → id` DTO mapping and RBAC checks; this layer is query-only.
- *
- * Tracks are per-locale (DATABASE.md §3): a track belongs to a logical playlist
- * via `playlistContentId` and carries its own `locale`. `order` is the sole
- * source of ordering (playlists no longer mirror it).
- */
-
 export type TrackLean = TrackDoc & { _id: mongoose.Types.ObjectId };
 
 export async function findTrackById(id: string): Promise<TrackLean | null> {
@@ -23,35 +13,33 @@ export async function findTrackById(id: string): Promise<TrackLean | null> {
 }
 
 export async function findTracksByPlaylist(
-  locale: Locale,
-  playlistContentId: string,
+  playlistId: string,
 ): Promise<TrackLean[]> {
   await getDb();
-  // Ascending `order` keeps the player queue in the display sequence.
-  return TrackModel.find({ playlistContentId, locale })
+  return TrackModel.find({ playlistId })
     .sort({ order: 1 })
     .lean<TrackLean[]>();
 }
 
 export async function findTrackBySlug(
   locale: Locale,
-  playlistContentId: string,
+  playlistId: string,
   slug: string,
 ): Promise<TrackLean | null> {
   await getDb();
-  return TrackModel.findOne({ playlistContentId, locale, slug }).lean<TrackLean>();
+  const field = locale === "ar" ? "ar.slug" : "en.slug";
+  return TrackModel.findOne({ playlistId, [field]: slug }).lean<TrackLean>();
 }
 
 export async function createTrack(
-  data: Omit<TrackCreateInput, "contentId" | "slug" | "order"> & {
-    slug: string;
+  data: Omit<TrackCreateInput, "ar" | "en" | "order"> & {
+    ar: { title: string; slug: string; description?: string };
+    en: { title: string; slug: string; description?: string };
     order: number;
-    contentId: string;
   },
 ): Promise<TrackLean> {
   await getDb();
   const doc = await TrackModel.create(data);
-  // Fetch lean immediately after create — Document must not escape (CLAUDE.md §4.2).
   const lean = await TrackModel.findById(doc._id).lean<TrackLean>();
   return lean!;
 }
@@ -70,15 +58,7 @@ export async function deleteTrackById(id: string): Promise<boolean> {
   return result.deletedCount === 1;
 }
 
-/*
- * Reorder assigns a new `order` value to each track in a playlist.
- * Callers pass an ordered list of track IDs; this function writes the
- * index position (0-based) as the new `order`. Uses bulkWrite so the
- * entire operation is a single round-trip to Mongo.
- */
-export async function updateTrackOrder(
-  orderedIds: string[],
-): Promise<void> {
+export async function updateTrackOrder(orderedIds: string[]): Promise<void> {
   await getDb();
   const ops = orderedIds.map((id, index) => ({
     updateOne: {
