@@ -5,6 +5,12 @@ vi.mock('../actions/create-track.action', () => ({
   createTrackAction: vi.fn(),
 }))
 
+// jsdom has no real audio decoding (no URL.createObjectURL, no metadata
+// events), so stub the duration reader. 123 stands in for a decoded duration.
+vi.mock('../lib/audio-duration', () => ({
+  durationFromFile: vi.fn().mockResolvedValue(123),
+}))
+
 import { useTrackUpload } from './use-track-upload'
 import { createTrackAction } from '../actions/create-track.action'
 
@@ -91,6 +97,10 @@ describe('useTrackUpload', () => {
     expect(result.current.items[0]!.status).toBe('done')
     expect(result.current.items[0]!.trackId).toBe('track-1')
     expect(result.current.items[0]!.progress).toBe(100)
+    // The duration read client-side is forwarded to the create action.
+    expect(createTrackAction).toHaveBeenCalledWith(
+      expect.objectContaining({ durationSecs: 123 }),
+    )
   })
 
   it('sets error when presign returns non-ok response', async () => {

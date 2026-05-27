@@ -91,6 +91,27 @@ describe("track.service", () => {
       expect(result.id).toBe(TRACK_ID);
     });
 
+    it("forwards a caller-supplied durationSecs to the repository", async () => {
+      vi.mocked(requireSession).mockResolvedValueOnce({} as any);
+      vi.mocked(playlistRepo.findPlaylistById).mockResolvedValueOnce(
+        playlistLean(),
+      );
+      vi.mocked(trackRepo.createTrack).mockResolvedValueOnce(
+        trackLean({ durationSecs: 125.4 }),
+      );
+
+      const result = await service.createTrack({
+        title: "Intro",
+        playlistId: PLAYLIST_ID,
+        mediaId: MEDIA_ID,
+        durationSecs: 125.4,
+      } as any);
+
+      const createArg = vi.mocked(trackRepo.createTrack).mock.calls[0]![0];
+      expect(createArg.durationSecs).toBe(125.4);
+      expect(result.durationSecs).toBe(125.4);
+    });
+
     it("throws NotFound when the parent playlist is missing", async () => {
       vi.mocked(requireSession).mockResolvedValueOnce({} as any);
       vi.mocked(playlistRepo.findPlaylistById).mockResolvedValueOnce(null as any);
@@ -103,6 +124,26 @@ describe("track.service", () => {
         } as any),
       ).rejects.toBeInstanceOf(AppError);
       expect(trackRepo.createTrack).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("updateTrack", () => {
+    it("forwards durationSecs to the repo and revalidates the slug tag", async () => {
+      vi.mocked(requireSession).mockResolvedValueOnce({} as any);
+      vi.mocked(trackRepo.updateTrackById).mockResolvedValueOnce(
+        trackLean({ durationSecs: 99 }),
+      );
+      vi.mocked(playlistRepo.findPlaylistById).mockResolvedValueOnce(
+        playlistLean({ slug: "gamma" }),
+      );
+
+      const result = await service.updateTrack(TRACK_ID, { durationSecs: 99 });
+
+      const [id, update] = vi.mocked(trackRepo.updateTrackById).mock.calls[0]!;
+      expect(id).toBe(TRACK_ID);
+      expect(update.durationSecs).toBe(99);
+      expect(revalidateTag).toHaveBeenCalledWith("playlist:gamma", "default");
+      expect(result.durationSecs).toBe(99);
     });
   });
 

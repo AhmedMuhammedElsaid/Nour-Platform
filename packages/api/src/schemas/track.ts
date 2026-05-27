@@ -68,6 +68,7 @@ export const trackUpdateInputSchema = z
     description: z.string().max(2000),
     mediaId: objectIdSchema,
     order: z.number().int().nonnegative(),
+    durationSecs: z.number().positive(),
   })
   .partial();
 export type TrackUpdateInput = z.infer<typeof trackUpdateInputSchema>;

@@ -3,6 +3,7 @@
 import { useCallback, useReducer, useRef, useEffect } from "react";
 
 import { createTrackAction } from "../actions/create-track.action";
+import { durationFromFile } from "../lib/audio-duration";
 
 export type UploadStatus =
   | "pending"
@@ -61,27 +62,6 @@ function reducer(state: UploadItem[], action: Action): UploadItem[] {
     default:
       return state;
   }
-}
-
-// Reads the audio duration (seconds) from the file's metadata in the browser.
-// Resolves undefined if the element can't decode the file — duration is a
-// best-effort enrichment, never a hard requirement for the upload.
-function readAudioDuration(file: File): Promise<number | undefined> {
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
-    const audio = document.createElement("audio");
-    audio.preload = "metadata";
-    const finish = (value: number | undefined) => {
-      URL.revokeObjectURL(url);
-      resolve(value);
-    };
-    audio.onloadedmetadata = () => {
-      const d = audio.duration;
-      finish(Number.isFinite(d) && d > 0 ? d : undefined);
-    };
-    audio.onerror = () => finish(undefined);
-    audio.src = url;
-  });
 }
 
 // PUT the file to the presigned URL using XHR so we get upload progress events.
@@ -187,7 +167,7 @@ async function runUpload(
   // Step 4: create Track record. Read duration client-side from the audio
   // metadata (best-effort — undefined when the browser can't decode it).
   dispatch({ type: "SET_STATUS", id: item.id, status: "creating" });
-  const durationSecs = await readAudioDuration(item.file);
+  const durationSecs = await durationFromFile(item.file);
   const result = await createTrackAction({
     filename: item.file.name,
     playlistId,

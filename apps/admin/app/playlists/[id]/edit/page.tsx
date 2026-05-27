@@ -4,10 +4,11 @@ import { notFound } from "next/navigation";
 import { requireSession } from "@repo/api/auth";
 import { listCategories } from "@repo/api/services/category";
 import { getPlaylistById } from "@repo/api/services/playlist";
-import { getTracksByPlaylist } from "@repo/api/services/track";
+import { getTracksWithUrls } from "@repo/api/services/track";
 
 import { PlaylistForm } from "../../../../features/playlists/components/playlist-form";
 import { PublishToggle } from "../../../../features/playlists/components/publish-toggle";
+import { TrackDurationBackfill } from "../../../../features/playlists/components/track-duration-backfill";
 import {
   TrackList,
   type SerializedTrack,
@@ -28,7 +29,7 @@ export default async function EditPlaylistPage({ params }: Props) {
   const session = await requireSession(["admin"]);
   const [playlist, tracks, categories] = await Promise.all([
     getPlaylistById(id, session),
-    getTracksByPlaylist(id),
+    getTracksWithUrls(id),
     listCategories(),
   ]);
 
@@ -43,6 +44,12 @@ export default async function EditPlaylistPage({ params }: Props) {
     id: t.id,
     title: t.title,
     order: t.order,
+    ...(t.durationSecs != null ? { durationSecs: t.durationSecs } : {}),
+  }));
+
+  const backfillTracks = tracks.map((t) => ({
+    id: t.id,
+    srcUrl: t.srcUrl,
     ...(t.durationSecs != null ? { durationSecs: t.durationSecs } : {}),
   }));
 
@@ -83,6 +90,7 @@ export default async function EditPlaylistPage({ params }: Props) {
           playlistId={playlist.id}
           initialTracks={serializedTracks}
         />
+        <TrackDurationBackfill tracks={backfillTracks} />
         <div className="mt-6">
           <TrackUploader playlistId={playlist.id} />
         </div>
