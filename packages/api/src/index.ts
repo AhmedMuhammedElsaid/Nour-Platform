@@ -7,6 +7,8 @@ export type { AppErrorCode, SerializedAppError } from "./errors/index";
 export { getDb, disconnectDb } from "./db/client";
 export { auth, signIn, signOut, handlers, requireSession } from "./auth/index";
 export type { User, UserRole, Credentials } from "./schemas/user";
+export { LOCALES, DEFAULT_LOCALE, localeSchema, isLocale } from "./schemas/locale";
+export type { Locale } from "./schemas/locale";
 export type {
   Playlist,
   PlaylistStatus,

@@ -1,9 +1,12 @@
 import { z } from "zod";
 
+import { localeSchema } from "./locale";
+
 /*
- * Category shape for P2-A Scholars + Categories phase. A category is a
- * top-level taxonomy node that groups playlists (and future resources).
- * Slug uniqueness is enforced at the DB level (unique index on CategoryModel).
+ * Category shape (per-locale documents — DATABASE.md §3). Each document is one
+ * locale of a taxonomy node; `contentId` ties the AR and EN versions together.
+ * Playlists reference a category by its `contentId`, so the link is
+ * locale-agnostic. Slug uniqueness is enforced per (locale, slug) at the DB level.
  */
 
 // ObjectId-as-string ref. Mongoose serializes _id to a 24-char hex string at
@@ -13,16 +16,18 @@ const objectIdSchema = z
   .string()
   .regex(/^[0-9a-f]{24}$/, "Invalid ObjectId");
 
-// Slugs are URL path segments, normalized to lowercase with single hyphen
-// separators. Matches the slugify() output used by the service layer.
+// Unicode-aware slug (any-script letters/numbers, hyphen-separated) so Arabic
+// names produce non-empty slugs — see ADR 0002.
 const slugSchema = z
   .string()
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Invalid slug")
+  .regex(/^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u, "Invalid slug")
   .min(1)
   .max(200);
 
 export const categorySchema = z.object({
   id: objectIdSchema,
+  contentId: objectIdSchema,
+  locale: localeSchema,
   name: z.string().min(1).max(100),
   slug: slugSchema,
   description: z.string().max(500).optional(),
@@ -34,10 +39,12 @@ export type Category = z.infer<typeof categorySchema>;
 
 /*
  * Create-input: `id`/timestamps are produced by Mongo. `slug` is optional
- * because the service derives it from `name` when omitted; supplying it
- * lets the admin override the auto-derived value.
+ * (service derives from `name`). `locale` required; `contentId` optional
+ * (omit for first locale, supply to add a translation).
  */
 export const categoryCreateInputSchema = z.object({
+  locale: localeSchema,
+  contentId: objectIdSchema.optional(),
   name: z.string().min(1).max(100),
   slug: slugSchema.optional(),
   description: z.string().max(500).optional(),
@@ -47,6 +54,7 @@ export type CategoryCreateInput = z.infer<typeof categoryCreateInputSchema>;
 
 /*
  * Update-input: every field optional so callers can PATCH any subset.
+ * `locale`/`contentId` are immutable.
  */
 export const categoryUpdateInputSchema = z
   .object({

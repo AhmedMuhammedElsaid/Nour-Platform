@@ -2,24 +2,24 @@ import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
 
 /*
  * Mongoose model for the `playlists` collection. Mirrors the Zod schema in
- * `schemas/playlist.ts` (DATABASE.md Audio MVP). `trackIds` holds an ordered
- * list of ObjectId refs; order is authoritative here — the reorder service
- * replaces the whole array in one atomic write.
+ * `schemas/playlist.ts` (DATABASE.md §3 — per-locale documents). Each document
+ * is one locale of a logical program; `contentId` ties the AR/EN variants
+ * together and `categoryIds` reference category `contentId`s (locale-agnostic).
  *
- * Compound index on `(status, slug)` supports the public published-playlist
- * lookup in O(log n); unique `slug` index enforces uniqueness at the DB level.
+ * Track ordering is owned by the Track document (`order`); playlists no longer
+ * mirror it in a `trackIds` array. Slug uniqueness is scoped per locale.
  */
 const playlistSchema = new Schema(
   {
+    contentId: { type: Schema.Types.ObjectId, required: true },
+    locale: { type: String, enum: ["ar", "en"], required: true },
     title: { type: String, required: true, trim: true, maxlength: 200 },
     slug: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
       trim: true,
       maxlength: 200,
-      index: true,
     },
     description: { type: String, maxlength: 2000 },
     coverMediaId: { type: Schema.Types.ObjectId, ref: "Media" },
@@ -29,13 +29,16 @@ const playlistSchema = new Schema(
       required: true,
       default: "draft",
     },
-    trackIds: { type: [Schema.Types.ObjectId], ref: "Track", default: [] },
-    categoryIds: [{ type: Schema.Types.ObjectId, ref: "Category", default: [] }],
+    categoryIds: [{ type: Schema.Types.ObjectId, default: [] }],
   },
   { timestamps: true, collection: "playlists" },
 );
 
-playlistSchema.index({ status: 1, slug: 1 });
+// Slug unique per locale; one document per (contentId, locale).
+playlistSchema.index({ locale: 1, slug: 1 }, { unique: true });
+playlistSchema.index({ contentId: 1, locale: 1 }, { unique: true });
+// Public home query: published playlists for a locale, newest first.
+playlistSchema.index({ status: 1, locale: 1, updatedAt: -1 });
 
 export type PlaylistDoc = InferSchemaType<typeof playlistSchema> & {
   _id: mongoose.Types.ObjectId;

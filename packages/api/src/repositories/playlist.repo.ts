@@ -2,12 +2,16 @@ import type mongoose from "mongoose";
 
 import { getDb } from "../db/client";
 import { PlaylistModel, type PlaylistDoc } from "../db/models/playlist.model";
+import type { Locale } from "../schemas/locale";
 import type { PlaylistCreateInput, PlaylistUpdateInput } from "../schemas/playlist";
 
 /*
  * Lean repository for the `playlists` collection. All methods return plain
  * JS objects (`.lean()`) — never Mongoose Documents. Services own the
  * `_id → id` DTO mapping and RBAC checks; this layer is query-only.
+ *
+ * Public reads are locale-scoped (DATABASE.md §3). Track ordering lives on the
+ * Track document, so there are no more trackIds mutators here.
  */
 
 export type PlaylistLean = PlaylistDoc & { _id: mongoose.Types.ObjectId };
@@ -20,22 +24,31 @@ export async function findPlaylistById(
 }
 
 export async function findPlaylistBySlug(
+  locale: Locale,
   slug: string,
 ): Promise<PlaylistLean | null> {
   await getDb();
-  return PlaylistModel.findOne({ slug }).lean<PlaylistLean>();
+  return PlaylistModel.findOne({ locale, slug }).lean<PlaylistLean>();
+}
+
+/** All locale variants of a logical playlist, keyed by its shared contentId. */
+export async function findPlaylistsByContentId(
+  contentId: string,
+): Promise<PlaylistLean[]> {
+  await getDb();
+  return PlaylistModel.find({ contentId }).lean<PlaylistLean[]>();
 }
 
 export async function findPublishedPlaylists(
-  filter?: { categoryId?: string },
+  locale: Locale,
+  filter?: { categoryContentId?: string },
 ): Promise<PlaylistLean[]> {
   await getDb();
-  const query: Record<string, unknown> = { status: "published" };
-  // When a categoryId filter is supplied, match playlists whose categoryIds
-  // array contains the given ObjectId. MongoDB automatically handles the $in
-  // semantics for array fields when a scalar equality is used.
-  if (filter?.categoryId != null) {
-    query["categoryIds"] = filter.categoryId;
+  const query: Record<string, unknown> = { status: "published", locale };
+  // categoryIds holds category contentIds; a scalar equality matches any
+  // playlist whose array contains the given contentId.
+  if (filter?.categoryContentId != null) {
+    query["categoryIds"] = filter.categoryContentId;
   }
   return PlaylistModel.find(query)
     .sort({ updatedAt: -1 })
@@ -48,7 +61,10 @@ export async function findAllPlaylists(): Promise<PlaylistLean[]> {
 }
 
 export async function createPlaylist(
-  data: PlaylistCreateInput & { slug: string },
+  data: Omit<PlaylistCreateInput, "contentId" | "slug"> & {
+    slug: string;
+    contentId: string;
+  },
 ): Promise<PlaylistLean> {
   await getDb();
   // `create()` returns a Mongoose Document; destructure immediately so the
@@ -72,36 +88,4 @@ export async function deletePlaylistById(id: string): Promise<boolean> {
   await getDb();
   const result = await PlaylistModel.deleteOne({ _id: id });
   return result.deletedCount === 1;
-}
-
-/*
- * Appends a single trackId to the playlist's ordered trackIds array.
- * $addToSet is not used here because the ordered list must allow the service
- * to control position; $push preserves insertion order.
- */
-export async function appendTrackId(
-  playlistId: string,
-  trackId: string,
-): Promise<void> {
-  await getDb();
-  await PlaylistModel.updateOne(
-    { _id: playlistId },
-    { $push: { trackIds: trackId } },
-  );
-}
-
-/*
- * Removes a single trackId from the playlist's trackIds array.
- * $pull removes all matching elements; there should only ever be one instance
- * of a given trackId in the array, so this is effectively a remove-by-value.
- */
-export async function removeTrackId(
-  playlistId: string,
-  trackId: string,
-): Promise<void> {
-  await getDb();
-  await PlaylistModel.updateOne(
-    { _id: playlistId },
-    { $pull: { trackIds: trackId } },
-  );
 }

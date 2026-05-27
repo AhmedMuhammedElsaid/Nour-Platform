@@ -4,6 +4,8 @@ import { parseArgs } from "node:util";
 import { getDb, disconnectDb } from "@repo/api/db/client";
 import * as migration0001 from "@repo/api/db/migrations/0001-indexes";
 import * as migration0002 from "@repo/api/db/migrations/0002-category-indexes";
+import * as migration0003 from "@repo/api/db/migrations/0003-i18n-backfill";
+import * as migration0004 from "@repo/api/db/migrations/0004-i18n-indexes";
 
 /*
  * Migration runner for the Nour Platform.
@@ -24,7 +26,12 @@ interface Migration {
 }
 
 // Ordered list of all migrations. Append new entries here as waves ship.
-const migrations: Migration[] = [migration0001, migration0002];
+const migrations: Migration[] = [
+  migration0001,
+  migration0002,
+  migration0003,
+  migration0004,
+];
 
 async function main(): Promise<void> {
   const { values } = parseArgs({

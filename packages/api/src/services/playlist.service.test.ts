@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PLAYLISTS_HOME } from "../cache/tags";
+import { playlistsHomeTag, playlistTag } from "../cache/tags";
 import { AppError } from "../errors";
 
 // Module-level mocks. Hoisted by vitest before service import.
@@ -30,10 +30,12 @@ const service = await import("./playlist.service");
 function makeLean(overrides: Record<string, unknown> = {}): any {
   return {
     _id: { toString: () => "p1" },
+    contentId: { toString: () => "c1" },
+    locale: "ar",
     title: "Title",
     slug: "title",
     status: "draft",
-    trackIds: [],
+    categoryIds: [],
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -46,17 +48,29 @@ beforeEach(() => {
 
 describe("playlist.service", () => {
   describe("getPublishedPlaylists", () => {
-    it("returns DTOs from the repo without requiring a session", async () => {
+    it("passes the locale to the repo and returns DTOs without a session", async () => {
       vi.mocked(repo.findPublishedPlaylists).mockResolvedValueOnce([
         makeLean({ slug: "alpha" }),
         makeLean({ slug: "beta", _id: { toString: () => "p2" } }),
       ]);
 
-      const result = await service.getPublishedPlaylists();
+      const result = await service.getPublishedPlaylists("ar");
 
+      expect(repo.findPublishedPlaylists).toHaveBeenCalledWith("ar", undefined);
       expect(result).toHaveLength(2);
       expect(result[0]!.slug).toBe("alpha");
+      expect(result[0]!.locale).toBe("ar");
       expect(requireSession).not.toHaveBeenCalled();
+    });
+
+    it("forwards a categoryContentId filter to the repo", async () => {
+      vi.mocked(repo.findPublishedPlaylists).mockResolvedValueOnce([]);
+
+      await service.getPublishedPlaylists("en", { categoryContentId: "cat1" });
+
+      expect(repo.findPublishedPlaylists).toHaveBeenCalledWith("en", {
+        categoryContentId: "cat1",
+      });
     });
   });
 
@@ -68,17 +82,37 @@ describe("playlist.service", () => {
       );
 
       const result = await service.createPlaylist({
+        locale: "en",
         title: "My Playlist!",
         status: "draft",
-        trackIds: [],
         categoryIds: [],
       });
 
       expect(requireSession).toHaveBeenCalledWith(["admin"]);
-      expect(vi.mocked(repo.createPlaylist).mock.calls[0]![0].slug).toBe(
-        "my-playlist",
-      );
+      const createArg = vi.mocked(repo.createPlaylist).mock.calls[0]![0];
+      expect(createArg.slug).toBe("my-playlist");
+      // First locale mints a contentId (24-hex ObjectId string).
+      expect(createArg.contentId).toMatch(/^[0-9a-f]{24}$/);
       expect(result.slug).toBe("my-playlist");
+    });
+
+    it("derives a non-empty slug from an Arabic-only title (ADR 0002)", async () => {
+      vi.mocked(requireSession).mockResolvedValueOnce({} as any);
+      vi.mocked(repo.createPlaylist).mockImplementationOnce(
+        async (data: any) => makeLean({ slug: data.slug }),
+      );
+
+      const result = await service.createPlaylist({
+        locale: "ar",
+        title: "سورة البقرة",
+        status: "draft",
+        categoryIds: [],
+      });
+
+      const createArg = vi.mocked(repo.createPlaylist).mock.calls[0]![0];
+      expect(createArg.slug.length).toBeGreaterThan(0);
+      expect(createArg.slug).toBe("سورة-البقرة");
+      expect(result.slug).toBe("سورة-البقرة");
     });
 
     it("propagates Zod validation errors as thrown ZodError", async () => {
@@ -92,10 +126,10 @@ describe("playlist.service", () => {
   });
 
   describe("publishPlaylist", () => {
-    it("flips status to published and revalidates home + slug tags", async () => {
+    it("flips status to published and revalidates locale-scoped tags", async () => {
       vi.mocked(requireSession).mockResolvedValueOnce({} as any);
       vi.mocked(repo.updatePlaylistById).mockResolvedValueOnce(
-        makeLean({ slug: "alpha", status: "published" }),
+        makeLean({ slug: "alpha", status: "published", locale: "ar" }),
       );
 
       await service.publishPlaylist("p1");
@@ -103,8 +137,14 @@ describe("playlist.service", () => {
       expect(repo.updatePlaylistById).toHaveBeenCalledWith("p1", {
         status: "published",
       });
-      expect(revalidateTag).toHaveBeenCalledWith(PLAYLISTS_HOME, "default");
-      expect(revalidateTag).toHaveBeenCalledWith("playlist:alpha", "default");
+      expect(revalidateTag).toHaveBeenCalledWith(
+        playlistsHomeTag("ar"),
+        "default",
+      );
+      expect(revalidateTag).toHaveBeenCalledWith(
+        playlistTag("ar", "alpha"),
+        "default",
+      );
     });
 
     it("throws NotFound and skips revalidation when the playlist is missing", async () => {

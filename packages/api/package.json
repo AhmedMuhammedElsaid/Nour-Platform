@@ -14,6 +14,7 @@
     "./services/track": "./src/services/track.service.ts",
     "./services/category": "./src/services/category.service.ts",
     "./schemas/user": "./src/schemas/user.ts",
+    "./schemas/locale": "./src/schemas/locale.ts",
     "./schemas/playlist": "./src/schemas/playlist.ts",
     "./schemas/track": "./src/schemas/track.ts",
     "./schemas/media": "./src/schemas/media.ts",
@@ -29,7 +30,9 @@
     "./repositories/track": "./src/repositories/track.repo.ts",
     "./repositories/media": "./src/repositories/media.repo.ts",
     "./db/migrations/0001-indexes": "./src/db/migrations/0001-indexes.ts",
-    "./db/migrations/0002-category-indexes": "./src/db/migrations/0002-category-indexes.ts"
+    "./db/migrations/0002-category-indexes": "./src/db/migrations/0002-category-indexes.ts",
+    "./db/migrations/0003-i18n-backfill": "./src/db/migrations/0003-i18n-backfill.ts",
+    "./db/migrations/0004-i18n-indexes": "./src/db/migrations/0004-i18n-indexes.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",

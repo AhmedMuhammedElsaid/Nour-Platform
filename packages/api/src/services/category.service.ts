@@ -5,6 +5,7 @@ import {
   create as repoCreate,
   deleteById as repoDeleteById,
   findAll,
+  findByContentId,
   findById as repoFindById,
   findBySlug,
   updateById as repoUpdateById,
@@ -19,21 +20,27 @@ import {
 } from "../schemas/category";
 import { getDb } from "../db/client";
 import { PlaylistModel } from "../db/models/playlist.model";
-import { CATEGORIES, PLAYLISTS_HOME } from "../cache/tags";
+import { categoriesTag, playlistsHomeTag } from "../cache/tags";
+import { LOCALES, type Locale } from "../schemas/locale";
+import { slugify } from "../utils/slug";
+import { newObjectIdString } from "../utils/id";
 import type { CategoryLean } from "../repositories/category.repo";
 
 /*
- * Category service — P2-A. Single chokepoint for category CRUD.
- * - Public reads (no session): listCategories, getCategoryBySlug.
+ * Category service — single chokepoint for category CRUD. Categories are
+ * per-locale (DATABASE.md §3); playlists reference a category by its
+ * locale-agnostic `contentId`.
+ * - Public reads (no session): listCategories, getCategoryBySlug — locale-scoped.
  * - Admin-only mutations begin with requireSession(['admin']) before any I/O.
  * - revalidateTag is called after every mutation that affects cached responses.
- * Services return plain DTO objects; Mongoose Documents never escape this layer.
  */
 
 // Converts a lean Mongo doc to the public-facing Category DTO.
 function toDto(doc: CategoryLean): Category {
   return {
     id: doc._id.toString(),
+    contentId: (doc.contentId as { toString(): string }).toString(),
+    locale: doc.locale as Category["locale"],
     name: doc.name,
     slug: doc.slug,
     ...(doc.description != null ? { description: doc.description } : {}),
@@ -49,31 +56,20 @@ function toDto(doc: CategoryLean): Category {
   };
 }
 
-/*
- * Derives a URL-safe slug from a name. Matches slugSchema in schemas/category.ts:
- * lowercase, alphanum + hyphens, max 200 chars. Mirrors slugify in playlist.service.ts.
- */
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .slice(0, 200);
-}
-
 // ---------------------------------------------------------------------------
-// Public reads (no session required)
+// Public reads (no session required) — locale-scoped
 // ---------------------------------------------------------------------------
 
-export async function listCategories(): Promise<Category[]> {
-  const docs = await findAll();
+export async function listCategories(locale: Locale): Promise<Category[]> {
+  const docs = await findAll(locale);
   return docs.map(toDto);
 }
 
-export async function getCategoryBySlug(slug: string): Promise<Category> {
-  const doc = await findBySlug(slug);
+export async function getCategoryBySlug(
+  locale: Locale,
+  slug: string,
+): Promise<Category> {
+  const doc = await findBySlug(locale, slug);
   if (!doc) throw AppError.NotFound("Category");
   return toDto(doc);
 }
@@ -97,23 +93,29 @@ export async function createCategory(
   // Zod parse throws on bad input (CLAUDE.md §4).
   const parsed = categoryCreateInputSchema.parse(input);
 
+  // First locale of a new category mints a contentId; a translation supplies
+  // the existing category's contentId to link the locales together.
+  const contentId = parsed.contentId ?? newObjectIdString();
+
   // Auto-generate slug from name when the caller omits it.
-  const baseSlug = parsed.slug ?? slugify(parsed.name);
+  const baseSlug = parsed.slug ?? slugify(parsed.name, contentId);
 
   /*
    * Slug collision handling: try the base slug first, then append a numeric
    * suffix (-2, -3, …) on Mongo unique-constraint violations (error code 11000).
-   * The loop is bounded at 10 attempts to prevent an infinite spin on a
-   * pathological namespace collision.
+   * Uniqueness is per (locale, slug), so the same slug may exist in the other
+   * locale without collision. Bounded at 10 attempts.
    */
   let lean: CategoryLean | undefined;
   let attempt = 0;
   const maxAttempts = 10;
 
+  const { contentId: _omitContentId, slug: _omitSlug, ...rest } = parsed;
+
   while (attempt < maxAttempts) {
     const slug = attempt === 0 ? baseSlug : `${baseSlug}-${attempt + 1}`;
     try {
-      lean = await repoCreate({ ...parsed, slug });
+      lean = await repoCreate({ ...rest, slug, contentId });
       break;
     } catch (err: unknown) {
       // MongoDB duplicate-key error code.
@@ -136,7 +138,7 @@ export async function createCategory(
     );
   }
 
-  revalidateTag(CATEGORIES, "default");
+  revalidateTag(categoriesTag(lean.locale as Locale), "default");
 
   return toDto(lean);
 }
@@ -152,7 +154,7 @@ export async function updateCategory(
   const lean = await repoUpdateById(id, parsed);
   if (!lean) throw AppError.NotFound("Category");
 
-  revalidateTag(CATEGORIES, "default");
+  revalidateTag(categoriesTag(lean.locale as Locale), "default");
 
   return toDto(lean);
 }
@@ -160,28 +162,33 @@ export async function updateCategory(
 export async function deleteCategory(id: string): Promise<void> {
   await requireSession(["admin"]);
 
+  // Fetch before delete so we have the contentId + locale for the cascade.
+  const existing = await repoFindById(id);
+  if (!existing) throw AppError.NotFound("Category");
+
   const deleted = await repoDeleteById(id);
   if (!deleted) throw AppError.NotFound("Category");
 
   /*
-   * Cross-collection cascade: remove this category's ObjectId from every
-   * playlist that references it. PlaylistModel.schema defines `categoryIds`
-   * (added in P2-A.4), so this $pull is load-bearing — without it, deleting
-   * a category would leave dangling references in every playlist that listed
-   * it, and the public homepage filter would surface a "0 results" facet
-   * pointing at a non-existent category. Do not remove.
-   *
-   * This is the one place the service layer touches a Mongoose model
-   * directly instead of going through a repo, because the cascade crosses
-   * collection boundaries. A future refactor could move it to
-   * `pullCategoryFromPlaylists(id)` in playlist.repo.ts.
+   * Cross-collection cascade: playlists reference a category by its
+   * locale-agnostic contentId. Only pull the contentId from playlists when the
+   * LAST locale variant of this category is gone — otherwise the link is still
+   * valid via the surviving locale. Without this, deleting a category would
+   * leave dangling references and the homepage filter would surface a
+   * "0 results" facet pointing at a non-existent category. Do not remove.
    */
-  await getDb();
-  await PlaylistModel.updateMany(
-    { categoryIds: id },
-    { $pull: { categoryIds: id } },
-  );
+  const remaining = await findByContentId(existing.contentId.toString());
+  if (remaining === null) {
+    await getDb();
+    await PlaylistModel.updateMany(
+      { categoryIds: existing.contentId },
+      { $pull: { categoryIds: existing.contentId } },
+    );
+    // The pull can touch playlists of any locale — revalidate every home list.
+    for (const locale of LOCALES) {
+      revalidateTag(playlistsHomeTag(locale), "default");
+    }
+  }
 
-  revalidateTag(CATEGORIES, "default");
-  revalidateTag(PLAYLISTS_HOME, "default");
+  revalidateTag(categoriesTag(existing.locale as Locale), "default");
 }

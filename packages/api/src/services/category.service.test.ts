@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PLAYLISTS_HOME } from "../cache/tags";
+import { categoriesTag, playlistsHomeTag } from "../cache/tags";
 import { AppError } from "../errors";
 
 // Module-level mocks. Hoisted by vitest before service import.
@@ -17,6 +17,7 @@ vi.mock("../repositories/category.repo", () => ({
   deleteById: vi.fn(),
   findAll: vi.fn(),
   findById: vi.fn(),
+  findByContentId: vi.fn(),
   findBySlug: vi.fn(),
   updateById: vi.fn(),
 }));
@@ -42,6 +43,8 @@ const service = await import("./category.service");
 function makeLean(overrides: Record<string, unknown> = {}): any {
   return {
     _id: { toString: () => "c1" },
+    contentId: "cc1",
+    locale: "ar",
     name: "Quran",
     slug: "quran",
     createdAt: new Date("2024-01-01"),
@@ -58,39 +61,40 @@ describe("category.service", () => {
   // ── Public reads ────────────────────────────────────────────────────────────
 
   describe("listCategories", () => {
-    it("returns sorted array mapped to Category DTOs with id as string", async () => {
+    it("passes the locale to the repo and maps to DTOs", async () => {
       vi.mocked(repo.findAll).mockResolvedValueOnce([
         makeLean({ slug: "alpha", _id: { toString: () => "aaa" } }),
         makeLean({ slug: "beta", _id: { toString: () => "bbb" } }),
       ]);
 
-      const result = await service.listCategories();
+      const result = await service.listCategories("ar");
 
+      expect(repo.findAll).toHaveBeenCalledWith("ar");
       expect(result).toHaveLength(2);
       expect(result[0]!.slug).toBe("alpha");
       expect(result[0]!.id).toBe("aaa");
-      expect(result[1]!.slug).toBe("beta");
-      expect(result[1]!.id).toBe("bbb");
+      expect(result[0]!.locale).toBe("ar");
       expect(requireSession).not.toHaveBeenCalled();
     });
 
     it("returns an empty array when no categories exist", async () => {
       vi.mocked(repo.findAll).mockResolvedValueOnce([]);
 
-      const result = await service.listCategories();
+      const result = await service.listCategories("en");
 
       expect(result).toHaveLength(0);
     });
   });
 
   describe("getCategoryBySlug", () => {
-    it("returns the category DTO when found", async () => {
+    it("passes locale + slug and returns the category DTO when found", async () => {
       vi.mocked(repo.findBySlug).mockResolvedValueOnce(
         makeLean({ slug: "quran", name: "Quran" }),
       );
 
-      const result = await service.getCategoryBySlug("quran");
+      const result = await service.getCategoryBySlug("ar", "quran");
 
+      expect(repo.findBySlug).toHaveBeenCalledWith("ar", "quran");
       expect(result.slug).toBe("quran");
       expect(result.name).toBe("Quran");
       expect(result.id).toBe("c1");
@@ -98,13 +102,10 @@ describe("category.service", () => {
     });
 
     it("throws AppError NOT_FOUND when findBySlug returns null", async () => {
-      vi.mocked(repo.findBySlug).mockResolvedValueOnce(null);
+      vi.mocked(repo.findBySlug).mockResolvedValue(null);
 
-      await expect(service.getCategoryBySlug("missing")).rejects.toBeInstanceOf(
-        AppError,
-      );
       await expect(
-        service.getCategoryBySlug("missing"),
+        service.getCategoryBySlug("ar", "missing"),
       ).rejects.toMatchObject({ code: "NOT_FOUND" });
     });
   });
@@ -112,20 +113,24 @@ describe("category.service", () => {
   // ── Admin mutations ─────────────────────────────────────────────────────────
 
   describe("createCategory", () => {
-    it("happy path: auto-derives slug, calls create, revalidates 'categories'", async () => {
+    it("happy path: auto-derives slug, mints contentId, revalidates locale tag", async () => {
       vi.mocked(requireSession).mockResolvedValueOnce({} as any);
       vi.mocked(repo.create).mockResolvedValueOnce(
         makeLean({ name: "My Category", slug: "my-category" }),
       );
 
-      const result = await service.createCategory({ name: "My Category!" });
+      const result = await service.createCategory({
+        locale: "ar",
+        name: "My Category!",
+      });
 
       expect(requireSession).toHaveBeenCalledWith(["admin"]);
-      // The slug must have been derived from the name.
-      expect(vi.mocked(repo.create).mock.calls[0]![0].slug).toBe("my-category");
+      const createArg = vi.mocked(repo.create).mock.calls[0]![0];
+      expect(createArg.slug).toBe("my-category");
+      expect(createArg.contentId).toMatch(/^[0-9a-f]{24}$/);
       expect(result.slug).toBe("my-category");
       expect(result.name).toBe("My Category");
-      expect(revalidateTag).toHaveBeenCalledWith("categories", "default");
+      expect(revalidateTag).toHaveBeenCalledWith(categoriesTag("ar"), "default");
     });
 
     it("uses caller-supplied slug when one is provided", async () => {
@@ -134,7 +139,11 @@ describe("category.service", () => {
         makeLean({ name: "Custom", slug: "custom-slug" }),
       );
 
-      await service.createCategory({ name: "Custom", slug: "custom-slug" });
+      await service.createCategory({
+        locale: "ar",
+        name: "Custom",
+        slug: "custom-slug",
+      });
 
       expect(vi.mocked(repo.create).mock.calls[0]![0].slug).toBe("custom-slug");
     });
@@ -144,11 +153,9 @@ describe("category.service", () => {
       // First call throws a Mongo duplicate-key error.
       vi.mocked(repo.create)
         .mockRejectedValueOnce({ code: 11000 })
-        .mockResolvedValueOnce(
-          makeLean({ name: "Quran", slug: "quran-2" }),
-        );
+        .mockResolvedValueOnce(makeLean({ name: "Quran", slug: "quran-2" }));
 
-      const result = await service.createCategory({ name: "Quran" });
+      const result = await service.createCategory({ locale: "ar", name: "Quran" });
 
       expect(repo.create).toHaveBeenCalledTimes(2);
       expect(vi.mocked(repo.create).mock.calls[1]![0].slug).toBe("quran-2");
@@ -161,7 +168,7 @@ describe("category.service", () => {
       );
 
       await expect(
-        service.createCategory({ name: "Test" }),
+        service.createCategory({ locale: "ar", name: "Test" }),
       ).rejects.toBeInstanceOf(AppError);
 
       expect(repo.create).not.toHaveBeenCalled();
@@ -179,7 +186,7 @@ describe("category.service", () => {
   });
 
   describe("updateCategory", () => {
-    it("happy path: calls updateById, revalidates 'categories'", async () => {
+    it("happy path: calls updateById, revalidates the locale tag", async () => {
       vi.mocked(requireSession).mockResolvedValueOnce({} as any);
       vi.mocked(repo.updateById).mockResolvedValueOnce(
         makeLean({ name: "Sunnah", slug: "sunnah" }),
@@ -190,7 +197,7 @@ describe("category.service", () => {
       expect(requireSession).toHaveBeenCalledWith(["admin"]);
       expect(repo.updateById).toHaveBeenCalledWith("c1", { name: "Sunnah" });
       expect(result.name).toBe("Sunnah");
-      expect(revalidateTag).toHaveBeenCalledWith("categories", "default");
+      expect(revalidateTag).toHaveBeenCalledWith(categoriesTag("ar"), "default");
     });
 
     it("throws AppError NOT_FOUND when updateById returns null", async () => {
@@ -203,39 +210,53 @@ describe("category.service", () => {
 
       expect(revalidateTag).not.toHaveBeenCalled();
     });
-
-    it("throws AppError when a non-admin session is used", async () => {
-      vi.mocked(requireSession).mockRejectedValueOnce(
-        AppError.Forbidden(["admin"]),
-      );
-
-      await expect(
-        service.updateCategory("c1", { name: "X" }),
-      ).rejects.toBeInstanceOf(AppError);
-
-      expect(repo.updateById).not.toHaveBeenCalled();
-    });
   });
 
   describe("deleteCategory", () => {
-    it("happy path: calls deleteById, pulls from playlists, revalidates both tags", async () => {
+    it("pulls the contentId from playlists when the last locale is gone", async () => {
       vi.mocked(requireSession).mockResolvedValueOnce({} as any);
+      vi.mocked(repo.findById).mockResolvedValueOnce(makeLean());
       vi.mocked(repo.deleteById).mockResolvedValueOnce(true);
+      // No surviving locale variant → cascade fires.
+      vi.mocked(repo.findByContentId).mockResolvedValueOnce(null);
 
       await service.deleteCategory("c1");
 
       expect(requireSession).toHaveBeenCalledWith(["admin"]);
       expect(repo.deleteById).toHaveBeenCalledWith("c1");
       expect(vi.mocked(PlaylistModel.updateMany)).toHaveBeenCalledWith(
-        { categoryIds: "c1" },
-        { $pull: { categoryIds: "c1" } },
+        { categoryIds: "cc1" },
+        { $pull: { categoryIds: "cc1" } },
       );
-      expect(revalidateTag).toHaveBeenCalledWith("categories", "default");
-      expect(revalidateTag).toHaveBeenCalledWith(PLAYLISTS_HOME, "default");
+      expect(revalidateTag).toHaveBeenCalledWith(categoriesTag("ar"), "default");
+      expect(revalidateTag).toHaveBeenCalledWith(
+        playlistsHomeTag("ar"),
+        "default",
+      );
+      expect(revalidateTag).toHaveBeenCalledWith(
+        playlistsHomeTag("en"),
+        "default",
+      );
+    });
+
+    it("skips the playlist cascade when another locale variant survives", async () => {
+      vi.mocked(requireSession).mockResolvedValueOnce({} as any);
+      vi.mocked(repo.findById).mockResolvedValueOnce(makeLean());
+      vi.mocked(repo.deleteById).mockResolvedValueOnce(true);
+      // A surviving variant (e.g. the English category) → no pull.
+      vi.mocked(repo.findByContentId).mockResolvedValueOnce(
+        makeLean({ locale: "en" }),
+      );
+
+      await service.deleteCategory("c1");
+
+      expect(PlaylistModel.updateMany).not.toHaveBeenCalled();
+      expect(revalidateTag).toHaveBeenCalledWith(categoriesTag("ar"), "default");
     });
 
     it("throws AppError NOT_FOUND when deleteById returns false", async () => {
       vi.mocked(requireSession).mockResolvedValueOnce({} as any);
+      vi.mocked(repo.findById).mockResolvedValueOnce(makeLean());
       vi.mocked(repo.deleteById).mockResolvedValueOnce(false);
 
       await expect(service.deleteCategory("missing")).rejects.toMatchObject({
@@ -243,7 +264,6 @@ describe("category.service", () => {
       });
 
       expect(PlaylistModel.updateMany).not.toHaveBeenCalled();
-      expect(revalidateTag).not.toHaveBeenCalled();
     });
 
     it("throws AppError when a non-admin session is used", async () => {

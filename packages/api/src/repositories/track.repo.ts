@@ -2,12 +2,17 @@ import type mongoose from "mongoose";
 
 import { getDb } from "../db/client";
 import { TrackModel, type TrackDoc } from "../db/models/track.model";
+import type { Locale } from "../schemas/locale";
 import type { TrackCreateInput, TrackUpdateInput } from "../schemas/track";
 
 /*
  * Lean repository for the `tracks` collection. All methods return plain
  * JS objects (`.lean()`) — never Mongoose Documents. Services own the
- * `_id → id` DTO mapping, RBAC checks, and playlist-trackIds synchronisation.
+ * `_id → id` DTO mapping and RBAC checks; this layer is query-only.
+ *
+ * Tracks are per-locale (DATABASE.md §3): a track belongs to a logical playlist
+ * via `playlistContentId` and carries its own `locale`. `order` is the sole
+ * source of ordering (playlists no longer mirror it).
  */
 
 export type TrackLean = TrackDoc & { _id: mongoose.Types.ObjectId };
@@ -17,24 +22,32 @@ export async function findTrackById(id: string): Promise<TrackLean | null> {
   return TrackModel.findById(id).lean<TrackLean>();
 }
 
-export async function findTracksByPlaylistId(
-  playlistId: string,
+export async function findTracksByPlaylist(
+  locale: Locale,
+  playlistContentId: string,
 ): Promise<TrackLean[]> {
   await getDb();
   // Ascending `order` keeps the player queue in the display sequence.
-  return TrackModel.find({ playlistId }).sort({ order: 1 }).lean<TrackLean[]>();
+  return TrackModel.find({ playlistContentId, locale })
+    .sort({ order: 1 })
+    .lean<TrackLean[]>();
 }
 
 export async function findTrackBySlug(
-  playlistId: string,
+  locale: Locale,
+  playlistContentId: string,
   slug: string,
 ): Promise<TrackLean | null> {
   await getDb();
-  return TrackModel.findOne({ playlistId, slug }).lean<TrackLean>();
+  return TrackModel.findOne({ playlistContentId, locale, slug }).lean<TrackLean>();
 }
 
 export async function createTrack(
-  data: TrackCreateInput & { slug: string; order: number },
+  data: Omit<TrackCreateInput, "contentId" | "slug" | "order"> & {
+    slug: string;
+    order: number;
+    contentId: string;
+  },
 ): Promise<TrackLean> {
   await getDb();
   const doc = await TrackModel.create(data);
