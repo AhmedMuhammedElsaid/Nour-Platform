@@ -8,6 +8,7 @@ import { getPlaylistBySlug } from "@repo/api/services/playlist";
 // is also what the deploy build (no Atlas connection at build time) requires.
 export const dynamic = "force-dynamic";
 import { getTracksWithUrls } from "@repo/api/services/track";
+import { getMediaUrlById } from "@repo/api/services/media";
 import type { Playlist } from "@repo/api/schemas/playlist";
 import type { PlayableTrack } from "@repo/api/services/track";
 import { TrackListPlayer } from "@/features/playlists/components/track-list-player";
@@ -80,6 +81,9 @@ export default async function PlaylistDetailPage({
   }
 
   const tracks = await getTracksWithUrls(playlist.id);
+  const coverUrl = playlist.coverMediaId
+    ? await getMediaUrlById(playlist.coverMediaId)
+    : null;
 
   const serializedPlaylist = serializePlaylist(playlist);
   const serializedTracks = tracks.map(serializePlayableTrack);
@@ -112,7 +116,11 @@ export default async function PlaylistDetailPage({
         <h2 id="tracks-heading" className="text-lg font-semibold mt-10 mb-4">
           Tracks
         </h2>
-        <TrackListPlayer tracks={serializedTracks} />
+        <TrackListPlayer
+          tracks={serializedTracks}
+          playlistTitle={serializedPlaylist.title}
+          coverUrl={coverUrl ?? undefined}
+        />
       </section>
     </div>
   );

@@ -10,6 +10,8 @@ import type { SerializedPlayableTrack } from "@/features/playlists/types";
 
 interface Props {
   tracks: SerializedPlayableTrack[];
+  playlistTitle?: string;
+  coverUrl?: string;
 }
 
 function formatDuration(secs: number): string {
@@ -19,20 +21,27 @@ function formatDuration(secs: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-function toQueueTrack(t: SerializedPlayableTrack): QueueTrack {
+function toQueueTrack(
+  t: SerializedPlayableTrack,
+  meta: { playlistTitle?: string; coverUrl?: string },
+): QueueTrack {
   return {
     id: t.id,
     title: t.title,
     mediaUrl: t.srcUrl!,
     durationSecs: t.durationSecs,
+    playlistTitle: meta.playlistTitle,
+    coverUrl: meta.coverUrl,
   };
 }
 
-export function TrackListPlayer({ tracks }: Props) {
+export function TrackListPlayer({ tracks, playlistTitle, coverUrl }: Props) {
   const { loadQueue, currentTrack, isPlaying, toggle } = usePlayer();
 
   const playableTracks = tracks.filter((t) => t.srcUrl !== null);
-  const queueTracks = playableTracks.map(toQueueTrack);
+  const queueTracks = playableTracks.map((t) =>
+    toQueueTrack(t, { playlistTitle, coverUrl }),
+  );
 
   const handlePlayAll = useCallback(() => {
     if (queueTracks.length > 0) loadQueue(queueTracks, 0);

@@ -7,6 +7,10 @@ export type QueueTrack = {
   title: string;
   mediaUrl: string;
   durationSecs?: number;
+  // Optional now-playing metadata (DESIGN.md §17.1). Cover is a resolved
+  // public URL; playlistTitle is the parent playlist's title.
+  coverUrl?: string;
+  playlistTitle?: string;
 };
 
 export type PlayerContextValue = {

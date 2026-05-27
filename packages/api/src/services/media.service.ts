@@ -1,3 +1,5 @@
+import { env } from "@repo/config/env";
+
 import { requireSession } from "../auth/require-session";
 import { headObject } from "../media/r2-client";
 import {
@@ -45,6 +47,20 @@ function toDto(doc: {
     sizeBytes: doc.sizeBytes,
     status: doc.status as "pending" | "confirmed" | "failed",
   };
+}
+
+/*
+ * Resolve a confirmed Media record's public URL from its id. Mirrors the
+ * resolution in track.service.getTracksWithUrls: when R2_PUBLIC_BASE is unset
+ * or the record/key is missing, return null so callers render a graceful
+ * fallback. Public, read-only — no requireSession (same as getTracksWithUrls,
+ * which the public playlist page already relies on).
+ */
+export async function getMediaUrlById(mediaId: string): Promise<string | null> {
+  const base = env.R2_PUBLIC_BASE;
+  if (!base) return null;
+  const media = await findMediaById(mediaId);
+  return media?.key ? `${base}/${media.key}` : null;
 }
 
 export async function createMedia(input: {

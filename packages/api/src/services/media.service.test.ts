@@ -2,6 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppError } from "../errors";
 
+// Hoisted so the vi.mock factory can close over the same object we mutate
+// per-test (media.service reads env.R2_PUBLIC_BASE at call time).
+const { env } = vi.hoisted(() => ({
+  env: { R2_PUBLIC_BASE: undefined as string | undefined },
+}));
+
+vi.mock("@repo/config/env", () => ({ env }));
 vi.mock("../auth/require-session", () => ({ requireSession: vi.fn() }));
 vi.mock("../media/r2-client", () => ({ headObject: vi.fn() }));
 vi.mock("../repositories/media.repo", () => ({
@@ -29,9 +36,38 @@ function mediaLean(overrides: Record<string, unknown> = {}): any {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  env.R2_PUBLIC_BASE = undefined;
 });
 
 describe("media.service", () => {
+  describe("getMediaUrlById", () => {
+    it("returns null (and skips the DB read) when R2_PUBLIC_BASE is unset", async () => {
+      const url = await service.getMediaUrlById("m1");
+      expect(url).toBeNull();
+      expect(repo.findMediaById).not.toHaveBeenCalled();
+    });
+
+    it("builds `${base}/${key}` when configured and the media exists", async () => {
+      env.R2_PUBLIC_BASE = "https://cdn.test";
+      vi.mocked(repo.findMediaById).mockResolvedValueOnce(
+        mediaLean({ key: "audio/cover-1.jpg" }),
+      );
+
+      const url = await service.getMediaUrlById("m1");
+
+      expect(url).toBe("https://cdn.test/audio/cover-1.jpg");
+    });
+
+    it("returns null when the media record is missing", async () => {
+      env.R2_PUBLIC_BASE = "https://cdn.test";
+      vi.mocked(repo.findMediaById).mockResolvedValueOnce(null as any);
+
+      const url = await service.getMediaUrlById("m1");
+
+      expect(url).toBeNull();
+    });
+  });
+
   describe("createMedia", () => {
     it("requires admin session and inserts a pending Media", async () => {
       vi.mocked(requireSession).mockResolvedValueOnce({} as any);
