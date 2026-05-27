@@ -6,6 +6,7 @@ import * as migration0001 from "@repo/api/db/migrations/0001-indexes";
 import * as migration0002 from "@repo/api/db/migrations/0002-category-indexes";
 import * as migration0003 from "@repo/api/db/migrations/0003-i18n-backfill";
 import * as migration0004 from "@repo/api/db/migrations/0004-i18n-indexes";
+import * as migration0005 from "@repo/api/db/migrations/0005-embedded-locale";
 
 /*
  * Migration runner for the Nour Platform.
@@ -32,11 +33,15 @@ interface Migration {
 // 0004 must follow 0003 for the same reason, and before 0001/0002 so the old
 // bare-slug unique indexes are dropped before ensureIndexes() rebuilds them
 // as compound ones.
+// 0005 merges AR/EN per-locale documents into single embedded-locale documents;
+// it drops old indexes itself and calls ensureIndexes() at the end, so 0001/0002
+// are no-ops when 0005 has already run.
 const migrations: Migration[] = [
   migration0003,
   migration0004,
-  migration0001,
-  migration0002,
+  migration0005, // merge AR/EN docs → embedded locale; drops old indexes, rebuilds new
+  migration0001, // ensureIndexes runs on new schema after 0005 — no-op on first run
+  migration0002, // same
 ];
 
 async function main(): Promise<void> {
