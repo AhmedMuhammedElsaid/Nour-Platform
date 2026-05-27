@@ -70,12 +70,11 @@ function SortableTrack({ track }: { track: SerializedTrack }) {
 }
 
 interface Props {
-  playlistContentId: string;
-  locale: "ar" | "en";
+  playlistId: string;
   initialTracks: SerializedTrack[];
 }
 
-export function TrackList({ playlistContentId, locale, initialTracks }: Props) {
+export function TrackList({ playlistId, initialTracks }: Props) {
   const [tracks, setTracks] = useState(initialTracks);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,8 +99,7 @@ export function TrackList({ playlistContentId, locale, initialTracks }: Props) {
       setError(null);
 
       const result = await reorderTracksAction(
-        locale,
-        playlistContentId,
+        playlistId,
         reordered.map((t) => t.id),
       );
 
@@ -110,7 +108,7 @@ export function TrackList({ playlistContentId, locale, initialTracks }: Props) {
         setError(result.error);
       }
     },
-    [tracks, playlistContentId, locale],
+    [tracks, playlistId],
   );
 
   if (tracks.length === 0) {

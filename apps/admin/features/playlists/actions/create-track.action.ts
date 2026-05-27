@@ -17,20 +17,18 @@ function titleFromFilename(filename: string): string {
 
 export async function createTrackAction(input: {
   filename: string;
-  playlistContentId: string;
-  locale: "ar" | "en";
+  playlistId: string;
   mediaId: string;
   durationSecs?: number;
 }): Promise<CreateTrackResult> {
   try {
+    const title = titleFromFilename(input.filename);
     const track = await createTrack({
-      locale: input.locale,
-      title: titleFromFilename(input.filename),
-      playlistContentId: input.playlistContentId,
+      ar: { title },
+      en: { title },
+      playlistId: input.playlistId,
       mediaId: input.mediaId,
-      ...(input.durationSecs != null
-        ? { durationSecs: input.durationSecs }
-        : {}),
+      ...(input.durationSecs != null ? { durationSecs: input.durationSecs } : {}),
     });
     return { trackId: track.id };
   } catch (error) {

@@ -90,8 +90,7 @@ function uploadWithProgress(
 
 async function runUpload(
   item: UploadItem,
-  playlistContentId: string,
-  locale: "ar" | "en",
+  playlistId: string,
   dispatch: React.Dispatch<Action>,
 ): Promise<void> {
   // Step 1: presign + create pending Media
@@ -171,8 +170,7 @@ async function runUpload(
   const durationSecs = await durationFromFile(item.file);
   const result = await createTrackAction({
     filename: item.file.name,
-    playlistContentId,
-    locale,
+    playlistId,
     mediaId,
     ...(durationSecs != null ? { durationSecs } : {}),
   });
@@ -183,7 +181,7 @@ async function runUpload(
   dispatch({ type: "SET_DONE", id: item.id, trackId: result.trackId });
 }
 
-export function useTrackUpload(playlistContentId: string, locale: "ar" | "en") {
+export function useTrackUpload(playlistId: string) {
   const [items, dispatch] = useReducer(reducer, []);
   const itemsRef = useRef<UploadItem[]>([]);
 
@@ -201,10 +199,10 @@ export function useTrackUpload(playlistContentId: string, locale: "ar" | "en") {
       }));
       dispatch({ type: "ADD", items: newItems });
       for (const item of newItems) {
-        runUpload(item, playlistContentId, locale, dispatch);
+        runUpload(item, playlistId, dispatch);
       }
     },
-    [playlistContentId, locale],
+    [playlistId],
   );
 
   const retry = useCallback(
@@ -214,12 +212,11 @@ export function useTrackUpload(playlistContentId: string, locale: "ar" | "en") {
       dispatch({ type: "RESET", id });
       runUpload(
         { ...item, status: "pending", progress: 0, error: undefined },
-        playlistContentId,
-        locale,
+        playlistId,
         dispatch,
       );
     },
-    [playlistContentId, locale],
+    [playlistId],
   );
 
   return { items, addFiles, retry };
