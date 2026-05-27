@@ -28,7 +28,8 @@
     "./repositories/playlist": "./src/repositories/playlist.repo.ts",
     "./repositories/track": "./src/repositories/track.repo.ts",
     "./repositories/media": "./src/repositories/media.repo.ts",
-    "./db/migrations/0001-indexes": "./src/db/migrations/0001-indexes.ts"
+    "./db/migrations/0001-indexes": "./src/db/migrations/0001-indexes.ts",
+    "./db/migrations/0002-category-indexes": "./src/db/migrations/0002-category-indexes.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
