@@ -92,8 +92,8 @@ pnpm test                   # vitest run — packages/api + apps/web + apps/admi
 pnpm test:e2e               # playwright smoke tests (auto-boots dev servers)
 pnpm build                  # next build, both apps
 
-pnpm migrate                # idempotent index migrations
-pnpm migrate -- --dry-run   # show planned changes only
+pnpm migrate                # idempotent index migrations (auto-loads .env.local)
+pnpm migrate --dry-run      # show planned changes only
 pnpm seed:admin --email <x> --password <y> [--force]  # --force required when NODE_ENV=production
 ```
 
