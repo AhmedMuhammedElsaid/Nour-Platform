@@ -14,7 +14,7 @@ export function buildAdminCsp(nonce: string): string {
     "img-src 'self' data:",
     "font-src 'self'",
     "media-src 'self'",
-    "connect-src 'self'",
+    "connect-src 'self' https://*.r2.cloudflarestorage.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
