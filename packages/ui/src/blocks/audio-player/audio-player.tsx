@@ -24,6 +24,7 @@ import {
 } from "../../primitives/sheet";
 import { toast } from "../../primitives/toaster";
 import { usePlayer } from "./player-context";
+import { useDir } from "../../hooks/use-dir";
 
 function formatTime(totalSeconds: number): string {
   if (!Number.isFinite(totalSeconds) || totalSeconds < 0) return "0:00";
@@ -60,6 +61,7 @@ export function AudioPlayer() {
     goTo,
     retry,
   } = usePlayer();
+  const dir = useDir();
 
   // Mirror playback errors to a transient toast (DESIGN.md §17.1); the inline
   // chip remains the persistent, in-bar surface.
@@ -177,7 +179,7 @@ export function AudioPlayer() {
               onClick={prev}
               disabled={currentIndex <= 0}
             >
-              <SkipBack />
+              <SkipBack className="rtl:scale-x-[-1]" />
             </Button>
             <Button
               variant="ghost"
@@ -201,7 +203,7 @@ export function AudioPlayer() {
               onClick={next}
               disabled={currentIndex >= queue.length - 1}
             >
-              <SkipForward />
+              <SkipForward className="rtl:scale-x-[-1]" />
             </Button>
           </div>
           <div className="w-full flex items-center gap-3">
@@ -255,7 +257,7 @@ export function AudioPlayer() {
                 <ListMusic />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" aria-label="Play queue">
+            <SheetContent side={dir === "rtl" ? "left" : "right"} aria-label="Play queue">
               <SheetHeader>
                 <SheetTitle>Queue</SheetTitle>
               </SheetHeader>

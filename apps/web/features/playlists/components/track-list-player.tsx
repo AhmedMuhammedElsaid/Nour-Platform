@@ -97,7 +97,7 @@ export function TrackListPlayer({ tracks, playlistTitle, coverUrl }: Props) {
                     ? `Pause ${track.title}`
                     : `Play ${track.title}`
                 }
-                className="w-6 text-right text-sm shrink-0 text-text-2 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                className="w-6 text-end text-sm shrink-0 text-text-2 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
               >
                 {isCurrent && isPlaying ? "⏸" : i + 1}
               </button>

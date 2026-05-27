@@ -18,7 +18,7 @@ export function TrackRow({ track, index }: TrackRowProps) {
       className="flex items-center gap-4 py-3 border-b border-border last:border-0"
       data-track-id={track.id}
     >
-      <span className="w-6 text-right text-sm text-text-2 shrink-0">
+      <span className="w-6 text-end text-sm text-text-2 shrink-0">
         {index}
       </span>
       <span className="flex-1 font-medium">{track.title}</span>
