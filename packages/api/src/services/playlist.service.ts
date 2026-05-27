@@ -1,21 +1,20 @@
 import { revalidateTag } from "next/cache";
 
 import { requireSession } from "../auth/require-session";
-import { playlistsHomeTag, playlistTag } from "../cache/tags";
+import { PLAYLISTS_HOME, playlistTag } from "../cache/tags";
 import {
   createPlaylist as repoCreatePlaylist,
   deletePlaylistById,
   findAllPlaylists,
   findPlaylistById,
   findPlaylistBySlug,
-  findPlaylistsByContentId,
   findPublishedPlaylists,
   updatePlaylistById,
 } from "../repositories/playlist.repo";
 // Cross-service validation: we call category.repo directly (not via a service)
 // because this is a lightweight existence check, not a full service boundary
 // crossing. Importing the service would risk circular module dependencies.
-import { findByContentId as findCategoryByContentId } from "../repositories/category.repo";
+import { findById as findCategoryById } from "../repositories/category.repo";
 import { AppError } from "../errors";
 import type { Locale } from "../schemas/locale";
 import {
@@ -26,26 +25,21 @@ import {
   type PlaylistUpdateInput,
 } from "../schemas/playlist";
 import { slugify } from "../utils/slug";
-import { newObjectIdString } from "../utils/id";
 import type { Session } from "next-auth";
 
 /*
  * Playlist service — single chokepoint for playlist CRUD.
- * - Public read methods (no session): getPublishedPlaylists, getPlaylistBySlug — locale-scoped.
+ * - Public read methods (no session): getPublishedPlaylists, getPlaylistBySlug.
  * - Admin-only mutations all begin with requireSession(['admin']) before any I/O.
- * - revalidateTag is called after every mutation that affects public cache entries,
- *   scoped to the document's locale (DATABASE.md §3).
+ * - revalidateTag is called after every mutation that affects public cache entries.
  * Services return plain DTO objects; Mongoose Documents never escape this layer.
  */
 
 // Converts a lean Mongo doc to the public-facing Playlist DTO.
 function toDto(doc: {
   _id: { toString(): string };
-  contentId: { toString(): string };
-  locale: string;
-  title: string;
-  slug: string;
-  description?: string | null;
+  ar: { title: string; slug: string; description?: string | null };
+  en: { title: string; slug: string; description?: string | null };
   coverMediaId?: { toString(): string } | null;
   status: string;
   categoryIds?: Array<{ toString(): string }>;
@@ -54,13 +48,16 @@ function toDto(doc: {
 }): Playlist {
   return {
     id: doc._id.toString(),
-    contentId: doc.contentId.toString(),
-    // Narrowing from string to the enum union is safe: the Mongoose enum
-    // constraint enforces the allowed values at the DB layer.
-    locale: doc.locale as Playlist["locale"],
-    title: doc.title,
-    slug: doc.slug,
-    ...(doc.description != null ? { description: doc.description } : {}),
+    ar: {
+      title: doc.ar.title,
+      slug: doc.ar.slug,
+      ...(doc.ar.description != null ? { description: doc.ar.description } : {}),
+    },
+    en: {
+      title: doc.en.title,
+      slug: doc.en.slug,
+      ...(doc.en.description != null ? { description: doc.en.description } : {}),
+    },
     ...(doc.coverMediaId != null
       ? { coverMediaId: doc.coverMediaId.toString() }
       : {}),
@@ -72,18 +69,14 @@ function toDto(doc: {
 }
 
 // ---------------------------------------------------------------------------
-// Public reads (no session required) — locale-scoped
+// Public reads (no session required)
 // ---------------------------------------------------------------------------
 
 export async function getPublishedPlaylists(
-  locale: Locale,
-  filter?: { categoryContentId?: string },
+  filter?: { categoryId?: string },
 ): Promise<Playlist[]> {
   const docs = await findPublishedPlaylists(
-    locale,
-    filter?.categoryContentId != null
-      ? { categoryContentId: filter.categoryContentId }
-      : undefined,
+    filter?.categoryId != null ? { categoryId: filter.categoryId } : undefined,
   );
   return docs.map(toDto);
 }
@@ -94,23 +87,6 @@ export async function getPlaylistBySlug(
 ): Promise<Playlist | null> {
   const doc = await findPlaylistBySlug(locale, slug);
   return doc ? toDto(doc) : null;
-}
-
-/*
- * Resolves the published slug of a program in a given locale, keyed by the
- * shared contentId. Used for hreflang alternates: slugs differ per locale, so
- * the alternate URL cannot be derived by swapping the path prefix. Returns null
- * when that locale variant doesn't exist or isn't published (no alternate link).
- */
-export async function getPlaylistSlugForLocale(
-  contentId: string,
-  locale: Locale,
-): Promise<string | null> {
-  const variants = await findPlaylistsByContentId(contentId);
-  const variant = variants.find(
-    (p) => p.locale === locale && p.status === "published",
-  );
-  return variant ? variant.slug : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -152,29 +128,37 @@ export async function createPlaylist(
   // Auth check first — no I/O before verifying identity.
   await requireSession(["admin"]);
 
-  // Zod parse throws AppError.Validation on bad input (CLAUDE.md §4).
+  // Zod parse throws ZodError on bad input.
   const parsed = playlistCreateInputSchema.parse(input);
 
-  // First locale of a new program mints a contentId; a translation supplies the
-  // existing program's contentId to link the locales together.
-  const contentId = parsed.contentId ?? newObjectIdString();
-
-  // Cross-service validation: confirm every supplied category contentId exists.
-  // categoryIds reference categories by their locale-agnostic contentId.
+  // Cross-service validation: confirm every supplied category id exists.
   if (parsed.categoryIds.length > 0) {
-    for (const categoryContentId of parsed.categoryIds) {
-      const exists = await findCategoryByContentId(categoryContentId);
+    for (const categoryId of parsed.categoryIds) {
+      const exists = await findCategoryById(categoryId);
       if (exists === null) {
-        throw AppError.NotFound(`Category not found: ${categoryContentId}`);
+        throw AppError.NotFound(`Category not found: ${categoryId}`);
       }
     }
   }
 
-  // Auto-generate slug from title when the caller omits it.
-  const slug = parsed.slug ?? slugify(parsed.title, contentId);
+  // Auto-generate slugs from titles when the caller omits them.
+  const arSlug = parsed.ar.slug ?? slugify(parsed.ar.title);
+  const enSlug = parsed.en.slug ?? slugify(parsed.en.title);
 
-  const { contentId: _omitContentId, slug: _omitSlug, ...rest } = parsed;
-  const lean = await repoCreatePlaylist({ ...rest, slug, contentId });
+  const { ar, en, ...rest } = parsed;
+  const lean = await repoCreatePlaylist({
+    ...rest,
+    ar: {
+      title: ar.title,
+      slug: arSlug,
+      ...(ar.description != null ? { description: ar.description } : {}),
+    },
+    en: {
+      title: en.title,
+      slug: enSlug,
+      ...(en.description != null ? { description: en.description } : {}),
+    },
+  });
 
   // No revalidateTag here: new playlists default to status="draft" and are
   // invisible on the public homepage / detail pages, so no cached entry needs
@@ -190,13 +174,12 @@ export async function updatePlaylist(
 
   const parsed = playlistUpdateInputSchema.parse(input);
 
-  // Cross-service validation: confirm every supplied category contentId exists
-  // before writing. `categoryIds` is optional in the update schema.
+  // Cross-service validation: confirm every supplied category id exists.
   if (parsed.categoryIds != null && parsed.categoryIds.length > 0) {
-    for (const categoryContentId of parsed.categoryIds) {
-      const exists = await findCategoryByContentId(categoryContentId);
+    for (const categoryId of parsed.categoryIds) {
+      const exists = await findCategoryById(categoryId);
       if (exists === null) {
-        throw AppError.NotFound(`Category not found: ${categoryContentId}`);
+        throw AppError.NotFound(`Category not found: ${categoryId}`);
       }
     }
   }
@@ -204,9 +187,8 @@ export async function updatePlaylist(
   const lean = await updatePlaylistById(id, parsed);
   if (!lean) throw AppError.NotFound("Playlist");
 
-  const locale = lean.locale as Locale;
-  revalidateTag(playlistsHomeTag(locale), "default");
-  revalidateTag(playlistTag(locale, lean.slug), "default");
+  revalidateTag(PLAYLISTS_HOME, "default");
+  revalidateTag(playlistTag(lean._id.toString()), "default");
 
   return toDto(lean);
 }
@@ -214,15 +196,14 @@ export async function updatePlaylist(
 export async function deletePlaylist(id: string): Promise<void> {
   await requireSession(["admin"]);
 
-  // Fetch before delete so we have the slug + locale for cache invalidation.
+  // Fetch before delete so we have the id for cache invalidation.
   const existing = await findPlaylistById(id);
   if (!existing) throw AppError.NotFound("Playlist");
 
   await deletePlaylistById(id);
 
-  const locale = existing.locale as Locale;
-  revalidateTag(playlistsHomeTag(locale), "default");
-  revalidateTag(playlistTag(locale, existing.slug), "default");
+  revalidateTag(PLAYLISTS_HOME, "default");
+  revalidateTag(playlistTag(id), "default");
 }
 
 export async function publishPlaylist(id: string): Promise<Playlist> {
@@ -231,9 +212,8 @@ export async function publishPlaylist(id: string): Promise<Playlist> {
   const lean = await updatePlaylistById(id, { status: "published" });
   if (!lean) throw AppError.NotFound("Playlist");
 
-  const locale = lean.locale as Locale;
-  revalidateTag(playlistsHomeTag(locale), "default");
-  revalidateTag(playlistTag(locale, lean.slug), "default");
+  revalidateTag(PLAYLISTS_HOME, "default");
+  revalidateTag(playlistTag(lean._id.toString()), "default");
 
   return toDto(lean);
 }
@@ -244,9 +224,8 @@ export async function unpublishPlaylist(id: string): Promise<Playlist> {
   const lean = await updatePlaylistById(id, { status: "draft" });
   if (!lean) throw AppError.NotFound("Playlist");
 
-  const locale = lean.locale as Locale;
-  revalidateTag(playlistsHomeTag(locale), "default");
-  revalidateTag(playlistTag(locale, lean.slug), "default");
+  revalidateTag(PLAYLISTS_HOME, "default");
+  revalidateTag(playlistTag(lean._id.toString()), "default");
 
   return toDto(lean);
 }
