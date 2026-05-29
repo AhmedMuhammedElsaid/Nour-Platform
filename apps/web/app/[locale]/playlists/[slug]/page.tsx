@@ -4,6 +4,15 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { getPlaylistBySlug } from "@repo/api/services/playlist";
 import { LOCALES } from "@repo/api/schemas/locale";
+import {
+  localeAlternates,
+  defaultTwitter,
+  absoluteUrl,
+  musicPlaylistLd,
+  breadcrumbLd,
+  SITE_NAME,
+} from "@/lib/seo";
+import { JsonLd } from "@/features/seo/components/json-ld";
 
 // Next.js + next-intl do not percent-decode the dynamic [slug] param, so a
 // non-ASCII (Arabic) slug arrives URL-encoded (e.g. "%D8%AF…") and never
@@ -32,6 +41,7 @@ import type { PlayableTrack } from "@repo/api/services/track";
 import { TrackListPlayer } from "@/features/playlists/components/track-list-player";
 import { SetLocaleAlternates } from "@/features/layout/locale-alternates-context";
 import { getCoverEmoji, getCoverGradient } from "@/features/playlists/lib/cover-art";
+import { Link } from "@/i18n/navigation";
 import type {
   SerializedPlaylist,
   DisplayTrack,
@@ -69,12 +79,6 @@ function toDisplayTrack(t: PlayableTrack, locale: Locale): DisplayTrack {
 // generateMetadata
 // ---------------------------------------------------------------------------
 
-// Public site origin for absolute SEO URLs. Read directly (not via the env
-// barrel) because this runs during build's page-data collection where the
-// barrel's required secrets aren't present — same documented exception as the
-// health route / next.config (NEXT_PUBLIC_* is build-inlined, not a secret).
-const baseUrl = process.env.NEXT_PUBLIC_WEB_URL ?? "http://localhost:3000";
-
 export async function generateMetadata({
   params,
 }: {
@@ -85,36 +89,43 @@ export async function generateMetadata({
   const playlist = await getPlaylistBySlug(locale, decodeSlug(slug));
 
   if (!playlist || playlist.status !== "published") {
-    return { title: t("notFound") };
-  }
-
-  // hreflang alternates: both locale slugs are on the single document.
-  const languages: Record<string, string> = {};
-  for (const l of LOCALES) {
-    const altSlug = playlist[l].slug;
-    if (altSlug) {
-      languages[l] = `${baseUrl}/${l}/playlists/${altSlug}`;
-    }
+    return { title: t("notFound"), robots: { index: false } };
   }
 
   const tp = await getTranslations({ locale, namespace: "playlist" });
   const display = playlist[locale];
-  const canonical = `${baseUrl}/${locale}/playlists/${display.slug}`;
+
+  // Build per-locale paths for canonical + hreflang (including x-default).
+  const pathByLocale = Object.fromEntries(
+    LOCALES.flatMap((l) => {
+      const s = playlist[l].slug;
+      return s ? [[l, `/${l}/playlists/${s}`]] : [];
+    }),
+  ) as Partial<Record<Locale, string>>;
+  const { canonical, languages } = localeAlternates(locale, pathByLocale);
+
   const ogCoverUrl = playlist.coverMediaId
     ? await getMediaUrlById(playlist.coverMediaId)
     : null;
+
+  const description = display.description ?? tp("listenOn");
+
   return {
-    title: `${display.title} — Nour`,
-    description: display.description ?? tp("listenOn"),
+    title: display.title,
+    description,
     alternates: { canonical, languages },
     openGraph: {
       type: "website",
+      siteName: SITE_NAME,
       locale,
       url: canonical,
       title: display.title,
-      ...(display.description ? { description: display.description } : {}),
-      ...(ogCoverUrl ? { images: [{ url: ogCoverUrl }] } : {}),
+      description,
+      // Prefer the playlist's own cover; fall back to the default OG image
+      // (resolved against metadataBase set in the root layout).
+      images: ogCoverUrl ? [{ url: ogCoverUrl }] : [{ url: "/og-image.webp" }],
     },
+    twitter: defaultTwitter(),
   };
 }
 
@@ -153,6 +164,14 @@ export default async function PlaylistDetailPage({
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
+      <Link
+        href="/"
+        className="inline-flex items-center gap-1 text-sm text-text-2 hover:text-primary mb-6"
+      >
+        <span aria-hidden="true">{locale === "ar" ? "→" : "←"}</span>
+        {t("backToHome")}
+      </Link>
+
       {/* Register both locale slugs so the header's language switcher routes to
           the correct slug instead of reusing this locale's (which would 404). */}
       <SetLocaleAlternates
@@ -160,6 +179,24 @@ export default async function PlaylistDetailPage({
           ar: `/playlists/${playlist.ar.slug}`,
           en: `/playlists/${playlist.en.slug}`,
         }}
+      />
+
+      {/* Structured data — nonce is read inside JsonLd (CSP-mandatory). */}
+      <JsonLd
+        data={musicPlaylistLd({
+          title: display.title,
+          description: display.description ?? undefined,
+          url: absoluteUrl(`/${locale}/playlists/${display.slug}`),
+          image: coverUrl ?? undefined,
+          numTracks: displayTracks.length,
+          locale,
+        })}
+      />
+      <JsonLd
+        data={breadcrumbLd([
+          { name: SITE_NAME, url: absoluteUrl(`/${locale}`) },
+          { name: display.title, url: absoluteUrl(`/${locale}/playlists/${display.slug}`) },
+        ])}
       />
 
       {/* Cover hero */}

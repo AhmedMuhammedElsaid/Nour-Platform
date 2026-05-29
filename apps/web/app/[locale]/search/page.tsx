@@ -5,6 +5,7 @@ import { searchContent } from "@repo/api/services/search";
 import type { Locale } from "@repo/api/schemas/locale";
 
 import { Link } from "@/i18n/navigation";
+import { absoluteUrl } from "@/lib/seo";
 
 // Per-request CSP nonce → dynamic render (same rationale as the other routes).
 export const dynamic = "force-dynamic";
@@ -17,7 +18,11 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "search" });
-  return { title: t("title"), robots: { index: false, follow: true } };
+  return {
+    title: t("title"),
+    robots: { index: false, follow: true },
+    alternates: { canonical: absoluteUrl(`/${locale}/search`) },
+  };
 }
 
 export default async function SearchPage({

@@ -10,6 +10,7 @@ import { getMessages, getTranslations, setRequestLocale } from "next-intl/server
 import { cn } from "@repo/ui/lib/utils";
 import { AudioPlayer } from "@repo/ui/blocks/audio-player";
 import { PlayerProvider } from "@repo/ui/blocks/player-context";
+import { type Locale } from "@repo/api/schemas/locale";
 import { SiteFooter } from "@/features/layout/components/site-footer";
 import { SiteHeader } from "@/features/layout/components/site-header";
 import { PlaybackPersistence } from "@/features/player/components/playback-persistence";
@@ -17,6 +18,9 @@ import { ServiceWorkerRegister } from "@/features/pwa/components/service-worker-
 import { InstallPrompt } from "@/features/pwa/components/install-prompt";
 import { LocaleAlternatesProvider } from "@/features/layout/locale-alternates-context";
 import { routing } from "@/i18n/routing";
+import { defaultOpenGraph, defaultTwitter } from "@/lib/seo";
+import { JsonLd } from "@/features/seo/components/json-ld";
+import { organizationLd, webSiteLd } from "@/lib/seo";
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -48,16 +52,30 @@ export function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ locale: string }>;
+  params: Promise<{ locale: Locale }>;
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "metadata" });
   return {
-    title: t("homeTitle"),
+    title: { default: t("homeTitle"), template: `%s — Nour` },
     description: t("homeDescription"),
     manifest: "/manifest.webmanifest",
     appleWebApp: { capable: true, title: "Nour", statusBarStyle: "default" },
-    icons: { icon: "/icons/icon.svg", apple: "/icons/icon.svg" },
+    icons: {
+      icon: [
+        { url: "/favicon.ico", sizes: "any" },
+        { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+        { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+        { url: "/icons/icon.svg", type: "image/svg+xml" },
+      ],
+      apple: { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    },
+    openGraph: {
+      ...defaultOpenGraph(locale),
+      title: t("homeTitle"),
+      description: t("homeDescription"),
+    },
+    twitter: defaultTwitter(),
   };
 }
 
@@ -101,6 +119,9 @@ export default async function LocaleLayout({
       suppressHydrationWarning
     >
       <body className="flex flex-col min-h-dvh bg-bg text-foreground font-sans antialiased">
+        {/* Site-wide structured data: rendered once per locale, nonce-stamped for CSP. */}
+        <JsonLd data={organizationLd()} />
+        <JsonLd data={webSiteLd(locale)} />
         <NextIntlClientProvider messages={messages}>
           <PlayerProvider>
             <LocaleAlternatesProvider>

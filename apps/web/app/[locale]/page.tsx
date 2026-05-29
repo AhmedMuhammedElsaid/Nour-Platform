@@ -5,6 +5,7 @@ import { getPublishedPlaylists } from "@repo/api/services/playlist";
 import { listCategories } from "@repo/api/services/category";
 import { LOCALES, type Locale } from "@repo/api/schemas/locale";
 import type { Playlist } from "@repo/api/schemas/playlist";
+import { localeAlternates, defaultOpenGraph, defaultTwitter } from "@/lib/seo";
 
 // Opt out of static prerendering. proxy.ts sets a per-request CSP nonce,
 // which would mismatch a cached static HTML body; forcing dynamic rendering
@@ -27,19 +28,25 @@ function serializePlaylist(p: Playlist): SerializedPlaylist {
   };
 }
 
-// Public site origin for absolute SEO URLs — read directly (not via the env
-// barrel) for the same build-time reason as the detail page.
-const baseUrl = process.env.NEXT_PUBLIC_WEB_URL ?? "http://localhost:3000";
-
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ locale: Locale }>;
 }): Promise<Metadata> {
   const { locale } = await params;
-  // Homepage path is identical across locales — only the prefix changes.
-  const languages = Object.fromEntries(LOCALES.map((l) => [l, `${baseUrl}/${l}`]));
-  return { alternates: { canonical: `${baseUrl}/${locale}`, languages } };
+  const t = await getTranslations({ locale, namespace: "metadata" });
+  const pathByLocale = Object.fromEntries(LOCALES.map((l) => [l, `/${l}`])) as Record<Locale, string>;
+  const { canonical, languages } = localeAlternates(locale, pathByLocale);
+  return {
+    alternates: { canonical, languages },
+    openGraph: {
+      ...defaultOpenGraph(locale),
+      title: t("homeTitle"),
+      description: t("homeDescription"),
+      url: canonical,
+    },
+    twitter: defaultTwitter(),
+  };
 }
 
 export default async function HomePage({
