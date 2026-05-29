@@ -16,11 +16,11 @@ export async function SiteHeader() {
   const brand = BRAND[locale] ?? BRAND.en!;
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-bg/80 backdrop-blur-sm border-b border-border">
+    <header className="sticky top-0 z-40 w-full bg-bg/85 backdrop-blur-lg border-b border-border">
       <div className="max-w-5xl mx-auto px-6 h-14 flex items-center gap-4">
         <Link
           href="/"
-          className="font-display text-lg leading-none text-text hover:text-primary transition-colors"
+          className="font-display text-xl font-bold leading-none text-primary hover:text-primary/80 transition-colors"
           aria-label={t("home")}
         >
           <span lang={brand.lang}>{brand.text}</span>
