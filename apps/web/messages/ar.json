@@ -17,7 +17,13 @@
     "heading": "قوائم التشغيل",
     "empty": "لا توجد قوائم تشغيل في هذا التصنيف بعد.",
     "continueListening": "متابعة الاستماع",
-    "clearHistory": "مسح"
+    "clearHistory": "مسح",
+    "heroTitle": "مكتبتك الصوتية الإسلامية",
+    "heroSubtitle": "استمع إلى القرآن والمحاضرات وغيرها — بالعربية والإنجليزية",
+    "library": "المكتبة",
+    "sortNewest": "الأحدث",
+    "sortAZ": "أ–ي",
+    "sortTracks": "الأكثر مقاطع"
   },
   "categories": {
     "filterLabel": "تصفية قوائم التشغيل حسب التصنيف",

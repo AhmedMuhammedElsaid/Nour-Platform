@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 import { PlaylistCard } from "@/features/playlists/components/playlist-card";
 import { CategoryFilterBar } from "@/features/categories/components/category-filter-bar";
 import { ContinueListening } from "@/features/player/components/continue-listening";
+import { PlaylistSortSelect } from "@/features/playlists/components/playlist-sort-select";
 import type { SerializedPlaylist } from "@/features/playlists/types";
 
 // Converts a Playlist DTO to a JSON-serializable shape. createdAt/updatedAt
@@ -46,12 +47,12 @@ export default async function HomePage({
   searchParams,
 }: {
   params: Promise<{ locale: Locale }>;
-  searchParams: Promise<{ category?: string }>;
+  searchParams: Promise<{ category?: string; sort?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
   // Next.js 15+ passes searchParams as a Promise — must be awaited before use.
-  const { category } = await searchParams;
+  const { category, sort } = await searchParams;
   const t = await getTranslations("home");
 
   // Fetch all categories (no locale param — embedded ar/en on each doc).
@@ -65,22 +66,57 @@ export default async function HomePage({
   const playlists = await getPublishedPlaylists(
     categoryId != null ? { categoryId } : undefined,
   );
-  const serialized = playlists.map(serializePlaylist);
 
-  // Pass locale-resolved slug + name to the CategoryFilterBar client island.
+  // Sort server-side from the ?sort= URL param so order is shareable and
+  // the RSC grid renders the right sequence on first load.
+  const sorted = [...playlists];
+  if (sort === "az") {
+    sorted.sort((a, b) =>
+      a[locale].title.localeCompare(b[locale].title, locale),
+    );
+  } else if (sort === "tracks") {
+    sorted.sort((a, b) => (b.trackCount ?? 0) - (a.trackCount ?? 0));
+  }
+  // Default (no sort param or "newest") keeps the service order (updatedAt DESC).
+
+  const serialized = sorted.map(serializePlaylist);
+
+  // Pass both language names to the CategoryFilterBar so it can render
+  // bilingual labels ("القرآن · Quran") regardless of the active locale.
   const categoryPills = categories.map((c) => ({
     id: c.id,
     slug: c[locale].slug,
-    name: c[locale].name,
+    arName: c.ar.name,
+    enName: c.en.name,
   }));
 
   return (
     <section className="mx-auto max-w-6xl px-6 py-16">
-      <h1 className="font-display text-3xl tracking-tight">{t("heading")}</h1>
+      {/* Hero */}
+      <div className="mb-8">
+        <h1 className="font-display text-4xl font-bold tracking-tight text-text">
+          {t("heroTitle")}
+        </h1>
+        <p className="mt-2 text-sm text-text-2">{t("heroSubtitle")}</p>
+      </div>
 
+      {/* Continue listening shelf */}
+      <ContinueListening />
 
+      <hr className="border-border my-8" />
+
+      {/* Category filter pills */}
       <CategoryFilterBar categories={categoryPills} activeSlug={category} />
 
+      {/* Library header: label + sort control */}
+      <div className="mt-8 flex items-center justify-between gap-4">
+        <p className="text-xs font-semibold uppercase tracking-[3px] text-primary">
+          {t("library")}
+        </p>
+        <PlaylistSortSelect currentSort={sort} />
+      </div>
+
+      {/* Playlist grid */}
       {serialized.length === 0 ? (
         <p className="text-muted-foreground mt-6">{t("empty")}</p>
       ) : (
@@ -90,9 +126,6 @@ export default async function HomePage({
           ))}
         </div>
       )}
-
-      <ContinueListening />
-
     </section>
   );
 }

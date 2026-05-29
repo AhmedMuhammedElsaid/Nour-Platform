@@ -15,27 +15,33 @@ vi.mock("next-intl", () => ({
     ({ all: "All", filterLabel: "Filter playlists by category" })[key] ?? key,
 }));
 
+// Stub useSearchParams to return empty params (no pre-existing sort/category).
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 import { CategoryFilterBar } from "./category-filter-bar";
 
 const categories = [
-  { id: "aaaaaaaaaaaaaaaaaaaaaaaa", slug: "quran", name: "Quran" },
-  { id: "bbbbbbbbbbbbbbbbbbbbbbbb", slug: "fiqh", name: "Fiqh" },
+  { id: "aaaaaaaaaaaaaaaaaaaaaaaa", slug: "quran", arName: "القرآن", enName: "Quran" },
+  { id: "bbbbbbbbbbbbbbbbbbbbbbbb", slug: "fiqh", arName: "فقه", enName: "Fiqh" },
 ];
 
 describe("CategoryFilterBar", () => {
-  it("renders 'All' pill plus one pill per category", () => {
+  it("renders 'All' pill plus one bilingual pill per category", () => {
     render(<CategoryFilterBar categories={categories} activeSlug={undefined} />);
 
     expect(screen.getByRole("button", { name: "All" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Quran" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Fiqh" })).toBeInTheDocument();
+    // Labels are bilingual: "arName · enName"
+    expect(screen.getByRole("button", { name: /القرآن.*Quran/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /فقه.*Fiqh/i })).toBeInTheDocument();
   });
 
   it("clicking a category pill calls router.push with the category slug", async () => {
     const user = userEvent.setup();
     render(<CategoryFilterBar categories={categories} activeSlug={undefined} />);
 
-    await user.click(screen.getByRole("button", { name: "Quran" }));
+    await user.click(screen.getByRole("button", { name: /القرآن.*Quran/i }));
 
     expect(mockPush).toHaveBeenCalledWith("/?category=quran");
   });
@@ -52,14 +58,13 @@ describe("CategoryFilterBar", () => {
   it("applies the active visual class to the pill matching activeSlug", () => {
     render(<CategoryFilterBar categories={categories} activeSlug="fiqh" />);
 
-    const fiqhButton = screen.getByRole("button", { name: "Fiqh" });
-    const quranButton = screen.getByRole("button", { name: "Quran" });
+    const fiqhButton = screen.getByRole("button", { name: /فقه.*Fiqh/i });
+    const quranButton = screen.getByRole("button", { name: /القرآن.*Quran/i });
     const allButton = screen.getByRole("button", { name: "All" });
 
-    // Active pill uses bg-primary; inactive pills use border-input.
     expect(fiqhButton.className).toContain("bg-primary");
-    expect(quranButton.className).toContain("border-input");
-    expect(allButton.className).toContain("border-input");
+    expect(quranButton.className).toContain("border-primary/20");
+    expect(allButton.className).toContain("border-primary/20");
   });
 
   it("applies the active class to 'All' when activeSlug is undefined", () => {
@@ -73,11 +78,10 @@ describe("CategoryFilterBar", () => {
   it("sets aria-current on the active category pill", () => {
     render(<CategoryFilterBar categories={categories} activeSlug="quran" />);
 
-    const quranButton = screen.getByRole("button", { name: "Quran" });
+    const quranButton = screen.getByRole("button", { name: /القرآن.*Quran/i });
     expect(quranButton).toHaveAttribute("aria-current", "true");
 
-    // Inactive pills and All must not carry aria-current.
-    const fiqhButton = screen.getByRole("button", { name: "Fiqh" });
+    const fiqhButton = screen.getByRole("button", { name: /فقه.*Fiqh/i });
     expect(fiqhButton).not.toHaveAttribute("aria-current");
   });
 });
