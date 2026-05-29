@@ -38,6 +38,9 @@
     "playlists": "Playlists",
     "tracks": "Tracks"
   },
+  "player": {
+    "percentComplete": "{pct}% complete"
+  },
   "pwa": {
     "title": "Install Nour",
     "description": "Add Nour to your home screen for quick access and offline listening.",

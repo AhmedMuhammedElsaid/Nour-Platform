@@ -70,3 +70,20 @@ export function clearRecentlyPlayed(): void {
     /* non-fatal */
   }
 }
+
+// Read-only access to the positions store written by player-context.tsx.
+// Exposes the saved resume position for a single track without the web layer
+// depending on the player-context internals directly.
+const POSITIONS_STORAGE_KEY = "nour.player.positions";
+
+export function getSavedPosition(trackId: string): number {
+  if (typeof window === "undefined") return 0;
+  try {
+    const raw = window.localStorage.getItem(POSITIONS_STORAGE_KEY);
+    if (!raw) return 0;
+    const parsed = JSON.parse(raw) as Record<string, { t?: number }>;
+    return parsed[trackId]?.t ?? 0;
+  } catch {
+    return 0;
+  }
+}

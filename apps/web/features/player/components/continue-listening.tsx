@@ -7,15 +7,18 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import {
   clearRecentlyPlayed,
+  getSavedPosition,
   readRecentlyPlayed,
   type RecentTrack,
 } from "@/features/player/lib/recently-played";
+import { getCoverEmoji, getCoverGradient } from "@/features/playlists/lib/cover-art";
 
 // "Continue listening" shelf — device-local recent plays. Reads localStorage
 // after mount (never during SSR) so there's no hydration mismatch; renders
 // nothing until there's history to show.
 export function ContinueListening() {
   const t = useTranslations("home");
+  const tPlayer = useTranslations("player");
   const [items, setItems] = useState<RecentTrack[] | null>(null);
 
   useEffect(() => {
@@ -50,39 +53,80 @@ export function ContinueListening() {
 
       <ul className="mt-3 flex gap-4 overflow-x-auto pb-2">
         {linkable.map((item) => {
-          // Narrow the stored locale (a plain string) back to the routing union.
           const linkLocale =
             item.locale === "ar" || item.locale === "en"
               ? item.locale
               : undefined;
+
+          const savedPos = getSavedPosition(item.trackId);
+          const pct =
+            item.duration && item.duration > 0 && savedPos > 0
+              ? Math.min(1, savedPos / item.duration)
+              : null;
+          const pctLabel =
+            pct !== null ? tPlayer("percentComplete", { pct: Math.round(pct * 100) }) : null;
+
+          const [gradFrom, gradTo] = getCoverGradient(item.trackId);
+          const emoji = getCoverEmoji(item.trackId);
+
           return (
             <li key={item.trackId} className="shrink-0 w-40">
-            <Link
-              href={`/playlists/${item.playlistSlug}`}
-              locale={linkLocale}
-              className="group block focus-visible:outline-none"
-            >
-              <div className="relative aspect-square w-40 overflow-hidden rounded-md bg-surface-2">
-                {item.coverUrl && (
-                  <Image
-                    src={item.coverUrl}
-                    alt=""
-                    fill
-                    sizes="160px"
-                    className="object-cover transition-transform group-hover:scale-105"
-                  />
-                )}
-              </div>
-              <p className="mt-2 truncate text-sm font-medium group-hover:text-primary">
-                {item.title}
-              </p>
-              {item.playlistTitle && (
-                <p className="truncate text-xs text-text-2">
-                  {item.playlistTitle}
+              <Link
+                href={`/playlists/${item.playlistSlug}`}
+                locale={linkLocale}
+                className="group block focus-visible:outline-none"
+              >
+                {/* Cover */}
+                <div className="relative aspect-square w-40 overflow-hidden rounded-md">
+                  {item.coverUrl ? (
+                    <Image
+                      src={item.coverUrl}
+                      alt=""
+                      fill
+                      sizes="160px"
+                      className="object-cover transition-transform group-hover:scale-105"
+                    />
+                  ) : (
+                    <div
+                      className="size-full flex items-center justify-center"
+                      style={{
+                        background: `linear-gradient(to bottom, ${gradFrom}, ${gradTo})`,
+                      }}
+                    >
+                      <span className="text-3xl select-none" aria-hidden="true">
+                        {emoji}
+                      </span>
+                    </div>
+                  )}
+                  {/* Dark scrim + gold play circle on hover */}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                    <div className="size-10 rounded-full bg-primary/90 flex items-center justify-center">
+                      <svg className="size-4 text-primary-foreground ms-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </div>
+                  </div>
+                  {/* Resume progress bar */}
+                  {pct !== null && (
+                    <div className="absolute bottom-0 inset-x-0 h-[3px] bg-primary/20">
+                      <div
+                        className="h-full bg-primary"
+                        style={{ width: `${Math.round(pct * 100)}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <p className="mt-2 truncate text-sm font-medium group-hover:text-primary">
+                  {item.title}
                 </p>
-              )}
-            </Link>
-          </li>
+                {pctLabel !== null ? (
+                  <p className="truncate text-xs text-primary/70">{pctLabel}</p>
+                ) : item.playlistTitle ? (
+                  <p className="truncate text-xs text-text-2">{item.playlistTitle}</p>
+                ) : null}
+              </Link>
+            </li>
           );
         })}
       </ul>
