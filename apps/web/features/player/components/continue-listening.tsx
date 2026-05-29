@@ -25,7 +25,7 @@ export function ContinueListening() {
   if (!items || items.length === 0) return null;
 
   // Only entries that know their playlist can deep-link back to playback.
-  const linkable = items.filter((item) => item.playlistSlug);
+  const linkable = items.filter((item) => item.playlistSlug).slice(0, 4);
   if (linkable.length === 0) return null;
 
   const handleClear = (): void => {

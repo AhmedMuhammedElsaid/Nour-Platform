@@ -78,7 +78,6 @@ export default async function HomePage({
     <section className="mx-auto max-w-6xl px-6 py-16">
       <h1 className="font-display text-3xl tracking-tight">{t("heading")}</h1>
 
-      <ContinueListening />
 
       <CategoryFilterBar categories={categoryPills} activeSlug={category} />
 
@@ -91,6 +90,9 @@ export default async function HomePage({
           ))}
         </div>
       )}
+
+      <ContinueListening />
+
     </section>
   );
 }

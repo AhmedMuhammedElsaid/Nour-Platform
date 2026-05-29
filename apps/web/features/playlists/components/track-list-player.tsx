@@ -93,7 +93,7 @@ export function TrackListPlayer({
       )}
 
       <ol aria-label="Tracks">
-        {tracks.map((track, i) => {
+        {tracks.map((track) => {
           const isCurrent = currentTrack?.id === track.id;
           const canPlay = track.srcUrl !== null;
 
@@ -102,11 +102,11 @@ export function TrackListPlayer({
               key={track.id}
               className="flex items-center gap-4 py-3 border-b border-border last:border-0"
               aria-current={isCurrent ? "true" : undefined}
+              onClick={() => handlePlayTrack(track.id)}
             >
               <button
                 type="button"
                 disabled={!canPlay}
-                onClick={() => handlePlayTrack(track.id)}
                 aria-label={
                   isCurrent && isPlaying
                     ? `Pause ${track.title}`
@@ -114,7 +114,7 @@ export function TrackListPlayer({
                 }
                 className="w-6 text-end text-sm shrink-0 text-text-2 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
               >
-                {isCurrent && isPlaying ? "⏸" : i + 1}
+                {isCurrent && isPlaying ? "⏸" : "▶"}
               </button>
               <span
                 className={
@@ -128,7 +128,7 @@ export function TrackListPlayer({
               <span className="text-sm text-text-2 shrink-0">
                 {track.durationSecs != null
                   ? formatDuration(track.durationSecs)
-                  : "—"}
+                  : "_"}
               </span>
             </li>
           );
