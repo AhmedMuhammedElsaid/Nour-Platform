@@ -13,6 +13,11 @@ export type QueueTrack = {
   playlistTitle?: string;
 };
 
+export type RepeatMode = "off" | "all" | "one";
+
+// Playback speeds surfaced in the player settings UI.
+export const PLAYBACK_RATES = [0.75, 1, 1.25, 1.5, 2] as const;
+
 export type PlayerContextValue = {
   queue: QueueTrack[];
   currentIndex: number;
@@ -23,6 +28,9 @@ export type PlayerContextValue = {
   duration: number;
   hasQueue: boolean;
   currentTrack: QueueTrack | null;
+  repeatMode: RepeatMode;
+  isShuffled: boolean;
+  playbackRate: number;
   loadQueue: (tracks: QueueTrack[], startIndex?: number) => void;
   play: () => void;
   pause: () => void;
@@ -32,6 +40,9 @@ export type PlayerContextValue = {
   prev: () => void;
   goTo: (index: number) => void;
   retry: () => void;
+  cycleRepeat: () => void;
+  toggleShuffle: () => void;
+  setPlaybackRate: (rate: number) => void;
 };
 
 const PlayerContext = React.createContext<PlayerContextValue | null>(null);
@@ -42,6 +53,61 @@ export function usePlayer(): PlayerContextValue {
     throw new Error("usePlayer must be used within a PlayerProvider");
   }
   return ctx;
+}
+
+// Device-local playback preferences (no account — APP_CONTEXT: device-local state).
+const PREFS_STORAGE_KEY = "nour.player.prefs";
+
+type PlayerPrefs = {
+  playbackRate: number;
+  repeatMode: RepeatMode;
+  isShuffled: boolean;
+};
+
+function readStoredPrefs(): PlayerPrefs | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(PREFS_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PlayerPrefs>;
+    return {
+      playbackRate:
+        typeof parsed.playbackRate === "number" ? parsed.playbackRate : 1,
+      repeatMode:
+        parsed.repeatMode === "all" || parsed.repeatMode === "one"
+          ? parsed.repeatMode
+          : "off",
+      isShuffled: Boolean(parsed.isShuffled),
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Play order is a sequence of queue indices. Identity when not shuffled; a
+// Fisher–Yates permutation otherwise, with the current track pinned to the
+// front so toggling shuffle mid-playback never restarts the current track.
+function buildPlayOrder(
+  length: number,
+  shuffled: boolean,
+  first: number,
+): number[] {
+  const order = Array.from({ length }, (_, i) => i);
+  if (!shuffled || length <= 1) return order;
+  for (let i = length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = order[i] as number;
+    order[i] = order[j] as number;
+    order[j] = tmp;
+  }
+  if (first >= 0) {
+    const pos = order.indexOf(first);
+    if (pos > 0) {
+      order.splice(pos, 1);
+      order.unshift(first);
+    }
+  }
+  return order;
 }
 
 type PlayerProviderProps = {
@@ -64,6 +130,21 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [currentTime, setCurrentTime] = React.useState<number>(0);
   const [duration, setDuration] = React.useState<number>(0);
+  const [repeatMode, setRepeatMode] = React.useState<RepeatMode>("off");
+  const [isShuffled, setIsShuffled] = React.useState<boolean>(false);
+  const [playbackRate, setPlaybackRateState] = React.useState<number>(1);
+
+  // Refs mirror state so the once-attached audio listeners and the stable
+  // navigation callbacks always read fresh values without re-subscribing.
+  const repeatModeRef = React.useRef<RepeatMode>(repeatMode);
+  const isShuffledRef = React.useRef<boolean>(isShuffled);
+  const playbackRateRef = React.useRef<number>(playbackRate);
+  const queueRef = React.useRef<QueueTrack[]>(queue);
+  const currentIndexRef = React.useRef<number>(currentIndex);
+  const playOrderRef = React.useRef<number[]>([]);
+  const prefsHydratedRef = React.useRef<boolean>(false);
+  queueRef.current = queue;
+  currentIndexRef.current = currentIndex;
 
   // Tracks any user gesture in the session. Mobile Safari forbids autoplay
   // and autoplay-next until the user has interacted with the page at least
@@ -82,6 +163,37 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     };
   }, []);
 
+  // Hydrate device-local prefs once on mount. Done in an effect (not a lazy
+  // initializer) to avoid SSR/CSR hydration mismatch — the player is hidden
+  // until a queue loads, so the brief default→stored transition isn't visible.
+  React.useEffect(() => {
+    const prefs = readStoredPrefs();
+    if (prefs) {
+      setPlaybackRateState(prefs.playbackRate);
+      playbackRateRef.current = prefs.playbackRate;
+      if (audioRef.current) audioRef.current.playbackRate = prefs.playbackRate;
+      setRepeatMode(prefs.repeatMode);
+      repeatModeRef.current = prefs.repeatMode;
+      setIsShuffled(prefs.isShuffled);
+      isShuffledRef.current = prefs.isShuffled;
+    }
+    prefsHydratedRef.current = true;
+  }, []);
+
+  // Persist prefs after hydration so the initial default state never clobbers
+  // the stored values on first mount.
+  React.useEffect(() => {
+    if (!prefsHydratedRef.current || typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(
+        PREFS_STORAGE_KEY,
+        JSON.stringify({ playbackRate, repeatMode, isShuffled }),
+      );
+    } catch {
+      /* storage unavailable (private mode / quota) — non-fatal */
+    }
+  }, [playbackRate, repeatMode, isShuffled]);
+
   // Stop and release the audio element when the provider unmounts (e.g. locale
   // switch causes [locale]/layout.tsx to remount, creating a new provider). Without
   // this the detached HTMLAudioElement keeps playing alongside the new one.
@@ -95,13 +207,56 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     };
   }, []);
 
+  // Advance through the play order by ±1, honoring shuffle order and repeat
+  // mode. Stable identity (reads refs) so the once-attached `ended` listener
+  // and the transport buttons share one implementation.
+  const goRelative = React.useCallback((direction: 1 | -1): void => {
+    setCurrentIndex((idx) => {
+      const order = playOrderRef.current;
+      if (idx < 0 || order.length === 0) return idx;
+      const pos = order.indexOf(idx);
+      if (pos === -1) return idx;
+      let nextPos = pos + direction;
+      if (nextPos < 0 || nextPos >= order.length) {
+        if (repeatModeRef.current === "all") {
+          nextPos = (nextPos + order.length) % order.length;
+        } else {
+          return idx; // stop at boundary
+        }
+      }
+      return order[nextPos] ?? idx;
+    });
+  }, []);
+
   // Wire audio element lifecycle events. The element is stable across the
   // provider's lifetime so we only attach listeners once.
   React.useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const onTimeUpdate = (): void => setCurrentTime(audio.currentTime);
+    const onTimeUpdate = (): void => {
+      setCurrentTime(audio.currentTime);
+      // Feed the OS media UI a scrubbable position (Media Session). Reads live
+      // off the element so there's no stale-closure risk in this once-attached
+      // listener. Some browsers throw on invalid/incomplete state — swallow.
+      if (
+        typeof navigator !== "undefined" &&
+        "mediaSession" in navigator &&
+        typeof navigator.mediaSession.setPositionState === "function" &&
+        Number.isFinite(audio.duration) &&
+        audio.duration > 0
+      ) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: audio.duration,
+            position: Math.min(audio.currentTime, audio.duration),
+            playbackRate: audio.playbackRate || 1,
+          });
+        } catch {
+          /* ignore invalid position state */
+        }
+      }
+    };
     const onDurationChange = (): void => {
       setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
     };
@@ -125,12 +280,15 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       // Auto-advance only after a prior user gesture this session; mobile
       // Safari would otherwise block the play() call and leave us paused.
       if (!hasInteractedRef.current) return;
-      setCurrentIndex((idx) => {
-        if (idx < 0) return idx;
-        const nextIdx = idx + 1;
-        // Bound at the last track. Component-level effect handles src swap.
-        return nextIdx;
-      });
+      // Repeat-one: replay the current track without moving the index.
+      if (repeatModeRef.current === "one") {
+        audio.currentTime = 0;
+        void audio.play().catch(() => {
+          /* see note in play() */
+        });
+        return;
+      }
+      goRelative(1);
     };
 
     audio.addEventListener("timeupdate", onTimeUpdate);
@@ -156,7 +314,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       audio.removeEventListener("canplay", onCanPlay);
       audio.removeEventListener("error", onError);
     };
-  }, []);
+  }, [goRelative]);
 
   // When currentIndex changes, swap the audio src and (optionally) autoplay.
   // Autoplay only fires when there has been a prior user gesture — keeps
@@ -181,6 +339,8 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       setDuration(track.durationSecs ?? 0);
       setErrorMessage(null);
     }
+    // Re-apply the chosen speed: a fresh src resets playbackRate to 1.
+    audio.playbackRate = playbackRateRef.current;
     if (hasInteractedRef.current) {
       void audio.play().catch(() => {
         // Browsers may still reject (e.g. silent mode); swallow rather than
@@ -197,6 +357,11 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
           ? -1
           : Math.min(Math.max(startIndex, 0), tracks.length - 1);
       setCurrentIndex(safeIndex);
+      playOrderRef.current = buildPlayOrder(
+        tracks.length,
+        isShuffledRef.current,
+        safeIndex,
+      );
     },
     [],
   );
@@ -241,27 +406,20 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   }, []);
 
   const next = React.useCallback((): void => {
-    setCurrentIndex((idx) => {
-      if (idx < 0) return idx;
-      const nextIdx = idx + 1;
-      return nextIdx >= queue.length ? idx : nextIdx;
-    });
-  }, [queue.length]);
+    goRelative(1);
+  }, [goRelative]);
 
   const prev = React.useCallback((): void => {
-    setCurrentIndex((idx) => {
-      if (idx <= 0) return idx;
-      return idx - 1;
-    });
-  }, []);
+    goRelative(-1);
+  }, [goRelative]);
 
   const goTo = React.useCallback(
     (index: number): void => {
       setCurrentIndex((idx) =>
-        index >= 0 && index < queue.length ? index : idx,
+        index >= 0 && index < queueRef.current.length ? index : idx,
       );
     },
-    [queue.length],
+    [],
   );
 
   // Re-attempt the current track after an error (DESIGN.md §17.1 retry).
@@ -275,6 +433,116 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       /* see note above */
     });
   }, []);
+
+  const cycleRepeat = React.useCallback((): void => {
+    setRepeatMode((prev) => {
+      const seq: RepeatMode[] = ["off", "all", "one"];
+      const nextVal = seq[(seq.indexOf(prev) + 1) % seq.length] as RepeatMode;
+      repeatModeRef.current = nextVal;
+      return nextVal;
+    });
+  }, []);
+
+  const toggleShuffle = React.useCallback((): void => {
+    setIsShuffled((prev) => {
+      const nextVal = !prev;
+      isShuffledRef.current = nextVal;
+      playOrderRef.current = buildPlayOrder(
+        queueRef.current.length,
+        nextVal,
+        currentIndexRef.current,
+      );
+      return nextVal;
+    });
+  }, []);
+
+  const setPlaybackRate = React.useCallback((rate: number): void => {
+    const audio = audioRef.current;
+    if (audio) audio.playbackRate = rate;
+    playbackRateRef.current = rate;
+    setPlaybackRateState(rate);
+  }, []);
+
+  // Media Session: keep the OS/lock-screen now-playing metadata in sync.
+  React.useEffect(() => {
+    if (
+      typeof navigator === "undefined" ||
+      !("mediaSession" in navigator) ||
+      typeof MediaMetadata === "undefined"
+    ) {
+      return;
+    }
+    const currentTrack =
+      currentIndex >= 0 && currentIndex < queue.length
+        ? queue[currentIndex]
+        : null;
+    if (!currentTrack) {
+      navigator.mediaSession.metadata = null;
+      return;
+    }
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentTrack.title,
+      artist: currentTrack.playlistTitle ?? "",
+      artwork: currentTrack.coverUrl
+        ? [{ src: currentTrack.coverUrl, sizes: "512x512" }]
+        : [],
+    });
+  }, [currentIndex, queue]);
+
+  // Media Session: register transport action handlers once. Handlers are stable
+  // callbacks, so this re-runs only if their identity changes (it won't).
+  React.useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) {
+      return;
+    }
+    const ms = navigator.mediaSession;
+    const setHandler = (
+      action: MediaSessionAction,
+      handler: MediaSessionActionHandler | null,
+    ): void => {
+      try {
+        ms.setActionHandler(action, handler);
+      } catch {
+        /* unsupported action on this browser — ignore */
+      }
+    };
+    setHandler("play", () => play());
+    setHandler("pause", () => pause());
+    setHandler("previoustrack", () => prev());
+    setHandler("nexttrack", () => next());
+    setHandler("seekbackward", (details) => {
+      const audio = audioRef.current;
+      if (audio) seek(audio.currentTime - (details.seekOffset ?? 10));
+    });
+    setHandler("seekforward", (details) => {
+      const audio = audioRef.current;
+      if (audio) seek(audio.currentTime + (details.seekOffset ?? 10));
+    });
+    setHandler("seekto", (details) => {
+      if (typeof details.seekTime === "number") seek(details.seekTime);
+    });
+    return () => {
+      (
+        [
+          "play",
+          "pause",
+          "previoustrack",
+          "nexttrack",
+          "seekbackward",
+          "seekforward",
+          "seekto",
+        ] as MediaSessionAction[]
+      ).forEach((action) => setHandler(action, null));
+    };
+  }, [play, pause, prev, next, seek]);
+
+  // Media Session: mirror the playing/paused state to the OS UI.
+  React.useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) {
+      return;
+    }
+    navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+  }, [isPlaying]);
 
   const hasQueue = queue.length > 0 && currentIndex >= 0;
   const currentTrack: QueueTrack | null =
@@ -293,6 +561,9 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       duration,
       hasQueue,
       currentTrack,
+      repeatMode,
+      isShuffled,
+      playbackRate,
       loadQueue,
       play,
       pause,
@@ -302,6 +573,9 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       prev,
       goTo,
       retry,
+      cycleRepeat,
+      toggleShuffle,
+      setPlaybackRate,
     }),
     [
       queue,
@@ -313,6 +587,9 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       duration,
       hasQueue,
       currentTrack,
+      repeatMode,
+      isShuffled,
+      playbackRate,
       loadQueue,
       play,
       pause,
@@ -322,6 +599,9 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       prev,
       goTo,
       retry,
+      cycleRepeat,
+      toggleShuffle,
+      setPlaybackRate,
     ],
   );
 

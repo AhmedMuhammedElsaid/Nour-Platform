@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AudioPlayer } from '@repo/ui/blocks/audio-player'
 import {
@@ -55,6 +55,12 @@ function AutoLoad() {
 }
 
 describe('AudioPlayer', () => {
+  // Player prefs (speed/repeat/shuffle) persist to localStorage; isolate each
+  // test so stored state from one doesn't leak into the next test's hydration.
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+
   it('stays mounted but hidden when no queue is loaded', () => {
     const { container } = render(
       <PlayerProvider>
@@ -254,5 +260,131 @@ describe('AudioPlayer', () => {
     expect(screen.getByText('Track 2 / 2')).toBeInTheDocument()
     // Last track — Next button should be disabled.
     expect(screen.getByRole('button', { name: /next track/i })).toBeDisabled()
+  })
+
+  it('toggles shuffle via the shuffle button', async () => {
+    const user = userEvent.setup()
+    render(
+      <PlayerProvider>
+        <Harness />
+        <AudioPlayer />
+      </PlayerProvider>,
+    )
+    await user.click(screen.getByTestId('load'))
+
+    const shuffle = screen.getByRole('button', { name: /shuffle/i })
+    expect(shuffle).toHaveAttribute('aria-pressed', 'false')
+    await user.click(shuffle)
+    expect(shuffle).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('cycles repeat off → all → one with matching labels', async () => {
+    const user = userEvent.setup()
+    render(
+      <PlayerProvider>
+        <Harness />
+        <AudioPlayer />
+      </PlayerProvider>,
+    )
+    await user.click(screen.getByTestId('load'))
+
+    expect(
+      screen.getByRole('button', { name: /repeat off/i }),
+    ).toHaveAttribute('aria-pressed', 'false')
+
+    await user.click(screen.getByRole('button', { name: /repeat off/i }))
+    expect(
+      screen.getByRole('button', { name: /repeat all/i }),
+    ).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(screen.getByRole('button', { name: /repeat all/i }))
+    expect(
+      screen.getByRole('button', { name: /repeat one/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('wraps past the last track when repeat-all is on', async () => {
+    const user = userEvent.setup()
+    render(
+      <PlayerProvider>
+        <Harness />
+        <AudioPlayer />
+      </PlayerProvider>,
+    )
+    await user.click(screen.getByTestId('load'))
+
+    // Enable repeat-all (off → all).
+    await user.click(screen.getByRole('button', { name: /repeat off/i }))
+
+    // Advance to the last track, then once more — should wrap to index 0.
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: /next track/i }))
+    })
+    expect(screen.getByTestId('current-index')).toHaveTextContent('1')
+
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: /next track/i }))
+    })
+    expect(screen.getByTestId('current-index')).toHaveTextContent('0')
+  })
+
+  it('sets the playback speed from the settings sheet', async () => {
+    const user = userEvent.setup()
+    render(
+      <PlayerProvider>
+        <Harness />
+        <AudioPlayer />
+      </PlayerProvider>,
+    )
+    await user.click(screen.getByTestId('load'))
+
+    await user.click(
+      screen.getByRole('button', { name: /playback settings/i }),
+    )
+    const fast = screen.getByRole('button', { name: '1.5×' })
+    await user.click(fast)
+    expect(fast).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('publishes now-playing metadata to the Media Session API', async () => {
+    type MediaSessionStub = {
+      metadata: { title?: string } | null
+      playbackState: string
+      setActionHandler: ReturnType<typeof vi.fn>
+      setPositionState: ReturnType<typeof vi.fn>
+    }
+    const stub: MediaSessionStub = {
+      metadata: null,
+      playbackState: 'none',
+      setActionHandler: vi.fn(),
+      setPositionState: vi.fn(),
+    }
+    ;(navigator as unknown as { mediaSession: MediaSessionStub }).mediaSession =
+      stub
+    ;(globalThis as unknown as { MediaMetadata: unknown }).MediaMetadata =
+      class {
+        title?: string
+        constructor(init: { title?: string }) {
+          this.title = init.title
+        }
+      }
+
+    try {
+      const user = userEvent.setup()
+      render(
+        <PlayerProvider>
+          <Harness />
+          <AudioPlayer />
+        </PlayerProvider>,
+      )
+      await user.click(screen.getByTestId('load'))
+
+      expect(stub.metadata?.title).toBe('Surah Al-Fatiha')
+      expect(stub.setActionHandler).toHaveBeenCalled()
+    } finally {
+      delete (navigator as unknown as { mediaSession?: unknown }).mediaSession
+      delete (globalThis as unknown as { MediaMetadata?: unknown })
+        .MediaMetadata
+    }
   })
 })

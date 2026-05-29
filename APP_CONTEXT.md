@@ -142,9 +142,15 @@ packages/ui/src/
   patterns/
     form-field.tsx          → FormField({ label, htmlFor?, error?, children }) — label + input slot + error message
   blocks/audio-player/
-    audio-player.tsx        → sticky bottom UI (play/pause, Slider seek, time, prev/next). Subscribes to PlayerContext.
-                              RTL: skip icons mirror via rtl:scale-x-[-1]; queue Sheet opens from left in RTL (via useDir).
-    player-context.tsx      → PlayerProvider — single HTMLAudioElement ref, queue state, keyboard handlers (space, ←/→), navigation persistence
+    audio-player.tsx        → sticky bottom UI (play/pause, Slider seek, time, prev/next, shuffle, repeat, + a
+                              "Playback settings" Sheet with speed presets). Subscribes to PlayerContext.
+                              RTL: skip icons mirror via rtl:scale-x-[-1]; queue/settings Sheets open from left in RTL (via useDir).
+                              Keyboard: space, ←/→ (±10s), n/p (track), s (shuffle), r (repeat).
+    player-context.tsx      → PlayerProvider — single HTMLAudioElement ref, queue state, keyboard handlers, navigation persistence.
+                              Shuffle (Fisher–Yates play-order ref, current track pinned front) + repeat off/all/one + playbackRate.
+                              Prefs (rate/repeat/shuffle) persist device-local to localStorage key `nour.player.prefs`.
+                              Media Session API wired: metadata (title/artist/artwork), transport action handlers, setPositionState.
+                              Exports PLAYBACK_RATES + RepeatMode.
   hooks/
     use-dir.ts              → useDir() — returns 'rtl'|'ltr' by reading <html dir>; SSR-safe; for client islands only
 

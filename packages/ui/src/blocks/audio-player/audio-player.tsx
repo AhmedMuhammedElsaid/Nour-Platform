@@ -2,11 +2,15 @@
 
 import * as React from "react";
 import {
+  Gauge,
   ListMusic,
   Loader2,
   Pause,
   Play,
+  Repeat,
+  Repeat1,
   RotateCw,
+  Shuffle,
   SkipBack,
   SkipForward,
 } from "lucide-react";
@@ -23,7 +27,7 @@ import {
   SheetTrigger,
 } from "../../primitives/sheet";
 import { toast } from "../../primitives/toaster";
-import { usePlayer } from "./player-context";
+import { PLAYBACK_RATES, usePlayer } from "./player-context";
 import { useDir } from "../../hooks/use-dir";
 
 function formatTime(totalSeconds: number): string {
@@ -54,14 +58,32 @@ export function AudioPlayer() {
     currentTrack,
     currentIndex,
     queue,
+    repeatMode,
+    isShuffled,
+    playbackRate,
     toggle,
     seek,
     next,
     prev,
     goTo,
     retry,
+    cycleRepeat,
+    toggleShuffle,
+    setPlaybackRate,
   } = usePlayer();
   const dir = useDir();
+
+  // With repeat-all or shuffle on there is always a track to move to, so the
+  // transport ends are only "hard" boundaries in plain sequential mode.
+  const atSequentialEnd = repeatMode !== "all" && !isShuffled;
+  const disablePrev = atSequentialEnd && currentIndex <= 0;
+  const disableNext = atSequentialEnd && currentIndex >= queue.length - 1;
+  const repeatLabel =
+    repeatMode === "one"
+      ? "Repeat one"
+      : repeatMode === "all"
+        ? "Repeat all"
+        : "Repeat off";
 
   // Mirror playback errors to a transient toast (DESIGN.md §17.1); the inline
   // chip remains the persistent, in-bar surface.
@@ -104,11 +126,21 @@ export function AudioPlayer() {
       if (event.key === "p" || event.key === "P") {
         event.preventDefault();
         prev();
+        return;
+      }
+      if (event.key === "s" || event.key === "S") {
+        event.preventDefault();
+        toggleShuffle();
+        return;
+      }
+      if (event.key === "r" || event.key === "R") {
+        event.preventDefault();
+        cycleRepeat();
       }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [hasQueue, toggle, seek, currentTime, next, prev]);
+  }, [hasQueue, toggle, seek, currentTime, next, prev, toggleShuffle, cycleRepeat]);
 
   const sliderMax =
     currentTrack != null
@@ -175,9 +207,19 @@ export function AudioPlayer() {
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Shuffle"
+              aria-pressed={isShuffled}
+              onClick={toggleShuffle}
+              className={cn(isShuffled && "text-primary")}
+            >
+              <Shuffle />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               aria-label="Previous track"
               onClick={prev}
-              disabled={currentIndex <= 0}
+              disabled={disablePrev}
             >
               <SkipBack className="rtl:scale-x-[-1]" />
             </Button>
@@ -201,9 +243,19 @@ export function AudioPlayer() {
               size="icon"
               aria-label="Next track"
               onClick={next}
-              disabled={currentIndex >= queue.length - 1}
+              disabled={disableNext}
             >
               <SkipForward className="rtl:scale-x-[-1]" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={repeatLabel}
+              aria-pressed={repeatMode !== "off"}
+              onClick={cycleRepeat}
+              className={cn(repeatMode !== "off" && "text-primary")}
+            >
+              {repeatMode === "one" ? <Repeat1 /> : <Repeat />}
             </Button>
           </div>
           <div className="w-full flex items-center gap-3">
@@ -251,6 +303,51 @@ export function AudioPlayer() {
               Retry
             </button>
           )}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Playback settings"
+              >
+                <Gauge />
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side={dir === "rtl" ? "left" : "right"}
+              aria-label="Playback settings"
+            >
+              <SheetHeader>
+                <SheetTitle>Playback settings</SheetTitle>
+              </SheetHeader>
+              <div className="px-2 py-3">
+                <p
+                  id="speed-label"
+                  className="mb-2 text-xs font-medium text-muted"
+                >
+                  Speed
+                </p>
+                <div
+                  role="group"
+                  aria-labelledby="speed-label"
+                  className="flex flex-wrap gap-2"
+                >
+                  {PLAYBACK_RATES.map((rate) => (
+                    <Button
+                      key={rate}
+                      type="button"
+                      variant={rate === playbackRate ? "default" : "outline"}
+                      size="sm"
+                      aria-pressed={rate === playbackRate}
+                      onClick={() => setPlaybackRate(rate)}
+                    >
+                      {rate}×
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" aria-label="Queue">
