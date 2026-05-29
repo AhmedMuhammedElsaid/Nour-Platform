@@ -2,8 +2,10 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from "react";
@@ -29,11 +31,24 @@ const LocaleAlternatesContext = createContext<ContextValue | null>(null);
  * plain locale prefix-swap (their path is locale-invariant).
  */
 export function LocaleAlternatesProvider({ children }: { children: ReactNode }) {
-  const [alternates, setAlternates] = useState<Alternates>({});
+  const [alternates, setAlternatesState] = useState<Alternates>({});
+
+  // Stable identity matters: this setter is a dependency of SetLocaleAlternates'
+  // effect. An inline arrow recreated each render would change that dependency
+  // every render, re-firing the effect, which writes a fresh object — an
+  // endless render→effect→setState loop ("Maximum update depth exceeded").
+  const setAlternates = useCallback(
+    (next: Alternates | null) => setAlternatesState(next ?? {}),
+    [],
+  );
+
+  const value = useMemo<ContextValue>(
+    () => ({ alternates, setAlternates }),
+    [alternates, setAlternates],
+  );
+
   return (
-    <LocaleAlternatesContext.Provider
-      value={{ alternates, setAlternates: (next) => setAlternates(next ?? {}) }}
-    >
+    <LocaleAlternatesContext.Provider value={value}>
       {children}
     </LocaleAlternatesContext.Provider>
   );
