@@ -53,10 +53,10 @@ export async function PlaylistCard({ playlist }: PlaylistCardProps) {
           </div>
         )}
         {/* Gradient fade into card body */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/50 pointer-events-none" />
+        <div className="absolute inset-0 bg-linear-to-b from-transparent to-black/50 pointer-events-none" />
         {/* Track count badge */}
         {playlist.trackCount != null && playlist.trackCount > 0 && (
-          <span className="absolute bottom-2 end-2 rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-semibold px-2.5 py-0.5">
+          <span className="absolute bottom-2 inset-e-2 rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-semibold px-2.5 py-0.5">
             {playlist.trackCount}
           </span>
         )}
