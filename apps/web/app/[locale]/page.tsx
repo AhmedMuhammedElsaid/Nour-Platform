@@ -100,9 +100,6 @@ export default async function HomePage({
         <p className="mt-2 text-sm text-text-2">{t("heroSubtitle")}</p>
       </div>
 
-      {/* Continue listening shelf */}
-      <ContinueListening />
-
       <hr className="border-border my-8" />
 
       {/* Category filter pills */}
@@ -126,6 +123,8 @@ export default async function HomePage({
           ))}
         </div>
       )}
+           {/* Continue listening shelf */}
+      <ContinueListening />
     </section>
   );
 }
