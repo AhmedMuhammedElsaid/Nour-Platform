@@ -22,6 +22,7 @@ import {
   Sheet,
   SheetClose,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -334,6 +335,9 @@ export function AudioPlayer() {
             >
               <SheetHeader>
                 <SheetTitle>Playback settings</SheetTitle>
+                <SheetDescription className="sr-only">
+                  Adjust playback speed and the sleep timer.
+                </SheetDescription>
               </SheetHeader>
               <div className="px-2 py-3">
                 <p
@@ -419,6 +423,9 @@ export function AudioPlayer() {
             <SheetContent side={dir === "rtl" ? "left" : "right"} aria-label="Play queue">
               <SheetHeader>
                 <SheetTitle>Queue</SheetTitle>
+                <SheetDescription className="sr-only">
+                  The list of tracks queued to play.
+                </SheetDescription>
               </SheetHeader>
               <ol className="-mx-2 overflow-y-auto">
                 {queue.map((track, index) => (
