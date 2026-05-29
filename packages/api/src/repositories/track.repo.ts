@@ -32,6 +32,23 @@ export async function findTrackBySlug(
   return TrackModel.findOne({ playlistId, [field]: slug }).lean<TrackLean>();
 }
 
+// Full-text search over tracks (requires the text index from migration 0006).
+// Returns tracks regardless of playlist status; the service filters hits down
+// to those with a published parent playlist.
+export async function searchTracks(
+  query: string,
+  limit: number,
+): Promise<TrackLean[]> {
+  await getDb();
+  return TrackModel.find(
+    { $text: { $search: query } },
+    { score: { $meta: "textScore" } },
+  )
+    .sort({ score: { $meta: "textScore" } })
+    .limit(limit)
+    .lean<TrackLean[]>();
+}
+
 export async function createTrack(
   data: Omit<TrackCreateInput, "ar" | "en" | "order"> & {
     ar: { title: string; slug: string; description?: string };

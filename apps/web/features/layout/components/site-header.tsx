@@ -1,6 +1,7 @@
 import { getLocale, getTranslations } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
+import { SearchBox } from "@/features/search/components/search-box";
 import { LocaleSwitcher } from "./locale-switcher";
 
 const BRAND: Record<string, { text: string; lang: string }> = {
@@ -23,6 +24,7 @@ export async function SiteHeader() {
         >
           <span lang={brand.lang}>{brand.text}</span>
         </Link>
+        <SearchBox />
         <LocaleSwitcher />
       </div>
     </header>

@@ -96,7 +96,8 @@ packages/api/src/
       0002-category-indexes.ts   → playlists.categoryIds array index + PlaylistModel.ensureIndexes (no-op after 0004)
       0003-i18n-backfill.ts      → sets locale='ar', mints contentId, relinks tracks (idempotent; skips docs with locale set)
       0004-i18n-indexes.ts       → drops old bare-slug unique indexes, rebuilds compound {locale,slug}+{contentId,locale}
-      ⚠️ Runner order in scripts/migrate.ts: [0003, 0004, 0005, 0001, 0002] — 0003 MUST precede ensureIndexes
+      0006-search-indexes.ts     → text indexes on playlists (ar/en title+description) + tracks (ar/en title); additive, safe last
+      ⚠️ Runner order in scripts/migrate.ts: [0003, 0004, 0005, 0001, 0002, 0006] — 0003 MUST precede ensureIndexes; 0006 last
   repositories/
     playlist.repo.ts      → findPlaylistById/BySlug/Published/All/ByContentId, create/update/delete
                             (no appendTrackId/removeTrackId — dropped; Published/All take locale param + {categoryContentId?} filter)
@@ -124,6 +125,9 @@ packages/api/src/
     media.service.ts      → createMedia, confirmMedia, getMediaUrlById (both create/confirm call requireSession — defense in depth)
     category.service.ts   → listCategories(locale), getCategoryBySlug(locale, slug), getCategoryById, create/update,
                             delete (cascade $pull only when last locale variant gone; revalidates all locales)
+    search.service.ts     → searchContent(locale, q, limit=20) — public read, $text over published playlists + tracks;
+                            locale-resolves hits; track hits link to their published parent playlist; empty on blank/invalid q.
+                            Needs migration 0006 text indexes (else $text errors). Exported at @repo/api/services/search.
   cache/tags.ts           → locale-scoped tag FUNCTIONS — playlistsHomeTag(locale), playlistTag(locale,slug), categoriesTag(locale)
                             (old bare PLAYLISTS_HOME/CATEGORIES constants removed — always use the functions)
   media/
@@ -223,7 +227,11 @@ apps/web/
   app/[locale]/playlists/[slug]/page.tsx → RSC detail: getPlaylistBySlug(locale,slug) + getTracksWithUrls(locale,contentId);
                                             generateMetadata emits hreflang via getPlaylistSlugForLocale per locale
                                             (export const dynamic = "force-dynamic")
+  app/[locale]/search/page.tsx           → RSC search results (reads ?q=, calls searchContent; force-dynamic; robots noindex)
   app/api/health/route.ts                → GET → { ok, version, time }
+  features/search/components/
+    search-box.tsx                       → header search island → router.push(/search?q=) (inline SVG icon, no lucide dep in web)
+    search-box.test.tsx                  → RTL test for submit/navigation
   i18n/
     routing.ts                           → defineRouting({ locales:['ar','en'], defaultLocale:'ar', localePrefix:'always' })
     request.ts                           → getRequestConfig — loads messages/{locale}.json

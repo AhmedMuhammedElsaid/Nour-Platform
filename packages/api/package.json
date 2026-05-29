@@ -13,6 +13,7 @@
     "./services/playlist": "./src/services/playlist.service.ts",
     "./services/track": "./src/services/track.service.ts",
     "./services/category": "./src/services/category.service.ts",
+    "./services/search": "./src/services/search.service.ts",
     "./schemas/user": "./src/schemas/user.ts",
     "./schemas/locale": "./src/schemas/locale.ts",
     "./schemas/playlist": "./src/schemas/playlist.ts",
@@ -33,7 +34,8 @@
     "./db/migrations/0002-category-indexes": "./src/db/migrations/0002-category-indexes.ts",
     "./db/migrations/0003-i18n-backfill": "./src/db/migrations/0003-i18n-backfill.ts",
     "./db/migrations/0004-i18n-indexes": "./src/db/migrations/0004-i18n-indexes.ts",
-    "./db/migrations/0005-embedded-locale": "./src/db/migrations/0005-embedded-locale.ts"
+    "./db/migrations/0005-embedded-locale": "./src/db/migrations/0005-embedded-locale.ts",
+    "./db/migrations/0006-search-indexes": "./src/db/migrations/0006-search-indexes.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",

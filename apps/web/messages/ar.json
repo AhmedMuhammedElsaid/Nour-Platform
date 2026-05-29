@@ -27,5 +27,14 @@
     "trackCount": "{count, plural, other {# مقطع}}",
     "listenOn": "استمع على نور",
     "published": "منشور"
+  },
+  "search": {
+    "title": "بحث",
+    "label": "ابحث في قوائم التشغيل والمقاطع",
+    "placeholder": "بحث…",
+    "prompt": "اكتب للبحث في قوائم التشغيل والمقاطع.",
+    "noResults": "لا توجد نتائج لـ ”{query}“.",
+    "playlists": "قوائم التشغيل",
+    "tracks": "المقاطع"
   }
 }

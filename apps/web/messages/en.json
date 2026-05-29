@@ -27,5 +27,14 @@
     "trackCount": "{count, plural, =1 {# track} other {# tracks}}",
     "listenOn": "Listen on Nour Islamic Audio",
     "published": "Published"
+  },
+  "search": {
+    "title": "Search",
+    "label": "Search playlists and tracks",
+    "placeholder": "Search…",
+    "prompt": "Type to search playlists and tracks.",
+    "noResults": "No results for “{query}”.",
+    "playlists": "Playlists",
+    "tracks": "Tracks"
   }
 }

@@ -7,6 +7,7 @@ import * as migration0002 from "@repo/api/db/migrations/0002-category-indexes";
 import * as migration0003 from "@repo/api/db/migrations/0003-i18n-backfill";
 import * as migration0004 from "@repo/api/db/migrations/0004-i18n-indexes";
 import * as migration0005 from "@repo/api/db/migrations/0005-embedded-locale";
+import * as migration0006 from "@repo/api/db/migrations/0006-search-indexes";
 
 /*
  * Migration runner for the Nour Platform.
@@ -42,6 +43,7 @@ const migrations: Migration[] = [
   migration0005, // merge AR/EN docs → embedded locale; drops old indexes, rebuilds new
   migration0001, // ensureIndexes runs on new schema after 0005 — no-op on first run
   migration0002, // same
+  migration0006, // text-search indexes — additive, no document changes; safe last
 ];
 
 async function main(): Promise<void> {

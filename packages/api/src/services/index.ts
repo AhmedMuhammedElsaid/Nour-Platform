@@ -5,4 +5,5 @@ export * from "./auth.service";
 export * from "./category.service";
 export * from "./media.service";
 export * from "./playlist.service";
+export * from "./search.service";
 export * from "./track.service";

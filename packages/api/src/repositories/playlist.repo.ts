@@ -38,6 +38,35 @@ export async function findAllPlaylists(): Promise<PlaylistLean[]> {
   return PlaylistModel.find({}).sort({ updatedAt: -1 }).lean<PlaylistLean[]>();
 }
 
+// Full-text search over published playlists (requires the text index from
+// migration 0006). Sorted by relevance score, capped at `limit`.
+export async function searchPublishedPlaylists(
+  query: string,
+  limit: number,
+): Promise<PlaylistLean[]> {
+  await getDb();
+  return PlaylistModel.find(
+    { $text: { $search: query }, status: "published" },
+    { score: { $meta: "textScore" } },
+  )
+    .sort({ score: { $meta: "textScore" } })
+    .limit(limit)
+    .lean<PlaylistLean[]>();
+}
+
+// Batch-fetch published playlists by id — used to resolve track search hits to
+// their (still-published) parent playlist.
+export async function findPublishedPlaylistsByIds(
+  ids: string[],
+): Promise<PlaylistLean[]> {
+  if (ids.length === 0) return [];
+  await getDb();
+  return PlaylistModel.find({
+    _id: { $in: ids },
+    status: "published",
+  }).lean<PlaylistLean[]>();
+}
+
 export async function createPlaylist(
   data: Omit<PlaylistCreateInput, "ar" | "en"> & {
     ar: { title: string; slug: string; description?: string };
