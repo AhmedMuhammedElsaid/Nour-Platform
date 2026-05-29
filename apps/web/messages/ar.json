@@ -1,7 +1,8 @@
 {
   "metadata": {
     "homeTitle": "نور — صوتيات إسلامية",
-    "homeDescription": "تصفّح قوائم التشغيل",
+    "homeDescription": "استمع إلى تلاوات القرآن والمحاضرات وقوائم الصوتيات الإسلامية بالعربية والإنجليزية.",
+    "siteName": "نور",
     "notFound": "غير موجود — نور"
   },
   "nav": {
@@ -33,7 +34,8 @@
     "tracksHeading": "المقاطع",
     "trackCount": "{count, plural, other {# مقطع}}",
     "listenOn": "استمع على نور",
-    "published": "منشور"
+    "published": "منشور",
+    "backToHome": "العودة إلى الرئيسية"
   },
   "search": {
     "title": "بحث",

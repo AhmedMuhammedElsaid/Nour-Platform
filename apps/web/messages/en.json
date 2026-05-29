@@ -1,7 +1,8 @@
 {
   "metadata": {
     "homeTitle": "Nour — Islamic Audio",
-    "homeDescription": "Browse playlists",
+    "homeDescription": "Listen to Quran recitations, lectures, and Islamic audio playlists in Arabic and English.",
+    "siteName": "Nour",
     "notFound": "Not Found — Nour"
   },
   "nav": {
@@ -33,7 +34,8 @@
     "tracksHeading": "Tracks",
     "trackCount": "{count, plural, =1 {# track} other {# tracks}}",
     "listenOn": "Listen on Nour Islamic Audio",
-    "published": "Published"
+    "published": "Published",
+    "backToHome": "Back to Home"
   },
   "search": {
     "title": "Search",
