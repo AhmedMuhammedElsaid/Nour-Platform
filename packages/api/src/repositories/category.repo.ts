@@ -4,6 +4,7 @@ import { getDb } from "../db/client";
 import { CategoryModel, type CategoryDoc } from "../db/models/Category.model";
 import type { Locale } from "../schemas/locale";
 import type { CategoryCreateInput, CategoryUpdateInput } from "../schemas/category";
+import { flattenLocaleUpdate } from "../utils/mongo-update";
 
 export type CategoryLean = CategoryDoc & { _id: mongoose.Types.ObjectId };
 
@@ -43,7 +44,11 @@ export async function updateById(
   patch: CategoryUpdateInput,
 ): Promise<CategoryLean | null> {
   await getDb();
-  return CategoryModel.findByIdAndUpdate(id, { $set: patch }, { new: true }).lean<CategoryLean>();
+  return CategoryModel.findByIdAndUpdate(
+    id,
+    { $set: flattenLocaleUpdate(patch) },
+    { new: true },
+  ).lean<CategoryLean>();
 }
 
 export async function deleteById(id: string): Promise<boolean> {

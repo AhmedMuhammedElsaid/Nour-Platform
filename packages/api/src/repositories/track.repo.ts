@@ -4,6 +4,7 @@ import { getDb } from "../db/client";
 import { TrackModel, type TrackDoc } from "../db/models/track.model";
 import type { Locale } from "../schemas/locale";
 import type { TrackCreateInput, TrackUpdateInput } from "../schemas/track";
+import { flattenLocaleUpdate } from "../utils/mongo-update";
 
 export type TrackLean = TrackDoc & { _id: mongoose.Types.ObjectId };
 
@@ -49,7 +50,11 @@ export async function updateTrackById(
   update: TrackUpdateInput,
 ): Promise<TrackLean | null> {
   await getDb();
-  return TrackModel.findByIdAndUpdate(id, { $set: update }, { new: true }).lean<TrackLean>();
+  return TrackModel.findByIdAndUpdate(
+    id,
+    { $set: flattenLocaleUpdate(update) },
+    { new: true },
+  ).lean<TrackLean>();
 }
 
 export async function deleteTrackById(id: string): Promise<boolean> {

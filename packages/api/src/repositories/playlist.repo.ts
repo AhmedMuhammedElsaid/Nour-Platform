@@ -4,6 +4,7 @@ import { getDb } from "../db/client";
 import { PlaylistModel, type PlaylistDoc } from "../db/models/playlist.model";
 import type { Locale } from "../schemas/locale";
 import type { PlaylistCreateInput, PlaylistUpdateInput } from "../schemas/playlist";
+import { flattenLocaleUpdate } from "../utils/mongo-update";
 
 export type PlaylistLean = PlaylistDoc & { _id: mongoose.Types.ObjectId };
 
@@ -54,7 +55,11 @@ export async function updatePlaylistById(
   update: PlaylistUpdateInput,
 ): Promise<PlaylistLean | null> {
   await getDb();
-  return PlaylistModel.findByIdAndUpdate(id, { $set: update }, { new: true }).lean<PlaylistLean>();
+  return PlaylistModel.findByIdAndUpdate(
+    id,
+    { $set: flattenLocaleUpdate(update) },
+    { new: true },
+  ).lean<PlaylistLean>();
 }
 
 export async function deletePlaylistById(id: string): Promise<boolean> {
