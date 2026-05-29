@@ -3,6 +3,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { SearchBox } from "@/features/search/components/search-box";
 import { LocaleSwitcher } from "./locale-switcher";
+import { ThemeToggle } from "./theme-toggle";
 
 const BRAND: Record<string, { text: string; lang: string }> = {
   ar: { text: "نور", lang: "ar" },
@@ -26,6 +27,7 @@ export async function SiteHeader() {
         </Link>
         <SearchBox />
         <LocaleSwitcher />
+        <ThemeToggle />
       </div>
     </header>
   );

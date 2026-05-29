@@ -7,7 +7,8 @@
   "nav": {
     "home": "Nour — home",
     "skipToContent": "Skip to main content",
-    "language": "Language"
+    "language": "Language",
+    "toggleTheme": "Toggle light/dark theme"
   },
   "footer": {
     "copyright": "© 2026 Nour Platform"

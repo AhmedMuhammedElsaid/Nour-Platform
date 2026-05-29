@@ -42,7 +42,10 @@
   --color-popover: var(--color-surface);
   --color-popover-foreground: var(--color-text);
   --color-primary-foreground: var(--color-primary-fg);
-  --color-secondary: var(--color-surface-2);
+  /* Brand teal (Published badges) — `bg-secondary`/`text-secondary`.
+     The `secondary` Button variant uses `bg-surface-2` directly, so this no
+     longer aliases the neutral surface. */
+  --color-secondary: var(--color-secondary);
   --color-secondary-foreground: var(--color-text);
   --color-muted-foreground: var(--color-muted);
   --color-accent-foreground: var(--color-text);
@@ -81,6 +84,7 @@
   --shadow-2: var(--shadow-2);
   --shadow-3: var(--shadow-3);
   --shadow-up-2: var(--shadow-up-2);
+  --shadow-up-3: var(--shadow-up-3);
 }
 
 @layer base {

@@ -3,27 +3,16 @@
  * Tokens live in CSS variables; Tailwind v4 utilities are produced by the
  * `@theme inline` bridge in globals.css. Apps must consume these — never
  * hardcode colors, sizes, or radii.
+ *
+ * Dark is the DEFAULT theme (warm near-black + gold accent). `:root` carries
+ * the dark palette so a document with no `data-theme` renders dark; the web
+ * app also sets `data-theme="dark"` on <html> explicitly. `[data-theme="light"]`
+ * overrides the colour tokens for the cream light theme via the header toggle.
+ * Non-colour tokens (type, radii, shadows, motion) are theme-independent and
+ * stay in `:root`.
  */
 
 :root {
-  color-scheme: light dark;
-
-  /* Colors — light */
-  --color-bg: #fcfcf9;
-  --color-surface: #ffffff;
-  --color-surface-2: #f4f2ec;
-  --color-border: #e6e2d7;
-  --color-text: #13201a;
-  --color-text-2: #3f4a44;
-  --color-muted: #6b7670;
-  --color-primary: #0e6e59;
-  --color-primary-fg: #ffffff;
-  --color-accent: #a8884a;
-  --color-success: #147d4a;
-  --color-warning: #a66400;
-  --color-danger: #b3261e;
-  --color-focus: #0e6e59;
-
   /* Typography */
   --font-display: "Fraunces Fallback", ui-serif, Georgia, serif;
   --font-sans:
@@ -57,6 +46,8 @@
   --shadow-3: 0 16px 40px rgb(0 0 0 / 8%);
   /* Upward elevation for the bottom-fixed audio player (DESIGN.md §17.1). */
   --shadow-up-2: 0 -4px 12px rgb(0 0 0 / 6%);
+  /* Stronger lift for the player bar on the dark default theme. */
+  --shadow-up-3: 0 -8px 32px rgb(0 0 0 / 50%);
 
   /* Motion */
   --motion-fast: 120ms;
@@ -66,19 +57,47 @@
   --ease-emphasis: cubic-bezier(0, 0, 0.2, 1);
 }
 
+/* Dark — default palette: applies with no attribute AND on explicit toggle-back. */
+:root,
 [data-theme="dark"] {
-  --color-bg: #0e1311;
-  --color-surface: #141a18;
-  --color-surface-2: #1a211e;
-  --color-border: #222b27;
-  --color-text: #e7eeea;
-  --color-text-2: #a8b5af;
-  --color-muted: #7e8c86;
-  --color-primary: #36a089;
-  --color-primary-fg: #0e1311;
+  color-scheme: dark;
+
+  --color-bg: #0f0d0a;
+  --color-surface: #1c1915;
+  --color-surface-2: #252018;
+  --color-border: rgb(200 160 80 / 15%);
+  --color-text: #f0e6cc;
+  --color-text-2: #8a7a62;
+  --color-muted: #5a4a38;
+  --color-primary: #c8a050;
+  --color-primary-fg: #0f0d0a;
+  /* Teal — kept for "Published" status badges only (not a general accent). */
+  --color-secondary: #0e6e59;
   --color-accent: #c6a266;
   --color-success: #48b57c;
   --color-warning: #e0a14a;
   --color-danger: #e26a63;
-  --color-focus: #9fe0cf;
+  --color-focus: #c8a050;
+}
+
+/* Light — warm cream theme via the toggle. */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --color-bg: #fdfaf4;
+  --color-surface: #ffffff;
+  --color-surface-2: #f4f1e8;
+  --color-border: #e6e2d7;
+  --color-text: #13201a;
+  --color-text-2: #3f4a44;
+  --color-muted: #6b7670;
+  /* Gold darkened for WCAG AA on cream. */
+  --color-primary: #9a7830;
+  --color-primary-fg: #ffffff;
+  --color-secondary: #0e6e59;
+  --color-accent: #a8884a;
+  --color-success: #147d4a;
+  --color-warning: #a66400;
+  --color-danger: #b3261e;
+  --color-focus: #9a7830;
 }

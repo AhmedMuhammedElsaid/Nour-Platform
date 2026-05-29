@@ -7,7 +7,8 @@
   "nav": {
     "home": "نور — الرئيسية",
     "skipToContent": "تخطّ إلى المحتوى الرئيسي",
-    "language": "اللغة"
+    "language": "اللغة",
+    "toggleTheme": "تبديل السمة الفاتحة/الداكنة"
   },
   "footer": {
     "copyright": "© 2026  ويبسيت نور"

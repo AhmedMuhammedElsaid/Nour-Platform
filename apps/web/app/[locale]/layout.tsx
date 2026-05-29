@@ -88,6 +88,8 @@ export default async function LocaleLayout({
     <html
       lang={locale}
       dir={isRtl ? "rtl" : "ltr"}
+      // Dark is the default theme; ThemeToggle overrides from localStorage on mount.
+      data-theme="dark"
       className={cn(
         fontSans.variable,
         fontDisplay.variable,
