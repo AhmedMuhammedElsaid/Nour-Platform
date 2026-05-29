@@ -67,9 +67,36 @@ Save this as `MONGODB_URI`.
    - Secret Access Key → `R2_SECRET_ACCESS_KEY`
    - Account ID → use to build `R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com`
 
+4. **CORS policy — required for offline audio.** The PWA service worker (`apps/web/public/sw.js`, ADR 0003) caches played tracks by doing a `mode:"cors"` fetch of the full audio file and slicing HTTP `Range` responses for replay/seek. Without CORS the worker can't read the cross-origin body and **transparently falls back to online-only streaming** (the app still works; offline audio just won't). To enable it:
+
+   - R2 → `nour-media` bucket → **Settings** → **CORS Policy** → **Add CORS policy** (or **Edit**).
+   - Paste this JSON, replacing `<domain>` with your apex (you can set it now even before DNS is live in step 5):
+
+     ```json
+     [
+       {
+         "AllowedOrigins": ["https://<domain>"],
+         "AllowedMethods": ["GET", "HEAD"],
+         "AllowedHeaders": ["Range", "Content-Type"],
+         "ExposeHeaders": ["Content-Range", "Content-Length", "Accept-Ranges", "Content-Type"],
+         "MaxAgeSeconds": 86400
+       }
+     ]
+     ```
+
+   - Save. (If you serve audio through `<cdn-domain>` and the SW fetches that hostname, the origin list still uses the **site** origin `https://<domain>` — that's the page making the request.)
+
+   > Skippable for launch: offline audio is a progressive enhancement. If you skip it, the install + offline app shell still work; revisit this step when you want offline playback.
+
 `R2_PUBLIC_BASE` will be `https://<cdn-domain>` — set it in step 6 after DNS is wired.
 
-**Verify:** in the R2 dashboard you see the empty `nour-media` bucket and a green "API token created" message.
+**Verify:** in the R2 dashboard you see the empty `nour-media` bucket and a green "API token created" message. After DNS is live (step 5), confirm CORS with a preflight-style check — the response must echo your origin:
+
+```bash
+curl -sI -H "Origin: https://<domain>" -H "Range: bytes=0-1" \
+  https://<cdn-domain>/<any-uploaded-object>.mp3 | grep -i "access-control-allow-origin\|content-range"
+# Expect: Access-Control-Allow-Origin: https://<domain>  AND  Content-Range: bytes 0-1/<size>
+```
 
 ---
 
@@ -142,7 +169,13 @@ From your local machine — this is a one-shot, idempotent:
 MONGODB_URI="<prod-uri>" pnpm migrate
 ```
 
-**Verify:** in Atlas → Database → Collections, each collection (`users`, `playlists`, `tracks`, `media`) has the indexes listed in [`packages/api/src/db/migrations/0001-indexes.ts`](./packages/api/src/db/migrations/0001-indexes.ts).
+This runs the full ordered chain `[0003, 0004, 0005, 0001, 0002, 0006]` (see [`scripts/migrate.ts`](./scripts/migrate.ts)). On a fresh/empty production database every migration is a safe no-op or first-time index build, including `0006-search-indexes` (the `$text` indexes that power the public search page).
+
+> ⚠️ This full chain is only safe on a **fresh** DB. Against an already-embedded-locale database, do **not** re-run it (migration `0003` would re-add `locale`/`contentId` and corrupt the embedded shape) — use `pnpm heal:slugs` (isolated `0005.up()`) instead. See `APP_CONTEXT.md` "Known gotchas".
+
+**Verify:** in Atlas → Database → Collections, the indexes exist:
+- `playlists` / `tracks` / `media` have the indexes from [`0001-indexes.ts`](./packages/api/src/db/migrations/0001-indexes.ts);
+- `playlists` has `playlists_text_search` and `tracks` has `tracks_text_search` (text indexes from `0006`). Without these the `/search` page errors on `$text`.
 
 ---
 
