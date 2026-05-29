@@ -18,6 +18,7 @@
     "seed:admin": "tsx --env-file-if-exists=.env.local scripts/seed-admin.ts",
     "migrate": "tsx --env-file-if-exists=.env.local scripts/migrate.ts",
     "migrate:dry": "pnpm migrate --dry-run",
+    "migrate:search": "tsx --env-file-if-exists=.env.local scripts/migrate-search-indexes.ts",
     "heal:slugs": "tsx --env-file-if-exists=.env.local scripts/heal-embedded-slugs.ts",
     "reset:admin-password": "tsx --env-file-if-exists=.env.local scripts/reset-admin-password.ts"
   },
