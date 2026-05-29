@@ -369,6 +369,18 @@ describe('AudioPlayer', () => {
     expect(endOfTrack).toHaveAttribute('aria-pressed', 'false')
   })
 
+  it('renders a volume slider when a queue is loaded', async () => {
+    const user = userEvent.setup()
+    render(
+      <PlayerProvider>
+        <Harness />
+        <AudioPlayer />
+      </PlayerProvider>,
+    )
+    await user.click(screen.getByTestId('load'))
+    expect(screen.getByRole('slider', { name: /volume/i })).toBeInTheDocument()
+  })
+
   it('publishes now-playing metadata to the Media Session API', async () => {
     type MediaSessionStub = {
       metadata: { title?: string } | null

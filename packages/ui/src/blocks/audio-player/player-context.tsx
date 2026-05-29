@@ -39,6 +39,7 @@ export type PlayerContextValue = {
   repeatMode: RepeatMode;
   isShuffled: boolean;
   playbackRate: number;
+  volume: number;
   loadQueue: (tracks: QueueTrack[], startIndex?: number) => void;
   play: () => void;
   pause: () => void;
@@ -51,6 +52,7 @@ export type PlayerContextValue = {
   cycleRepeat: () => void;
   toggleShuffle: () => void;
   setPlaybackRate: (rate: number) => void;
+  setVolume: (vol: number) => void;
   // Epoch ms when a timed sleep timer fires, or null. `sleepAtTrackEnd` is the
   // separate "stop at end of current track" mode.
   sleepTimerEndsAt: number | null;
@@ -75,6 +77,7 @@ type PlayerPrefs = {
   playbackRate: number;
   repeatMode: RepeatMode;
   isShuffled: boolean;
+  volume: number;
 };
 
 function readStoredPrefs(): PlayerPrefs | null {
@@ -91,6 +94,12 @@ function readStoredPrefs(): PlayerPrefs | null {
           ? parsed.repeatMode
           : "off",
       isShuffled: Boolean(parsed.isShuffled),
+      volume:
+        typeof parsed.volume === "number" &&
+        parsed.volume >= 0 &&
+        parsed.volume <= 1
+          ? parsed.volume
+          : 1,
     };
   } catch {
     return null;
@@ -213,6 +222,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   const [repeatMode, setRepeatMode] = React.useState<RepeatMode>("off");
   const [isShuffled, setIsShuffled] = React.useState<boolean>(false);
   const [playbackRate, setPlaybackRateState] = React.useState<number>(1);
+  const [volume, setVolumeState] = React.useState<number>(1);
   const [sleepTimerEndsAt, setSleepTimerEndsAt] = React.useState<number | null>(
     null,
   );
@@ -268,6 +278,8 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       repeatModeRef.current = prefs.repeatMode;
       setIsShuffled(prefs.isShuffled);
       isShuffledRef.current = prefs.isShuffled;
+      setVolumeState(prefs.volume);
+      if (audioRef.current) audioRef.current.volume = prefs.volume;
     }
     prefsHydratedRef.current = true;
   }, []);
@@ -279,12 +291,12 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     try {
       window.localStorage.setItem(
         PREFS_STORAGE_KEY,
-        JSON.stringify({ playbackRate, repeatMode, isShuffled }),
+        JSON.stringify({ playbackRate, repeatMode, isShuffled, volume }),
       );
     } catch {
       /* storage unavailable (private mode / quota) — non-fatal */
     }
-  }, [playbackRate, repeatMode, isShuffled]);
+  }, [playbackRate, repeatMode, isShuffled, volume]);
 
   // Stop and release the audio element when the provider unmounts (e.g. locale
   // switch causes [locale]/layout.tsx to remount, creating a new provider). Without
@@ -589,6 +601,13 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     setPlaybackRateState(rate);
   }, []);
 
+  const setVolume = React.useCallback((vol: number): void => {
+    const clamped = Math.max(0, Math.min(1, vol));
+    const audio = audioRef.current;
+    if (audio) audio.volume = clamped;
+    setVolumeState(clamped);
+  }, []);
+
   const setSleepTimer = React.useCallback((option: SleepTimerOption): void => {
     if (sleepTimeoutRef.current) {
       clearTimeout(sleepTimeoutRef.current);
@@ -739,6 +758,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       repeatMode,
       isShuffled,
       playbackRate,
+      volume,
       loadQueue,
       play,
       pause,
@@ -751,6 +771,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       cycleRepeat,
       toggleShuffle,
       setPlaybackRate,
+      setVolume,
       sleepTimerEndsAt,
       sleepAtTrackEnd,
       setSleepTimer,
@@ -768,6 +789,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       repeatMode,
       isShuffled,
       playbackRate,
+      volume,
       loadQueue,
       play,
       pause,
@@ -780,6 +802,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       cycleRepeat,
       toggleShuffle,
       setPlaybackRate,
+      setVolume,
       sleepTimerEndsAt,
       sleepAtTrackEnd,
       setSleepTimer,

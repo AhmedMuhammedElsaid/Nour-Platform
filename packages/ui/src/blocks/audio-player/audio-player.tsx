@@ -13,6 +13,8 @@ import {
   Shuffle,
   SkipBack,
   SkipForward,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 
 import { cn } from "../../lib/utils";
@@ -62,6 +64,7 @@ export function AudioPlayer() {
     repeatMode,
     isShuffled,
     playbackRate,
+    volume,
     toggle,
     seek,
     next,
@@ -71,6 +74,7 @@ export function AudioPlayer() {
     cycleRepeat,
     toggleShuffle,
     setPlaybackRate,
+    setVolume,
     sleepTimerEndsAt,
     sleepAtTrackEnd,
     setSleepTimer,
@@ -177,7 +181,7 @@ export function AudioPlayer() {
       aria-hidden={!hasQueue}
       className={cn(
         "fixed bottom-0 inset-x-0 z-40",
-        "bg-surface border-t border-border shadow-up-2",
+        "bg-surface border-t border-border shadow-up-3",
         "transition-transform transition-opacity",
         "duration-[var(--motion-base)] ease-[var(--ease-standard)]",
         hasQueue
@@ -240,10 +244,11 @@ export function AudioPlayer() {
               <SkipBack className="rtl:scale-x-[-1]" />
             </Button>
             <Button
-              variant="ghost"
+              variant="default"
               size="icon"
               aria-label={isPlaying ? "Pause" : "Play"}
               onClick={toggle}
+              className="rounded-full hover:scale-105 transition-transform"
             >
               {/* Spinner while buffering; control stays enabled (§17.1). */}
               {isBuffering ? (
@@ -309,6 +314,34 @@ export function AudioPlayer() {
         </div>
 
         <div className="shrink-0 flex items-center gap-1">
+          {/* Volume control — desktop only */}
+          <div className="hidden md:flex items-center gap-1.5">
+            <button
+              type="button"
+              aria-label={volume === 0 ? "Unmute" : "Mute"}
+              onClick={() => setVolume(volume === 0 ? 1 : 0)}
+              className="inline-flex size-8 items-center justify-center rounded-md text-text-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {volume === 0 ? (
+                <VolumeX className="size-4" />
+              ) : (
+                <Volume2 className="size-4" />
+              )}
+            </button>
+            <Slider
+              aria-label="Volume"
+              aria-valuetext={`${Math.round(volume * 100)}%`}
+              className="w-20"
+              min={0}
+              max={1}
+              step={0.02}
+              value={[volume]}
+              onValueCommit={(values) => {
+                const v = values[0];
+                if (typeof v === "number") setVolume(v);
+              }}
+            />
+          </div>
           {errorMessage && (
             <button
               type="button"
