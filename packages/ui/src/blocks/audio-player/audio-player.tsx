@@ -336,7 +336,11 @@ export function AudioPlayer() {
               max={1}
               step={0.02}
               value={[volume]}
-              onValueCommit={(values) => {
+              // Must update on change, not commit: this Slider is controlled by
+              // `volume`, so without feeding each change back into the prop the
+              // Radix value never advances and onValueCommit sees no change and
+              // never fires (unlike seek, volume has no commit-latency concern).
+              onValueChange={(values) => {
                 const v = values[0];
                 if (typeof v === "number") setVolume(v);
               }}

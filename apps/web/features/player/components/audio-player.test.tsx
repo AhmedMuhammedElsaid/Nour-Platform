@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -379,6 +379,64 @@ describe('AudioPlayer', () => {
     )
     await user.click(screen.getByTestId('load'))
     expect(screen.getByRole('slider', { name: /volume/i })).toBeInTheDocument()
+  })
+
+  it('changes the volume when the volume slider is dragged', async () => {
+    // jsdom implements neither pointer capture nor layout. Polyfill PointerEvent
+    // (as a MouseEvent so clientX is carried) and stub the capture APIs so
+    // Radix's pointer-drag path runs end-to-end. This is the real interaction a
+    // mouse user performs — keyboard adjustment uses a different Radix code path.
+    if (typeof window.PointerEvent === 'undefined') {
+      class PointerEventPolyfill extends MouseEvent {
+        pointerId: number
+        constructor(type: string, init: PointerEventInit = {}) {
+          super(type, init)
+          this.pointerId = init.pointerId ?? 0
+        }
+      }
+      ;(window as unknown as { PointerEvent: unknown }).PointerEvent =
+        PointerEventPolyfill
+    }
+
+    const user = userEvent.setup()
+    render(
+      <PlayerProvider>
+        <Harness />
+        <AudioPlayer />
+      </PlayerProvider>,
+    )
+    await user.click(screen.getByTestId('load'))
+
+    const volumeThumb = screen.getByRole('slider', { name: /volume/i })
+    // Starts at full volume.
+    expect(volumeThumb).toHaveAttribute('aria-valuetext', '100%')
+
+    const root = volumeThumb.closest('[data-slot="slider"]') as HTMLElement
+    root.setPointerCapture = vi.fn()
+    root.releasePointerCapture = vi.fn()
+    root.hasPointerCapture = vi.fn(() => true)
+    root.getBoundingClientRect = vi.fn(
+      () =>
+        ({
+          left: 0,
+          top: 0,
+          width: 80,
+          height: 8,
+          right: 80,
+          bottom: 8,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        }) as DOMRect,
+    )
+
+    // Drag the thumb to the midpoint of the 80px track (clientX 40 → 50%).
+    await act(async () => {
+      fireEvent.pointerDown(root, { clientX: 40, pointerId: 1, button: 0 })
+      fireEvent.pointerUp(root, { clientX: 40, pointerId: 1 })
+    })
+
+    expect(volumeThumb).toHaveAttribute('aria-valuetext', '50%')
   })
 
   it('publishes now-playing metadata to the Media Session API', async () => {
