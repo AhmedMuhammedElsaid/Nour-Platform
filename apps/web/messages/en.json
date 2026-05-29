@@ -36,5 +36,11 @@
     "noResults": "No results for “{query}”.",
     "playlists": "Playlists",
     "tracks": "Tracks"
+  },
+  "pwa": {
+    "title": "Install Nour",
+    "description": "Add Nour to your home screen for quick access and offline listening.",
+    "install": "Install",
+    "dismiss": "Not now"
   }
 }

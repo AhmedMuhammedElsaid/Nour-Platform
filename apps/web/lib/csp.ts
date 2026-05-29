@@ -23,7 +23,12 @@ export function buildWebCsp(nonce: string, r2Hostname: string): string {
     `img-src 'self' data:${r2Origin ? ` ${r2Origin}` : ""}`,
     "font-src 'self'",
     `media-src 'self'${r2Origin ? ` ${r2Origin}` : ""}`,
-    "connect-src 'self'",
+    // connect-src governs the service worker's fetch() of audio for offline
+    // caching, so the R2 origin must be allowed here (not just media-src).
+    `connect-src 'self'${r2Origin ? ` ${r2Origin}` : ""}`,
+    // PWA: allow the same-origin service worker script and web app manifest.
+    "worker-src 'self'",
+    "manifest-src 'self'",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

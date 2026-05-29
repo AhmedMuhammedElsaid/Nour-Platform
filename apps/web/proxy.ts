@@ -51,6 +51,10 @@ export const config = {
    *   /_next/static/*  — JS/CSS bundles (immutable, no inline scripts)
    *   /_next/image/*   — optimized images
    *   /favicon.ico     — browser default
+   *   PWA static files — sw.js / manifest / offline page / icons must be served
+   *                      as-is, never locale-redirected by next-intl.
    */
-  matcher: ["/((?!api|_next/static|_next/image|favicon\\.ico).*)"],
+  matcher: [
+    "/((?!api|_next/static|_next/image|favicon\\.ico|sw\\.js|manifest\\.webmanifest|offline\\.html|icons).*)",
+  ],
 };

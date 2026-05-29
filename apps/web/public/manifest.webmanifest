@@ -1,0 +1,21 @@
+{
+  "name": "Nour — Islamic Audio",
+  "short_name": "Nour",
+  "description": "Listen to Quran recitations and Islamic audio playlists.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/ar",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#0E6E59",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

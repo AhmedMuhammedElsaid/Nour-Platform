@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Nour">
+  <rect width="512" height="512" rx="112" fill="#0E6E59"/>
+  <!-- Stylised Arabic "ن" (noon) with its dot — the brand mark "نور". -->
+  <path d="M150 196v44c0 64 47 104 106 104s106-40 106-104v-44"
+        fill="none" stroke="#ffffff" stroke-width="34" stroke-linecap="round"/>
+  <circle cx="256" cy="150" r="22" fill="#ffffff"/>
+</svg>

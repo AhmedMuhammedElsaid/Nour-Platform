@@ -13,6 +13,8 @@ import { PlayerProvider } from "@repo/ui/blocks/player-context";
 import { SiteFooter } from "@/features/layout/components/site-footer";
 import { SiteHeader } from "@/features/layout/components/site-header";
 import { PlaybackPersistence } from "@/features/player/components/playback-persistence";
+import { ServiceWorkerRegister } from "@/features/pwa/components/service-worker-register";
+import { InstallPrompt } from "@/features/pwa/components/install-prompt";
 import { LocaleAlternatesProvider } from "@/features/layout/locale-alternates-context";
 import { routing } from "@/i18n/routing";
 
@@ -53,8 +55,16 @@ export async function generateMetadata({
   return {
     title: t("homeTitle"),
     description: t("homeDescription"),
+    manifest: "/manifest.webmanifest",
+    appleWebApp: { capable: true, title: "Nour", statusBarStyle: "default" },
+    icons: { icon: "/icons/icon.svg", apple: "/icons/icon.svg" },
   };
 }
+
+// Match the PWA manifest theme so the browser/OS chrome blends in.
+export const viewport = {
+  themeColor: "#0E6E59",
+};
 
 export default async function LocaleLayout({
   children,
@@ -105,6 +115,8 @@ export default async function LocaleLayout({
               <SiteFooter />
               <AudioPlayer />
               <PlaybackPersistence />
+              <InstallPrompt />
+              <ServiceWorkerRegister />
             </LocaleAlternatesProvider>
           </PlayerProvider>
         </NextIntlClientProvider>

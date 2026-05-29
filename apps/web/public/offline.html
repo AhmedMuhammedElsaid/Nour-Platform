@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Offline — Nour</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        background: #ffffff;
+        color: #1a1a1a;
+        text-align: center;
+        padding: 2rem;
+      }
+      .mark { width: 72px; height: 72px; margin: 0 auto 1.25rem; }
+      h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
+      p { color: #555; margin: 0; max-width: 32ch; }
+      @media (prefers-color-scheme: dark) {
+        body { background: #0c0c0c; color: #f2f2f2; }
+        p { color: #aaa; }
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <img class="mark" src="/icons/icon.svg" alt="Nour" />
+      <h1>You're offline · أنت غير متصل</h1>
+      <p>
+        This page isn't available offline. Reconnect to keep listening.
+        أعد الاتصال بالإنترنت لمتابعة الاستماع.
+      </p>
+    </div>
+  </body>
+</html>
