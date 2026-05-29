@@ -45,6 +45,7 @@ Audio MVP (Waves 0–5) + pre-deploy fixups + hardening sprint + **P2-A Categori
 | SoundCloud-UX + offline PWA + search ✅ | `4aa3821`..`0fd01bb` (6 commits) | Plan: `i-built-this-app-cozy-tower.md`. **P1** player: shuffle/repeat/speed + **Media Session API** (lock-screen) + localStorage prefs. **P2** resume positions + sleep timer + device-local recently-played → homepage "Continue listening" shelf (`features/player/`). **P3** full-text **search** (`search.service` + `$text` + migration `0006`; `/[locale]/search` + header `SearchBox`). **P4** installable **PWA** (manifest + hand-rolled `public/sw.js`, ADR 0003; offline shell + cache-played audio w/ Range; ⚠️ offline audio needs R2 CORS). **P5** loading skeletons + `robots.ts` + dynamic `sitemap.ts`. Device-local only (no public auth). Tests: api 64 · admin 37 · web 38; web prod build ✓. |
 | P2-A — Categories ✅ | `c73e7e4` · `82d3e81` · `6972e87` · `273e518` (+ spec `c9cadef` · `7f97d40` · `8e57352`) | New `Category` resource with full admin CRUD + many-to-many on `Playlist` + public homepage filter. Spec lives in **PLAN.md §13.1**. Files: `schemas/category.ts`, `db/models/Category.model.ts` (note PascalCase filename — outlier from the lowercase models), `repositories/category.repo.ts`, `services/category.service.ts` (`listCategories` · `getCategoryBySlug` · `getCategoryById` · `createCategory` · `updateCategory` · `deleteCategory`), migration `0002-category-indexes.ts` (unique `categories.slug` + `playlists.categoryIds` array index). `playlist.service.ts` extended: `createPlaylist`/`updatePlaylist` now accept `categoryIds?: string[]` (validates IDs exist); `getPublishedPlaylists` accepts `{ categoryId }` filter. Slug collisions auto-append `-2`/`-3`. Hard delete `$pull`s the id from every playlist's `categoryIds`. New cache tag `CATEGORIES = "categories"` in `cache/tags.ts` (first central tag file). Admin: `/categories`, `/categories/new`, `/categories/[id]/edit` + `CategoriesTable` + `CategoryForm` + 3 server actions + a `categoryIds` multi-select field on the playlist form. Web: `CategoryFilterBar` client island reads/writes `?category=<slug>` URL param; homepage resolves slug → ObjectId before calling the playlist service; empty-state message on unknown slug (no 404). Tests: 34 API unit + 38 admin RTL + 1 E2E green. |
 | UI Redesign ✅ | `6a3648d`..`ca704be` (8 phases, ~12 commits) | Plan in **`refactor_plan.md`**. **Dark-default design system**: `:root` + `[data-theme="dark"]` carry warm gold/near-black palette; `[data-theme="light"]` overrides for cream. `--color-primary` = gold `#C8A050` (dark) / `#9A7830` (light). `--shadow-up-3` added. **Theme toggle** (`features/layout/components/theme-toggle.tsx`) — SSR-safe, localStorage `nour.theme`, inline SVG moon/sun, no lucide dep. **`trackCount`** on playlists: `findPublishedPlaylists`/`findAllPlaylists` use a `$lookup` sub-pipeline aggregation; `Playlist` schema has optional `trackCount?: number`. **Cover art system** (`features/playlists/lib/cover-art.ts`): `getCoverGradient(id)`/`getCoverEmoji(id)` — 6 deterministic presets from last 2 hex chars of id. `PlaylistCard` has cover area (R2 image or gradient fallback), gradient overlay, track count badge, hover lift; title uses Fraunces. **Continue Listening shelf** gains gradient fallback, hover scrim + play circle, resume progress bar (`savedPos / duration`), `% complete` sub-label. `recently-played.ts` stores optional `duration`; `getSavedPosition(trackId)` reads `nour.player.positions`. `playback-persistence.tsx` back-fills duration from audio metadata. **Player bar**: filled gold play button (`variant="default" rounded-full`), `shadow-up-3`, desktop volume slider + mute toggle; `volume` persisted to `nour.player.prefs`. **Homepage** redesigned: hero h1/subtitle, gold "Library" accent label, `PlaylistSortSelect` (`?sort=az|tracks`, server-side sort), bilingual category pills (`arName · enName`), `?sort=` + `?category=` preserve each other. **Playlist detail** gains full-width hero image (`h-48 md:h-72`) or gradient fallback, `openGraph.images` in metadata. **Site header**: `bg-bg/85 backdrop-blur-lg`, logo `text-xl font-bold text-primary`. Tests: api 65 · admin 37 · web 53 all green. |
+| SEO enhancement ✅ | uncommitted working tree (2026-05-30) | Plan in **`SEO_plan.md`**. Full best-practice pass — 4 phases (Opus→Sonnet→Haiku→Sonnet). NEW `apps/web/lib/seo.ts`: `SITE_URL`/`SITE_NAME`/`OG_IMAGE`, `absoluteUrl`, `localeAlternates` (x-default), JSON-LD builders (Organization/WebSite/MusicPlaylist/BreadcrumbList), `defaultOpenGraph`/`defaultTwitter`. NEW `features/seo/components/json-ld.tsx`: nonce-aware async server component — reads `x-nonce` request header, stamps it on the `ld+json` script (mandatory for CSP `strict-dynamic`). Root `app/layout.tsx` gains `metadataBase` + default OG/Twitter. `[locale]/layout.tsx`: raster icons wired (favicon.ico, favicon-32/16, apple-touch-icon), title template (`%s — Nour`), Organization + WebSite `<JsonLd>`. `[locale]/page.tsx`: `localeAlternates` (adds `x-default`), full OG/Twitter. `playlists/[slug]/page.tsx`: siteName, twitter, x-default, MusicPlaylist + BreadcrumbList `<JsonLd>`, cover-or-default OG image, `robots:{index:false}` on 404 branch. `search/page.tsx`: self-canonical. `sitemap.ts` + `robots.ts`: import `SITE_URL`; x-default in all sitemap alternates; search disallow derived from `LOCALES`. `public/manifest.webmanifest`: android-chrome PNG icons (192+512) merged in. `public/site.webmanifest` deleted (stale artifact). Assets: `public/og-image.webp` (1200×630) + full favicon raster set. i18n `metadata.homeDescription` enriched (both locales). Tests: +18 unit (`lib/seo.test.ts`) + 5 component (`features/seo/components/json-ld.test.tsx`) → web suite **77 total**. Prod build ✓. **⚠️ Pending**: commit + manual verify (view-source nonce, Google Rich Results Test, social card validator). |
 
 ---
 
@@ -52,7 +53,24 @@ Audio MVP (Waves 0–5) + pre-deploy fixups + hardening sprint + **P2-A Categori
 
 MVP is **deploy-ready** (Wave 5.4 stays ⚠️ Partial because Sentry SDK install is intentionally deferred — env var stubbed; optional per `.env.example`). To actually go live: open **`deploy.md`** and walk the 11 steps top-to-bottom.
 
-**i18n A+B + embedded-locale + SoundCloud-UX/offline-PWA/search + UI Redesign are all complete and merged** (see waves rows above). Postponed/manual items: Phase 6 E2E/Lighthouse (Playwright RTL + redirect; non-blocking); real-device Media Session + offline-replay (DevTools Offline) + Lighthouse PWA verification; raster PNG icons (currently SVG-only); R2 CORS for offline audio (deploy.md step 2.4) + migration `0006` on prod (deploy.md step 6). UI Redesign manual verification checklist is in `refactor_plan.md` Part 7.
+**i18n A+B + embedded-locale + SoundCloud-UX/offline-PWA/search + UI Redesign + SEO enhancement are all complete** (see waves rows above). Postponed/manual items: Phase 6 E2E/Lighthouse (Playwright RTL + redirect; non-blocking); real-device Media Session + offline-replay (DevTools Offline) + Lighthouse PWA verification; R2 CORS for offline audio (deploy.md step 2.4) + migration `0006` on prod (deploy.md step 6).
+
+**UI Redesign manual verification checklist:**
+1. Dark mode default — incognito load → dark background with gold accents
+2. Theme toggle — click sun/moon → instant switch, persists on refresh
+3. Cover art — gradient + emoji fallback on cards; R2 image when cover uploaded in admin
+4. Resume bar — play a track partway, reload → Continue Listening shelf shows gold bar at correct %
+5. Bilingual pills — category bar shows `"القرآن · Quran"` format, gold active state
+6. Volume slider — drag changes audio volume, persists across tracks
+7. Sort control — select "A–Z" → grid reorders, `?sort=az` in URL, `?category=` preserved
+8. Light mode — cream background, darkened gold (`#9A7830`), same layout
+9. Arabic locale — `/ar` → RTL mirrors correctly, IBM Plex Sans Arabic loads
+10. Mobile 375px — 1-column grid, horizontal shelf scroll, player bar fits 72px
+11. WCAG AA — gold `#9A7830` on cream `#FDFAF4` passes axe contrast check
+
+**SEO manual verification:** view-source nonce on `ld+json` script (no CSP console error); `<link rel="canonical">` + all `hreflang` incl. `x-default`; `og:site_name` + `og:image` + `twitter:card` in `<head>`; `/robots.txt` + `/sitemap.xml` return absolute prod URLs; Google Rich Results Test (MusicPlaylist + BreadcrumbList valid); social card validator shows image + title.
+
+**SEO commit still pending** (uncommitted working tree as of 2026-05-30).
 
 **Next: P2-B Lectures** (PLAN.md §13). Tickets not yet written; brainstorm + write a wave plan before coding (use `superpowers:brainstorming` then `superpowers:writing-plans`).
 
@@ -217,27 +235,42 @@ apps/admin/
   vitest.setup.ts                        → @testing-library/jest-dom/vitest + explicit afterEach(cleanup)
 
 apps/web/
-  app/layout.tsx                         → passthrough root (wraps children only); <html lang dir> set in [locale]/layout.tsx
+  app/layout.tsx                         → passthrough root + static `metadata` export (metadataBase + default OG/Twitter)
   app/[locale]/layout.tsx                → sets <html lang={locale} dir data-theme="dark">, loads IBM Plex Sans Arabic,
                                             wraps NextIntlClientProvider + PlayerProvider. ThemeToggle mounted in SiteHeader.
+                                            generateMetadata: title template, raster icons, defaultOpenGraph/Twitter.
+                                            Renders <JsonLd> (Organization + WebSite) once per locale in <body>.
   app/[locale]/page.tsx                  → RSC homepage: hero h1/subtitle, listCategories() → bilingual pills,
                                             getPublishedPlaylists({categoryId?}) → server-sort by ?sort=az|tracks → grid.
                                             PlaylistSortSelect client island writes ?sort=; CategoryFilterBar preserves ?sort=.
-                                            ContinueListening shelf at bottom. (force-dynamic)
+                                            ContinueListening shelf at bottom. generateMetadata: localeAlternates (x-default) + OG/Twitter.
+                                            (force-dynamic)
   app/[locale]/playlists/[slug]/page.tsx → RSC detail: full-width hero image (h-48 md:h-72) or gradient fallback above title;
                                             getPlaylistBySlug + getTracksWithUrls + getMediaUrlById for cover;
-                                            generateMetadata includes openGraph.images. (force-dynamic)
-  app/[locale]/search/page.tsx           → RSC search results (reads ?q=, calls searchContent; force-dynamic; robots noindex)
+                                            generateMetadata: localeAlternates (x-default), siteName, twitter, OG cover-or-fallback.
+                                            Renders <JsonLd> (MusicPlaylist + BreadcrumbList). (force-dynamic)
+  app/[locale]/search/page.tsx           → RSC search results (reads ?q=, calls searchContent; force-dynamic; robots noindex + canonical)
   app/[locale]/{loading,playlists/[slug]/loading,search/loading}.tsx → Suspense skeletons (token pulse divs)
-  app/robots.ts                          → static robots.txt (disallow /api + /*/search; points at sitemap)
-  app/sitemap.ts                         → dynamic sitemap.xml (force-dynamic; home per locale + published playlists w/ hreflang;
-                                            DB call try/catch-guarded so build without Atlas degrades to static routes)
+  app/robots.ts                          → robots.txt: disallow /api + /${locale}/search (derived from LOCALES); SITE_URL from lib/seo
+  app/sitemap.ts                         → dynamic sitemap.xml (force-dynamic; home + playlists per locale; hreflang + x-default;
+                                            DB try/catch-guarded; SITE_URL from lib/seo)
   app/api/health/route.ts                → GET → { ok, version, time }
-  public/manifest.webmanifest            → PWA manifest (start_url /ar, standalone, SVG icon)
+  lib/seo.ts                             → SEO helpers: SITE_URL/SITE_NAME/OG_IMAGE, absoluteUrl, localeAlternates (x-default),
+                                            JSON-LD builders (organizationLd/webSiteLd/musicPlaylistLd/breadcrumbLd),
+                                            defaultOpenGraph/defaultTwitter. Read process.env directly (not env barrel — build-time safe).
+  features/seo/components/json-ld.tsx    → <JsonLd data={...}> async server component: reads x-nonce header, stamps nonce on
+                                            ld+json script (mandatory — CSP strict-dynamic blocks unnonce'd inline scripts).
+                                            Escapes < to prevent </script> breakout.
+  public/manifest.webmanifest            → PWA manifest (start_url /ar, standalone, SVG + android-chrome 192/512 PNG icons)
+  public/og-image.webp                   → default/fallback social share image (1200×630); used by defaultOpenGraph/Twitter
+  public/favicon.ico                     → browser favicon (raster)
+  public/favicon-32x32.png / favicon-16x16.png → explicit-size favicon PNGs
+  public/apple-touch-icon.png            → 180×180 iOS home screen icon
+  public/android-chrome-192x192.png / android-chrome-512x512.png → PWA icons (also in manifest)
   public/sw.js                           → hand-rolled service worker (ADR 0003): nav network-first→offline.html,
                                             static cache-first, R2 audio cache-played + Range 206, /api never cached
   public/offline.html                    → static offline fallback (precached by sw.js)
-  public/icons/icon.svg                  → app icon (sizes:"any"); raster PNGs are a follow-up
+  public/icons/icon.svg                  → SVG app icon (sizes:"any", maskable)
   features/pwa/components/
     service-worker-register.tsx          → registers /sw.js (production only); mounted in [locale]/layout
     install-prompt.tsx                   → captures beforeinstallprompt → dismissible "Install" banner (localStorage dismiss)
@@ -356,3 +389,5 @@ Root docs (read in this order for new sessions)
 - **AudioPlayer is always mounted**: the bottom bar no longer unmounts when idle — it slides out via `translate-y-full`/`opacity-0`/`pointer-events-none` + `aria-hidden` so it can animate (DESIGN.md §17.1/§17.5). Tests assert "mounted-but-hidden", not absence. Buffering (`waiting`/`playing`/`canplay`) and error (`error` event) live in `player-context.tsx` alongside `goTo`/`retry`; the queue Sheet and a cover thumbnail + playlist title round out §17.1. Seek commits on slider release (`onValueCommit`), not per-tick.
 - **Slider aria goes on the Thumb**: Radix puts `role="slider"` on `SliderPrimitive.Thumb`, so `slider.tsx` forwards `aria-label`/`aria-valuetext` there (not the role-less Root) — otherwise screen readers never announce them.
 - **`getMediaUrlById(mediaId)`** in `media.service.ts` resolves a Media record to its public R2 URL (mirrors `getTracksWithUrls`; public read, no `requireSession`). Used by the playlist detail page to feed the player's cover thumbnail.
+- **JSON-LD structured data MUST carry the per-request nonce** — CSP is `strict-dynamic` with no `'unsafe-inline'` in `script-src`, so a bare inline `<script type="application/ld+json">` is silently dropped by the browser. Always use `<JsonLd>` from `features/seo/components/json-ld.tsx`; it reads the `x-nonce` request header set by `proxy.ts` and applies it automatically. Never add ld+json any other way.
+- **SEO files read `process.env.NEXT_PUBLIC_WEB_URL` directly** — `lib/seo.ts`, `app/sitemap.ts`, and `app/robots.ts` bypass the `@repo/config/env` barrel (same exception as health routes / `next.config.ts`). `NEXT_PUBLIC_*` is build-inlined, not a secret. In production, `NEXT_PUBLIC_WEB_URL` MUST be set to the real origin or every canonical/sitemap/OG URL falls back to `http://localhost:3000`.
