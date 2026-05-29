@@ -25,11 +25,13 @@ function decodeSlug(raw: string): string {
 export const dynamic = "force-dynamic";
 import { getTracksWithUrls } from "@repo/api/services/track";
 import { getMediaUrlById } from "@repo/api/services/media";
+import Image from "next/image";
 import type { Locale } from "@repo/api/schemas/locale";
 import type { Playlist } from "@repo/api/schemas/playlist";
 import type { PlayableTrack } from "@repo/api/services/track";
 import { TrackListPlayer } from "@/features/playlists/components/track-list-player";
 import { SetLocaleAlternates } from "@/features/layout/locale-alternates-context";
+import { getCoverEmoji, getCoverGradient } from "@/features/playlists/lib/cover-art";
 import type {
   SerializedPlaylist,
   DisplayTrack,
@@ -98,6 +100,9 @@ export async function generateMetadata({
   const tp = await getTranslations({ locale, namespace: "playlist" });
   const display = playlist[locale];
   const canonical = `${baseUrl}/${locale}/playlists/${display.slug}`;
+  const ogCoverUrl = playlist.coverMediaId
+    ? await getMediaUrlById(playlist.coverMediaId)
+    : null;
   return {
     title: `${display.title} — Nour`,
     description: display.description ?? tp("listenOn"),
@@ -108,6 +113,7 @@ export async function generateMetadata({
       url: canonical,
       title: display.title,
       ...(display.description ? { description: display.description } : {}),
+      ...(ogCoverUrl ? { images: [{ url: ogCoverUrl }] } : {}),
     },
   };
 }
@@ -142,6 +148,9 @@ export default async function PlaylistDetailPage({
     { year: "numeric", month: "long", day: "numeric" },
   );
 
+  const [gradFrom, gradTo] = getCoverGradient(playlist.id);
+  const emoji = getCoverEmoji(playlist.id);
+
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
       {/* Register both locale slugs so the header's language switcher routes to
@@ -152,6 +161,30 @@ export default async function PlaylistDetailPage({
           en: `/playlists/${playlist.en.slug}`,
         }}
       />
+
+      {/* Cover hero */}
+      <div className="relative w-full h-48 md:h-72 overflow-hidden rounded-xl mb-8">
+        {coverUrl ? (
+          <Image
+            src={coverUrl}
+            alt=""
+            fill
+            priority
+            sizes="(min-width: 768px) 768px, 100vw"
+            className="object-cover"
+          />
+        ) : (
+          <div
+            className="size-full flex items-center justify-center"
+            style={{ background: `linear-gradient(to bottom, ${gradFrom}, ${gradTo})` }}
+          >
+            <span className="text-7xl select-none" aria-hidden="true">{emoji}</span>
+          </div>
+        )}
+        {/* Gradient fade into page background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-bg/80 pointer-events-none" />
+      </div>
+
       <header>
         <h1 className="font-display text-4xl tracking-tight">{display.title}</h1>
         {display.description != null && (
