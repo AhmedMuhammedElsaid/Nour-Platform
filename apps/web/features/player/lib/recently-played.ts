@@ -12,6 +12,10 @@ export type RecentTrack = {
   playlistTitle?: string;
   playlistSlug?: string;
   locale?: string;
+  // Total track duration in seconds — populated from DB or audio metadata.
+  // Absent on entries recorded before this field was added; shelf skips the
+  // progress bar when missing.
+  duration?: number;
   updatedAt: number;
 };
 

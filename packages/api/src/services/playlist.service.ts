@@ -10,6 +10,7 @@ import {
   findPlaylistBySlug,
   findPublishedPlaylists,
   updatePlaylistById,
+  type PlaylistLeanWithCount,
 } from "../repositories/playlist.repo";
 // Cross-service validation: we call category.repo directly (not via a service)
 // because this is a lightweight existence check, not a full service boundary
@@ -36,6 +37,8 @@ import type { Session } from "next-auth";
  */
 
 // Converts a lean Mongo doc to the public-facing Playlist DTO.
+// `trackCount` is optional — present on aggregation results from list queries,
+// absent on single-document finders (slug/id lookups).
 function toDto(doc: {
   _id: { toString(): string };
   ar: { title: string; slug: string; description?: string | null };
@@ -43,6 +46,7 @@ function toDto(doc: {
   coverMediaId?: { toString(): string } | null;
   status: string;
   categoryIds?: Array<{ toString(): string }>;
+  trackCount?: number;
   createdAt: Date;
   updatedAt: Date;
 }): Playlist {
@@ -63,6 +67,7 @@ function toDto(doc: {
       : {}),
     status: doc.status as Playlist["status"],
     categoryIds: (doc.categoryIds ?? []).map((id) => id.toString()),
+    ...(doc.trackCount !== undefined ? { trackCount: doc.trackCount } : {}),
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };
@@ -103,7 +108,7 @@ export async function getAllPlaylists(
   if (session.user.role !== "admin") {
     throw AppError.Forbidden(["admin"]);
   }
-  const docs = await findAllPlaylists();
+  const docs: PlaylistLeanWithCount[] = await findAllPlaylists();
   return docs.map(toDto);
 }
 

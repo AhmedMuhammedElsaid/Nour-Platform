@@ -26,6 +26,9 @@ export const playlistSchema = z.object({
   coverMediaId: objectIdSchema.optional(),
   status: playlistStatusSchema,
   categoryIds: z.array(objectIdSchema),
+  // Present on list responses (getPublishedPlaylists / getAllPlaylists).
+  // Absent on single-document lookups (getPlaylistBySlug / getPlaylistById).
+  trackCount: z.number().int().nonnegative().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });

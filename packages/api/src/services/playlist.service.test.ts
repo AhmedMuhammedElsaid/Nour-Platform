@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PLAYLISTS_HOME, playlistTag } from "../cache/tags";
 import { AppError } from "../errors";
-import type { PlaylistLean } from "../repositories/playlist.repo";
 
 // Module-level mocks. Hoisted by vitest before service import.
 vi.mock("next/cache", () => ({
@@ -32,9 +31,12 @@ const { requireSession } = await import("../auth/require-session");
 const repo = await import("../repositories/playlist.repo");
 const service = await import("./playlist.service");
 
-// Adapter boundary: cast lean fixture to PlaylistLean so Vitest mocks satisfy
-// the repo's return type. The fixture supplies all fields the service reads.
-function makeLean(overrides: Record<string, unknown> = {}): PlaylistLean {
+// Adapter boundary: cast lean fixture to PlaylistLeanWithCount so Vitest
+// mocks satisfy the repo's return type. The fixture supplies all fields the
+// service reads; trackCount defaults to 0 (list queries always include it).
+import type { PlaylistLeanWithCount } from "../repositories/playlist.repo";
+
+function makeLean(overrides: Record<string, unknown> = {}): PlaylistLeanWithCount {
   return {
     _id: { toString: () => "playlist123456789012" },
     ar: { title: "عنوان", slug: "عنوان" },
@@ -42,10 +44,11 @@ function makeLean(overrides: Record<string, unknown> = {}): PlaylistLean {
     coverMediaId: null,
     status: "draft",
     categoryIds: [],
+    trackCount: 0,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
     ...overrides,
-  } as unknown as PlaylistLean;
+  } as unknown as PlaylistLeanWithCount;
 }
 
 beforeEach(() => {
@@ -81,6 +84,16 @@ describe("playlist.service", () => {
       expect(repo.findPublishedPlaylists).toHaveBeenCalledWith({
         categoryId: "aaaaaaaaaaaaaaaaaaaaaaaa",
       });
+    });
+
+    it("exposes trackCount from the aggregation result in the DTO", async () => {
+      vi.mocked(repo.findPublishedPlaylists).mockResolvedValueOnce([
+        makeLean({ trackCount: 7 }),
+      ]);
+
+      const result = await service.getPublishedPlaylists();
+
+      expect(result[0]!.trackCount).toBe(7);
     });
   });
 

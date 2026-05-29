@@ -8,6 +8,10 @@ import { flattenLocaleUpdate } from "../utils/mongo-update";
 
 export type PlaylistLean = PlaylistDoc & { _id: mongoose.Types.ObjectId };
 
+// Returned by list queries that include a per-playlist track count via a
+// $lookup sub-pipeline. Not populated by single-document finders.
+export type PlaylistLeanWithCount = PlaylistLean & { trackCount: number };
+
 export async function findPlaylistById(id: string): Promise<PlaylistLean | null> {
   await getDb();
   return PlaylistModel.findById(id).lean<PlaylistLean>();
@@ -24,18 +28,49 @@ export async function findPlaylistBySlug(
 
 export async function findPublishedPlaylists(
   filter?: { categoryId?: string },
-): Promise<PlaylistLean[]> {
+): Promise<PlaylistLeanWithCount[]> {
   await getDb();
-  const query: Record<string, unknown> = { status: "published" };
+  const match: Record<string, unknown> = { status: "published" };
   if (filter?.categoryId != null) {
-    query["categoryIds"] = filter.categoryId;
+    match["categoryIds"] = filter.categoryId;
   }
-  return PlaylistModel.find(query).sort({ updatedAt: -1 }).lean<PlaylistLean[]>();
+  return PlaylistModel.aggregate<PlaylistLeanWithCount>([
+    { $match: match },
+    { $sort: { updatedAt: -1 } },
+    {
+      $lookup: {
+        from: "tracks",
+        let: { pid: "$_id" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$playlistId", "$$pid"] } } },
+          { $count: "n" },
+        ],
+        as: "_tc",
+      },
+    },
+    { $addFields: { trackCount: { $ifNull: [{ $first: "$_tc.n" }, 0] } } },
+    { $project: { _tc: 0 } },
+  ]).exec();
 }
 
-export async function findAllPlaylists(): Promise<PlaylistLean[]> {
+export async function findAllPlaylists(): Promise<PlaylistLeanWithCount[]> {
   await getDb();
-  return PlaylistModel.find({}).sort({ updatedAt: -1 }).lean<PlaylistLean[]>();
+  return PlaylistModel.aggregate<PlaylistLeanWithCount>([
+    { $sort: { updatedAt: -1 } },
+    {
+      $lookup: {
+        from: "tracks",
+        let: { pid: "$_id" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$playlistId", "$$pid"] } } },
+          { $count: "n" },
+        ],
+        as: "_tc",
+      },
+    },
+    { $addFields: { trackCount: { $ifNull: [{ $first: "$_tc.n" }, 0] } } },
+    { $project: { _tc: 0 } },
+  ]).exec();
 }
 
 // Full-text search over published playlists (requires the text index from
