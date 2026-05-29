@@ -5,6 +5,20 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getPlaylistBySlug } from "@repo/api/services/playlist";
 import { LOCALES } from "@repo/api/schemas/locale";
 
+// Next.js + next-intl do not percent-decode the dynamic [slug] param, so a
+// non-ASCII (Arabic) slug arrives URL-encoded (e.g. "%D8%AF…") and never
+// matches the stored Unicode slug. Decode at the request boundary before the
+// service lookup. Wrapped in try/catch because a malformed percent sequence
+// throws URIError; slugs never legitimately contain a bare "%", so falling
+// back to the raw value just yields a clean notFound().
+function decodeSlug(raw: string): string {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
 // Opt out of static prerendering. proxy.ts sets a per-request CSP nonce,
 // which would mismatch a cached static HTML body; forcing dynamic rendering
 // is also what the deploy build (no Atlas connection at build time) requires.
@@ -15,6 +29,7 @@ import type { Locale } from "@repo/api/schemas/locale";
 import type { Playlist } from "@repo/api/schemas/playlist";
 import type { PlayableTrack } from "@repo/api/services/track";
 import { TrackListPlayer } from "@/features/playlists/components/track-list-player";
+import { SetLocaleAlternates } from "@/features/layout/locale-alternates-context";
 import type {
   SerializedPlaylist,
   DisplayTrack,
@@ -65,7 +80,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale, slug } = await params;
   const t = await getTranslations({ locale, namespace: "metadata" });
-  const playlist = await getPlaylistBySlug(locale, slug);
+  const playlist = await getPlaylistBySlug(locale, decodeSlug(slug));
 
   if (!playlist || playlist.status !== "published") {
     return { title: t("notFound") };
@@ -110,7 +125,7 @@ export default async function PlaylistDetailPage({
   setRequestLocale(locale);
   const t = await getTranslations("playlist");
 
-  const playlist = await getPlaylistBySlug(locale, slug);
+  const playlist = await getPlaylistBySlug(locale, decodeSlug(slug));
   if (!playlist || playlist.status !== "published") notFound();
 
   const tracks = await getTracksWithUrls(playlist.id);
@@ -129,6 +144,14 @@ export default async function PlaylistDetailPage({
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
+      {/* Register both locale slugs so the header's language switcher routes to
+          the correct slug instead of reusing this locale's (which would 404). */}
+      <SetLocaleAlternates
+        alternates={{
+          ar: `/playlists/${playlist.ar.slug}`,
+          en: `/playlists/${playlist.en.slug}`,
+        }}
+      />
       <header>
         <h1 className="font-display text-4xl tracking-tight">{display.title}</h1>
         {display.description != null && (

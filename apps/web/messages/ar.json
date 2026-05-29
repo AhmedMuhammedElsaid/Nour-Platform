@@ -6,7 +6,8 @@
   },
   "nav": {
     "home": "نور — الرئيسية",
-    "skipToContent": "تخطّ إلى المحتوى الرئيسي"
+    "skipToContent": "تخطّ إلى المحتوى الرئيسي",
+    "language": "اللغة"
   },
   "footer": {
     "copyright": "© 2025 نور"
