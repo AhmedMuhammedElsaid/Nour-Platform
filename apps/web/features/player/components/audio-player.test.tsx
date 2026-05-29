@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { AudioPlayer } from '@repo/ui/blocks/audio-player'
 import {
@@ -178,6 +178,36 @@ describe('AudioPlayer', () => {
 
     await user.click(screen.getByRole('button', { name: /^play$/i }))
     expect(screen.getByTestId('is-playing')).toHaveTextContent('true')
+  })
+
+  it('pauses the audio element on unmount to prevent double-play on locale switch', () => {
+    // Locale switch remounts [locale]/layout.tsx, which remounts PlayerProvider.
+    // Without the cleanup effect the orphaned HTMLAudioElement keeps playing
+    // alongside the new provider's element.
+    type AudioStub = { pause: ReturnType<typeof vi.fn> }
+    let capturedPause: ReturnType<typeof vi.fn> | null = null
+    const OrigAudio = (window as unknown as { Audio: new () => AudioStub }).Audio
+
+    ;(window as unknown as { Audio: unknown }).Audio = function () {
+      const inst = new OrigAudio()
+      capturedPause = inst.pause
+      return inst
+    }
+
+    try {
+      const { unmount } = render(
+        <PlayerProvider>
+          <Harness />
+        </PlayerProvider>,
+      )
+
+      expect(capturedPause).not.toBeNull()
+      capturedPause!.mockClear() // discard calls from initial-render effects
+      unmount()
+      expect(capturedPause).toHaveBeenCalledOnce()
+    } finally {
+      ;(window as unknown as { Audio: unknown }).Audio = OrigAudio
+    }
   })
 
   it('switches track from the queue sheet', async () => {

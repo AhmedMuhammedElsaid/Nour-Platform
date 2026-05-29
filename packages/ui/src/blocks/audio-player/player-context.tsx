@@ -82,6 +82,19 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     };
   }, []);
 
+  // Stop and release the audio element when the provider unmounts (e.g. locale
+  // switch causes [locale]/layout.tsx to remount, creating a new provider). Without
+  // this the detached HTMLAudioElement keeps playing alongside the new one.
+  React.useEffect(() => {
+    return () => {
+      const audio = audioRef.current;
+      if (!audio) return;
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+    };
+  }, []);
+
   // Wire audio element lifecycle events. The element is stable across the
   // provider's lifetime so we only attach listeners once.
   React.useEffect(() => {
