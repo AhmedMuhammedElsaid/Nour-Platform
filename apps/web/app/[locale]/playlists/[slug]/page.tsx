@@ -170,6 +170,8 @@ export default async function PlaylistDetailPage({
           tracks={displayTracks}
           playlistTitle={display.title}
           coverUrl={coverUrl ?? undefined}
+          playlistSlug={display.slug}
+          locale={locale}
         />
       </section>
     </div>

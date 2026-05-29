@@ -11,9 +11,17 @@ export type QueueTrack = {
   // public URL; playlistTitle is the parent playlist's title.
   coverUrl?: string;
   playlistTitle?: string;
+  // Optional routing metadata consumed by the web "Continue listening" shelf
+  // (recently-played store). Unused by the player itself.
+  playlistSlug?: string;
+  locale?: string;
 };
 
 export type RepeatMode = "off" | "all" | "one";
+
+// `null` clears the timer; a number is minutes from now; "end-of-track" pauses
+// when the current track finishes.
+export type SleepTimerOption = number | "end-of-track" | null;
 
 // Playback speeds surfaced in the player settings UI.
 export const PLAYBACK_RATES = [0.75, 1, 1.25, 1.5, 2] as const;
@@ -43,6 +51,11 @@ export type PlayerContextValue = {
   cycleRepeat: () => void;
   toggleShuffle: () => void;
   setPlaybackRate: (rate: number) => void;
+  // Epoch ms when a timed sleep timer fires, or null. `sleepAtTrackEnd` is the
+  // separate "stop at end of current track" mode.
+  sleepTimerEndsAt: number | null;
+  sleepAtTrackEnd: boolean;
+  setSleepTimer: (option: SleepTimerOption) => void;
 };
 
 const PlayerContext = React.createContext<PlayerContextValue | null>(null);
@@ -81,6 +94,73 @@ function readStoredPrefs(): PlayerPrefs | null {
     };
   } catch {
     return null;
+  }
+}
+
+// Device-local resume positions, keyed by track id → last playback second.
+const POSITIONS_STORAGE_KEY = "nour.player.positions";
+const MAX_STORED_POSITIONS = 100;
+// Don't resume the first/last few seconds — restoring those is more annoying
+// than useful (you'd rather restart, or it's effectively finished).
+const RESUME_MIN_SECONDS = 5;
+const RESUME_TAIL_SECONDS = 10;
+
+type StoredPositions = Record<string, { t: number; at: number }>;
+
+function readPositions(): StoredPositions {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(POSITIONS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === "object"
+      ? (parsed as StoredPositions)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function getStoredPosition(trackId: string): number {
+  const entry = readPositions()[trackId];
+  return entry && typeof entry.t === "number" ? entry.t : 0;
+}
+
+function savePosition(trackId: string, seconds: number): void {
+  if (typeof window === "undefined") return;
+  try {
+    const positions = readPositions();
+    positions[trackId] = { t: seconds, at: Date.now() };
+    // Prune to the most-recently-touched entries to cap storage growth.
+    const ids = Object.keys(positions);
+    if (ids.length > MAX_STORED_POSITIONS) {
+      ids
+        .sort((a, b) => (positions[a]?.at ?? 0) - (positions[b]?.at ?? 0))
+        .slice(0, ids.length - MAX_STORED_POSITIONS)
+        .forEach((id) => delete positions[id]);
+    }
+    window.localStorage.setItem(
+      POSITIONS_STORAGE_KEY,
+      JSON.stringify(positions),
+    );
+  } catch {
+    /* storage unavailable — non-fatal */
+  }
+}
+
+function clearStoredPosition(trackId: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const positions = readPositions();
+    if (positions[trackId]) {
+      delete positions[trackId];
+      window.localStorage.setItem(
+        POSITIONS_STORAGE_KEY,
+        JSON.stringify(positions),
+      );
+    }
+  } catch {
+    /* non-fatal */
   }
 }
 
@@ -133,6 +213,10 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   const [repeatMode, setRepeatMode] = React.useState<RepeatMode>("off");
   const [isShuffled, setIsShuffled] = React.useState<boolean>(false);
   const [playbackRate, setPlaybackRateState] = React.useState<number>(1);
+  const [sleepTimerEndsAt, setSleepTimerEndsAt] = React.useState<number | null>(
+    null,
+  );
+  const [sleepAtTrackEnd, setSleepAtTrackEnd] = React.useState<boolean>(false);
 
   // Refs mirror state so the once-attached audio listeners and the stable
   // navigation callbacks always read fresh values without re-subscribing.
@@ -143,6 +227,14 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   const currentIndexRef = React.useRef<number>(currentIndex);
   const playOrderRef = React.useRef<number[]>([]);
   const prefsHydratedRef = React.useRef<boolean>(false);
+  // Pending resume offset to apply once the next track's metadata loads.
+  const pendingSeekRef = React.useRef<number | null>(null);
+  // Throttle resume-position writes (timeupdate fires ~4×/s).
+  const lastSaveRef = React.useRef<number>(0);
+  const sleepTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const sleepAtTrackEndRef = React.useRef<boolean>(false);
   queueRef.current = queue;
   currentIndexRef.current = currentIndex;
 
@@ -236,6 +328,14 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
 
     const onTimeUpdate = (): void => {
       setCurrentTime(audio.currentTime);
+      // Persist resume position (throttled). Keyed by track id so it survives
+      // reloads and is restored on next load of the same track.
+      const now = Date.now();
+      if (now - lastSaveRef.current > 5000 && audio.currentTime > 0) {
+        lastSaveRef.current = now;
+        const track = queueRef.current[currentIndexRef.current];
+        if (track) savePosition(track.id, audio.currentTime);
+      }
       // Feed the OS media UI a scrubbable position (Media Session). Reads live
       // off the element so there's no stale-closure risk in this once-attached
       // listener. Some browsers throw on invalid/incomplete state — swallow.
@@ -259,6 +359,20 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     };
     const onDurationChange = (): void => {
       setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
+      // Apply a pending resume offset once we know the duration — only restore
+      // a position that's past the intro and not within the trailing tail.
+      if (pendingSeekRef.current != null) {
+        const target = pendingSeekRef.current;
+        pendingSeekRef.current = null;
+        const dur = audio.duration;
+        if (
+          target >= RESUME_MIN_SECONDS &&
+          (!Number.isFinite(dur) || target < dur - RESUME_TAIL_SECONDS)
+        ) {
+          audio.currentTime = target;
+          setCurrentTime(target);
+        }
+      }
     };
     const onPlay = (): void => setIsPlaying(true);
     const onPause = (): void => setIsPlaying(false);
@@ -277,6 +391,15 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     };
     const onEnded = (): void => {
       setIsPlaying(false);
+      // A finished track shouldn't resume mid-way next time.
+      const ended = queueRef.current[currentIndexRef.current];
+      if (ended) clearStoredPosition(ended.id);
+      // "Stop at end of track" sleep mode: pause here, don't advance/replay.
+      if (sleepAtTrackEndRef.current) {
+        sleepAtTrackEndRef.current = false;
+        setSleepAtTrackEnd(false);
+        return;
+      }
       // Auto-advance only after a prior user gesture this session; mobile
       // Safari would otherwise block the play() call and leave us paused.
       if (!hasInteractedRef.current) return;
@@ -338,6 +461,9 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       setCurrentTime(0);
       setDuration(track.durationSecs ?? 0);
       setErrorMessage(null);
+      // Queue the saved resume offset; applied once metadata loads.
+      const saved = getStoredPosition(track.id);
+      pendingSeekRef.current = saved > 0 ? saved : null;
     }
     // Re-apply the chosen speed: a fresh src resets playbackRate to 1.
     audio.playbackRate = playbackRateRef.current;
@@ -463,6 +589,55 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     setPlaybackRateState(rate);
   }, []);
 
+  const setSleepTimer = React.useCallback((option: SleepTimerOption): void => {
+    if (sleepTimeoutRef.current) {
+      clearTimeout(sleepTimeoutRef.current);
+      sleepTimeoutRef.current = null;
+    }
+    if (option === null) {
+      sleepAtTrackEndRef.current = false;
+      setSleepAtTrackEnd(false);
+      setSleepTimerEndsAt(null);
+      return;
+    }
+    if (option === "end-of-track") {
+      sleepAtTrackEndRef.current = true;
+      setSleepAtTrackEnd(true);
+      setSleepTimerEndsAt(null);
+      return;
+    }
+    sleepAtTrackEndRef.current = false;
+    setSleepAtTrackEnd(false);
+    const ms = option * 60_000;
+    setSleepTimerEndsAt(Date.now() + ms);
+    sleepTimeoutRef.current = setTimeout(() => {
+      sleepTimeoutRef.current = null;
+      setSleepTimerEndsAt(null);
+      // Gentle ~3s fade-out, then pause and restore the volume for next time.
+      const audio = audioRef.current;
+      if (!audio) return;
+      const startVolume = audio.volume;
+      let step = 0;
+      const steps = 15;
+      const fade = setInterval(() => {
+        step += 1;
+        audio.volume = Math.max(0, startVolume * (1 - step / steps));
+        if (step >= steps) {
+          clearInterval(fade);
+          audio.pause();
+          audio.volume = startVolume;
+        }
+      }, 200);
+    }, ms);
+  }, []);
+
+  // Clear any pending sleep timeout when the provider unmounts.
+  React.useEffect(() => {
+    return () => {
+      if (sleepTimeoutRef.current) clearTimeout(sleepTimeoutRef.current);
+    };
+  }, []);
+
   // Media Session: keep the OS/lock-screen now-playing metadata in sync.
   React.useEffect(() => {
     if (
@@ -576,6 +751,9 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       cycleRepeat,
       toggleShuffle,
       setPlaybackRate,
+      sleepTimerEndsAt,
+      sleepAtTrackEnd,
+      setSleepTimer,
     }),
     [
       queue,
@@ -602,6 +780,9 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       cycleRepeat,
       toggleShuffle,
       setPlaybackRate,
+      sleepTimerEndsAt,
+      sleepAtTrackEnd,
+      setSleepTimer,
     ],
   );
 

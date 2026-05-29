@@ -14,7 +14,9 @@
   },
   "home": {
     "heading": "Playlists",
-    "empty": "No playlists in this category yet."
+    "empty": "No playlists in this category yet.",
+    "continueListening": "Continue listening",
+    "clearHistory": "Clear"
   },
   "categories": {
     "filterLabel": "Filter playlists by category",

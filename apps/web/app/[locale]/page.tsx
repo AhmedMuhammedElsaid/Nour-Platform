@@ -12,6 +12,7 @@ import type { Playlist } from "@repo/api/schemas/playlist";
 export const dynamic = "force-dynamic";
 import { PlaylistCard } from "@/features/playlists/components/playlist-card";
 import { CategoryFilterBar } from "@/features/categories/components/category-filter-bar";
+import { ContinueListening } from "@/features/player/components/continue-listening";
 import type { SerializedPlaylist } from "@/features/playlists/types";
 
 // Converts a Playlist DTO to a JSON-serializable shape. createdAt/updatedAt
@@ -76,6 +77,8 @@ export default async function HomePage({
   return (
     <section className="mx-auto max-w-6xl px-6 py-16">
       <h1 className="font-display text-3xl tracking-tight">{t("heading")}</h1>
+
+      <ContinueListening />
 
       <CategoryFilterBar categories={categoryPills} activeSlug={category} />
 

@@ -143,14 +143,19 @@ packages/ui/src/
     form-field.tsx          → FormField({ label, htmlFor?, error?, children }) — label + input slot + error message
   blocks/audio-player/
     audio-player.tsx        → sticky bottom UI (play/pause, Slider seek, time, prev/next, shuffle, repeat, + a
-                              "Playback settings" Sheet with speed presets). Subscribes to PlayerContext.
+                              "Playback settings" Sheet with speed presets AND a sleep timer: 15/30/45/60m,
+                              end-of-track, off; live countdown). Subscribes to PlayerContext.
                               RTL: skip icons mirror via rtl:scale-x-[-1]; queue/settings Sheets open from left in RTL (via useDir).
                               Keyboard: space, ←/→ (±10s), n/p (track), s (shuffle), r (repeat).
     player-context.tsx      → PlayerProvider — single HTMLAudioElement ref, queue state, keyboard handlers, navigation persistence.
                               Shuffle (Fisher–Yates play-order ref, current track pinned front) + repeat off/all/one + playbackRate.
-                              Prefs (rate/repeat/shuffle) persist device-local to localStorage key `nour.player.prefs`.
+                              Resume positions: per-track second saved (throttled) to localStorage, restored after loadedmetadata
+                              (skips intro <5s + trailing <10s); cleared on track end. Sleep timer (timed fade-pause + end-of-track).
+                              Prefs (rate/repeat/shuffle) persist device-local. localStorage keys: `nour.player.prefs`,
+                              `nour.player.positions`, `nour.player.recent` (recently-played, web-side).
                               Media Session API wired: metadata (title/artist/artwork), transport action handlers, setPositionState.
-                              Exports PLAYBACK_RATES + RepeatMode.
+                              QueueTrack carries optional playlistSlug+locale for the Continue-listening shelf.
+                              Exports PLAYBACK_RATES + RepeatMode + SleepTimerOption.
   hooks/
     use-dir.ts              → useDir() — returns 'rtl'|'ltr' by reading <html dir>; SSR-safe; for client islands only
 
@@ -243,8 +248,13 @@ apps/web/
   features/categories/
     components/
       category-filter-bar.tsx            → client island: pill list reads/writes ?category URL param; uses Link from @/i18n/navigation
-  features/player/components/
-    audio-player.test.tsx                → RTL tests for the player block; mocks next-intl + @/i18n/navigation
+  features/player/
+    lib/recently-played.ts               → device-local recently-played store (localStorage `nour.player.recent`; MRU, capped 20)
+    components/
+      playback-persistence.tsx           → headless island (mounted in [locale]/layout inside PlayerProvider); records plays
+      continue-listening.tsx             → homepage "Continue listening" shelf (reads store after mount; links to playlist detail)
+      audio-player.test.tsx              → RTL tests for the player block (shuffle/repeat/speed/sleep/Media Session)
+      continue-listening.test.tsx        → RTL test for the shelf; recently-played.test.ts unit-tests the store
 
 tests/e2e/
   web.smoke.test.ts                      → homepage loads + first track plays + deep-link to playlist

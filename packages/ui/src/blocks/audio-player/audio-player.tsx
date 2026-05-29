@@ -70,8 +70,23 @@ export function AudioPlayer() {
     cycleRepeat,
     toggleShuffle,
     setPlaybackRate,
+    sleepTimerEndsAt,
+    sleepAtTrackEnd,
+    setSleepTimer,
   } = usePlayer();
   const dir = useDir();
+
+  // Tick once a second only while a timed sleep timer is running, so the
+  // remaining-time readout stays live without a constant interval.
+  const [now, setNow] = React.useState<number>(() => Date.now());
+  React.useEffect(() => {
+    if (sleepTimerEndsAt == null) return;
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [sleepTimerEndsAt]);
+  const sleepRemainingMs =
+    sleepTimerEndsAt != null ? Math.max(0, sleepTimerEndsAt - now) : 0;
 
   // With repeat-all or shuffle on there is always a track to move to, so the
   // transport ends are only "hard" boundaries in plain sequential mode.
@@ -344,6 +359,53 @@ export function AudioPlayer() {
                       {rate}×
                     </Button>
                   ))}
+                </div>
+
+                <p
+                  id="sleep-label"
+                  className="mt-6 mb-2 text-xs font-medium text-muted"
+                >
+                  Sleep timer
+                  {sleepTimerEndsAt != null && (
+                    <span className="ms-2 text-primary tabular-nums">
+                      {formatTime(sleepRemainingMs / 1000)}
+                    </span>
+                  )}
+                </p>
+                <div
+                  role="group"
+                  aria-labelledby="sleep-label"
+                  className="flex flex-wrap gap-2"
+                >
+                  {[15, 30, 45, 60].map((minutes) => (
+                    <Button
+                      key={minutes}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSleepTimer(minutes)}
+                    >
+                      {minutes}m
+                    </Button>
+                  ))}
+                  <Button
+                    type="button"
+                    variant={sleepAtTrackEnd ? "default" : "outline"}
+                    size="sm"
+                    aria-pressed={sleepAtTrackEnd}
+                    onClick={() => setSleepTimer("end-of-track")}
+                  >
+                    End of track
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={sleepTimerEndsAt == null && !sleepAtTrackEnd}
+                    onClick={() => setSleepTimer(null)}
+                  >
+                    Off
+                  </Button>
                 </div>
               </div>
             </SheetContent>

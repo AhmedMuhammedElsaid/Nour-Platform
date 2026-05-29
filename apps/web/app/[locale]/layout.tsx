@@ -12,6 +12,7 @@ import { AudioPlayer } from "@repo/ui/blocks/audio-player";
 import { PlayerProvider } from "@repo/ui/blocks/player-context";
 import { SiteFooter } from "@/features/layout/components/site-footer";
 import { SiteHeader } from "@/features/layout/components/site-header";
+import { PlaybackPersistence } from "@/features/player/components/playback-persistence";
 import { LocaleAlternatesProvider } from "@/features/layout/locale-alternates-context";
 import { routing } from "@/i18n/routing";
 
@@ -103,6 +104,7 @@ export default async function LocaleLayout({
               </main>
               <SiteFooter />
               <AudioPlayer />
+              <PlaybackPersistence />
             </LocaleAlternatesProvider>
           </PlayerProvider>
         </NextIntlClientProvider>

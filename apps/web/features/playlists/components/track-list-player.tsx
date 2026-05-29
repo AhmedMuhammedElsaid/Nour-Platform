@@ -12,6 +12,8 @@ interface Props {
   tracks: DisplayTrack[];
   playlistTitle?: string;
   coverUrl?: string;
+  playlistSlug?: string;
+  locale?: string;
 }
 
 function formatDuration(secs: number): string {
@@ -23,7 +25,12 @@ function formatDuration(secs: number): string {
 
 function toQueueTrack(
   t: DisplayTrack,
-  meta: { playlistTitle?: string; coverUrl?: string },
+  meta: {
+    playlistTitle?: string;
+    coverUrl?: string;
+    playlistSlug?: string;
+    locale?: string;
+  },
 ): QueueTrack {
   return {
     id: t.id,
@@ -32,15 +39,23 @@ function toQueueTrack(
     durationSecs: t.durationSecs,
     playlistTitle: meta.playlistTitle,
     coverUrl: meta.coverUrl,
+    playlistSlug: meta.playlistSlug,
+    locale: meta.locale,
   };
 }
 
-export function TrackListPlayer({ tracks, playlistTitle, coverUrl }: Props) {
+export function TrackListPlayer({
+  tracks,
+  playlistTitle,
+  coverUrl,
+  playlistSlug,
+  locale,
+}: Props) {
   const { loadQueue, currentTrack, isPlaying, toggle } = usePlayer();
 
   const playableTracks = tracks.filter((t) => t.srcUrl !== null);
   const queueTracks = playableTracks.map((t) =>
-    toQueueTrack(t, { playlistTitle, coverUrl }),
+    toQueueTrack(t, { playlistTitle, coverUrl, playlistSlug, locale }),
   );
 
   const handlePlayAll = useCallback(() => {

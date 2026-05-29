@@ -346,6 +346,29 @@ describe('AudioPlayer', () => {
     expect(fast).toHaveAttribute('aria-pressed', 'true')
   })
 
+  it('toggles the end-of-track sleep mode from the settings sheet', async () => {
+    const user = userEvent.setup()
+    render(
+      <PlayerProvider>
+        <Harness />
+        <AudioPlayer />
+      </PlayerProvider>,
+    )
+    await user.click(screen.getByTestId('load'))
+
+    await user.click(
+      screen.getByRole('button', { name: /playback settings/i }),
+    )
+    const endOfTrack = screen.getByRole('button', { name: /end of track/i })
+    expect(endOfTrack).toHaveAttribute('aria-pressed', 'false')
+
+    await user.click(endOfTrack)
+    expect(endOfTrack).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(screen.getByRole('button', { name: /^off$/i }))
+    expect(endOfTrack).toHaveAttribute('aria-pressed', 'false')
+  })
+
   it('publishes now-playing metadata to the Media Session API', async () => {
     type MediaSessionStub = {
       metadata: { title?: string } | null
