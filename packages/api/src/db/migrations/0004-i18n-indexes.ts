@@ -1,23 +1,16 @@
 import type { Collection } from "mongodb";
 
 import { getDb } from "../client";
-import { PlaylistModel } from "../models/playlist.model";
-import { CategoryModel } from "../models/Category.model";
-import { TrackModel } from "../models/track.model";
 
 /*
- * Migration 0004: replace the single-locale unique indexes with the per-locale
- * compound indexes declared on the updated models.
+ * Migration 0004: drop the obsolete single-locale unique indexes.
  *
- * MUST run AFTER 0003 — the new {locale, slug} unique indexes require every
- * document to already have a non-null `locale`.
+ * MUST run AFTER 0003 (locale backfill) and BEFORE 0005 (embedded-locale merge).
+ * Each drop is wrapped so a missing index is a no-op — idempotent.
  *
- * Two steps:
- *  1. Drop the obsolete global-unique slug indexes (and the old playlistId
- *     indexes on tracks). Each drop is wrapped so a missing index is a no-op,
- *     keeping the migration idempotent.
- *  2. `ensureIndexes()` on each model to build the new compound indexes
- *     declared in the *.model.ts files (idempotent by nature).
+ * ensureIndexes() is NOT called here: the Mongoose models already declare the
+ * post-0005 embedded-locale indexes; calling ensureIndexes() before 0005
+ * converts the documents causes E11000 (ar.slug: null). 0005 handles it.
  */
 export const name = "0004-i18n-indexes";
 
@@ -51,8 +44,9 @@ export async function up(): Promise<void> {
   await dropIndexIfExists(tracks, "playlistId_1_order_1");
   await dropIndexIfExists(tracks, "playlistId_1");
 
-  // 2. Build the new per-locale compound indexes declared on the models.
-  await PlaylistModel.ensureIndexes();
-  await CategoryModel.ensureIndexes();
-  await TrackModel.ensureIndexes();
+  // ensureIndexes() is intentionally NOT called here. The Mongoose models
+  // already declare the post-0005 embedded-locale indexes (ar.slug, en.slug),
+  // so calling ensureIndexes() before 0005 converts the documents would try
+  // to build those indexes on docs that still have a flat `slug` field →
+  // E11000 null duplicate. 0005 calls dropIndexes() + ensureIndexes() itself.
 }
