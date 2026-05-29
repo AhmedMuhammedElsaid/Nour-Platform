@@ -44,6 +44,7 @@ Audio MVP (Waves 0–5) + pre-deploy fixups + hardening sprint + **P2-A Categori
 | i18n embedded-locale refactor ✅ | HEAD | Per-locale docs (AR+EN separate, contentId-linked) replaced by single docs with `ar:{}` and `en:{}` sub-objects. `contentId` + `locale` fields removed from all three collections. `track.playlistContentId` → `track.playlistId`. `playlist.categoryIds` now holds category `_id`s. Migration 0005 merges paired docs; runs before 0001/0002. Cache tags simplified: `PLAYLISTS_HOME`, `playlistTag(id)`, `CATEGORIES`. Services: `getPublishedPlaylists()`, `listCategories()`, `getTracksWithUrls(playlistId)` — no locale params. Web: `PlaylistCard` calls `getLocale()`; detail page resolves `DisplayTrack[]` before passing to `TrackListPlayer`. `getPlaylistSlugForLocale` removed. Admin tables/forms updated for embedded-locale shape (AR + EN columns side-by-side; no per-locale row pattern). **Migration runner order is now `[0003, 0004, 0005, 0001, 0002]`**. Tests: api 54 · admin 37 · web 14 all green. |
 | SoundCloud-UX + offline PWA + search ✅ | `4aa3821`..`0fd01bb` (6 commits) | Plan: `i-built-this-app-cozy-tower.md`. **P1** player: shuffle/repeat/speed + **Media Session API** (lock-screen) + localStorage prefs. **P2** resume positions + sleep timer + device-local recently-played → homepage "Continue listening" shelf (`features/player/`). **P3** full-text **search** (`search.service` + `$text` + migration `0006`; `/[locale]/search` + header `SearchBox`). **P4** installable **PWA** (manifest + hand-rolled `public/sw.js`, ADR 0003; offline shell + cache-played audio w/ Range; ⚠️ offline audio needs R2 CORS). **P5** loading skeletons + `robots.ts` + dynamic `sitemap.ts`. Device-local only (no public auth). Tests: api 64 · admin 37 · web 38; web prod build ✓. |
 | P2-A — Categories ✅ | `c73e7e4` · `82d3e81` · `6972e87` · `273e518` (+ spec `c9cadef` · `7f97d40` · `8e57352`) | New `Category` resource with full admin CRUD + many-to-many on `Playlist` + public homepage filter. Spec lives in **PLAN.md §13.1**. Files: `schemas/category.ts`, `db/models/Category.model.ts` (note PascalCase filename — outlier from the lowercase models), `repositories/category.repo.ts`, `services/category.service.ts` (`listCategories` · `getCategoryBySlug` · `getCategoryById` · `createCategory` · `updateCategory` · `deleteCategory`), migration `0002-category-indexes.ts` (unique `categories.slug` + `playlists.categoryIds` array index). `playlist.service.ts` extended: `createPlaylist`/`updatePlaylist` now accept `categoryIds?: string[]` (validates IDs exist); `getPublishedPlaylists` accepts `{ categoryId }` filter. Slug collisions auto-append `-2`/`-3`. Hard delete `$pull`s the id from every playlist's `categoryIds`. New cache tag `CATEGORIES = "categories"` in `cache/tags.ts` (first central tag file). Admin: `/categories`, `/categories/new`, `/categories/[id]/edit` + `CategoriesTable` + `CategoryForm` + 3 server actions + a `categoryIds` multi-select field on the playlist form. Web: `CategoryFilterBar` client island reads/writes `?category=<slug>` URL param; homepage resolves slug → ObjectId before calling the playlist service; empty-state message on unknown slug (no 404). Tests: 34 API unit + 38 admin RTL + 1 E2E green. |
+| UI Redesign ✅ | `6a3648d`..`ca704be` (8 phases, ~12 commits) | Plan in **`refactor_plan.md`**. **Dark-default design system**: `:root` + `[data-theme="dark"]` carry warm gold/near-black palette; `[data-theme="light"]` overrides for cream. `--color-primary` = gold `#C8A050` (dark) / `#9A7830` (light). `--shadow-up-3` added. **Theme toggle** (`features/layout/components/theme-toggle.tsx`) — SSR-safe, localStorage `nour.theme`, inline SVG moon/sun, no lucide dep. **`trackCount`** on playlists: `findPublishedPlaylists`/`findAllPlaylists` use a `$lookup` sub-pipeline aggregation; `Playlist` schema has optional `trackCount?: number`. **Cover art system** (`features/playlists/lib/cover-art.ts`): `getCoverGradient(id)`/`getCoverEmoji(id)` — 6 deterministic presets from last 2 hex chars of id. `PlaylistCard` has cover area (R2 image or gradient fallback), gradient overlay, track count badge, hover lift; title uses Fraunces. **Continue Listening shelf** gains gradient fallback, hover scrim + play circle, resume progress bar (`savedPos / duration`), `% complete` sub-label. `recently-played.ts` stores optional `duration`; `getSavedPosition(trackId)` reads `nour.player.positions`. `playback-persistence.tsx` back-fills duration from audio metadata. **Player bar**: filled gold play button (`variant="default" rounded-full`), `shadow-up-3`, desktop volume slider + mute toggle; `volume` persisted to `nour.player.prefs`. **Homepage** redesigned: hero h1/subtitle, gold "Library" accent label, `PlaylistSortSelect` (`?sort=az|tracks`, server-side sort), bilingual category pills (`arName · enName`), `?sort=` + `?category=` preserve each other. **Playlist detail** gains full-width hero image (`h-48 md:h-72`) or gradient fallback, `openGraph.images` in metadata. **Site header**: `bg-bg/85 backdrop-blur-lg`, logo `text-xl font-bold text-primary`. Tests: api 65 · admin 37 · web 53 all green. |
 
 ---
 
@@ -51,7 +52,7 @@ Audio MVP (Waves 0–5) + pre-deploy fixups + hardening sprint + **P2-A Categori
 
 MVP is **deploy-ready** (Wave 5.4 stays ⚠️ Partial because Sentry SDK install is intentionally deferred — env var stubbed; optional per `.env.example`). To actually go live: open **`deploy.md`** and walk the 11 steps top-to-bottom.
 
-**i18n A+B + embedded-locale + SoundCloud-UX/offline-PWA/search are all complete and merged** (see waves rows above). Postponed/manual items: Phase 6 E2E/Lighthouse (Playwright RTL + redirect; non-blocking); real-device Media Session + offline-replay (DevTools Offline) + Lighthouse PWA verification; raster PNG icons (currently SVG-only); R2 CORS for offline audio (deploy.md step 2.4) + migration `0006` on prod (deploy.md step 6).
+**i18n A+B + embedded-locale + SoundCloud-UX/offline-PWA/search + UI Redesign are all complete and merged** (see waves rows above). Postponed/manual items: Phase 6 E2E/Lighthouse (Playwright RTL + redirect; non-blocking); real-device Media Session + offline-replay (DevTools Offline) + Lighthouse PWA verification; raster PNG icons (currently SVG-only); R2 CORS for offline audio (deploy.md step 2.4) + migration `0006` on prod (deploy.md step 6). UI Redesign manual verification checklist is in `refactor_plan.md` Part 7.
 
 **Next: P2-B Lectures** (PLAN.md §13). Tickets not yet written; brainstorm + write a wave plan before coding (use `superpowers:brainstorming` then `superpowers:writing-plans`).
 
@@ -100,16 +101,16 @@ packages/api/src/
       0006-search-indexes.ts     → text indexes on playlists (ar/en title+description) + tracks (ar/en title); additive, safe last
       ⚠️ Runner order in scripts/migrate.ts: [0003, 0004, 0005, 0001, 0002, 0006] — 0003 MUST precede ensureIndexes; 0006 last
   repositories/
-    playlist.repo.ts      → findPlaylistById/BySlug/Published/All/ByContentId, create/update/delete
-                            (no appendTrackId/removeTrackId — dropped; Published/All take locale param + {categoryContentId?} filter)
-    track.repo.ts         → findTrackById/ByPlaylistContentId/BySlug, create/update/delete, updateTrackOrder (bulkWrite)
+    playlist.repo.ts      → findPlaylistById/BySlug, findPublishedPlaylists({categoryId?})/findAllPlaylists → PlaylistLeanWithCount[] (aggregation),
+                            create/update/delete
+    track.repo.ts         → findTrackById/ByPlaylist/BySlug, create/update/delete, updateTrackOrder (bulkWrite)
     media.repo.ts         → findMediaById, create, updateById
     category.repo.ts      → findAll/ById/BySlug/ByContentId, create/update/delete, pullCategoryFromPlaylists
   schemas/
     locale.ts             → localeSchema, LOCALES=['ar','en'], DEFAULT_LOCALE='ar', Locale type, isLocale()
     user.ts               → User, UserRole, Credentials
-    playlist.ts           → Playlist (contentId, locale, categoryIds hold category contentIds), PlaylistStatus, *Input
-    track.ts              → Track (contentId, locale, playlistContentId), TrackCreateInput, TrackUpdateInput
+    playlist.ts           → Playlist (categoryIds hold category _ids, optional trackCount?: number), PlaylistStatus, *Input
+    track.ts              → Track (playlistId, order), TrackCreateInput, TrackUpdateInput
     media.ts              → Media, MediaMimeType, MediaStatus, *Input
     category.ts           → Category (contentId, locale), CategoryCreateInput, CategoryUpdateInput
   utils/
@@ -117,20 +118,18 @@ packages/api/src/
     id.ts                 → newObjectIdString() — mints a fresh Mongoose ObjectId as a hex string
   services/
     auth.service.ts       → verifyCredentials, createAdminUser
-    playlist.service.ts   → getPublishedPlaylists(locale, {categoryContentId?}), getAllPlaylists(session),
+    playlist.service.ts   → getPublishedPlaylists({categoryId?}) → Playlist[] with trackCount, getAllPlaylists(session),
                             getPlaylistBySlug(locale, slug), getPlaylistById(id, session),
-                            getPlaylistSlugForLocale(contentId, locale) — for hreflang alternates,
                             create/update (categoryIds validated), delete/publish/unpublish
-    track.service.ts      → getTracksWithUrls(locale, playlistContentId), getTrackById, create/update/delete,
-                            reorderTracks(locale, playlistContentId, orderedTrackIds) — writes Track.order only
+    track.service.ts      → getTracksWithUrls(playlistId), getTrackById, create/update/delete,
+                            reorderTracks(playlistId, orderedTrackIds) — writes Track.order only
     media.service.ts      → createMedia, confirmMedia, getMediaUrlById (both create/confirm call requireSession — defense in depth)
-    category.service.ts   → listCategories(locale), getCategoryBySlug(locale, slug), getCategoryById, create/update,
-                            delete (cascade $pull only when last locale variant gone; revalidates all locales)
+    category.service.ts   → listCategories(), getCategoryBySlug(locale, slug), getCategoryById, create/update,
+                            delete (cascade $pull; revalidates all locales)
     search.service.ts     → searchContent(locale, q, limit=20) — public read, $text over published playlists + tracks;
                             locale-resolves hits; track hits link to their published parent playlist; empty on blank/invalid q.
                             Needs migration 0006 text indexes (else $text errors). Exported at @repo/api/services/search.
-  cache/tags.ts           → locale-scoped tag FUNCTIONS — playlistsHomeTag(locale), playlistTag(locale,slug), categoriesTag(locale)
-                            (old bare PLAYLISTS_HOME/CATEGORIES constants removed — always use the functions)
+  cache/tags.ts           → PLAYLISTS_HOME (constant), playlistTag(id) (function), CATEGORIES (constant)
   media/
     r2-client.ts          → createPresignedUpload(key, mime, bytes), headObject(key), ALLOWED_AUDIO_MIME_TYPES
   errors/index.ts         → AppError + codes (UNAUTHORIZED/FORBIDDEN/NOT_FOUND/VALIDATION/CONFLICT/RATE_LIMITED/INTERNAL)
@@ -139,7 +138,9 @@ packages/api/src/
 packages/config/src/env.ts  → Zod-parsed env (MONGODB_URI, AUTH_SECRET, R2_* vars)
 
 packages/ui/src/
-  styles/tokens.css         → design tokens (colors, spacing, fonts, radii, shadows)
+  styles/tokens.css         → design tokens. Dark-default: :root + [data-theme="dark"] = gold/near-black;
+                              [data-theme="light"] = cream overrides. --color-primary = #C8A050 (dark) / #9A7830 (light).
+                              --shadow-up-3 added for player bar.
   primitives/
     button.tsx              → Button (cva: default/secondary/outline/ghost/destructive/link × sm/default/lg/icon)
     input.tsx               → Input (aria-invalid for error state)
@@ -147,20 +148,17 @@ packages/ui/src/
   patterns/
     form-field.tsx          → FormField({ label, htmlFor?, error?, children }) — label + input slot + error message
   blocks/audio-player/
-    audio-player.tsx        → sticky bottom UI (play/pause, Slider seek, time, prev/next, shuffle, repeat, + a
-                              "Playback settings" Sheet with speed presets AND a sleep timer: 15/30/45/60m,
-                              end-of-track, off; live countdown). Subscribes to PlayerContext.
-                              RTL: skip icons mirror via rtl:scale-x-[-1]; queue/settings Sheets open from left in RTL (via useDir).
+    audio-player.tsx        → sticky bottom UI. Play button: filled gold circle (variant=default, rounded-full).
+                              shadow-up-3. Desktop volume slider (hidden md:flex) + mute toggle (Volume2/VolumeX lucide).
+                              Seek slider (gold fill via --color-primary). Shuffle/repeat active = text-primary (gold).
+                              "Playback settings" Sheet: speed presets + sleep timer. Queue Sheet. RTL-safe.
                               Keyboard: space, ←/→ (±10s), n/p (track), s (shuffle), r (repeat).
     player-context.tsx      → PlayerProvider — single HTMLAudioElement ref, queue state, keyboard handlers, navigation persistence.
-                              Shuffle (Fisher–Yates play-order ref, current track pinned front) + repeat off/all/one + playbackRate.
-                              Resume positions: per-track second saved (throttled) to localStorage, restored after loadedmetadata
-                              (skips intro <5s + trailing <10s); cleared on track end. Sleep timer (timed fade-pause + end-of-track).
-                              Prefs (rate/repeat/shuffle) persist device-local. localStorage keys: `nour.player.prefs`,
-                              `nour.player.positions`, `nour.player.recent` (recently-played, web-side).
-                              Media Session API wired: metadata (title/artist/artwork), transport action handlers, setPositionState.
-                              QueueTrack carries optional playlistSlug+locale for the Continue-listening shelf.
-                              Exports PLAYBACK_RATES + RepeatMode + SleepTimerOption.
+                              Shuffle (Fisher–Yates) + repeat off/all/one + playbackRate + **volume** (0-1).
+                              Prefs (rate/repeat/shuffle/volume) persist to `nour.player.prefs`. Resume positions in
+                              `nour.player.positions`. Sleep timer (timed fade-pause + end-of-track).
+                              Media Session API wired. Exports PLAYBACK_RATES + RepeatMode + SleepTimerOption.
+                              Context exposes: volume, setVolume (in addition to all prior exports).
   hooks/
     use-dir.ts              → useDir() — returns 'rtl'|'ltr' by reading <html dir>; SSR-safe; for client islands only
 
@@ -220,14 +218,15 @@ apps/admin/
 
 apps/web/
   app/layout.tsx                         → passthrough root (wraps children only); <html lang dir> set in [locale]/layout.tsx
-  app/[locale]/layout.tsx                → sets <html lang={locale} dir>, loads IBM Plex Sans Arabic (swaps --font-sans for ar),
-                                            wraps NextIntlClientProvider + PlayerProvider
-  app/[locale]/page.tsx                  → RSC homepage: listCategories(locale) → resolve ?category slug → categoryContentId
-                                            → getPublishedPlaylists(locale, {categoryContentId?}) → grid + CategoryFilterBar
-                                            (export const dynamic = "force-dynamic")
-  app/[locale]/playlists/[slug]/page.tsx → RSC detail: getPlaylistBySlug(locale,slug) + getTracksWithUrls(locale,contentId);
-                                            generateMetadata emits hreflang via getPlaylistSlugForLocale per locale
-                                            (export const dynamic = "force-dynamic")
+  app/[locale]/layout.tsx                → sets <html lang={locale} dir data-theme="dark">, loads IBM Plex Sans Arabic,
+                                            wraps NextIntlClientProvider + PlayerProvider. ThemeToggle mounted in SiteHeader.
+  app/[locale]/page.tsx                  → RSC homepage: hero h1/subtitle, listCategories() → bilingual pills,
+                                            getPublishedPlaylists({categoryId?}) → server-sort by ?sort=az|tracks → grid.
+                                            PlaylistSortSelect client island writes ?sort=; CategoryFilterBar preserves ?sort=.
+                                            ContinueListening shelf at bottom. (force-dynamic)
+  app/[locale]/playlists/[slug]/page.tsx → RSC detail: full-width hero image (h-48 md:h-72) or gradient fallback above title;
+                                            getPlaylistBySlug + getTracksWithUrls + getMediaUrlById for cover;
+                                            generateMetadata includes openGraph.images. (force-dynamic)
   app/[locale]/search/page.tsx           → RSC search results (reads ?q=, calls searchContent; force-dynamic; robots noindex)
   app/[locale]/{loading,playlists/[slug]/loading,search/loading}.tsx → Suspense skeletons (token pulse divs)
   app/robots.ts                          → static robots.txt (disallow /api + /*/search; points at sitemap)
@@ -258,24 +257,31 @@ apps/web/
   vitest.config.ts                       → jsdom + @vitejs/plugin-react + explicit '@' → app-root alias (vite-tsconfig-paths can't load here)
   vitest.setup.ts                        → @testing-library/jest-dom/vitest + afterEach(cleanup)
   features/layout/components/
-    site-header.tsx                      → header (logo + skip link target; uses useTranslations)
-    site-footer.tsx                      → footer (uses useTranslations)
+    site-header.tsx                      → header: bg-bg/85 backdrop-blur-lg; logo font-display text-xl font-bold text-primary;
+                                            ThemeToggle on right side
+    site-footer.tsx                      → footer (text-text-2, border-border)
+    theme-toggle.tsx                     → **new**: SSR-safe dark/light toggle; localStorage nour.theme; inline SVG moon/sun
   features/playlists/
-    types.ts                             → SerializedPlaylist / SerializedPlayableTrack / SerializedTrack DTOs
+    lib/cover-art.ts                     → **new**: getCoverGradient(id) + getCoverEmoji(id) — 6 deterministic presets from id[-2:]
+    types.ts                             → SerializedPlaylist (now includes optional trackCount?) / SerializedPlayableTrack / DisplayTrack DTOs
     components/
-      playlist-card.tsx                  → server component — cover + title (getTranslations for listenOn label)
+      playlist-card.tsx                  → RSC: cover art (R2 image or gradient fallback), gradient overlay, trackCount badge,
+                                            Fraunces title, hover lift. Calls getMediaUrlById for cover URL.
+      playlist-sort-select.tsx           → **new**: client island; ?sort=newest|az|tracks; preserves ?category=
       track-row.tsx                      → row UI; track number uses text-end (logical, RTL-safe)
-      track-list-player.tsx              → client island: maps rows; click → player.loadQueue; track number text-end
+      track-list-player.tsx              → client island: maps rows; click → player.loadQueue
   features/categories/
     components/
-      category-filter-bar.tsx            → client island: pill list reads/writes ?category URL param; uses Link from @/i18n/navigation
+      category-filter-bar.tsx            → client island: bilingual pills (arName · enName); gold active state;
+                                            useSearchParams preserves ?sort= when changing category
   features/player/
-    lib/recently-played.ts               → device-local recently-played store (localStorage `nour.player.recent`; MRU, capped 20)
+    lib/recently-played.ts               → device-local recently-played store (nour.player.recent; MRU, capped 20);
+                                            RecentTrack now has optional duration?; getSavedPosition(trackId) reads nour.player.positions
     components/
-      playback-persistence.tsx           → headless island (mounted in [locale]/layout inside PlayerProvider); records plays
-      continue-listening.tsx             → homepage "Continue listening" shelf (reads store after mount; links to playlist detail)
-      audio-player.test.tsx              → RTL tests for the player block (shuffle/repeat/speed/sleep/Media Session)
-      continue-listening.test.tsx        → RTL test for the shelf; recently-played.test.ts unit-tests the store
+      playback-persistence.tsx           → records plays + durationSecs; back-fills duration from audio context after metadata load
+      continue-listening.tsx             → shelf: gradient fallback, hover scrim+play circle, resume progress bar, % complete label
+      audio-player.test.tsx              → RTL tests (shuffle/repeat/speed/sleep/Media Session/volume slider)
+      continue-listening.test.tsx        → RTL tests (resume bar width, percentComplete label, bar absent without duration)
 
 tests/e2e/
   web.smoke.test.ts                      → homepage loads + first track plays + deep-link to playlist
