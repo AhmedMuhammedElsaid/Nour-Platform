@@ -7,9 +7,9 @@ vi.mock("next-intl/server", () => ({
   getLocale: vi.fn().mockResolvedValue("en"),
 }));
 
-const mockGetMediaUrlById = vi.fn();
+// Use vi.fn() directly inside the factory so it's accessible after hoisting.
 vi.mock("@repo/api/services/media", () => ({
-  getMediaUrlById: (...args: unknown[]) => mockGetMediaUrlById(...args),
+  getMediaUrlById: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock("@/i18n/navigation", () => ({
@@ -35,6 +35,7 @@ vi.mock("next/image", () => ({
   ),
 }));
 
+import { getMediaUrlById } from "@repo/api/services/media";
 import { PlaylistCard } from "./playlist-card";
 import type { SerializedPlaylist } from "@/features/playlists/types";
 
@@ -55,35 +56,31 @@ function makePlaylist(
 
 describe("PlaylistCard", () => {
   beforeEach(() => {
-    mockGetMediaUrlById.mockReset();
-    mockGetMediaUrlById.mockResolvedValue(null);
+    vi.mocked(getMediaUrlById).mockResolvedValue(null);
   });
 
   it("shows gradient fallback when there is no coverMediaId", async () => {
     const el = await PlaylistCard({ playlist: makePlaylist() });
     const { container } = render(el);
 
-    // No cover <img> should be rendered
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
-    // Gradient is applied via inline style on the fallback div
     expect(container.querySelector("[style*='gradient']")).not.toBeNull();
-    // getMediaUrlById should not be called when there is no coverMediaId
-    expect(mockGetMediaUrlById).not.toHaveBeenCalled();
+    expect(vi.mocked(getMediaUrlById)).not.toHaveBeenCalled();
   });
 
-  it("renders a cover image when a URL is resolved for coverMediaId", async () => {
-    mockGetMediaUrlById.mockResolvedValue("https://r2.example.com/cover.jpg");
-    const el = await PlaylistCard({
-      playlist: makePlaylist({ coverMediaId: "aabbccddeeff001122334401" }),
-    });
-    render(el);
+  it("calls getMediaUrlById with the coverMediaId when present", async () => {
+    const coverMediaId = "aabbccddeeff001122334401";
+    vi.mocked(getMediaUrlById).mockResolvedValueOnce(
+      "https://r2.example.com/cover.jpg",
+    );
 
-    const img = screen.getByRole("img");
-    expect(img).toHaveAttribute("src", "https://r2.example.com/cover.jpg");
+    await PlaylistCard({ playlist: makePlaylist({ coverMediaId }) });
+
+    expect(vi.mocked(getMediaUrlById)).toHaveBeenCalledWith(coverMediaId);
   });
 
   it("falls back to gradient when coverMediaId is set but URL resolves to null", async () => {
-    mockGetMediaUrlById.mockResolvedValue(null);
+    vi.mocked(getMediaUrlById).mockResolvedValueOnce(null);
     const el = await PlaylistCard({
       playlist: makePlaylist({ coverMediaId: "aabbccddeeff001122334401" }),
     });

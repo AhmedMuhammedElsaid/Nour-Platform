@@ -26,6 +26,8 @@ vi.mock("next/image", () => ({
 import { ContinueListening } from "./continue-listening";
 import { recordRecentlyPlayed } from "@/features/player/lib/recently-played";
 
+const POSITIONS_KEY = "nour.player.positions";
+
 describe("ContinueListening", () => {
   beforeEach(() => window.localStorage.clear());
 
@@ -63,5 +65,67 @@ describe("ContinueListening", () => {
     expect(
       screen.queryByRole("link", { name: /surah al-fatiha/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("renders resume progress bar at the correct width", async () => {
+    const trackId = "track-with-progress";
+    // 60 seconds played out of 120 → 50%
+    window.localStorage.setItem(
+      POSITIONS_KEY,
+      JSON.stringify({ [trackId]: { t: 60, at: Date.now() } }),
+    );
+    recordRecentlyPlayed({
+      trackId,
+      title: "Track With Progress",
+      playlistSlug: "test-playlist",
+      duration: 120,
+    });
+
+    const { container } = render(<ContinueListening />);
+    await screen.findByRole("link", { name: /track with progress/i });
+
+    const bar = container.querySelector('[style*="width: 50%"]');
+    expect(bar).not.toBeNull();
+  });
+
+  it("shows the percent-complete label when progress is known", async () => {
+    const trackId = "track-pct-label";
+    window.localStorage.setItem(
+      POSITIONS_KEY,
+      JSON.stringify({ [trackId]: { t: 30, at: Date.now() } }),
+    );
+    recordRecentlyPlayed({
+      trackId,
+      title: "Track With Label",
+      playlistSlug: "test-playlist",
+      duration: 100,
+    });
+
+    render(<ContinueListening />);
+    await screen.findByRole("link", { name: /track with label/i });
+
+    // The translation mock returns the key "percentComplete" verbatim.
+    expect(screen.getByText("percentComplete")).toBeInTheDocument();
+  });
+
+  it("hides the progress bar when duration is not stored", async () => {
+    const trackId = "track-no-duration";
+    window.localStorage.setItem(
+      POSITIONS_KEY,
+      JSON.stringify({ [trackId]: { t: 30, at: Date.now() } }),
+    );
+    // No duration in the recently-played entry
+    recordRecentlyPlayed({
+      trackId,
+      title: "Track No Duration",
+      playlistSlug: "test-playlist",
+    });
+
+    const { container } = render(<ContinueListening />);
+    await screen.findByRole("link", { name: /track no duration/i });
+
+    // No progress bar div rendered
+    expect(container.querySelector('[style*="width:"]')).toBeNull();
+    expect(container.querySelector('[style*="width: "]')).toBeNull();
   });
 });
