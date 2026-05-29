@@ -228,6 +228,10 @@ apps/web/
                                             generateMetadata emits hreflang via getPlaylistSlugForLocale per locale
                                             (export const dynamic = "force-dynamic")
   app/[locale]/search/page.tsx           → RSC search results (reads ?q=, calls searchContent; force-dynamic; robots noindex)
+  app/[locale]/{loading,playlists/[slug]/loading,search/loading}.tsx → Suspense skeletons (token pulse divs)
+  app/robots.ts                          → static robots.txt (disallow /api + /*/search; points at sitemap)
+  app/sitemap.ts                         → dynamic sitemap.xml (force-dynamic; home per locale + published playlists w/ hreflang;
+                                            DB call try/catch-guarded so build without Atlas degrades to static routes)
   app/api/health/route.ts                → GET → { ok, version, time }
   public/manifest.webmanifest            → PWA manifest (start_url /ar, standalone, SVG icon)
   public/sw.js                           → hand-rolled service worker (ADR 0003): nav network-first→offline.html,
