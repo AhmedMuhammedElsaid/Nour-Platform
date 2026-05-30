@@ -35,7 +35,8 @@
     "./db/migrations/0003-i18n-backfill": "./src/db/migrations/0003-i18n-backfill.ts",
     "./db/migrations/0004-i18n-indexes": "./src/db/migrations/0004-i18n-indexes.ts",
     "./db/migrations/0005-embedded-locale": "./src/db/migrations/0005-embedded-locale.ts",
-    "./db/migrations/0006-search-indexes": "./src/db/migrations/0006-search-indexes.ts"
+    "./db/migrations/0006-search-indexes": "./src/db/migrations/0006-search-indexes.ts",
+    "./db/migrations/0007-playlist-order": "./src/db/migrations/0007-playlist-order.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",

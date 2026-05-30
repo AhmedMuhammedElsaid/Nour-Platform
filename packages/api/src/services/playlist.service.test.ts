@@ -20,10 +20,18 @@ vi.mock("../repositories/playlist.repo", () => ({
   findPlaylistBySlug: vi.fn(),
   findPublishedPlaylists: vi.fn(),
   updatePlaylistById: vi.fn(),
+  updatePlaylistOrder: vi.fn(),
 }));
 
 vi.mock("../repositories/category.repo", () => ({
   findById: vi.fn(),
+}));
+
+// PlaylistModel is imported directly for countDocuments (default order on create).
+vi.mock("../db/models/playlist.model", () => ({
+  PlaylistModel: {
+    countDocuments: vi.fn().mockResolvedValue(0),
+  },
 }));
 
 const { revalidateTag } = await import("next/cache");

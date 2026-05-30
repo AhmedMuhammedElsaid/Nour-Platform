@@ -10,8 +10,10 @@ import {
   findPlaylistBySlug,
   findPublishedPlaylists,
   updatePlaylistById,
+  updatePlaylistOrder,
   type PlaylistLeanWithCount,
 } from "../repositories/playlist.repo";
+import { PlaylistModel } from "../db/models/playlist.model";
 // Cross-service validation: we call category.repo directly (not via a service)
 // because this is a lightweight existence check, not a full service boundary
 // crossing. Importing the service would risk circular module dependencies.
@@ -152,9 +154,14 @@ export async function createPlaylist(
   const arSlug = parsed.ar.slug ?? slugify(parsed.ar.title);
   const enSlug = parsed.en.slug ?? slugify(parsed.en.title);
 
+  // Append-to-end default: count existing playlists rather than running the
+  // full aggregation, since we only need a scalar count here.
+  const order = parsed.order ?? (await PlaylistModel.countDocuments());
+
   const { ar, en, ...rest } = parsed;
   const lean = await repoCreatePlaylist({
     ...rest,
+    order,
     ar: {
       title: ar.title,
       slug: arSlug,
@@ -235,4 +242,12 @@ export async function unpublishPlaylist(id: string): Promise<Playlist> {
   revalidateTag(playlistTag(lean._id.toString()), "default");
 
   return toDto(lean);
+}
+
+export async function reorderPlaylists(
+  orderedPlaylistIds: string[],
+): Promise<void> {
+  await requireSession(["admin"]);
+  await updatePlaylistOrder(orderedPlaylistIds);
+  revalidateTag(PLAYLISTS_HOME, "default");
 }
