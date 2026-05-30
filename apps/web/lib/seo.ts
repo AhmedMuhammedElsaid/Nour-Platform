@@ -20,7 +20,7 @@ export const SITE_NAME = "Nour";
 // Default social-share image. The asset lives in apps/web/public/ (supplied by
 // the user). Relative paths resolve against `metadataBase` (set in the root
 // layout), so consumers can pass this bare string anywhere Next resolves URLs.
-export const OG_IMAGE = "/og-image.jpg";
+export const OG_IMAGE = "/og-image.png";
 
 /** Build an absolute URL from a site-relative path (idempotent for absolute input). */
 export function absoluteUrl(path: string): string {

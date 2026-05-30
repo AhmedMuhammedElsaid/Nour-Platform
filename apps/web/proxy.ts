@@ -45,16 +45,20 @@ export function proxy(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  /*
-   * Match every route EXCEPT API routes and static assets:
-   *   /api/*           — JSON endpoints (health, etc.); must NOT be locale-redirected
-   *   /_next/static/*  — JS/CSS bundles (immutable, no inline scripts)
-   *   /_next/image/*   — optimized images
-   *   /favicon.ico     — browser default
-   *   PWA static files — sw.js / manifest / offline page / icons must be served
-   *                      as-is, never locale-redirected by next-intl.
-   */
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon\\.ico|sw\\.js|manifest\\.webmanifest|offline\\.html|icons).*)",
+    /*
+     * Match every route EXCEPT API routes and static assets. Excluded:
+     *   /api/*                  — JSON endpoints
+     *   /_next/static|image/*   — bundled assets / image optimizer
+     *   /favicon*               — all favicon variants (ico, 32x32.png, 16x16.png)
+     *   /apple-touch-icon.png   — iOS home-screen icon
+     *   /android-chrome*.png    — PWA / manifest icons
+     *   /og-image.png           — OG social-share image (must be served without redirect)
+     *   /sw.js                  — service worker (scope must be root)
+     *   /manifest.webmanifest   — PWA manifest
+     *   /offline.html           — SW offline fallback
+     *   /icons/*                — SVG icon set
+     */
+    "/((?!api|_next/static|_next/image|favicon|apple-touch-icon\\.png|android-chrome|og-image\\.png|sw\\.js|manifest\\.webmanifest|offline\\.html|icons).*)",
   ],
 };
