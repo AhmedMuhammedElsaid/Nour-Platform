@@ -97,6 +97,10 @@ export default async function HomePage({
     enName: c.en.name,
   }));
 
+  const categoryById = new Map(
+    categories.map((c) => [c.id, { slug: c[locale].slug, name: c[locale].name }])
+  );
+
   return (
     <section className="mx-auto max-w-6xl px-6 py-16">
       {/* Hero */}
@@ -126,7 +130,13 @@ export default async function HomePage({
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {serialized.map((playlist) => (
-            <PlaylistCard key={playlist.id} playlist={playlist} />
+            <PlaylistCard
+                key={playlist.id}
+                playlist={playlist}
+                categories={playlist.categoryIds
+                  .map((id) => categoryById.get(id))
+                  .filter((c): c is { slug: string; name: string } => c != null)}
+              />
           ))}
         </div>
       )}

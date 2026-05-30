@@ -7,11 +7,17 @@ import type { SerializedPlaylist } from "@/features/playlists/types";
 import type { Locale } from "@repo/api/schemas/locale";
 import { getCoverGradient, getCoverEmoji } from "@/features/playlists/lib/cover-art";
 
-interface PlaylistCardProps {
-  playlist: SerializedPlaylist;
+interface CategoryChip {
+  slug: string;
+  name: string;
 }
 
-export async function PlaylistCard({ playlist }: PlaylistCardProps) {
+interface PlaylistCardProps {
+  playlist: SerializedPlaylist;
+  categories?: CategoryChip[];
+}
+
+export async function PlaylistCard({ playlist, categories }: PlaylistCardProps) {
   const [t, locale] = await Promise.all([
     getTranslations("playlist"),
     getLocale() as Promise<Locale>,
@@ -77,6 +83,18 @@ export async function PlaylistCard({ playlist }: PlaylistCardProps) {
         </div>
         {display.description != null && (
           <p className="text-sm text-text-2 line-clamp-2">{display.description}</p>
+        )}
+        {categories != null && categories.length > 0 && (
+          <div data-testid="category-chips" className="flex flex-wrap gap-1.5 mt-1">
+            {categories.slice(0, 2).map((cat) => (
+              <span
+                key={cat.slug}
+                className="border border-border text-text-2 text-xs rounded-full px-2 py-0.5"
+              >
+                {cat.name}
+              </span>
+            ))}
+          </div>
         )}
       </div>
     </Link>

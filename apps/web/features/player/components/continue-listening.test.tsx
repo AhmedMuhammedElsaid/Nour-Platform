@@ -58,7 +58,7 @@ describe("ContinueListening", () => {
     const link = await screen.findByRole("link", {
       name: /surah al-fatiha/i,
     });
-    expect(link).toHaveAttribute("href", "/playlists/juz-amma");
+    expect(link).toHaveAttribute("href", "/playlists/juz-amma#t1");
     expect(screen.getByText("continueListening")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "clearHistory" }));

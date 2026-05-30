@@ -34,6 +34,7 @@ function decodeSlug(raw: string): string {
 export const dynamic = "force-dynamic";
 import { getTracksWithUrls } from "@repo/api/services/track";
 import { getMediaUrlById } from "@repo/api/services/media";
+import { listCategories } from "@repo/api/services/category";
 import Image from "next/image";
 import type { Locale } from "@repo/api/schemas/locale";
 import type { Playlist } from "@repo/api/schemas/playlist";
@@ -154,6 +155,12 @@ export default async function PlaylistDetailPage({
   const serializedPlaylist = serializePlaylist(playlist);
   const displayTracks = tracks.map((t) => toDisplayTrack(t, locale));
 
+  const allCategories = playlist.categoryIds.length > 0 ? await listCategories() : [];
+  const playlistCategories = playlist.categoryIds
+    .map((id) => allCategories.find((c) => c.id === id))
+    .filter((c): c is NonNullable<typeof c> => c != null)
+    .map((c) => ({ slug: c[locale].slug, name: c[locale].name }));
+
   const publishedDate = new Date(serializedPlaylist.createdAt).toLocaleDateString(
     locale === "ar" ? "ar" : "en-US",
     { year: "numeric", month: "long", day: "numeric" },
@@ -226,6 +233,19 @@ export default async function PlaylistDetailPage({
         <h1 className="font-display text-4xl tracking-tight">{display.title}</h1>
         {display.description != null && (
           <p className="mt-2 text-text-2">{display.description}</p>
+        )}
+        {playlistCategories.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {playlistCategories.map((cat) => (
+              <Link
+                key={cat.slug}
+                href={`/?category=${cat.slug}`}
+                className="border border-border text-text-2 text-xs rounded-full px-2 py-0.5 hover:border-primary/50 hover:text-primary transition-colors"
+              >
+                {cat.name}
+              </Link>
+            ))}
+          </div>
         )}
         <p className="mt-1 text-sm text-text-2">
           {t("trackCount", { count: displayTracks.length })} &middot; {publishedDate}

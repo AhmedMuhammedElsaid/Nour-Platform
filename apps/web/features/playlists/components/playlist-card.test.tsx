@@ -101,4 +101,25 @@ describe("PlaylistCard", () => {
     render(el);
     expect(screen.queryByText("0")).not.toBeInTheDocument();
   });
+
+  it("renders category chip labels when categories prop is provided", async () => {
+    const el = await PlaylistCard({
+      playlist: makePlaylist(),
+      categories: [
+        { slug: "quran", name: "Quran" },
+        { slug: "hadith", name: "Hadith" },
+      ],
+    });
+    render(el);
+
+    expect(screen.getByText("Quran")).toBeInTheDocument();
+    expect(screen.getByText("Hadith")).toBeInTheDocument();
+  });
+
+  it("renders no category chips when categories prop is absent", async () => {
+    const el = await PlaylistCard({ playlist: makePlaylist() });
+    const { container } = render(el);
+
+    expect(container.querySelector('[data-testid="category-chips"]')).toBeNull();
+  });
 });
