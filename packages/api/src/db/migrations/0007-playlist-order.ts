@@ -13,9 +13,8 @@ import { PlaylistModel } from "../models/playlist.model";
  * `order = countDocuments()` at creation time (append-to-end default).
  *
  * Also calls `PlaylistModel.ensureIndexes()` to register the two new indexes
- * declared in the updated schema (the unique sparse index on `order`, if any,
- * and the compound query index). This is idempotent — Mongoose skips indexes
- * that already exist.
+ * declared in the updated model: `{ order: 1 }` and `{ status: 1, order: 1 }`.
+ * This is idempotent — Mongoose skips indexes that already exist.
  */
 export const name = "0007-playlist-order";
 

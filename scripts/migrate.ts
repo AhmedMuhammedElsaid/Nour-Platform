@@ -44,8 +44,8 @@ const migrations: Migration[] = [
   migration0005, // merge AR/EN docs → embedded locale; drops old indexes, rebuilds new
   migration0001, // ensureIndexes runs on new schema after 0005 — no-op on first run
   migration0002, // same
-  migration0006, // text-search indexes — additive, no document changes; safe last
-  migration0007, // backfill playlist order field; register new indexes
+  migration0006, // text-search indexes — additive, no document changes
+  migration0007, // backfill playlist.order; registers { order,1 } and { status,order } indexes
 ];
 
 async function main(): Promise<void> {

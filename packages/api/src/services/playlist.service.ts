@@ -158,7 +158,7 @@ export async function createPlaylist(
   // full aggregation, since we only need a scalar count here.
   const order = parsed.order ?? (await PlaylistModel.countDocuments());
 
-  const { ar, en, ...rest } = parsed;
+  const { ar, en, order: _parsedOrder, ...rest } = parsed;
   const lean = await repoCreatePlaylist({
     ...rest,
     order,
