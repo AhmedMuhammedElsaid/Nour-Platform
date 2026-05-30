@@ -36,7 +36,7 @@ export async function findPublishedPlaylists(
   }
   return PlaylistModel.aggregate<PlaylistLeanWithCount>([
     { $match: match },
-    { $sort: { updatedAt: -1 } },
+    { $sort: { order: 1 } },
     {
       $lookup: {
         from: "tracks",
@@ -56,7 +56,7 @@ export async function findPublishedPlaylists(
 export async function findAllPlaylists(): Promise<PlaylistLeanWithCount[]> {
   await getDb();
   return PlaylistModel.aggregate<PlaylistLeanWithCount>([
-    { $sort: { updatedAt: -1 } },
+    { $sort: { order: 1 } },
     {
       $lookup: {
         from: "tracks",
@@ -130,4 +130,12 @@ export async function deletePlaylistById(id: string): Promise<boolean> {
   await getDb();
   const result = await PlaylistModel.deleteOne({ _id: id });
   return result.deletedCount === 1;
+}
+
+export async function updatePlaylistOrder(orderedIds: string[]): Promise<void> {
+  await getDb();
+  const ops = orderedIds.map((id, index) => ({
+    updateOne: { filter: { _id: id }, update: { $set: { order: index } } },
+  }));
+  await PlaylistModel.bulkWrite(ops);
 }

@@ -46,6 +46,7 @@ function toDto(doc: {
   coverMediaId?: { toString(): string } | null;
   status: string;
   categoryIds?: Array<{ toString(): string }>;
+  order: number;
   trackCount?: number;
   createdAt: Date;
   updatedAt: Date;
@@ -67,6 +68,7 @@ function toDto(doc: {
       : {}),
     status: doc.status as Playlist["status"],
     categoryIds: (doc.categoryIds ?? []).map((id) => id.toString()),
+    order: doc.order,
     ...(doc.trackCount !== undefined ? { trackCount: doc.trackCount } : {}),
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,

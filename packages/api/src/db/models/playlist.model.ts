@@ -21,6 +21,7 @@ const playlistSchema = new Schema(
       default: "draft",
     },
     categoryIds: [{ type: Schema.Types.ObjectId, default: [] }],
+    order: { type: Number, required: true, min: 0 },
   },
   { timestamps: true, collection: "playlists" },
 );
@@ -28,6 +29,8 @@ const playlistSchema = new Schema(
 playlistSchema.index({ "ar.slug": 1 }, { unique: true });
 playlistSchema.index({ "en.slug": 1 }, { unique: true });
 playlistSchema.index({ status: 1, updatedAt: -1 });
+playlistSchema.index({ status: 1, order: 1 });
+playlistSchema.index({ order: 1 });
 
 export type PlaylistDoc = InferSchemaType<typeof playlistSchema> & {
   _id: mongoose.Types.ObjectId;
