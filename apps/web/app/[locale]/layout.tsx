@@ -21,6 +21,8 @@ import { routing } from "@/i18n/routing";
 import { defaultOpenGraph, defaultTwitter } from "@/lib/seo";
 import { JsonLd } from "@/features/seo/components/json-ld";
 import { organizationLd, webSiteLd } from "@/lib/seo";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -140,6 +142,8 @@ export default async function LocaleLayout({
               <PlaybackPersistence />
               <InstallPrompt />
               <ServiceWorkerRegister />
+              <Analytics />
+              <SpeedInsights />
             </LocaleAlternatesProvider>
           </PlayerProvider>
         </NextIntlClientProvider>
