@@ -133,6 +133,7 @@ export async function deletePlaylistById(id: string): Promise<boolean> {
 }
 
 export async function updatePlaylistOrder(orderedIds: string[]): Promise<void> {
+  if (orderedIds.length === 0) return;
   await getDb();
   const ops = orderedIds.map((id, index) => ({
     updateOne: { filter: { _id: id }, update: { $set: { order: index } } },
