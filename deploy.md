@@ -183,21 +183,73 @@ This runs the full ordered chain `[0003, 0004, 0005, 0001, 0002, 0006]` (see [`s
 
 The seed script refuses to run with `NODE_ENV=production` unless you pass `--force` — by design, see [`scripts/seed-admin.ts`](./scripts/seed-admin.ts).
 
+> **PowerShell note:** use `$env:VAR = "value"` syntax — bash-style `VAR=value command` does not work in PowerShell. Also wrap passwords containing `$` in single quotes so PowerShell doesn't expand them as variables.
+
+**PowerShell:**
+```powershell
+$env:MONGODB_URI = "mongodb+srv://<user>:<password>@<cluster>.mongodb.net/nour?retryWrites=true&w=majority"
+$env:NODE_ENV = "production"
+pnpm seed:admin --email "<you@example.com>" --password '<your-password>' --force
+```
+
+**bash/zsh:**
 ```bash
-MONGODB_URI="<prod-uri>" NODE_ENV=production pnpm seed:admin \
+MONGODB_URI="mongodb+srv://<user>:<password>@<cluster>.mongodb.net/nour?retryWrites=true&w=majority" \
+NODE_ENV=production pnpm seed:admin \
   --email "<you@example.com>" \
-  --password "<strong-password>" \
+  --password '<your-password>' \
   --force
 ```
 
-**Then disable the script** so it can't be re-run accidentally. Either:
+> **Note:** the script skips creation silently if the email already exists — it returns the existing record without updating the password. To change a password for an existing user, see §7b below.
 
-- Delete `scripts/seed-admin.ts`, or
-- Remove the `"seed:admin"` line from the root [`package.json`](./package.json).
+**Verify:** in Atlas → `users` collection has a document with `role: "admin"` and a hashed password (argon2 prefix `$argon2id$`).
 
-Commit and push that change.
+---
 
-**Verify:** in Atlas → `users` collection has exactly one document with `role: "admin"` and a hashed `password` (argon2 prefix `$argon2id$`).
+## 7b. Add more admin users / reset a password
+
+### Add a new admin user
+
+Re-run the seed script with a different email — it creates one user per unique email:
+
+**PowerShell:**
+```powershell
+$env:MONGODB_URI = "mongodb+srv://<user>:<password>@<cluster>.mongodb.net/nour?retryWrites=true&w=majority"
+$env:NODE_ENV = "production"
+pnpm seed:admin --email "<second-admin@example.com>" --password '<password>' --force
+```
+
+### Reset an existing user's password
+
+Create a temporary script `scripts/reset-admin-password.ts` (delete it after use):
+
+```ts
+import { getDb, disconnectDb } from "@repo/api/db/client";
+import { hashPassword } from "@repo/api/auth/password";
+import { resetAdminPassword } from "@repo/api/services/auth";
+
+const EMAIL = "<admin@example.com>";
+const NEW_PASSWORD = "<new-password>";
+
+async function main() {
+  await getDb();
+  const hash = await hashPassword(NEW_PASSWORD);
+  const ok = await resetAdminPassword({ email: EMAIL, hashedPassword: hash });
+  console.log(ok ? `Password reset for ${EMAIL}` : `User not found: ${EMAIL}`);
+  await disconnectDb();
+}
+
+main().catch((err) => { console.error(err); process.exit(1); });
+```
+
+Then run it (**PowerShell**):
+```powershell
+$env:MONGODB_URI = "mongodb+srv://<user>:<password>@<cluster>.mongodb.net/nour?retryWrites=true&w=majority"
+pnpm exec tsx --env-file-if-exists=.env.local scripts/reset-admin-password.ts
+```
+
+Delete the file after confirming the password works.
 
 ---
 
