@@ -2,6 +2,40 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
+vi.mock('../actions/reorder-playlists.action', () => ({
+  reorderPlaylistsAction: vi.fn(),
+}))
+
+// dnd-kit requires pointer events and complex DOM APIs not available in jsdom.
+// Mock the modules so we can test rendering logic without drag mechanics.
+vi.mock('@dnd-kit/core', () => ({
+  DndContext: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  PointerSensor: class {},
+  KeyboardSensor: class {},
+  closestCenter: vi.fn(),
+  useSensor: vi.fn(),
+  useSensors: vi.fn(() => []),
+}))
+
+vi.mock('@dnd-kit/sortable', () => ({
+  SortableContext: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useSortable: () => ({
+    attributes: {},
+    listeners: {},
+    setNodeRef: vi.fn(),
+    transform: null,
+    transition: undefined,
+    isDragging: false,
+  }),
+  arrayMove: vi.fn(),
+  sortableKeyboardCoordinates: vi.fn(),
+  verticalListSortingStrategy: vi.fn(),
+}))
+
+vi.mock('@dnd-kit/utilities', () => ({
+  CSS: { Transform: { toString: () => '' } },
+}))
+
 // next/link renders fine in the browser but needs the Next.js router context
 // in tests. Stub it to a plain anchor to avoid that dependency.
 vi.mock('next/link', () => ({
