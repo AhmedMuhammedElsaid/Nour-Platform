@@ -124,7 +124,7 @@ export async function generateMetadata({
       description,
       // Prefer the playlist's own cover; fall back to the default OG image
       // (resolved against metadataBase set in the root layout).
-      images: ogCoverUrl ? [{ url: ogCoverUrl }] : [{ url: "/og-image.webp" }],
+      images: ogCoverUrl ? [{ url: ogCoverUrl }] : [{ url: "/og-image.png" }],
     },
     twitter: defaultTwitter(),
   };
