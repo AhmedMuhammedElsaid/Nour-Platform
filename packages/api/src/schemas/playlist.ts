@@ -26,6 +26,7 @@ export const playlistSchema = z.object({
   coverMediaId: objectIdSchema.optional(),
   status: playlistStatusSchema,
   categoryIds: z.array(objectIdSchema),
+  order: z.number().int().nonnegative(),
   // Present on list responses (getPublishedPlaylists / getAllPlaylists).
   // Absent on single-document lookups (getPlaylistBySlug / getPlaylistById).
   trackCount: z.number().int().nonnegative().optional(),
@@ -48,6 +49,7 @@ export const playlistCreateInputSchema = z.object({
   coverMediaId: objectIdSchema.optional(),
   status: playlistStatusSchema.default("draft"),
   categoryIds: z.array(objectIdSchema).default([]),
+  order: z.number().int().nonnegative().optional(),
 });
 export type PlaylistCreateInput = z.infer<typeof playlistCreateInputSchema>;
 
@@ -70,6 +72,7 @@ export const playlistUpdateInputSchema = z
     coverMediaId: objectIdSchema.nullable(),
     status: playlistStatusSchema,
     categoryIds: z.array(objectIdSchema),
+    order: z.number().int().nonnegative(),
   })
   .partial();
 export type PlaylistUpdateInput = z.infer<typeof playlistUpdateInputSchema>;

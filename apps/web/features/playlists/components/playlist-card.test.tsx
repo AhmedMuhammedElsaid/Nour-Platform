@@ -48,6 +48,7 @@ function makePlaylist(
     en: { title: "My Playlist", slug: "my-playlist" },
     status: "published",
     categoryIds: [],
+    order: 0,
     createdAt: "2024-01-01T00:00:00.000Z",
     updatedAt: "2024-01-01T00:00:00.000Z",
     ...overrides,

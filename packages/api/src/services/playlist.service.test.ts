@@ -20,10 +20,18 @@ vi.mock("../repositories/playlist.repo", () => ({
   findPlaylistBySlug: vi.fn(),
   findPublishedPlaylists: vi.fn(),
   updatePlaylistById: vi.fn(),
+  updatePlaylistOrder: vi.fn(),
 }));
 
 vi.mock("../repositories/category.repo", () => ({
   findById: vi.fn(),
+}));
+
+// PlaylistModel is imported directly for countDocuments (default order on create).
+vi.mock("../db/models/playlist.model", () => ({
+  PlaylistModel: {
+    countDocuments: vi.fn().mockResolvedValue(0),
+  },
 }));
 
 const { revalidateTag } = await import("next/cache");
@@ -44,6 +52,7 @@ function makeLean(overrides: Record<string, unknown> = {}): PlaylistLeanWithCoun
     coverMediaId: null,
     status: "draft",
     categoryIds: [],
+    order: 0,
     trackCount: 0,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
@@ -143,6 +152,8 @@ describe("playlist.service", () => {
       // EN slug auto-derived from title (with punctuation stripped)
       expect(createArg.en.slug).toBe("my-playlist");
       expect(result.en.slug).toBe("my-playlist");
+      // order defaults to countDocuments() result (mock returns 0)
+      expect(createArg.order).toBe(0);
     });
 
     it("derives a non-empty AR slug from an Arabic-only title (ADR 0002)", async () => {
@@ -289,6 +300,31 @@ describe("playlist.service", () => {
       } as never);
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe("reorderPlaylists", () => {
+    it("requires admin session, calls updatePlaylistOrder, and revalidates home tag", async () => {
+      vi.mocked(requireSession).mockResolvedValueOnce({} as never);
+      vi.mocked(repo.updatePlaylistOrder).mockResolvedValueOnce(undefined);
+
+      await service.reorderPlaylists(["playlist123456789012", "playlist123456789013"]);
+
+      expect(requireSession).toHaveBeenCalledWith(["admin"]);
+      expect(repo.updatePlaylistOrder).toHaveBeenCalledWith([
+        "playlist123456789012",
+        "playlist123456789013",
+      ]);
+      expect(revalidateTag).toHaveBeenCalledWith(PLAYLISTS_HOME, "default");
+    });
+
+    it("does not call updatePlaylistOrder when requireSession rejects", async () => {
+      vi.mocked(requireSession).mockRejectedValueOnce(new AppError("UNAUTHORIZED", "Not authenticated"));
+
+      await expect(
+        service.reorderPlaylists(["playlist123456789012"]),
+      ).rejects.toBeInstanceOf(AppError);
+      expect(repo.updatePlaylistOrder).not.toHaveBeenCalled();
     });
   });
 });
