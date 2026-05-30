@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 
 import { Button } from "@repo/ui/primitives/button";
 import { usePlayer } from "@repo/ui/blocks/player-context";
@@ -74,6 +74,23 @@ export function TrackListPlayer({
     },
     [currentTrack, toggle, playableTracks, queueTracks, loadQueue],
   );
+
+  // When navigating from a "Continue listening" link the href carries
+  // `#<trackId>`. Read it once on mount, jump to that track, then clear the
+  // hash so a page refresh doesn't re-trigger autoplay.
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    const idx = playableTracks.findIndex((t) => t.id === hash);
+    if (idx === -1) return;
+    window.history.replaceState(
+      null,
+      "",
+      window.location.pathname + window.location.search,
+    );
+    loadQueue(queueTracks, idx);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally empty — must only fire once on mount
 
   if (tracks.length === 0) {
     return <p className="text-text-2">No tracks yet.</p>;

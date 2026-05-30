@@ -28,7 +28,7 @@ export function ContinueListening() {
   if (!items || items.length === 0) return null;
 
   // Only entries that know their playlist can deep-link back to playback.
-  const linkable = items.filter((item) => item.playlistSlug).slice(0, 4);
+  const linkable = items.filter((item) => item.playlistSlug).slice(0, 6);
   if (linkable.length === 0) return null;
 
   const handleClear = (): void => {
@@ -72,7 +72,7 @@ export function ContinueListening() {
           return (
             <li key={item.trackId} className="shrink-0 w-40">
               <Link
-                href={`/playlists/${item.playlistSlug}`}
+                href={`/playlists/${item.playlistSlug}#${item.trackId}`}
                 locale={linkLocale}
                 className="group block focus-visible:outline-none"
               >
