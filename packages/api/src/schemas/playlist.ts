@@ -17,6 +17,7 @@ const localeContentSchema = z.object({
   title: z.string().min(1).max(200),
   slug: slugSchema,
   description: z.string().max(2000).optional(),
+  scholarName: z.string().max(200).optional(),
 });
 
 export const playlistSchema = z.object({
@@ -24,6 +25,7 @@ export const playlistSchema = z.object({
   ar: localeContentSchema,
   en: localeContentSchema,
   coverMediaId: objectIdSchema.optional(),
+  scholarImage: z.string().max(500).optional(),
   status: playlistStatusSchema,
   categoryIds: z.array(objectIdSchema),
   order: z.number().int().nonnegative(),
@@ -40,13 +42,16 @@ export const playlistCreateInputSchema = z.object({
     title: z.string().min(1).max(200),
     slug: slugSchema.optional(),
     description: z.string().max(2000).optional(),
+    scholarName: z.string().max(200).optional(),
   }),
   en: z.object({
     title: z.string().min(1).max(200),
     slug: slugSchema.optional(),
     description: z.string().max(2000).optional(),
+    scholarName: z.string().max(200).optional(),
   }),
   coverMediaId: objectIdSchema.optional(),
+  scholarImage: z.string().max(500).optional(),
   status: playlistStatusSchema.default("draft"),
   categoryIds: z.array(objectIdSchema).default([]),
   order: z.number().int().nonnegative().optional(),
@@ -60,6 +65,7 @@ export const playlistUpdateInputSchema = z
         title: z.string().min(1).max(200),
         slug: slugSchema,
         description: z.string().max(2000),
+        scholarName: z.string().max(200),
       })
       .partial(),
     en: z
@@ -67,9 +73,11 @@ export const playlistUpdateInputSchema = z
         title: z.string().min(1).max(200),
         slug: slugSchema,
         description: z.string().max(2000),
+        scholarName: z.string().max(200),
       })
       .partial(),
     coverMediaId: objectIdSchema.nullable(),
+    scholarImage: z.string().max(500).nullable(),
     status: playlistStatusSchema,
     categoryIds: z.array(objectIdSchema),
     order: z.number().int().nonnegative(),

@@ -47,11 +47,14 @@ export function PlaylistForm({
       ar: {
         title: defaultValues?.ar?.title ?? "",
         description: defaultValues?.ar?.description ?? "",
+        scholarName: defaultValues?.ar?.scholarName ?? "",
       },
       en: {
         title: defaultValues?.en?.title ?? "",
         description: defaultValues?.en?.description ?? "",
+        scholarName: defaultValues?.en?.scholarName ?? "",
       },
+      scholarImage: defaultValues?.scholarImage ?? "",
       status: defaultValues?.status ?? ("draft" as const),
       categoryIds: defaultValues?.categoryIds ?? [],
     } satisfies PlaylistFormValues,
@@ -132,6 +135,20 @@ export function PlaylistForm({
                 onChange={(e) => field.handleChange(e.target.value)}
                 onBlur={field.handleBlur}
                 className="flex w-full min-w-0 rounded-md border border-input bg-surface px-3 py-2 text-sm text-foreground shadow-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg resize-none"
+              />
+            </FormField>
+          )}
+        </form.Field>
+
+        <form.Field name="ar.scholarName">
+          {(field) => (
+            <FormField label="Scholar (Arabic)" htmlFor="playlist-ar-scholar">
+              <Input
+                id="playlist-ar-scholar"
+                dir="rtl"
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
               />
             </FormField>
           )}

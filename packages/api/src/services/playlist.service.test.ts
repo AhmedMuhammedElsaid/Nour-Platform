@@ -174,6 +174,33 @@ describe("playlist.service", () => {
       expect(createArg.ar.slug).toBe("سورة-البقرة");
     });
 
+    it("forwards bilingual scholarName + scholarImage to the repo and DTO", async () => {
+      vi.mocked(requireSession).mockResolvedValueOnce({} as never);
+      vi.mocked(repo.createPlaylist).mockResolvedValueOnce(
+        makeLean({
+          ar: { title: "عنوان", slug: "عنوان", scholarName: "د. صابر عادل" },
+          en: { title: "Title", slug: "title", scholarName: "Dr. Saber Adel" },
+          scholarImage: "/dr-saber-adel.jpg",
+        }),
+      );
+
+      const result = await service.createPlaylist({
+        ar: { title: "عنوان", scholarName: "د. صابر عادل" },
+        en: { title: "Title", scholarName: "Dr. Saber Adel" },
+        scholarImage: "/dr-saber-adel.jpg",
+        status: "draft",
+        categoryIds: [],
+      });
+
+      const createArg = vi.mocked(repo.createPlaylist).mock.calls[0]![0];
+      expect(createArg.ar.scholarName).toBe("د. صابر عادل");
+      expect(createArg.en.scholarName).toBe("Dr. Saber Adel");
+      expect(createArg.scholarImage).toBe("/dr-saber-adel.jpg");
+      // DTO round-trips the new fields back to callers.
+      expect(result.ar.scholarName).toBe("د. صابر عادل");
+      expect(result.scholarImage).toBe("/dr-saber-adel.jpg");
+    });
+
     it("propagates Zod validation errors as thrown ZodError", async () => {
       vi.mocked(requireSession).mockResolvedValueOnce({} as never);
 
@@ -325,6 +352,31 @@ describe("playlist.service", () => {
         service.reorderPlaylists(["playlist123456789012"]),
       ).rejects.toBeInstanceOf(AppError);
       expect(repo.updatePlaylistOrder).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("updatePlaylist", () => {
+    it("forwards a scholarName-only patch and revalidates after the update", async () => {
+      vi.mocked(requireSession).mockResolvedValueOnce({} as never);
+      vi.mocked(repo.updatePlaylistById).mockResolvedValueOnce(
+        makeLean({
+          _id: { toString: () => "playlist123456789012" },
+          ar: { title: "عنوان", slug: "عنوان", scholarName: "جديد" },
+        }),
+      );
+
+      await service.updatePlaylist("playlist123456789012", {
+        ar: { scholarName: "جديد" },
+      });
+
+      // The service forwards the partial patch untouched; flattenLocaleUpdate
+      // (covered by mongo-update.test.ts) merges it into "ar.scholarName" so
+      // sibling fields like slug survive.
+      expect(repo.updatePlaylistById).toHaveBeenCalledWith(
+        "playlist123456789012",
+        expect.objectContaining({ ar: { scholarName: "جديد" } }),
+      );
+      expect(revalidateTag).toHaveBeenCalledWith(PLAYLISTS_HOME, "default");
     });
   });
 });

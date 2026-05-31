@@ -43,9 +43,10 @@ import type { Session } from "next-auth";
 // absent on single-document finders (slug/id lookups).
 function toDto(doc: {
   _id: { toString(): string };
-  ar: { title: string; slug: string; description?: string | null };
-  en: { title: string; slug: string; description?: string | null };
+  ar: { title: string; slug: string; description?: string | null; scholarName?: string | null };
+  en: { title: string; slug: string; description?: string | null; scholarName?: string | null };
   coverMediaId?: { toString(): string } | null;
+  scholarImage?: string | null;
   status: string;
   categoryIds?: Array<{ toString(): string }>;
   order: number;
@@ -59,15 +60,18 @@ function toDto(doc: {
       title: doc.ar.title,
       slug: doc.ar.slug,
       ...(doc.ar.description != null ? { description: doc.ar.description } : {}),
+      ...(doc.ar.scholarName != null ? { scholarName: doc.ar.scholarName } : {}),
     },
     en: {
       title: doc.en.title,
       slug: doc.en.slug,
       ...(doc.en.description != null ? { description: doc.en.description } : {}),
+      ...(doc.en.scholarName != null ? { scholarName: doc.en.scholarName } : {}),
     },
     ...(doc.coverMediaId != null
       ? { coverMediaId: doc.coverMediaId.toString() }
       : {}),
+    ...(doc.scholarImage != null ? { scholarImage: doc.scholarImage } : {}),
     status: doc.status as Playlist["status"],
     categoryIds: (doc.categoryIds ?? []).map((id) => id.toString()),
     order: doc.order,
@@ -166,11 +170,13 @@ export async function createPlaylist(
       title: ar.title,
       slug: arSlug,
       ...(ar.description != null ? { description: ar.description } : {}),
+      ...(ar.scholarName != null ? { scholarName: ar.scholarName } : {}),
     },
     en: {
       title: en.title,
       slug: enSlug,
       ...(en.description != null ? { description: en.description } : {}),
+      ...(en.scholarName != null ? { scholarName: en.scholarName } : {}),
     },
   });
 

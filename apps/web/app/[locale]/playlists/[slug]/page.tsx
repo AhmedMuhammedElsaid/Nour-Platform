@@ -231,6 +231,23 @@ export default async function PlaylistDetailPage({
 
       <header>
         <h1 className="font-display text-4xl tracking-tight">{display.title}</h1>
+        {display.scholarName != null && (
+          <div className="mt-3 flex items-center gap-3">
+            {serializedPlaylist.scholarImage != null && (
+              <Image
+                src={serializedPlaylist.scholarImage}
+                alt={display.scholarName}
+                width={40}
+                height={40}
+                className="size-10 rounded-full object-cover"
+              />
+            )}
+            <p className="text-sm text-text-2">
+              <span className="text-text-2/70">{t("by")} </span>
+              <span className="text-text font-medium">{display.scholarName}</span>
+            </p>
+          </div>
+        )}
         {display.description != null && (
           <p className="mt-2 text-text-2">{display.description}</p>
         )}

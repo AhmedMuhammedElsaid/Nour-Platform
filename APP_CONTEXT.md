@@ -118,7 +118,8 @@ packages/api/src/
   schemas/
     locale.ts             → localeSchema, LOCALES=['ar','en'], DEFAULT_LOCALE='ar', Locale type, isLocale()
     user.ts               → User, UserRole, Credentials
-    playlist.ts           → Playlist (categoryIds hold category _ids, order: number, optional trackCount?: number), PlaylistStatus, *Input
+    playlist.ts           → Playlist (categoryIds hold category _ids, order: number, optional trackCount?: number,
+                            embedded ar/en.scholarName? bilingual scholar name, top-level scholarImage? path/URL), PlaylistStatus, *Input
     track.ts              → Track (playlistId, order), TrackCreateInput, TrackUpdateInput
     media.ts              → Media, MediaMimeType, MediaStatus, *Input
     category.ts           → Category (contentId, locale), CategoryCreateInput, CategoryUpdateInput

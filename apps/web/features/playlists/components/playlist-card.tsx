@@ -64,6 +64,10 @@ export async function PlaylistCard({ playlist, categories }: PlaylistCardProps) 
         {display.title}
       </h2>
 
+      {display.scholarName != null && (
+        <p className="text-sm text-text-2 line-clamp-1 w-full">{display.scholarName}</p>
+      )}
+
       {display.description != null && (
         <p className="text-sm text-text-2 line-clamp-2 w-full">{display.description}</p>
       )}

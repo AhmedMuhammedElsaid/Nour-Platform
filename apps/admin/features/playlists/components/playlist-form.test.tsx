@@ -71,8 +71,9 @@ describe("PlaylistForm — edit mode", () => {
     playlistId: "aaaaaaaaaaaaaaaaaaaaaaaa",
     availableCategories: [],
     defaultValues: {
-      ar: { title: "عنوان موجود", description: "" },
-      en: { title: "Existing Title", description: "Existing desc" },
+      ar: { title: "عنوان موجود", description: "", scholarName: "" },
+      en: { title: "Existing Title", description: "Existing desc", scholarName: "" },
+      scholarImage: "",
       status: "published" as const,
       categoryIds: [] as string[],
     },

@@ -66,8 +66,17 @@ export default async function EditPlaylistPage({ params }: Props) {
         playlistId={playlist.id}
         availableCategories={availableCategories}
         defaultValues={{
-          ar: { title: playlist.ar.title, description: playlist.ar.description ?? "" },
-          en: { title: playlist.en.title, description: playlist.en.description ?? "" },
+          ar: {
+            title: playlist.ar.title,
+            description: playlist.ar.description ?? "",
+            scholarName: playlist.ar.scholarName ?? "",
+          },
+          en: {
+            title: playlist.en.title,
+            description: playlist.en.description ?? "",
+            scholarName: playlist.en.scholarName ?? "",
+          },
+          scholarImage: playlist.scholarImage ?? "",
           status: playlist.status,
           categoryIds: playlist.categoryIds ?? [],
         }}

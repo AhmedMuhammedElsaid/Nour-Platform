@@ -5,6 +5,7 @@ const localeContentSchema = new Schema(
     title: { type: String, required: true, trim: true, maxlength: 200 },
     slug: { type: String, required: true, lowercase: true, trim: true, maxlength: 200 },
     description: { type: String, maxlength: 2000 },
+    scholarName: { type: String, trim: true, maxlength: 200 },
   },
   { _id: false },
 );
@@ -14,6 +15,7 @@ const playlistSchema = new Schema(
     ar: { type: localeContentSchema, required: true },
     en: { type: localeContentSchema, required: true },
     coverMediaId: { type: Schema.Types.ObjectId, ref: "Media" },
+    scholarImage: { type: String, trim: true, maxlength: 500 },
     status: {
       type: String,
       enum: ["draft", "published"],

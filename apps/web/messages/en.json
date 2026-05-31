@@ -36,7 +36,8 @@
     "listenOn": "Listen on Nour Islamic Audio",
     "published": "Published",
     "backToHome": "Back to Home",
-    "track":"Track"
+    "track":"Track",
+    "by": "By"
   },
   "search": {
     "title": "Search",

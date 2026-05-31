@@ -25,11 +25,14 @@ export async function createPlaylistAction(
       ar: {
         title: parsed.data.ar.title,
         description: parsed.data.ar.description || undefined,
+        scholarName: parsed.data.ar.scholarName || undefined,
       },
       en: {
         title: parsed.data.en.title,
         description: parsed.data.en.description || undefined,
+        scholarName: parsed.data.en.scholarName || undefined,
       },
+      scholarImage: parsed.data.scholarImage || undefined,
       status: parsed.data.status,
       categoryIds: parsed.data.categoryIds,
     });

@@ -104,8 +104,8 @@ export async function findPublishedPlaylistsByIds(
 
 export async function createPlaylist(
   data: Omit<PlaylistCreateInput, "ar" | "en"> & {
-    ar: { title: string; slug: string; description?: string };
-    en: { title: string; slug: string; description?: string };
+    ar: { title: string; slug: string; description?: string; scholarName?: string };
+    en: { title: string; slug: string; description?: string; scholarName?: string };
   },
 ): Promise<PlaylistLean> {
   await getDb();
