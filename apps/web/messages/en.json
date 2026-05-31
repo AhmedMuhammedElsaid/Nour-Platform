@@ -35,7 +35,8 @@
     "trackCount": "{count, plural, =1 {# track} other {# tracks}}",
     "listenOn": "Listen on Nour Islamic Audio",
     "published": "Published",
-    "backToHome": "Back to Home"
+    "backToHome": "Back to Home",
+    "track":"Track"
   },
   "search": {
     "title": "Search",

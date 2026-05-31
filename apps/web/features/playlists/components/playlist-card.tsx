@@ -18,11 +18,9 @@ interface PlaylistCardProps {
 }
 
 export async function PlaylistCard({ playlist, categories }: PlaylistCardProps) {
-  const [t, locale] = await Promise.all([
-    getTranslations("playlist"),
-    getLocale() as Promise<Locale>,
-  ]);
+  const locale = (await getLocale()) as Locale;
   const display = playlist[locale];
+  const t = await getTranslations("playlist");
 
   const coverUrl = playlist.coverMediaId
     ? await getMediaUrlById(playlist.coverMediaId)
@@ -34,16 +32,16 @@ export async function PlaylistCard({ playlist, categories }: PlaylistCardProps) 
   return (
     <Link
       href={`/playlists/${display.slug}`}
-      className="group rounded-xl border border-border bg-surface overflow-hidden hover:-translate-y-1 hover:border-primary/30 transition-all duration-200 flex flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group relative rounded-2xl border border-border bg-surface hover:-translate-y-1 hover:z-10 hover:border-primary/30 transition-all duration-200 flex flex-col items-center text-center gap-2 p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      {/* Cover art */}
-      <div className="relative aspect-square w-full overflow-hidden">
+      {/* Circle cover art */}
+      <div className="relative w-[78%] aspect-square rounded-full overflow-hidden">
         {coverUrl ? (
           <Image
             src={coverUrl}
             alt=""
             fill
-            sizes="(min-width: 1024px) 30vw, (min-width: 640px) 45vw, 90vw"
+            sizes="(min-width: 1024px) 20vw, 40vw"
             className="object-cover transition-transform group-hover:scale-105"
           />
         ) : (
@@ -58,45 +56,36 @@ export async function PlaylistCard({ playlist, categories }: PlaylistCardProps) 
             </span>
           </div>
         )}
-        {/* Gradient fade into card body */}
-        <div className="absolute inset-0 bg-linear-to-b from-transparent to-black/50 pointer-events-none" />
-        {/* Track count badge */}
-        {playlist.trackCount != null && playlist.trackCount > 0 && (
-          <span className="absolute bottom-2 inset-e-2 rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-semibold px-2.5 py-0.5">
-            {playlist.trackCount}
-          </span>
-        )}
       </div>
 
-      {/* Card body */}
-      <div className="p-4 flex flex-col gap-2">
-        <div className="flex items-start justify-between gap-2">
-          <h2 className="font-display text-base font-semibold leading-tight">
-            {display.title}
-          </h2>
-          {playlist.status === "published" && (
-            <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
-              <span aria-hidden="true" className="size-1.5 rounded-full bg-success" />
-              {t("published")}
+
+
+      <h2 className="font-display text-base font-semibold leading-snug w-full">
+        {display.title}
+      </h2>
+
+      {display.description != null && (
+        <p className="text-sm text-text-2 line-clamp-2 w-full">{display.description}</p>
+      )}
+
+      {/* Track count badge — outside the circle so overflow-hidden doesn't clip it */}
+      {playlist.trackCount != null && playlist.trackCount > 0 && (
+        <span className="rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-semibold px-2.5 py-0.5">
+          {playlist.trackCount} { t("track")}
+        </span>
+      )}
+      {categories != null && categories.length > 0 && (
+        <div data-testid="category-chips" className="flex flex-wrap gap-1.5 justify-center w-full">
+          {categories.slice(0, 2).map((cat) => (
+            <span
+              key={cat.slug}
+              className="border border-border text-text-2 text-xs rounded-full px-2 py-0.5"
+            >
+              {cat.name}
             </span>
-          )}
+          ))}
         </div>
-        {display.description != null && (
-          <p className="text-sm text-text-2 line-clamp-2">{display.description}</p>
-        )}
-        {categories != null && categories.length > 0 && (
-          <div data-testid="category-chips" className="flex flex-wrap gap-1.5 mt-1">
-            {categories.slice(0, 2).map((cat) => (
-              <span
-                key={cat.slug}
-                className="border border-border text-text-2 text-xs rounded-full px-2 py-0.5"
-              >
-                {cat.name}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
+      )}
     </Link>
   );
 }

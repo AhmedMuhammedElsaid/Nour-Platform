@@ -51,7 +51,7 @@ export function ContinueListening() {
         </button>
       </div>
 
-      <ul className="mt-3 flex gap-4 overflow-x-auto pb-2">
+      <ul className="mt-3 flex gap-4 overflow-x-auto pb-2 pt-2">
         {linkable.map((item) => {
           const linkLocale =
             item.locale === "ar" || item.locale === "en"
@@ -74,16 +74,16 @@ export function ContinueListening() {
               <Link
                 href={`/playlists/${item.playlistSlug}#${item.trackId}`}
                 locale={linkLocale}
-                className="group block focus-visible:outline-none"
+                className="group relative rounded-2xl border border-border bg-surface hover:-translate-y-1 hover:z-10 hover:border-primary/30 transition-all duration-200 flex flex-col items-center text-center gap-2 p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                {/* Cover */}
-                <div className="relative aspect-square w-40 overflow-hidden rounded-md">
+                {/* Circle cover */}
+                <div className="relative w-[78%] aspect-square rounded-full overflow-hidden">
                   {item.coverUrl ? (
                     <Image
                       src={item.coverUrl}
                       alt=""
                       fill
-                      sizes="160px"
+                      sizes="112px"
                       className="object-cover transition-transform group-hover:scale-105"
                     />
                   ) : (
@@ -100,30 +100,32 @@ export function ContinueListening() {
                   )}
                   {/* Dark scrim + gold play circle on hover */}
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                    <div className="size-10 rounded-full bg-primary/90 flex items-center justify-center">
-                      <svg className="size-4 text-primary-foreground ms-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <div className="size-8 rounded-full bg-primary/90 flex items-center justify-center">
+                      <svg className="size-3.5 text-primary-foreground ms-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                         <path d="M8 5v14l11-7z" />
                       </svg>
                     </div>
                   </div>
-                  {/* Resume progress bar */}
-                  {pct !== null && (
-                    <div className="absolute bottom-0 inset-x-0 h-[3px] bg-primary/20">
-                      <div
-                        className="h-full bg-primary"
-                        style={{ width: `${Math.round(pct * 100)}%` }}
-                      />
-                    </div>
-                  )}
                 </div>
 
-                <p className="mt-2 truncate text-sm font-medium group-hover:text-primary">
+                {/* Resume progress bar — sits between circle and title */}
+                {pct !== null && (
+                  <div className="w-[78%] h-[3px] rounded-full bg-primary/20">
+                    <div
+                      data-testid="resume-bar"
+                      className="h-full rounded-full bg-primary"
+                      style={{ width: `${Math.round(pct * 100)}%` }}
+                    />
+                  </div>
+                )}
+
+                <p className="truncate text-sm font-medium group-hover:text-primary w-full">
                   {item.title}
                 </p>
                 {pctLabel !== null ? (
-                  <p className="truncate text-xs text-primary/70">{pctLabel}</p>
+                  <p className="truncate text-xs text-primary/70 w-full">{pctLabel}</p>
                 ) : item.playlistTitle ? (
-                  <p className="truncate text-xs text-text-2">{item.playlistTitle}</p>
+                  <p className="truncate text-xs text-text-2 w-full">{item.playlistTitle}</p>
                 ) : null}
               </Link>
             </li>

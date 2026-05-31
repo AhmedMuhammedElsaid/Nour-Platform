@@ -35,7 +35,8 @@
     "trackCount": "{count, plural, other {# مقطع}}",
     "listenOn": "استمع على نور",
     "published": "منشور",
-    "backToHome": "العودة إلى الرئيسية"
+    "backToHome": "العودة إلى الرئيسية",
+    "track":"تلاوة"
   },
   "search": {
     "title": "بحث",
