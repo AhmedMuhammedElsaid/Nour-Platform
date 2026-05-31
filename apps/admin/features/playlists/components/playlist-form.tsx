@@ -67,7 +67,7 @@ export function PlaylistForm({
         return;
       }
       // createPlaylistAction redirects on success; for edit, navigate back.
-      if (mode === "edit") router.push("/playlists");
+      if (mode === "edit") router.push("/");
     },
   });
 

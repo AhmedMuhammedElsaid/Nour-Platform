@@ -16,7 +16,7 @@ export default async function NewPlaylistPage() {
   return (
     <main className="container mx-auto px-4 py-8">
       <div className="mb-6 flex items-center gap-4">
-        <Link href="/playlists" className="text-sm text-muted-foreground hover:underline">
+        <Link href="/" className="text-sm text-muted-foreground hover:underline">
           ← Playlists
         </Link>
         <h1 className="text-2xl font-semibold">New playlist</h1>
