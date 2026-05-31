@@ -15,6 +15,18 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required."),
 });
 
+// TanStack Form v1 with a Zod schema validator stores ZodIssue objects in
+// field.state.meta.errors — not plain strings. Extract the message safely so
+// we never try to render the issue object as a React child.
+function fieldError(errors: unknown[]): string | undefined {
+  const e = errors[0];
+  if (!e) return undefined;
+  if (typeof e === "string") return e;
+  if (typeof e === "object" && e !== null && "message" in e)
+    return (e as { message: string }).message;
+  return undefined;
+}
+
 interface LoginFormProps {
   from?: string;
 }
@@ -24,7 +36,11 @@ function LoginForm({ from }: LoginFormProps) {
 
   const form = useForm({
     defaultValues: { email: "", password: "" },
-    validators: { onChange: loginSchema },
+    // onMount runs validation immediately so `canSubmit` reflects the empty
+    // (invalid) state and the submit button starts disabled; onChange keeps it
+    // in sync as the user types. Error *messages* still only show after a field
+    // is touched (see the gated `error` props below).
+    validators: { onMount: loginSchema, onChange: loginSchema },
     onSubmit: async ({ value }) => {
       setServerError(null);
       const result = await signInAction(value, from);
@@ -52,7 +68,7 @@ function LoginForm({ from }: LoginFormProps) {
           <FormField
             label="Email"
             htmlFor="login-email"
-            error={field.state.meta.isTouched ? (field.state.meta.errors[0] as string | undefined) : undefined}
+            error={field.state.meta.isTouched ? fieldError(field.state.meta.errors) : undefined}
           >
             <Input
               id="login-email"
@@ -72,7 +88,7 @@ function LoginForm({ from }: LoginFormProps) {
           <FormField
             label="Password"
             htmlFor="login-password"
-            error={field.state.meta.isTouched ? (field.state.meta.errors[0] as string | undefined) : undefined}
+            error={field.state.meta.isTouched ? fieldError(field.state.meta.errors) : undefined}
           >
             <Input
               id="login-password"
@@ -87,9 +103,15 @@ function LoginForm({ from }: LoginFormProps) {
         )}
       </form.Field>
 
-      <form.Subscribe selector={(s) => s.isSubmitting}>
-        {(isSubmitting) => (
-          <Button type="submit" disabled={isSubmitting} className="mt-2 w-full">
+      <form.Subscribe
+        selector={(s) => ({ canSubmit: s.canSubmit, isSubmitting: s.isSubmitting })}
+      >
+        {({ canSubmit, isSubmitting }) => (
+          <Button
+            type="submit"
+            disabled={!canSubmit || isSubmitting}
+            className="mt-2 w-full"
+          >
             {isSubmitting ? "Signing in…" : "Sign in"}
           </Button>
         )}
