@@ -22,9 +22,10 @@ export async function PlaylistCard({ playlist, categories }: PlaylistCardProps) 
   const display = playlist[locale];
   const t = await getTranslations("playlist");
 
-  const coverUrl = playlist.coverMediaId
+  const r2Url = playlist.coverMediaId
     ? await getMediaUrlById(playlist.coverMediaId)
     : null;
+  const coverUrl = r2Url ?? playlist.scholarImage ?? null;
 
   const [gradFrom, gradTo] = getCoverGradient(playlist.id);
   const emoji = getCoverEmoji(playlist.id);
@@ -34,7 +35,7 @@ export async function PlaylistCard({ playlist, categories }: PlaylistCardProps) 
       href={`/playlists/${display.slug}`}
       className="group relative rounded-2xl border border-border bg-surface hover:-translate-y-1 hover:z-10 hover:border-primary/30 transition-all duration-200 flex flex-col items-center text-center gap-2 p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      {/* Circle cover art */}
+      {/* Circle cover art: R2 upload → scholar photo → gradient emoji fallback */}
       <div className="relative w-[78%] aspect-square rounded-full overflow-hidden">
         {coverUrl ? (
           <Image
