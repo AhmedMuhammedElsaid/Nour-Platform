@@ -94,7 +94,9 @@ describe("PlaylistCard", () => {
   it("shows track count badge when trackCount is greater than zero", async () => {
     const el = await PlaylistCard({ playlist: makePlaylist({ trackCount: 7 }) });
     render(el);
-    expect(screen.getByText("7")).toBeInTheDocument();
+    // Badge renders the count alongside a localized label ("7 track"),
+    // so match the count within the badge text rather than an exact "7".
+    expect(screen.getByText(/7\s*track/i)).toBeInTheDocument();
   });
 
   it("hides track count badge when trackCount is zero", async () => {
