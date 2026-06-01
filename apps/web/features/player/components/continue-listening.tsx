@@ -110,7 +110,7 @@ export function ContinueListening() {
 
                 {/* Resume progress bar — sits between circle and title */}
                 {pct !== null && (
-                  <div className="w-[78%] h-[3px] rounded-full bg-primary/20">
+                  <div className="w-[78%] h-0.75 rounded-full bg-primary/20">
                     <div
                       data-testid="resume-bar"
                       className="h-full rounded-full bg-primary"

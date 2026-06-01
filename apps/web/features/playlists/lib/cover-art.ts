@@ -11,7 +11,11 @@ const GRADIENTS = [
   ["#1e3d2a", "#0e2818"], // emerald
 ] as const;
 
-const EMOJIS = ["📖", "🕌", "🎙", "📿", "🌙", "⭐"] as const;
+const EMOJIS = [
+  "📿", "🕌", "📖", "🌕", "🕋", "🌙",
+  "🌒", "🌓", "🌔", "🌕", "🌟", "✨",
+  "📿", "🕌", "☪️", "🎙️", "🕊️", "❤️", "⭐"
+] as const;
 
 function coverIndex(id: string): number {
   return parseInt(id.slice(-2), 16) % GRADIENTS.length;
@@ -21,6 +25,7 @@ export function getCoverGradient(id: string): readonly [string, string] {
   return GRADIENTS[coverIndex(id)] ?? GRADIENTS[0]!;
 }
 
-export function getCoverEmoji(id: string): string {
-  return EMOJIS[coverIndex(id)] ?? EMOJIS[0]!;
+export function getCoverEmoji(id?: string): string {
+  const randomIndex = id ?? Math.floor(Math.random() * EMOJIS.length).toString();
+  return EMOJIS[coverIndex(randomIndex)] ?? EMOJIS[0]!;
 }
