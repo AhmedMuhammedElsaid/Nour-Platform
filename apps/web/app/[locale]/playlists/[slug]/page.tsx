@@ -40,6 +40,7 @@ import type { Locale } from "@repo/api/schemas/locale";
 import type { Playlist } from "@repo/api/schemas/playlist";
 import type { PlayableTrack } from "@repo/api/services/track";
 import { TrackListPlayer } from "@/features/playlists/components/track-list-player";
+import { SoundCloudEmbed } from "@/features/playlists/components/soundcloud-embed";
 import { SetLocaleAlternates } from "@/features/layout/locale-alternates-context";
 import { getCoverEmoji, getCoverGradient } from "@/features/playlists/lib/cover-art";
 import { Link } from "@/i18n/navigation";
@@ -146,7 +147,9 @@ export default async function PlaylistDetailPage({
   const playlist = await getPlaylistBySlug(locale, decodeSlug(slug));
   if (!playlist || playlist.status !== "published") notFound();
 
-  const tracks = await getTracksWithUrls(playlist.id);
+  // Skip R2 track resolution for SoundCloud-backed playlists — tracks are
+  // played entirely inside the SoundCloud iframe, not through our player.
+  const tracks = playlist.soundcloudUrl ? [] : await getTracksWithUrls(playlist.id);
   const coverUrl = playlist.coverMediaId
     ? await getMediaUrlById(playlist.coverMediaId)
     : null;
@@ -269,18 +272,25 @@ export default async function PlaylistDetailPage({
         </p>
       </header>
 
-      <section aria-labelledby="tracks-heading">
-        <h2 id="tracks-heading" className="text-lg font-semibold mt-10 mb-4">
-          {t("tracksHeading")}
-        </h2>
-        <TrackListPlayer
-          tracks={displayTracks}
+      {playlist.soundcloudUrl ? (
+        <SoundCloudEmbed
+          soundcloudUrl={playlist.soundcloudUrl}
           playlistTitle={display.title}
-          coverUrl={coverUrl ?? undefined}
-          playlistSlug={display.slug}
-          locale={locale}
         />
-      </section>
+      ) : (
+        <section aria-labelledby="tracks-heading">
+          <h2 id="tracks-heading" className="text-lg font-semibold mt-10 mb-4">
+            {t("tracksHeading")}
+          </h2>
+          <TrackListPlayer
+            tracks={displayTracks}
+            playlistTitle={display.title}
+            coverUrl={coverUrl ?? undefined}
+            playlistSlug={display.slug}
+            locale={locale}
+          />
+        </section>
+      )}
     </div>
   );
 }
