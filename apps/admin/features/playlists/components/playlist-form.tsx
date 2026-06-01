@@ -55,7 +55,7 @@ export function PlaylistForm({
         scholarName: defaultValues?.en?.scholarName ?? "",
       },
       scholarImage: defaultValues?.scholarImage ?? "",
-      soundcloudUrl: defaultValues?.soundcloudUrl ?? "",
+      embedUrl: defaultValues?.embedUrl ?? "",
       status: defaultValues?.status ?? ("draft" as const),
       categoryIds: defaultValues?.categoryIds ?? [],
     } satisfies PlaylistFormValues,
@@ -224,11 +224,11 @@ export function PlaylistForm({
         )}
       </form.Field>
 
-      <form.Field name="soundcloudUrl">
+      <form.Field name="embedUrl">
         {(field) => (
           <FormField
-            label="SoundCloud URL (optional)"
-            htmlFor="playlist-soundcloud-url"
+            label="Embed URL (optional)"
+            htmlFor="playlist-embed-url"
             error={
               field.state.meta.isTouched
                 ? fieldError(field.state.meta.errors)
@@ -236,9 +236,9 @@ export function PlaylistForm({
             }
           >
             <Input
-              id="playlist-soundcloud-url"
+              id="playlist-embed-url"
               type="url"
-              placeholder="https://soundcloud.com/user/sets/playlist"
+              placeholder="https://soundcloud.com/user/sets/playlist or https://www.amgadsamir.com/series/x"
               value={field.state.value}
               onChange={(e) => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}

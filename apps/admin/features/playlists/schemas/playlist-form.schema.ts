@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { findEmbedProvider } from "@repo/config/embed-hosts";
+
 export const playlistFormSchema = z.object({
   ar: z.object({
     title: z.string().min(1, "Arabic title is required.").max(200, "Too long."),
@@ -12,20 +14,12 @@ export const playlistFormSchema = z.object({
     scholarName: z.string().max(200, "Too long."),
   }),
   scholarImage: z.string().max(500, "Too long."),
-  soundcloudUrl: z
+  embedUrl: z
     .string()
     .max(500, "Too long.")
     .refine(
-      (value) => {
-        if (!value) return true;
-        try {
-          const host = new URL(value).hostname.toLowerCase();
-          return host === "soundcloud.com" || host.endsWith(".soundcloud.com");
-        } catch {
-          return false;
-        }
-      },
-      "Must be a soundcloud.com URL",
+      (value) => !value || findEmbedProvider(value) !== null,
+      "Domain not allowed for embedding",
     ),
   status: z.enum(["draft", "published"]),
   categoryIds: z.array(z.string()),
