@@ -30,6 +30,7 @@ export async function updatePlaylistAction(
         scholarName: parsed.data.en.scholarName || undefined,
       },
       scholarImage: parsed.data.scholarImage || undefined,
+      soundcloudUrl: parsed.data.soundcloudUrl || undefined,
       status: parsed.data.status,
       categoryIds: parsed.data.categoryIds,
     });

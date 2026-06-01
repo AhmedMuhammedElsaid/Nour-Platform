@@ -55,6 +55,7 @@ export function PlaylistForm({
         scholarName: defaultValues?.en?.scholarName ?? "",
       },
       scholarImage: defaultValues?.scholarImage ?? "",
+      soundcloudUrl: defaultValues?.soundcloudUrl ?? "",
       status: defaultValues?.status ?? ("draft" as const),
       categoryIds: defaultValues?.categoryIds ?? [],
     } satisfies PlaylistFormValues,
@@ -219,6 +220,33 @@ export function PlaylistForm({
               <option value="draft">Draft</option>
               <option value="published">Published</option>
             </select>
+          </FormField>
+        )}
+      </form.Field>
+
+      <form.Field name="soundcloudUrl">
+        {(field) => (
+          <FormField
+            label="SoundCloud URL (optional)"
+            htmlFor="playlist-soundcloud-url"
+            error={
+              field.state.meta.isTouched
+                ? fieldError(field.state.meta.errors)
+                : undefined
+            }
+          >
+            <Input
+              id="playlist-soundcloud-url"
+              type="url"
+              placeholder="https://soundcloud.com/user/sets/playlist"
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+              onBlur={field.handleBlur}
+              aria-invalid={
+                field.state.meta.isTouched &&
+                field.state.meta.errors.length > 0
+              }
+            />
           </FormField>
         )}
       </form.Field>
