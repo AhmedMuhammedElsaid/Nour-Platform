@@ -1,29 +1,39 @@
-// Server component — static iframe, no JS, no Widget API script.
-// The frame origin is always w.soundcloud.com (built here); the stored
-// soundcloudUrl is only ever used as a query param.
+// Server component — renders a pre-resolved SoundCloud player iframe.
+// The embed src is resolved upstream (in the page RSC) via the oEmbed endpoint,
+// so this component stays a pure synchronous render. The src always targets
+// w.soundcloud.com (covered by CSP frame-src).
 
 interface Props {
+  /** Resolved w.soundcloud.com player src, or null if resolution failed. */
+  embedSrc: string | null;
+  /** Original public SoundCloud URL — used for the attribution/fallback link. */
   soundcloudUrl: string;
   playlistTitle: string;
 }
 
-export function SoundCloudEmbed({ soundcloudUrl, playlistTitle }: Props) {
-  const src =
-    "https://w.soundcloud.com/player/?" +
-    new URLSearchParams({
-      url: soundcloudUrl,
-      color: "%23C8A050", // --color-primary gold (pre-encoded for URLSearchParams)
-      auto_play: "false",
-      hide_related: "true",
-      show_comments: "false",
-      visual: "false",
-    }).toString();
+export function SoundCloudEmbed({ embedSrc, soundcloudUrl, playlistTitle }: Props) {
+  if (!embedSrc) {
+    // Resolution failed (private, deleted, geo-blocked, or oEmbed down) — give
+    // the user a working link instead of a blank player box.
+    return (
+      <div className="mt-10">
+        <a
+          href={soundcloudUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+        >
+          Open on SoundCloud
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-10">
       <iframe
         title={playlistTitle}
-        src={src}
+        src={embedSrc}
         width="100%"
         height={450}
         allow="autoplay"

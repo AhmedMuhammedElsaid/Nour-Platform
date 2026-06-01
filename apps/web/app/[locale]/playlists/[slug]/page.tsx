@@ -41,6 +41,7 @@ import type { Playlist } from "@repo/api/schemas/playlist";
 import type { PlayableTrack } from "@repo/api/services/track";
 import { TrackListPlayer } from "@/features/playlists/components/track-list-player";
 import { SoundCloudEmbed } from "@/features/playlists/components/soundcloud-embed";
+import { fetchSoundCloudEmbedSrc } from "@/features/playlists/lib/soundcloud-oembed";
 import { SetLocaleAlternates } from "@/features/layout/locale-alternates-context";
 import { getCoverEmoji, getCoverGradient } from "@/features/playlists/lib/cover-art";
 import { Link } from "@/i18n/navigation";
@@ -149,7 +150,11 @@ export default async function PlaylistDetailPage({
 
   // Skip R2 track resolution for SoundCloud-backed playlists — tracks are
   // played entirely inside the SoundCloud iframe, not through our player.
+  // Resolve the player src via oEmbed (handles track/set/profile URLs).
   const tracks = playlist.soundcloudUrl ? [] : await getTracksWithUrls(playlist.id);
+  const soundcloudEmbedSrc = playlist.soundcloudUrl
+    ? await fetchSoundCloudEmbedSrc(playlist.soundcloudUrl)
+    : null;
   const coverUrl = playlist.coverMediaId
     ? await getMediaUrlById(playlist.coverMediaId)
     : null;
@@ -274,6 +279,7 @@ export default async function PlaylistDetailPage({
 
       {playlist.soundcloudUrl ? (
         <SoundCloudEmbed
+          embedSrc={soundcloudEmbedSrc}
           soundcloudUrl={playlist.soundcloudUrl}
           playlistTitle={display.title}
         />

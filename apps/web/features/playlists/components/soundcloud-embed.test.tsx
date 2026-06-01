@@ -3,34 +3,47 @@ import { describe, expect, it } from "vitest";
 
 import { SoundCloudEmbed } from "./soundcloud-embed";
 
-const SC_URL = "https://soundcloud.com/user/sets/lectures";
+const SC_URL = "https://soundcloud.com/amgad_samir_abu_mohannad/tracks";
+const EMBED_SRC =
+  "https://w.soundcloud.com/player/?visual=false&url=https%3A%2F%2Fapi.soundcloud.com%2Fusers%2F108832165&color=%23C8A050";
 
 describe("SoundCloudEmbed", () => {
-  it("renders an iframe targeting w.soundcloud.com regardless of the stored URL", () => {
-    render(<SoundCloudEmbed soundcloudUrl={SC_URL} playlistTitle="Test Playlist" />);
+  it("renders the resolved player src in an iframe with the playlist title", () => {
+    render(
+      <SoundCloudEmbed
+        embedSrc={EMBED_SRC}
+        soundcloudUrl={SC_URL}
+        playlistTitle="Test Playlist"
+      />,
+    );
     const iframe = screen.getByTitle("Test Playlist");
     expect(iframe).toBeInTheDocument();
-    const src = iframe.getAttribute("src") ?? "";
-    expect(src.startsWith("https://w.soundcloud.com/player/")).toBe(true);
+    expect(iframe).toHaveAttribute("src", EMBED_SRC);
   });
 
-  it("includes the encoded soundcloudUrl as the url query param", () => {
-    render(<SoundCloudEmbed soundcloudUrl={SC_URL} playlistTitle="Test" />);
-    const src = screen.getByTitle("Test").getAttribute("src") ?? "";
-    expect(src).toContain(encodeURIComponent(SC_URL));
-  });
-
-  it("includes the gold primary colour token", () => {
-    render(<SoundCloudEmbed soundcloudUrl={SC_URL} playlistTitle="Test" />);
-    const src = screen.getByTitle("Test").getAttribute("src") ?? "";
-    // colour is passed as %23C8A050 inside the url param
-    expect(src).toContain("C8A050");
-  });
-
-  it("attribution link points at the original soundcloudUrl", () => {
-    render(<SoundCloudEmbed soundcloudUrl={SC_URL} playlistTitle="Test" />);
-    const link = screen.getByRole("link", { name: /soundcloud/i });
+  it("shows the attribution link pointing at the original SoundCloud URL", () => {
+    render(
+      <SoundCloudEmbed
+        embedSrc={EMBED_SRC}
+        soundcloudUrl={SC_URL}
+        playlistTitle="Test"
+      />,
+    );
+    const link = screen.getByRole("link", { name: /streaming via soundcloud/i });
     expect(link).toHaveAttribute("href", SC_URL);
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("falls back to a plain link (no iframe) when the src could not be resolved", () => {
+    render(
+      <SoundCloudEmbed
+        embedSrc={null}
+        soundcloudUrl={SC_URL}
+        playlistTitle="Test"
+      />,
+    );
+    expect(screen.queryByTitle("Test")).not.toBeInTheDocument();
+    const link = screen.getByRole("link", { name: /open on soundcloud/i });
+    expect(link).toHaveAttribute("href", SC_URL);
   });
 });
