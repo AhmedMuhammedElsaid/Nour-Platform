@@ -47,7 +47,7 @@ function toDto(doc: {
   en: { title: string; slug: string; description?: string | null; scholarName?: string | null };
   coverMediaId?: { toString(): string } | null;
   scholarImage?: string | null;
-  soundcloudUrl?: string | null;
+  embedUrl?: string | null;
   status: string;
   categoryIds?: Array<{ toString(): string }>;
   order: number;
@@ -73,7 +73,7 @@ function toDto(doc: {
       ? { coverMediaId: doc.coverMediaId.toString() }
       : {}),
     ...(doc.scholarImage != null ? { scholarImage: doc.scholarImage } : {}),
-    ...(doc.soundcloudUrl != null ? { soundcloudUrl: doc.soundcloudUrl } : {}),
+    ...(doc.embedUrl != null ? { embedUrl: doc.embedUrl } : {}),
     status: doc.status as Playlist["status"],
     categoryIds: (doc.categoryIds ?? []).map((id) => id.toString()),
     order: doc.order,

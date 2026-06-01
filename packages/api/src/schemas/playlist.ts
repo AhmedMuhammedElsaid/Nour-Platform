@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { findEmbedProvider } from "@repo/config/embed-hosts";
+
 const objectIdSchema = z
   .string()
   .regex(/^[0-9a-f]{24}$/, "Invalid ObjectId");
@@ -10,21 +12,18 @@ const slugSchema = z
   .min(1)
   .max(200);
 
-// A public SoundCloud track or set URL to embed instead of uploading audio to
-// R2. Host-restricted to soundcloud.com so a stored value can never point the
-// embed iframe (which we build ourselves) at an arbitrary origin.
-const soundcloudUrlSchema = z
+// A third-party URL to embed on the playlist page instead of uploading audio to
+// R2 — a SoundCloud resource or a page from an approved domain. Host-restricted
+// to the shared embed allow-list (also drives CSP frame-src) so a stored value
+// can never point an iframe at an arbitrary origin.
+const embedUrlSchema = z
   .string()
   .url()
   .max(500)
-  .refine((value) => {
-    try {
-      const host = new URL(value).hostname.toLowerCase();
-      return host === "soundcloud.com" || host.endsWith(".soundcloud.com");
-    } catch {
-      return false;
-    }
-  }, "Must be a soundcloud.com URL");
+  .refine(
+    (value) => findEmbedProvider(value) !== null,
+    "Domain not allowed for embedding",
+  );
 
 export const playlistStatusSchema = z.enum(["draft", "published"]);
 export type PlaylistStatus = z.infer<typeof playlistStatusSchema>;
@@ -42,7 +41,7 @@ export const playlistSchema = z.object({
   en: localeContentSchema,
   coverMediaId: objectIdSchema.optional(),
   scholarImage: z.string().max(500).optional(),
-  soundcloudUrl: soundcloudUrlSchema.optional(),
+  embedUrl: embedUrlSchema.optional(),
   status: playlistStatusSchema,
   categoryIds: z.array(objectIdSchema),
   order: z.number().int().nonnegative(),
@@ -69,7 +68,7 @@ export const playlistCreateInputSchema = z.object({
   }),
   coverMediaId: objectIdSchema.optional(),
   scholarImage: z.string().max(500).optional(),
-  soundcloudUrl: soundcloudUrlSchema.optional(),
+  embedUrl: embedUrlSchema.optional(),
   status: playlistStatusSchema.default("draft"),
   categoryIds: z.array(objectIdSchema).default([]),
   order: z.number().int().nonnegative().optional(),
@@ -96,7 +95,7 @@ export const playlistUpdateInputSchema = z
       .partial(),
     coverMediaId: objectIdSchema.nullable(),
     scholarImage: z.string().max(500).nullable(),
-    soundcloudUrl: soundcloudUrlSchema.nullable(),
+    embedUrl: embedUrlSchema.nullable(),
     status: playlistStatusSchema,
     categoryIds: z.array(objectIdSchema),
     order: z.number().int().nonnegative(),

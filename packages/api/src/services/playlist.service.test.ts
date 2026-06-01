@@ -201,33 +201,50 @@ describe("playlist.service", () => {
       expect(result.scholarImage).toBe("/dr-saber-adel.jpg");
     });
 
-    it("forwards a soundcloudUrl to the repo and round-trips it in the DTO", async () => {
+    it("forwards an embedUrl to the repo and round-trips it in the DTO", async () => {
       vi.mocked(requireSession).mockResolvedValueOnce({} as never);
       vi.mocked(repo.createPlaylist).mockResolvedValueOnce(
-        makeLean({ soundcloudUrl: "https://soundcloud.com/user/sets/lectures" }),
+        makeLean({ embedUrl: "https://soundcloud.com/user/sets/lectures" }),
       );
 
       const result = await service.createPlaylist({
         ar: { title: "عنوان" },
         en: { title: "Title" },
-        soundcloudUrl: "https://soundcloud.com/user/sets/lectures",
+        embedUrl: "https://soundcloud.com/user/sets/lectures",
         status: "draft",
         categoryIds: [],
       });
 
       const createArg = vi.mocked(repo.createPlaylist).mock.calls[0]![0];
-      expect(createArg.soundcloudUrl).toBe("https://soundcloud.com/user/sets/lectures");
-      expect(result.soundcloudUrl).toBe("https://soundcloud.com/user/sets/lectures");
+      expect(createArg.embedUrl).toBe("https://soundcloud.com/user/sets/lectures");
+      expect(result.embedUrl).toBe("https://soundcloud.com/user/sets/lectures");
     });
 
-    it("rejects a soundcloudUrl whose host is not soundcloud.com", async () => {
+    it("accepts an embedUrl from another allow-listed domain (amgadsamir.com)", async () => {
+      vi.mocked(requireSession).mockResolvedValueOnce({} as never);
+      vi.mocked(repo.createPlaylist).mockResolvedValueOnce(
+        makeLean({ embedUrl: "https://www.amgadsamir.com/series/x" }),
+      );
+
+      const result = await service.createPlaylist({
+        ar: { title: "عنوان" },
+        en: { title: "Title" },
+        embedUrl: "https://www.amgadsamir.com/series/x",
+        status: "draft",
+        categoryIds: [],
+      });
+
+      expect(result.embedUrl).toBe("https://www.amgadsamir.com/series/x");
+    });
+
+    it("rejects an embedUrl whose host is not on the allow-list", async () => {
       vi.mocked(requireSession).mockResolvedValueOnce({} as never);
 
       await expect(
         service.createPlaylist({
           ar: { title: "عنوان" },
           en: { title: "Title" },
-          soundcloudUrl: "https://evil.example.com/track",
+          embedUrl: "https://evil.example.com/track",
           status: "draft",
           categoryIds: [],
         }),
@@ -413,19 +430,19 @@ describe("playlist.service", () => {
       expect(revalidateTag).toHaveBeenCalledWith(PLAYLISTS_HOME, "default");
     });
 
-    it("forwards a soundcloudUrl patch (and accepts null to clear it)", async () => {
+    it("forwards an embedUrl patch (and accepts null to clear it)", async () => {
       vi.mocked(requireSession).mockResolvedValueOnce({} as never);
       vi.mocked(repo.updatePlaylistById).mockResolvedValueOnce(
         makeLean({ _id: { toString: () => "playlist123456789012" } }),
       );
 
       await service.updatePlaylist("playlist123456789012", {
-        soundcloudUrl: null,
+        embedUrl: null,
       });
 
       expect(repo.updatePlaylistById).toHaveBeenCalledWith(
         "playlist123456789012",
-        expect.objectContaining({ soundcloudUrl: null }),
+        expect.objectContaining({ embedUrl: null }),
       );
     });
   });
