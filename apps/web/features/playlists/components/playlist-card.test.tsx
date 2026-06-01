@@ -1,15 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next-intl/server", () => ({
   getTranslations: vi.fn().mockResolvedValue((key: string) => key),
   getLocale: vi.fn().mockResolvedValue("en"),
-}));
-
-// Use vi.fn() directly inside the factory so it's accessible after hoisting.
-vi.mock("@repo/api/services/media", () => ({
-  getMediaUrlById: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock("@/i18n/navigation", () => ({
@@ -35,7 +30,6 @@ vi.mock("next/image", () => ({
   ),
 }));
 
-import { getMediaUrlById } from "@repo/api/services/media";
 import { PlaylistCard } from "./playlist-card";
 import type { SerializedPlaylist } from "@/features/playlists/types";
 
@@ -56,39 +50,25 @@ function makePlaylist(
 }
 
 describe("PlaylistCard", () => {
-  beforeEach(() => {
-    vi.mocked(getMediaUrlById).mockResolvedValue(null);
-  });
-
-  it("shows gradient fallback when there is no coverMediaId", async () => {
+  it("shows gradient fallback when there is no scholarImage", async () => {
     const el = await PlaylistCard({ playlist: makePlaylist() });
     const { container } = render(el);
 
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
     expect(container.querySelector("[style*='gradient']")).not.toBeNull();
-    expect(vi.mocked(getMediaUrlById)).not.toHaveBeenCalled();
   });
 
-  it("calls getMediaUrlById with the coverMediaId when present", async () => {
-    const coverMediaId = "aabbccddeeff001122334401";
-    vi.mocked(getMediaUrlById).mockResolvedValueOnce(
-      "https://r2.example.com/cover.jpg",
-    );
-
-    await PlaylistCard({ playlist: makePlaylist({ coverMediaId }) });
-
-    expect(vi.mocked(getMediaUrlById)).toHaveBeenCalledWith(coverMediaId);
-  });
-
-  it("falls back to gradient when coverMediaId is set but URL resolves to null", async () => {
-    vi.mocked(getMediaUrlById).mockResolvedValueOnce(null);
+  it("renders the scholar image directly from its /public path", async () => {
     const el = await PlaylistCard({
-      playlist: makePlaylist({ coverMediaId: "aabbccddeeff001122334401" }),
+      playlist: makePlaylist({ scholarImage: "/muhmd-bakr.png" }),
     });
     const { container } = render(el);
 
-    expect(screen.queryByRole("img")).not.toBeInTheDocument();
-    expect(container.querySelector("[style*='gradient']")).not.toBeNull();
+    // alt="" makes the image presentational (no "img" role), so query the node.
+    expect(container.querySelector("img")).toHaveAttribute(
+      "src",
+      "/muhmd-bakr.png",
+    );
   });
 
   it("shows track count badge when trackCount is greater than zero", async () => {

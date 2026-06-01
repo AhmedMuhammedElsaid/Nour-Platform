@@ -47,18 +47,18 @@ export function proxy(request: NextRequest): NextResponse {
 export const config = {
   matcher: [
     /*
-     * Match every route EXCEPT API routes and static assets. Excluded:
-     *   /api/*                  — JSON endpoints
-     *   /_next/static|image/*   — bundled assets / image optimizer
-     *   /favicon*               — all favicon variants (ico, 32x32.png, 16x16.png)
-     *   /apple-touch-icon.png   — iOS home-screen icon
-     *   /android-chrome*.png    — PWA / manifest icons
-     *   /og-image.png           — OG social-share image (must be served without redirect)
-     *   /sw.js                  — service worker (scope must be root)
-     *   /manifest.webmanifest   — PWA manifest
-     *   /offline.html           — SW offline fallback
-     *   /icons/*                — SVG icon set
+     * Match every route EXCEPT API routes and static assets. We exclude:
+     *   /api/*                — JSON endpoints
+     *   /_next/static|image/* — bundled assets / image optimizer
+     *   any path with a dot   — every file under /public (scholar photos like
+     *                           /muhmd-bakr.png, plus sw.js, manifest.webmanifest,
+     *                           favicon.ico, og-image.png, icons/*.svg, …).
+     *                           Without this, next-intl locale-redirects e.g.
+     *                           /muhmd-bakr.png → /ar/muhmd-bakr.png → 404 and the
+     *                           <img> never loads.
+     * App routes never contain a dot (slugs are letters/numbers/hyphens), so the
+     * dot rule is safe and self-maintaining as new public files are added.
      */
-    "/((?!api|_next/static|_next/image|favicon|apple-touch-icon\\.png|android-chrome|og-image\\.png|sw\\.js|manifest\\.webmanifest|offline\\.html|icons).*)",
+    "/((?!api|_next/static|_next/image|.*\\..*).*)",
   ],
 };

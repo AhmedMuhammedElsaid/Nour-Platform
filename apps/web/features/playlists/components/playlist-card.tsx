@@ -1,7 +1,6 @@
-import Image from "next/image";
 import { getLocale, getTranslations } from "next-intl/server";
+import Image from "next/image";
 
-import { getMediaUrlById } from "@repo/api/services/media";
 import { Link } from "@/i18n/navigation";
 import type { SerializedPlaylist } from "@/features/playlists/types";
 import type { Locale } from "@repo/api/schemas/locale";
@@ -22,10 +21,10 @@ export async function PlaylistCard({ playlist, categories }: PlaylistCardProps) 
   const display = playlist[locale];
   const t = await getTranslations("playlist");
 
-  const r2Url = playlist.coverMediaId
-    ? await getMediaUrlById(playlist.coverMediaId)
-    : null;
-  const coverUrl = r2Url ?? playlist.scholarImage ?? null;
+  // The scholar photo is a static file in apps/web/public (e.g. "/muhmd-bakr.png").
+  // Render it directly; gradient + emoji only when a playlist has no image.
+  // `unoptimized` serves the public file straight through (skips /_next/image).
+  const image = playlist.scholarImage ?? null;
 
   const [gradFrom, gradTo] = getCoverGradient(playlist.id);
   const emoji = getCoverEmoji(playlist.id);
@@ -35,13 +34,14 @@ export async function PlaylistCard({ playlist, categories }: PlaylistCardProps) 
       href={`/playlists/${display.slug}`}
       className="group relative rounded-2xl border border-border bg-surface hover:-translate-y-1 hover:z-10 hover:border-primary/30 transition-all duration-200 flex flex-col items-center text-center gap-2 p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      {/* Circle cover art: R2 upload → scholar photo → gradient emoji fallback */}
+      {/* Scholar photo from /public; gradient+emoji only when none is set */}
       <div className="relative w-[78%] aspect-square rounded-full overflow-hidden">
-        {coverUrl ? (
+        {image ? (
           <Image
-            src={coverUrl}
-            alt=""
+            src={image}
+            alt={display?.scholarName ?? display?.title}
             fill
+            unoptimized
             sizes="(min-width: 1024px) 20vw, 40vw"
             className="object-cover transition-transform group-hover:scale-105"
           />
@@ -59,28 +59,33 @@ export async function PlaylistCard({ playlist, categories }: PlaylistCardProps) 
         )}
       </div>
 
-
-
       <h2 className="font-display text-base font-semibold leading-snug w-full">
         {display.title}
       </h2>
 
       {display.scholarName != null && (
-        <p className="text-sm text-text-2 line-clamp-1 w-full">{display.scholarName}</p>
+        <p className="text-sm text-text-2 line-clamp-1 w-full">
+          {display.scholarName}
+        </p>
       )}
 
       {display.description != null && (
-        <p className="text-sm text-text-2 line-clamp-2 w-full">{display.description}</p>
+        <p className="text-sm text-text-2 line-clamp-2 w-full">
+          {display.description}
+        </p>
       )}
 
       {/* Track count badge — outside the circle so overflow-hidden doesn't clip it */}
       {playlist.trackCount != null && playlist.trackCount > 0 && (
         <span className="rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-semibold px-2.5 py-0.5">
-          {playlist.trackCount} { t("track")}
+          {playlist.trackCount} {t("track")}
         </span>
       )}
       {categories != null && categories.length > 0 && (
-        <div data-testid="category-chips" className="flex flex-wrap gap-1.5 justify-center w-full">
+        <div
+          data-testid="category-chips"
+          className="flex flex-wrap gap-1.5 justify-center w-full"
+        >
           {categories.slice(0, 2).map((cat) => (
             <span
               key={cat.slug}
