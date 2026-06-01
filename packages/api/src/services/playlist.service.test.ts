@@ -201,6 +201,40 @@ describe("playlist.service", () => {
       expect(result.scholarImage).toBe("/dr-saber-adel.jpg");
     });
 
+    it("forwards a soundcloudUrl to the repo and round-trips it in the DTO", async () => {
+      vi.mocked(requireSession).mockResolvedValueOnce({} as never);
+      vi.mocked(repo.createPlaylist).mockResolvedValueOnce(
+        makeLean({ soundcloudUrl: "https://soundcloud.com/user/sets/lectures" }),
+      );
+
+      const result = await service.createPlaylist({
+        ar: { title: "عنوان" },
+        en: { title: "Title" },
+        soundcloudUrl: "https://soundcloud.com/user/sets/lectures",
+        status: "draft",
+        categoryIds: [],
+      });
+
+      const createArg = vi.mocked(repo.createPlaylist).mock.calls[0]![0];
+      expect(createArg.soundcloudUrl).toBe("https://soundcloud.com/user/sets/lectures");
+      expect(result.soundcloudUrl).toBe("https://soundcloud.com/user/sets/lectures");
+    });
+
+    it("rejects a soundcloudUrl whose host is not soundcloud.com", async () => {
+      vi.mocked(requireSession).mockResolvedValueOnce({} as never);
+
+      await expect(
+        service.createPlaylist({
+          ar: { title: "عنوان" },
+          en: { title: "Title" },
+          soundcloudUrl: "https://evil.example.com/track",
+          status: "draft",
+          categoryIds: [],
+        }),
+      ).rejects.toThrow();
+      expect(repo.createPlaylist).not.toHaveBeenCalled();
+    });
+
     it("propagates Zod validation errors as thrown ZodError", async () => {
       vi.mocked(requireSession).mockResolvedValueOnce({} as never);
 
@@ -377,6 +411,22 @@ describe("playlist.service", () => {
         expect.objectContaining({ ar: { scholarName: "جديد" } }),
       );
       expect(revalidateTag).toHaveBeenCalledWith(PLAYLISTS_HOME, "default");
+    });
+
+    it("forwards a soundcloudUrl patch (and accepts null to clear it)", async () => {
+      vi.mocked(requireSession).mockResolvedValueOnce({} as never);
+      vi.mocked(repo.updatePlaylistById).mockResolvedValueOnce(
+        makeLean({ _id: { toString: () => "playlist123456789012" } }),
+      );
+
+      await service.updatePlaylist("playlist123456789012", {
+        soundcloudUrl: null,
+      });
+
+      expect(repo.updatePlaylistById).toHaveBeenCalledWith(
+        "playlist123456789012",
+        expect.objectContaining({ soundcloudUrl: null }),
+      );
     });
   });
 });

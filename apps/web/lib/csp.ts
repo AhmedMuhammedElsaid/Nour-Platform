@@ -29,6 +29,10 @@ export function buildWebCsp(nonce: string, r2Hostname: string): string {
     // PWA: allow the same-origin service worker script and web app manifest.
     "worker-src 'self'",
     "manifest-src 'self'",
+    // Allow the SoundCloud embed widget iframe. We build the player URL
+    // ourselves (always w.soundcloud.com), so a single fixed host suffices —
+    // the stored playlist URL is only a query param, never the frame origin.
+    "frame-src https://w.soundcloud.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
