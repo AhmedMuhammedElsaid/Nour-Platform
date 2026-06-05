@@ -12,6 +12,7 @@ const BRAND: Record<string, { text: string; lang: string }> = {
 
 export async function SiteHeader() {
   const t = await getTranslations("nav");
+  const tPrayer = await getTranslations("prayer");
   const locale = await getLocale();
   const brand = BRAND[locale] ?? BRAND.en!;
 
@@ -26,6 +27,12 @@ export async function SiteHeader() {
           <span lang={brand.lang}>{brand.text}</span>
         </Link>
         <SearchBox />
+        <Link
+          href="/prayer-times"
+          className="text-sm text-text-2 hover:text-primary whitespace-nowrap transition-colors"
+        >
+          {tPrayer("nav")}
+        </Link>
         <LocaleSwitcher />
         <ThemeToggle />
       </div>
