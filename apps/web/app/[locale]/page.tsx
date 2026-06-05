@@ -15,6 +15,7 @@ import { PlaylistCard } from "@/features/playlists/components/playlist-card";
 import { CategoryFilterBar } from "@/features/categories/components/category-filter-bar";
 import { ContinueListening } from "@/features/player/components/continue-listening";
 import { PlaylistSortSelect } from "@/features/playlists/components/playlist-sort-select";
+import { PrayerTimesWidget } from "@/features/prayer-times/components/prayer-times-widget";
 import type { SerializedPlaylist } from "@/features/playlists/types";
 
 // Converts a Playlist DTO to a JSON-serializable shape. createdAt/updatedAt
@@ -110,6 +111,8 @@ export default async function HomePage({
         </h1>
         <p className="mt-2 text-sm text-text-2">{t("heroSubtitle")}</p>
       </div>
+
+      <PrayerTimesWidget locale={locale} />
 
       <hr className="border-border my-8" />
 
