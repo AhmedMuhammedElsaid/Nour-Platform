@@ -5,3 +5,9 @@ export function playlistTag(id: string): string {
 }
 
 export const CATEGORIES = "categories";
+
+export const ADHKAR = "adhkar";
+
+export function azkarTag(id: string): string {
+  return `azkar:${id}`;
+}
