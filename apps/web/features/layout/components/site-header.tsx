@@ -34,7 +34,7 @@ export async function SiteHeader() {
         >
           {adhkarT("navLabel")}
         </Link>
-        <SearchBox />
+        {/* <SearchBox /> */}
         <Link
           href="/prayer-times"
           className="text-sm text-text-2 hover:text-primary whitespace-nowrap transition-colors"
