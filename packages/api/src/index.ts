@@ -32,6 +32,14 @@ export type {
   CategoryCreateInput,
   CategoryUpdateInput,
 } from "./schemas/category";
+export type {
+  Azkar,
+  DhikrItem,
+  AzkarKind,
+  AzkarStatus,
+  AzkarCreateInput,
+  AzkarUpdateInput,
+} from "./schemas/azkar";
 export {
   findAll as findAllCategories,
   findBySlug as findCategoryBySlug,

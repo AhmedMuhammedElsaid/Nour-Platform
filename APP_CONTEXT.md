@@ -50,7 +50,9 @@ Audio MVP (Waves 0–5) + pre-deploy fixups + hardening sprint + **P2-A Categori
 | Playlist Order ✅ | merge on `main` (2026-05-30) | Global `order: number` field on Playlist — admins drag rows in the admin `PlaylistsTable` to control display order on the public homepage. NEW `0007-playlist-order.ts` migration backfills existing playlists by `createdAt` rank and registers `{ status,order }` + `{ order }` indexes. `reorderPlaylists(orderedIds)` service (auth + `revalidateTag(PLAYLISTS_HOME)`). `reorder-playlists.action.ts` in admin. `PlaylistsTable` wraps `<tbody>` in `@dnd-kit` `DndContext`/`SortableContext` with optimistic update + rollback. Tests: api 67 · admin 40 · web 79. |
 | Continue Listening autoplay fix ✅ | `59f3161` | **Bug**: clicking a continue-listening card navigated to the playlist page but nothing played — `TrackListPlayer` had no auto-play-on-mount logic. **Fix** (2 files): (1) `continue-listening.tsx` appends `#${item.trackId}` to each card's href. (2) `track-list-player.tsx` gains a one-shot `useEffect([], [])` that reads `window.location.hash` on mount, finds the matching track index in `playableTracks`, calls `loadQueue(queueTracks, idx)`, then strips the hash via `history.replaceState` so a page refresh doesn't re-trigger autoplay. Autoplay fires because the link-click sets `hasInteractedRef.current = true` in `PlayerProvider` before the playlist page mounts. |
 | Scholar photos on home cards ✅ | HEAD (uncommitted, 2026-06-01) | Homepage playlist cards show a scholar photo stored as a **static `/public` path** in `playlist.scholarImage` (e.g. `/muhmd-bakr.png`), rendered directly via `next/image` (`unoptimized` + `fill`); gradient+emoji fallback only when a playlist has no `scholarImage`. Removed the R2 `coverMediaId`→`getMediaUrlById` cover pipeline from `playlist-card.tsx` (cover-by-upload stays in the schema, just isn't read by the card) and deleted the short-lived `playlist-cover-image.tsx` client wrapper. **Root-cause fix**: the `proxy.ts` next-intl matcher was an explicit allow-list and locale-redirected un-listed `/public` files (`/muhmd-bakr.png` → `/ar/muhmd-bakr.png` → 404), so a correctly-rendered `<img>` showed nothing — matcher now excludes any dotted path (see gotcha). Continue Listening untouched (still emojis). Tests: web 78 green; typecheck clean. |
+| Adhkar vertical ✅ | `780635a`..`723650d` | New `Azkar` resource: embedded-locale, embedded `items[]` array (no Playlist/Track split). Zod schema · Mongoose model · lean repo · RBAC service · migration `0008-azkar-indexes` (last in runner) · idempotent seed `scripts/seed-adhkar.ts`. Admin: AzkarForm with repeatable dhikr items editor (TanStack Form v1, `createEmptyDhikrItem()` factory for stable row keys) · 4 server actions · dnd-reorder table. Web: `AdhkarReader` client island (tap-counter, auto-advance, daily-reset device-local progress `nour.adhkar.progress`) · landing page · reading-view page (Arabic slug decode, per-item audio resolve) · header nav link · AR/EN i18n namespace · E2E smoke. ⚠️ Run migration `0008` in isolation on Atlas (do not run full chain). Seed requires `pnpm seed:adhkar` with valid `MONGODB_URI`. Tests: api 85 · admin 48 · web 87. |
 | Prayer Times ✅ | HEAD (2026-06-05) | New public feature: homepage **Sun Arc widget** + dedicated **/prayer-times** page, sharing one isomorphic compute path. Plan: `docs/superpowers/plans/2026-06-05-prayer-times.md`; spec: `docs/superpowers/specs/2026-06-05-prayer-times-design.md`. NEW dep `adhan` 4.4.3 (ADR `docs/adr/0004-adhan-js.md`). **packages/api**: `schemas/prayer-times.ts` (method/madhab/location/prefs zod; `DEFAULT_LOCATION`=Cairo, `DEFAULT_METHOD`=Egyptian, `DEFAULT_MADHAB`=standard, `CALCULATION_METHOD_IDS` ×12), `services/prayer-times.service.ts` — **pure, no auth/DB** (deliberate, documented departure): `computePrayerTimes`/`getNextPrayer`/`getUpcomingPrayer` (rolls to tomorrow's Fajr)/`getDayProgress`; new export subpaths `./schemas/prayer-times` + `./services/prayer-times`. Hijri via built-in `Intl` (no dep). NEW token `--color-sun` (bright gold glow) in `tokens.css` (both themes) + `packages/ui/src/styles/globals.css` `@theme inline` bridge (NOT apps/web/app/globals.css — that only re-imports the UI sheet). **apps/web `features/prayer-times/`**: `data/cities.ts` (~24 curated cities + `nearestCity`), `lib/format.ts` (clock/countdown/hijri/gregorian), `lib/sun-arc.ts` (pure geometry: `ARC`/`arcPath`/`arcPoint`/`tForFraction`), `hooks/use-prayer-settings.ts` (localStorage `nour.prayer.location` + `nour.prayer.prefs`, SSR-safe defaults), components `sun-arc` (full-bleed SVG, gold rayed sun = current time, glowing dot = next prayer; one `<svg>` viewBox 600×150 `meet`), `prayer-countdown` (1s tick), `prayer-timetable`, `date-card`, `location-picker` (city search + geolocation), `method-settings`, `prayer-times-widget` (exports `buildArcDots`), `prayer-page`. Route `app/[locale]/prayer-times/page.tsx` (force-dynamic + metadata/alternates); widget mounted on `app/[locale]/page.tsx` between hero and `<hr>`; header nav link (`site-header.tsx`, `prayer.nav`). i18n `prayer` namespace (ar/en). Device-local only (no DB/auth). v1 formats times in the **viewer's device timezone** (per-location tz deferred). **Deferred**: adhan audio, notifications, monthly view, verse-of-the-day. Tests: api 85 · web 105 green; web build ✓ (route `ƒ /[locale]/prayer-times`); lint clean. |
+
 
 ---
 
@@ -103,6 +105,7 @@ packages/api/src/
       track.model.ts      → TrackModel
       media.model.ts      → MediaModel
     models/Category.model.ts (PascalCase outlier — every other model is lowercase)
+    models/azkar.model.ts       → AzkarModel (collection "azkar"; hot-reload guard; 4 indexes)
     migrations/
       0001-indexes.ts            → ensureIndexes on Playlist/Track/Media (safe no-op after 0004)
       0002-category-indexes.ts   → playlists.categoryIds array index + PlaylistModel.ensureIndexes (no-op after 0004)
@@ -110,13 +113,15 @@ packages/api/src/
       0004-i18n-indexes.ts       → drops old bare-slug unique indexes, rebuilds compound {locale,slug}+{contentId,locale}
       0006-search-indexes.ts     → text indexes on playlists (ar/en title+description) + tracks (ar/en title); additive
       0007-playlist-order.ts     → backfills Playlist.order (rank by createdAt ASC); registers { status,order } + { order } indexes
-      ⚠️ Runner order in scripts/migrate.ts: [0003, 0004, 0005, 0001, 0002, 0006, 0007] — 0003 MUST precede ensureIndexes; 0007 last
+      0008-azkar-indexes.ts      → ensureIndexes on AzkarModel; runner order LAST after 0007
+      ⚠️ Runner order in scripts/migrate.ts: [0003, 0004, 0005, 0001, 0002, 0006, 0007, 0008] — 0003 MUST precede ensureIndexes; 0008 last
   repositories/
     playlist.repo.ts      → findPlaylistById/BySlug, findPublishedPlaylists({categoryId?})/findAllPlaylists → PlaylistLeanWithCount[] (sorted by order ASC),
                             create/update/delete, updatePlaylistOrder(orderedIds) bulkWrite
     track.repo.ts         → findTrackById/ByPlaylist/BySlug, create/update/delete, updateTrackOrder (bulkWrite)
     media.repo.ts         → findMediaById, create, updateById
     category.repo.ts      → findAll/ById/BySlug/ByContentId, create/update/delete, pullCategoryFromPlaylists
+    azkar.repo.ts         → findPublishedAzkar / findAllAzkar / findAzkarBySlug / findAzkarById / createAzkar / updateAzkarById / deleteAzkarById / updateAzkarOrder
   schemas/
     locale.ts             → localeSchema, LOCALES=['ar','en'], DEFAULT_LOCALE='ar', Locale type, isLocale()
     user.ts               → User, UserRole, Credentials
@@ -125,6 +130,7 @@ packages/api/src/
     track.ts              → Track (playlistId, order), TrackCreateInput, TrackUpdateInput
     media.ts              → Media, MediaMimeType, MediaStatus, *Input
     category.ts           → Category (contentId, locale), CategoryCreateInput, CategoryUpdateInput
+    azkar.ts              → DhikrItem, Azkar, AzkarCreateInput, AzkarUpdateInput (embedded items[])
   utils/
     slug.ts               → slugify(input, contentIdFallback?) — Unicode-aware, Arabic-safe, de-duped from 3 old services
     id.ts                 → newObjectIdString() — mints a fresh Mongoose ObjectId as a hex string
@@ -142,7 +148,9 @@ packages/api/src/
     search.service.ts     → searchContent(locale, q, limit=20) — public read, $text over published playlists + tracks;
                             locale-resolves hits; track hits link to their published parent playlist; empty on blank/invalid q.
                             Needs migration 0006 text indexes (else $text errors). Exported at @repo/api/services/search.
-  cache/tags.ts           → PLAYLISTS_HOME (constant), playlistTag(id) (function), CATEGORIES (constant)
+    azkar.service.ts      → getPublishedAzkar · getAzkarBySlug · getAllAzkar · getAzkarById · createAzkar / update / delete / publish / unpublish / reorderAzkar;
+                            ADHKAR + azkarTag(id) cache tags
+  cache/tags.ts           → PLAYLISTS_HOME (constant), playlistTag(id) (function), CATEGORIES (constant), ADHKAR (constant), azkarTag(id) (function)
   media/
     r2-client.ts          → createPresignedUpload(key, mime, bytes), headObject(key), ALLOWED_AUDIO_MIME_TYPES
   errors/index.ts         → AppError + codes (UNAUTHORIZED/FORBIDDEN/NOT_FOUND/VALIDATION/CONFLICT/RATE_LIMITED/INTERNAL)
@@ -222,6 +230,20 @@ apps/admin/
     new/page.tsx                         → create form (passes availableCategories to PlaylistForm)
     [id]/edit/page.tsx                   → edit form (with availableCategories) + track-uploader + track-list + publish-toggle
   app/categories/
+    page.tsx                             → RSC list page
+    new/page.tsx                         → create form
+    [id]/edit/page.tsx                   → edit form
+  features/adhkar/
+    schemas/azkar-form.schema.ts         → Zod schema reused by create + edit
+    actions/
+      create-azkar.action.ts             → form submit → azkarService.create → revalidateTag
+      update-azkar.action.ts             → form submit → azkarService.update → revalidateTag
+      reorder-azkar.action.ts            → batch order update; optimistic-friendly
+      toggle-publish.action.ts           → publish/unpublish + revalidateTag
+    components/
+      azkars-table.tsx                   → TanStack Table v8, @dnd-kit drag-and-drop rows — optimistic reorder + rollback
+      azkar-form.tsx                     → shared create/edit form (TanStack Form + Zod) — repeatable dhikr items editor
+  app/adhkar/
     page.tsx                             → RSC list page
     new/page.tsx                         → create form
     [id]/edit/page.tsx                   → edit form
@@ -305,6 +327,15 @@ apps/web/
     components/
       category-filter-bar.tsx            → client island: bilingual pills (arName · enName); gold active state;
                                             useSearchParams preserves ?sort= when changing category
+  features/adhkar/
+    lib/adhkar-progress.ts               → device-local adhkar progress store (nour.adhkar.progress; daily-reset by UTC date)
+    components/
+      adhkar-reader.tsx                  → client island: tap-counter, auto-advance through items, device-local persist
+      adhkar-card.tsx                    → RSC: azkar title, item count, category chips
+      adhkar-card-progress.tsx           → progress bar (read from adhkar-progress store)
+  app/[locale]/adhkar/
+    page.tsx                             → RSC landing page (list all published azkars with progress cards)
+    [slug]/page.tsx                      → RSC reading view (Arabic slug decode, per-item audio resolve via getTracksWithUrls logic)
   features/player/
     lib/recently-played.ts               → device-local recently-played store (nour.player.recent; MRU, capped 20);
                                             RecentTrack now has optional duration?; getSavedPosition(trackId) reads nour.player.positions
@@ -320,9 +351,10 @@ tests/e2e/
 playwright.config.ts                     → projects for web (3000) + admin (3001), webServer auto-boot
 
 scripts/
-  seed-admin.ts   → pnpm seed:admin --email --password [--force]  (--force required when NODE_ENV=production)
-  migrate.ts      → pnpm migrate [--dry-run]
-  tsconfig.json   → path aliases for @repo/* (explicit .service.ts mappings)
+  seed-admin.ts        → pnpm seed:admin --email --password [--force]  (--force required when NODE_ENV=production)
+  seed-adhkar.ts       → pnpm seed:adhkar (requires valid MONGODB_URI; idempotent morning + evening seed)
+  migrate.ts           → pnpm migrate [--dry-run]
+  tsconfig.json        → path aliases for @repo/* (explicit .service.ts mappings)
 
 apps/web/vercel.json + apps/admin/vercel.json
   → framework: nextjs, buildCommand uses `cd ../.. && pnpm turbo run build --filter=<app>...`

@@ -91,5 +91,12 @@
     "description": "Add Nour to your home screen for quick access and offline listening.",
     "install": "Install",
     "dismiss": "Not now"
+  },
+  "adhkar": {
+    "title": "Adhkar",
+    "eyebrow": "Remember Allah",
+    "navLabel": "Adhkar",
+    "todayProgress": "today",
+    "itemsCount": "adhkar"
   }
 }
