@@ -1,13 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { Button } from "@repo/ui/primitives/button";
 import { Progress } from "@repo/ui/primitives/progress";
 
 import {
-  completedCount,
   getDhikrCount,
   recordDhikrCount,
   resetIfNewDay,
@@ -23,54 +21,62 @@ export function AdhkarReader({ azkar }: Props) {
   const { id, title, items, locale } = azkar;
   const total = items.length;
 
-  // Required repeats per item — keyed on azkar.id so identity is stable when the parent
-  // passes a referentially-new prop object with the same underlying data.
+  // Required repeats per item — keyed on azkar.id so identity is stable when the
+  // parent passes a referentially-new prop object with the same underlying data.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const repeats = useMemo(() => items.map((i) => i.repeat), [azkar.id]);
 
-  const [index, setIndex] = useState(0);
-  const [count, setCount] = useState(0);
-  const [done, setDone] = useState(0);
+  const [counts, setCounts] = useState<number[]>(() => items.map(() => 0));
+  const cardRefs = useRef<(HTMLElement | null)[]>([]);
 
-  // On mount (per set): drop stale-day progress, then seed from the store.
+  // On mount (per set): drop stale-day progress, then seed counts from the store.
   useEffect(() => {
     resetIfNewDay();
-    setIndex(0);
-    setCount(getDhikrCount(id, 0));
-    setDone(completedCount(id, repeats));
+    setCounts(repeats.map((_, i) => getDhikrCount(id, i)));
   }, [id, repeats]);
 
-  const goTo = useCallback(
-    (next: number) => {
-      const clamped = Math.min(Math.max(next, 0), total - 1);
-      setIndex(clamped);
-      setCount(getDhikrCount(id, clamped));
-    },
-    [id, total],
+  const done = useMemo(
+    () => counts.reduce((n, c, i) => n + (c >= (repeats[i] ?? 1) ? 1 : 0), 0),
+    [counts, repeats],
   );
 
-  const tap = useCallback(() => {
-    const item = items[index];
-    if (!item) return;
-    // Already at the repeat target (e.g. the last dhikr, which has no next item
-    // to auto-advance to) — ignore further taps so the count can't overshoot.
-    if (count >= item.repeat) return;
-    const next = count + 1;
-    recordDhikrCount(id, index, next);
-    setDone(completedCount(id, repeats));
+  // The active card = first item not yet at its repeat target (total when all done).
+  const activeIndex = useMemo(() => {
+    const idx = counts.findIndex((c, i) => c < (repeats[i] ?? 1));
+    return idx === -1 ? total : idx;
+  }, [counts, repeats, total]);
 
-    if (next >= item.repeat && index < total - 1) {
-      // Advance synchronously so React re-renders the next dhikr in one pass.
-      const nextIndex = index + 1;
-      setIndex(nextIndex);
-      setCount(getDhikrCount(id, nextIndex));
-    } else {
-      setCount(next);
-    }
-  }, [count, id, index, items, repeats, total]);
+  const tap = useCallback(
+    (i: number) => {
+      const item = items[i];
+      if (!item) return;
+      const current = counts[i] ?? 0;
+      if (current >= item.repeat) return; // clamp — ignore over-count
 
-  const current = items[index];
-  if (!current) return null;
+      const next = current + 1;
+      recordDhikrCount(id, i, next);
+
+      const nextCounts = [...counts];
+      nextCounts[i] = next;
+      setCounts((prev) => {
+        const updated = [...prev];
+        updated[i] = next;
+        return updated;
+      });
+
+      // When the *active* card completes, smooth-scroll to the next unfinished one.
+      if (next >= item.repeat && i === activeIndex) {
+        const target = nextCounts.findIndex((c, j) => c < (repeats[j] ?? 1));
+        if (target !== -1) {
+          cardRefs.current[target]?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }
+      }
+    },
+    [counts, id, items, repeats, activeIndex],
+  );
 
   const progressValue = total > 0 ? (done / total) * 100 : 0;
 
@@ -81,90 +87,98 @@ export function AdhkarReader({ azkar }: Props) {
           <h1 className="font-display text-2xl font-bold text-primary">
             {title}
           </h1>
-          <span className="text-sm text-text-2 shrink-0">
+          <span className="shrink-0 text-sm text-text-2">
             {done} / {total}
           </span>
         </div>
         <Progress value={progressValue} />
       </header>
 
-      <article className="flex flex-col items-center gap-5 rounded-lg border border-border bg-surface p-6 text-center">
-        <span className="rounded-full bg-surface-2 px-3 py-1 text-sm font-medium text-primary">
-          ×{current.repeat}
-        </span>
+      <ol className="flex flex-col gap-4">
+        {items.map((item, i) => {
+          const count = counts[i] ?? 0;
+          const isDone = count >= item.repeat;
+          const isActive = i === activeIndex;
+          const hasVirtue = Boolean(item.virtue?.ar ?? item.virtue?.en);
+          const hasSource = Boolean(item.source?.ar ?? item.source?.en);
+          return (
+            <li key={i}>
+              <article
+                ref={(el) => {
+                  cardRefs.current[i] = el;
+                }}
+                data-testid="dhikr-card"
+                data-index={i}
+                data-active={isActive || undefined}
+                data-done={isDone || undefined}
+                className={[
+                  "flex flex-col items-center gap-4 rounded-lg border bg-surface p-6 text-center transition-colors",
+                  isActive ? "border-primary shadow-up-3" : "border-border",
+                  isDone ? "opacity-60 pointer-events-none" : "",
+                ].join(" ")}
+              >
+                <div className="flex w-full items-center justify-between">
+                  <span className="rounded-full bg-surface-2 px-3 py-1 text-sm font-medium text-primary">
+                    ×{item.repeat}
+                  </span>
+                  {isDone ? (
+                    <span className="text-primary" aria-label={t("completed")}>
+                      ✓
+                    </span>
+                  ) : null}
+                </div>
 
-        <p dir="rtl" className="font-display text-3xl leading-relaxed text-text">
-          {current.ar}
-        </p>
+                <p
+                  dir="rtl"
+                  className="font-display text-2xl leading-relaxed text-text"
+                >
+                  {item.ar}
+                </p>
 
-        {current.en ? (
-          <p className="text-base text-text-2">{current.en}</p>
-        ) : null}
+                {item.en ? (
+                  <p className="text-base text-text-2">{item.en}</p>
+                ) : null}
+                {item.transliteration ? (
+                  <p className="text-sm italic text-text-2">
+                    {item.transliteration}
+                  </p>
+                ) : null}
+                {hasVirtue ? (
+                  <p className="text-sm text-text-2">
+                    {locale === "ar"
+                      ? (item.virtue?.ar ?? item.virtue?.en)
+                      : (item.virtue?.en ?? item.virtue?.ar)}
+                  </p>
+                ) : null}
+                {hasSource ? (
+                  <p className="text-xs text-text-2">
+                    {locale === "ar"
+                      ? (item.source?.ar ?? item.source?.en)
+                      : (item.source?.en ?? item.source?.ar)}
+                  </p>
+                ) : null}
+                {item.audioUrl ? (
+                  <audio controls src={item.audioUrl} className="w-full">
+                    <track kind="captions" />
+                  </audio>
+                ) : null}
 
-        {current.transliteration ? (
-          <p className="text-sm italic text-text-2">
-            {current.transliteration}
-          </p>
-        ) : null}
-
-        {current.virtue && (current.virtue.ar ?? current.virtue.en) ? (
-          <p className="text-sm text-text-2">
-            {locale === "ar"
-              ? (current.virtue.ar ?? current.virtue.en)
-              : (current.virtue.en ?? current.virtue.ar)}
-          </p>
-        ) : null}
-
-        {current.source && (current.source.ar ?? current.source.en) ? (
-          <p className="text-xs text-text-2">
-            {locale === "ar"
-              ? (current.source.ar ?? current.source.en)
-              : (current.source.en ?? current.source.ar)}
-          </p>
-        ) : null}
-
-        {current.audioUrl ? (
-          <audio controls src={current.audioUrl} className="w-full">
-            <track kind="captions" />
-          </audio>
-        ) : null}
-
-        <button
-          type="button"
-          data-testid="counter"
-          aria-label={t("countLabel")}
-          onClick={tap}
-          className="flex size-40 flex-col items-center justify-center rounded-full border-2 border-primary bg-surface-2 text-text transition-colors hover:bg-primary hover:text-primary-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <span className="text-4xl font-bold tabular-nums">{count}</span>
-          <span className="text-sm text-text-2">/ {current.repeat}</span>
-        </button>
-      </article>
-
-      <nav className="flex items-center justify-between gap-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => goTo(index - 1)}
-          disabled={index === 0}
-        >
-          <span aria-hidden className="me-1 inline-block rtl:scale-x-[-1]">
-            ‹
-          </span>
-          {t("previous")}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => goTo(index + 1)}
-          disabled={index === total - 1}
-        >
-          {t("next")}
-          <span aria-hidden className="ms-1 inline-block rtl:scale-x-[-1]">
-            ›
-          </span>
-        </Button>
-      </nav>
+                <button
+                  type="button"
+                  data-testid="counter"
+                  aria-label={t("countLabel")}
+                  aria-disabled={isDone || undefined}
+                  onClick={() => tap(i)}
+                  className="flex size-28 flex-col items-center justify-center rounded-full border-2 border-primary bg-surface-2 text-text transition-colors hover:bg-primary hover:text-primary-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <span className="text-3xl font-bold tabular-nums">{count}</span>
+                  <span className="text-sm text-text-2">/ {item.repeat}</span>
+                </button>
+              </article>
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }
