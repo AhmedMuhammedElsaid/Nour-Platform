@@ -20,8 +20,13 @@ import * as migration0008 from "@repo/api/db/migrations/0008-azkar-indexes";
  * re-run this script against an already-migrated database.
  *
  * Usage:
- *   pnpm migrate            # run all migrations
- *   pnpm migrate --dry-run  # print which migrations would run; no DB writes
+ *   pnpm migrate                          # run all migrations
+ *   pnpm migrate --dry-run                # print which migrations would run; no DB writes
+ *   pnpm migrate --only 0008-azkar-indexes  # run a single migration in isolation
+ *
+ * ⚠️ Running the FULL chain re-applies the one-time embedded-locale transforms
+ * (0003/0004/0005) and corrupts already-migrated documents. For additive index
+ * migrations on a live database, always target the single migration with --only.
  */
 
 interface Migration {
@@ -54,11 +59,26 @@ async function main(): Promise<void> {
   const { values } = parseArgs({
     options: {
       "dry-run": { type: "boolean", default: false },
+      only: { type: "string" },
     },
     strict: true,
   });
 
   const isDryRun = values["dry-run"] === true;
+  const only = values.only;
+
+  let toRun = migrations;
+  if (only !== undefined) {
+    toRun = migrations.filter((m) => m.name === only);
+    if (toRun.length === 0) {
+      console.error(
+        `[migrate] no migration named "${only}". Known names:\n` +
+          migrations.map((m) => `  - ${m.name}`).join("\n"),
+      );
+      process.exit(1);
+    }
+    console.log(`[migrate] --only: running just "${only}".\n`);
+  }
 
   if (isDryRun) {
     console.log("[migrate] dry-run mode — no indexes will be created.\n");
@@ -67,7 +87,7 @@ async function main(): Promise<void> {
   await getDb();
 
   try {
-    for (const migration of migrations) {
+    for (const migration of toRun) {
       if (isDryRun) {
         console.log(`[migrate] would run: ${migration.name}`);
         continue;
