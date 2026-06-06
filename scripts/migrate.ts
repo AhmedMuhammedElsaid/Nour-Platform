@@ -9,6 +9,7 @@ import * as migration0004 from "@repo/api/db/migrations/0004-i18n-indexes";
 import * as migration0005 from "@repo/api/db/migrations/0005-embedded-locale";
 import * as migration0006 from "@repo/api/db/migrations/0006-search-indexes";
 import * as migration0007 from "@repo/api/db/migrations/0007-playlist-order";
+import * as migration0008 from "@repo/api/db/migrations/0008-azkar-indexes";
 
 /*
  * Migration runner for the Nour Platform.
@@ -46,6 +47,7 @@ const migrations: Migration[] = [
   migration0002, // same
   migration0006, // text-search indexes — additive, no document changes
   migration0007, // backfill playlist.order; registers { order,1 } and { status,order } indexes
+  migration0008, // azkar indexes — unique ar/en slug, { status,order }, { order }
 ];
 
 async function main(): Promise<void> {
