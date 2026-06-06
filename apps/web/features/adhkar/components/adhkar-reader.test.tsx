@@ -1,5 +1,10 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string) => key,
+}));
+
 import { AdhkarReader } from "./adhkar-reader";
 import type { SerializedAzkar } from "../types";
 
@@ -41,6 +46,20 @@ describe("AdhkarReader", () => {
     fireEvent.click(counter); // 2
     fireEvent.click(counter); // 3 -> complete -> advance
     expect(screen.getByText("الحمد لله")).toBeInTheDocument();
+  });
+
+  it("does not count past the repeat target on the last dhikr", () => {
+    render(<AdhkarReader azkar={azkar} />);
+    const counter = screen.getByTestId("counter");
+    fireEvent.click(counter); // 1
+    fireEvent.click(counter); // 2
+    fireEvent.click(counter); // 3 -> complete first item -> advance to last (repeat 1)
+    expect(screen.getByText("الحمد لله")).toBeInTheDocument();
+    fireEvent.click(counter); // 1 -> last item complete (repeat target reached)
+    const countValue = () => counter.querySelector("span")?.textContent;
+    expect(countValue()).toBe("1");
+    fireEvent.click(counter); // one extra tap must be ignored
+    expect(countValue()).toBe("1");
   });
 
   it("resets a stale day's progress on mount", () => {

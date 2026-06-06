@@ -97,6 +97,9 @@
     "eyebrow": "Remember Allah",
     "navLabel": "Adhkar",
     "todayProgress": "today",
-    "itemsCount": "adhkar"
+    "itemsCount": "adhkar",
+    "previous": "Previous",
+    "next": "Next",
+    "countLabel": "Count this dhikr"
   }
 }

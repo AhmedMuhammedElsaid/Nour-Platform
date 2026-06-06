@@ -97,6 +97,9 @@
     "eyebrow": "اذكر الله",
     "navLabel": "الأذكار",
     "todayProgress": "اليوم",
-    "itemsCount": "أذكار"
+    "itemsCount": "أذكار",
+    "previous": "السابق",
+    "next": "التالي",
+    "countLabel": "عُدّ هذا الذكر"
   }
 }

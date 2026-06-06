@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@repo/ui/primitives/button";
 import { Progress } from "@repo/ui/primitives/progress";
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export function AdhkarReader({ azkar }: Props) {
+  const t = useTranslations("adhkar");
   const { id, title, items, locale } = azkar;
   const total = items.length;
 
@@ -50,6 +52,9 @@ export function AdhkarReader({ azkar }: Props) {
   const tap = useCallback(() => {
     const item = items[index];
     if (!item) return;
+    // Already at the repeat target (e.g. the last dhikr, which has no next item
+    // to auto-advance to) — ignore further taps so the count can't overshoot.
+    if (count >= item.repeat) return;
     const next = count + 1;
     recordDhikrCount(id, index, next);
     setDone(completedCount(id, repeats));
@@ -127,7 +132,7 @@ export function AdhkarReader({ azkar }: Props) {
         <button
           type="button"
           data-testid="counter"
-          aria-label="Count this dhikr"
+          aria-label={t("countLabel")}
           onClick={tap}
           className="flex size-40 flex-col items-center justify-center rounded-full border-2 border-primary bg-surface-2 text-text transition-colors hover:bg-primary hover:text-primary-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
@@ -146,7 +151,7 @@ export function AdhkarReader({ azkar }: Props) {
           <span aria-hidden className="me-1 inline-block rtl:scale-x-[-1]">
             ‹
           </span>
-          Previous
+          {t("previous")}
         </Button>
         <Button
           variant="outline"
@@ -154,7 +159,7 @@ export function AdhkarReader({ azkar }: Props) {
           onClick={() => goTo(index + 1)}
           disabled={index === total - 1}
         >
-          Next
+          {t("next")}
           <span aria-hidden className="ms-1 inline-block rtl:scale-x-[-1]">
             ›
           </span>
