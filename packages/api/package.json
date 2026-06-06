@@ -14,6 +14,7 @@
     "./services/track": "./src/services/track.service.ts",
     "./services/category": "./src/services/category.service.ts",
     "./services/search": "./src/services/search.service.ts",
+    "./services/azkar": "./src/services/azkar.service.ts",
     "./schemas/user": "./src/schemas/user.ts",
     "./schemas/locale": "./src/schemas/locale.ts",
     "./schemas/playlist": "./src/schemas/playlist.ts",
