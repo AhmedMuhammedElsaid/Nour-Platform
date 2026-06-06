@@ -23,28 +23,15 @@ Before anything else, confirm you have:
 
 ### Option A — run only 0008 (recommended for existing Atlas DBs)
 
-Create a one-off script (or run directly in a tsx REPL):
-
-```ts
-// run: npx tsx --env-file-if-exists=.env.local -e "..."
-// or just paste into a temporary file and run with tsx
-import { getDb, disconnectDb } from "@repo/api/db/client";
-import { up } from "@repo/api/db/migrations/0008-azkar-indexes";
-
-await getDb();
-await up();
-await disconnectDb();
-console.log("0008 done");
-```
-
-Or with a one-liner from repo root:
+The migrate runner supports a `--only <name>` flag for exactly this — run a
+single migration without replaying the one-time embedded-locale transforms:
 
 ```bash
-node --import tsx/esm -e "
-import { getDb, disconnectDb } from './packages/api/src/db/client.ts';
-import { up } from './packages/api/src/db/migrations/0008-azkar-indexes.ts';
-await getDb(); await up(); await disconnectDb(); console.log('done');
-"
+# From repo root:
+pnpm migrate --only 0008-azkar-indexes
+
+# Confirm resolution first without writing, if you like:
+pnpm migrate --only 0008-azkar-indexes --dry-run
 ```
 
 If you are on a **fresh dev DB with no prior data**, the full chain is safe:
@@ -176,9 +163,9 @@ Or expand `scripts/seed-adhkar.ts` with all items and re-run `pnpm seed:adhkar` 
 
 ## 9. Production deploy checklist
 
-- [ ] Run migration 0008 in isolation on Atlas Prod (see §2 Option A).
-- [ ] Run `pnpm seed:adhkar` with prod `MONGODB_URI`.
-- [ ] Deploy `feature/adhkar` — Vercel build runs `pnpm turbo run build`.
+- [x] Run migration 0008 in isolation on Atlas (`pnpm migrate --only 0008-azkar-indexes`).
+- [x] Run `pnpm seed:adhkar` (Morning + Evening sets inserted).
+- [x] Deploy — merged to `main` and pushed; Vercel build runs `pnpm turbo run build`.
 - [ ] Verify `/ar/adhkar` loads on prod domain.
 - [ ] Verify admin `/adhkar` table shows seeded sets.
 - [ ] Check that the Adhkar nav link appears in the site header.
@@ -208,9 +195,9 @@ git worktree remove "D:\CodeLab\Nour-adhkar"
 
 | Item | Note |
 |---|---|
-| Expand seed content | Full Hisnul Muslim text — add via admin CMS or update `scripts/seed-adhkar.ts` |
+| Expand seed content | Full Hisnul Muslim text — add via admin CMS or update `scripts/seed-adhkar.ts` (editorial task; only 2 starter items per set ship) |
 | Per-item audio upload | `audioMediaId` field is wired; the admin form has a plain text input for the media ID. Full R2 upload UI (like track uploader) deferred. |
 | Per-item inline validation errors | Schema validates on submit; field-level error display for dhikr rows can be added to `azkar-items-editor.tsx` |
-| Localize reader chrome | Prev/Next/counter `aria-label` are English strings; wire through next-intl `adhkar` namespace |
-| Over-count guard on last item | After completing the last dhikr, counter can still increment past the repeat target — clamp it |
+| ~~Localize reader chrome~~ | ✅ Done — Prev/Next + counter `aria-label` routed through next-intl `adhkar` namespace. |
+| ~~Over-count guard on last item~~ | ✅ Done — reader ignores taps once an item hits its repeat target. |
 | Resume-from-store visible in UI | Progress bar on the landing card updates on mount; consider adding a "completed today ✓" badge |
