@@ -68,17 +68,13 @@ pnpm seed:adhkar
 
 Expected output:
 ```
-seeded: أذكار الصباح
-seeded: أذكار المساء
+updated: أذكار الصباح (31 items)
+updated: أذكار المساء (30 items)
 ```
 
-On a re-run:
-```
-skip (exists): أذكار الصباح
-skip (exists): أذكار المساء
-```
+(On a first-ever run the lines read `seeded:` instead of `updated:`.)
 
-> **Note:** The seeded content is minimal (2 items per set). Before public launch, expand `scripts/seed-adhkar.ts` with the full Hisnul Muslim text. You can also create/edit sets through the admin CMS after seeding — no re-run of the seed needed.
+> **Note:** The seed now loads the **full** standard morning (31) + evening (30) adhkar from `scripts/data/adhkar-data.ts` (source: github.com/osamayy/azkar-db, Arabic verbatim). It **UPSERTS** — re-running re-applies this canonical content, **overwriting any manual CMS edits to these two sets**. Other admin-created sets are untouched. Edit the two canonical sets via the admin CMS only if you don't intend to re-run the seed.
 
 ---
 
@@ -99,10 +95,10 @@ pnpm dev:admin
 
 **Public web (`http://localhost:3000`):**
 
-1. Open `/ar/adhkar` — you should see the landing page with "أذكار الصباح" and "أذكار المساء" cards, each with a `0 / 2 today` progress bar.
-2. Click a card → reading view (`/ar/adhkar/azkar-alsabah`).
-3. The counter button shows `0 / 1`. Tap it — should show `1 / 1` and auto-advance to the next dhikr.
-4. Reload the page — progress should resume at `1`.
+1. Open `/ar/adhkar` — you should see the landing page with "أذكار الصباح" and "أذكار المساء" cards, each with a `today` progress bar.
+2. Click a card → reading view (`/ar/adhkar/azkar-alsabah`) — a **scrollable list** of all dhikr cards; the first is highlighted (active).
+3. Tap the active card's counter — it increments toward its `× repeat` target. When it hits the target the card dims with a ✓, the next card becomes active, and the view smooth-scrolls to it.
+4. Reload the page — per-card progress should resume where you left off (resets at local midnight).
 5. Switch to `/en/adhkar` — cards show English titles, nav link says "Adhkar".
 
 **Admin CMS (`http://localhost:3001`):**
@@ -195,9 +191,10 @@ git worktree remove "D:\CodeLab\Nour-adhkar"
 
 | Item | Note |
 |---|---|
-| Expand seed content | Full Hisnul Muslim text — add via admin CMS or update `scripts/seed-adhkar.ts` (editorial task; only 2 starter items per set ship) |
+| ~~Expand seed content~~ | ✅ Done — full standard morning (31) + evening (30) adhkar in `scripts/data/adhkar-data.ts`; seed upserts them. |
 | Per-item audio upload | `audioMediaId` field is wired; the admin form has a plain text input for the media ID. Full R2 upload UI (like track uploader) deferred. |
 | Per-item inline validation errors | Schema validates on submit; field-level error display for dhikr rows can be added to `azkar-items-editor.tsx` |
-| ~~Localize reader chrome~~ | ✅ Done — Prev/Next + counter `aria-label` routed through next-intl `adhkar` namespace. |
+| ~~Localize reader chrome~~ | ✅ Done — counter `aria-label` routed through next-intl `adhkar` namespace (Prev/Next removed in the scroll redesign). |
 | ~~Over-count guard on last item~~ | ✅ Done — reader ignores taps once an item hits its repeat target. |
+| ~~Reader UX~~ | ✅ Reworked — scrollable tap-to-count list with auto-scroll to the next unfinished dhikr (replaced Prev/Next). |
 | Resume-from-store visible in UI | Progress bar on the landing card updates on mount; consider adding a "completed today ✓" badge |
