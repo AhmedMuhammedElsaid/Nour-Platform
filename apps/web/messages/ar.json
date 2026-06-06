@@ -99,8 +99,7 @@
     "navLabel": "الأذكار",
     "todayProgress": "اليوم",
     "itemsCount": "أذكار",
-    "previous": "السابق",
-    "next": "التالي",
-    "countLabel": "عُدّ هذا الذكر"
+    "countLabel": "عُدّ هذا الذكر",
+    "completed": "تم"
   }
 }
