@@ -31,6 +31,8 @@
     "./db/models/playlist": "./src/db/models/playlist.model.ts",
     "./db/models/track": "./src/db/models/track.model.ts",
     "./db/models/media": "./src/db/models/media.model.ts",
+    "./db/models/azkar.model": "./src/db/models/azkar.model.ts",
+    "./utils/slug": "./src/utils/slug.ts",
     "./repositories/playlist": "./src/repositories/playlist.repo.ts",
     "./repositories/track": "./src/repositories/track.repo.ts",
     "./repositories/media": "./src/repositories/media.repo.ts",
