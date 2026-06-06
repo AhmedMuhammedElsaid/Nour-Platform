@@ -201,6 +201,57 @@ describe("playlist.service", () => {
       expect(result.scholarImage).toBe("/dr-saber-adel.jpg");
     });
 
+    it("forwards an embedUrl to the repo and round-trips it in the DTO", async () => {
+      vi.mocked(requireSession).mockResolvedValueOnce({} as never);
+      vi.mocked(repo.createPlaylist).mockResolvedValueOnce(
+        makeLean({ embedUrl: "https://soundcloud.com/user/sets/lectures" }),
+      );
+
+      const result = await service.createPlaylist({
+        ar: { title: "عنوان" },
+        en: { title: "Title" },
+        embedUrl: "https://soundcloud.com/user/sets/lectures",
+        status: "draft",
+        categoryIds: [],
+      });
+
+      const createArg = vi.mocked(repo.createPlaylist).mock.calls[0]![0];
+      expect(createArg.embedUrl).toBe("https://soundcloud.com/user/sets/lectures");
+      expect(result.embedUrl).toBe("https://soundcloud.com/user/sets/lectures");
+    });
+
+    it("accepts an embedUrl from another allow-listed domain (amgadsamir.com)", async () => {
+      vi.mocked(requireSession).mockResolvedValueOnce({} as never);
+      vi.mocked(repo.createPlaylist).mockResolvedValueOnce(
+        makeLean({ embedUrl: "https://www.amgadsamir.com/series/x" }),
+      );
+
+      const result = await service.createPlaylist({
+        ar: { title: "عنوان" },
+        en: { title: "Title" },
+        embedUrl: "https://www.amgadsamir.com/series/x",
+        status: "draft",
+        categoryIds: [],
+      });
+
+      expect(result.embedUrl).toBe("https://www.amgadsamir.com/series/x");
+    });
+
+    it("rejects an embedUrl whose host is not on the allow-list", async () => {
+      vi.mocked(requireSession).mockResolvedValueOnce({} as never);
+
+      await expect(
+        service.createPlaylist({
+          ar: { title: "عنوان" },
+          en: { title: "Title" },
+          embedUrl: "https://evil.example.com/track",
+          status: "draft",
+          categoryIds: [],
+        }),
+      ).rejects.toThrow();
+      expect(repo.createPlaylist).not.toHaveBeenCalled();
+    });
+
     it("propagates Zod validation errors as thrown ZodError", async () => {
       vi.mocked(requireSession).mockResolvedValueOnce({} as never);
 
@@ -377,6 +428,22 @@ describe("playlist.service", () => {
         expect.objectContaining({ ar: { scholarName: "جديد" } }),
       );
       expect(revalidateTag).toHaveBeenCalledWith(PLAYLISTS_HOME, "default");
+    });
+
+    it("forwards an embedUrl patch (and accepts null to clear it)", async () => {
+      vi.mocked(requireSession).mockResolvedValueOnce({} as never);
+      vi.mocked(repo.updatePlaylistById).mockResolvedValueOnce(
+        makeLean({ _id: { toString: () => "playlist123456789012" } }),
+      );
+
+      await service.updatePlaylist("playlist123456789012", {
+        embedUrl: null,
+      });
+
+      expect(repo.updatePlaylistById).toHaveBeenCalledWith(
+        "playlist123456789012",
+        expect.objectContaining({ embedUrl: null }),
+      );
     });
   });
 });

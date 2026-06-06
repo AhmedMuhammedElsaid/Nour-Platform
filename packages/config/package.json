@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./env": "./src/env.ts"
+    "./env": "./src/env.ts",
+    "./embed-hosts": "./src/embed-hosts.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",

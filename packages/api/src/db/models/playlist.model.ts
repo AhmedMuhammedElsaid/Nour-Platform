@@ -16,6 +16,7 @@ const playlistSchema = new Schema(
     en: { type: localeContentSchema, required: true },
     coverMediaId: { type: Schema.Types.ObjectId, ref: "Media" },
     scholarImage: { type: String, trim: true, maxlength: 500 },
+    embedUrl: { type: String, trim: true, maxlength: 500 },
     status: {
       type: String,
       enum: ["draft", "published"],

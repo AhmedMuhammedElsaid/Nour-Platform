@@ -40,6 +40,8 @@ import type { Locale } from "@repo/api/schemas/locale";
 import type { Playlist } from "@repo/api/schemas/playlist";
 import type { PlayableTrack } from "@repo/api/services/track";
 import { TrackListPlayer } from "@/features/playlists/components/track-list-player";
+import { PlaylistEmbed } from "@/features/playlists/components/playlist-embed";
+import { resolveEmbed } from "@/features/playlists/lib/embed";
 import { SetLocaleAlternates } from "@/features/layout/locale-alternates-context";
 import { getCoverEmoji, getCoverGradient } from "@/features/playlists/lib/cover-art";
 import { Link } from "@/i18n/navigation";
@@ -146,7 +148,10 @@ export default async function PlaylistDetailPage({
   const playlist = await getPlaylistBySlug(locale, decodeSlug(slug));
   if (!playlist || playlist.status !== "published") notFound();
 
-  const tracks = await getTracksWithUrls(playlist.id);
+  // Skip R2 track resolution when an external embed URL is set — audio is
+  // handled entirely by the embedded third-party page/player.
+  const tracks = playlist.embedUrl ? [] : await getTracksWithUrls(playlist.id);
+  const embed = playlist.embedUrl ? await resolveEmbed(playlist.embedUrl) : null;
   const coverUrl = playlist.coverMediaId
     ? await getMediaUrlById(playlist.coverMediaId)
     : null;
@@ -269,18 +274,26 @@ export default async function PlaylistDetailPage({
         </p>
       </header>
 
-      <section aria-labelledby="tracks-heading">
-        <h2 id="tracks-heading" className="text-lg font-semibold mt-10 mb-4">
-          {t("tracksHeading")}
-        </h2>
-        <TrackListPlayer
-          tracks={displayTracks}
+      {playlist.embedUrl ? (
+        <PlaylistEmbed
+          embed={embed}
+          sourceUrl={playlist.embedUrl}
           playlistTitle={display.title}
-          coverUrl={coverUrl ?? undefined}
-          playlistSlug={display.slug}
-          locale={locale}
         />
-      </section>
+      ) : (
+        <section aria-labelledby="tracks-heading">
+          <h2 id="tracks-heading" className="text-lg font-semibold mt-10 mb-4">
+            {t("tracksHeading")}
+          </h2>
+          <TrackListPlayer
+            tracks={displayTracks}
+            playlistTitle={display.title}
+            coverUrl={coverUrl ?? undefined}
+            playlistSlug={display.slug}
+            locale={locale}
+          />
+        </section>
+      )}
     </div>
   );
 }

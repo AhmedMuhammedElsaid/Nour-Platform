@@ -9,6 +9,8 @@
  * and inline style injection is not a meaningful XSS vector for this app
  * (no user-generated HTML rendered server-side in the MVP).
  */
+import { EMBED_CSP_FRAME_SRC } from "@repo/config/embed-hosts";
+
 export function buildWebCsp(nonce: string, r2Hostname: string): string {
   const r2Origin = r2Hostname ? `https://${r2Hostname}` : "";
   return [
@@ -29,6 +31,10 @@ export function buildWebCsp(nonce: string, r2Hostname: string): string {
     // PWA: allow the same-origin service worker script and web app manifest.
     "worker-src 'self'",
     "manifest-src 'self'",
+    // Allow embed iframes only from the approved host list (shared with the
+    // playlist embedUrl validator in @repo/config/embed-hosts, so CSP and
+    // save-time validation can never drift).
+    `frame-src ${EMBED_CSP_FRAME_SRC.join(" ")}`,
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

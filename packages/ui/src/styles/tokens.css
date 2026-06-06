@@ -71,6 +71,8 @@
   --color-muted: #5a4a38;
   --color-primary: #c8a050;
   --color-primary-fg: #0f0d0a;
+  /* Brighter gold for the prayer-times sun + next-prayer glow. */
+  --color-sun: #e4c57e;
   /* Teal — kept for "Published" status badges only (not a general accent). */
   --color-secondary: #0e6e59;
   --color-accent: #c6a266;
@@ -94,6 +96,7 @@
   /* Gold darkened for WCAG AA on cream. */
   --color-primary: #9a7830;
   --color-primary-fg: #ffffff;
+  --color-sun: #c8a050;
   --color-secondary: #0e6e59;
   --color-accent: #a8884a;
   --color-success: #147d4a;
