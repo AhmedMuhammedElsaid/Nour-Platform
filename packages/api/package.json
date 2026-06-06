@@ -21,6 +21,7 @@
     "./schemas/track": "./src/schemas/track.ts",
     "./schemas/media": "./src/schemas/media.ts",
     "./schemas/category": "./src/schemas/category.ts",
+    "./schemas/azkar": "./src/schemas/azkar.ts",
     "./media/r2-client": "./src/media/r2-client.ts",
     "./auth": "./src/auth/index.ts",
     "./auth/password": "./src/auth/password.ts",
