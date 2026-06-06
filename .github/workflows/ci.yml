@@ -23,9 +23,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # Fetch full history so Turborepo can compute affected packages
-          # against `main` on pull requests.
-          fetch-depth: 2
+          # Full history required so Turborepo can resolve origin/main as a
+          # diff base on PRs with merge commits (fetch-depth: 2 is too shallow).
+          fetch-depth: 0
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
