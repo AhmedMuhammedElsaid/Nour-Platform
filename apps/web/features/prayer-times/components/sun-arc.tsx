@@ -72,7 +72,7 @@ export function SunArc({
           <g key={d.key}>
             {d.isNext ? (
               <>
-                <circle cx={p.x} cy={p.y} r="16" fill="none" stroke="var(--color-sun)" strokeOpacity="0.32" strokeWidth="2" />
+                <circle cx={p.x} cy={p.y} r="8" fill="none" stroke="var(--color-sun)" strokeOpacity="0.32" strokeWidth="2" />
                 <circle cx={p.x} cy={p.y} r="7" fill="var(--color-sun)" />
               </>
             ) : (
