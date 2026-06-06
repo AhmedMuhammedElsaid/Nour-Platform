@@ -33,6 +33,16 @@ export function SunArc({
           <stop offset="0.5" stopColor="var(--color-sun)" />
           <stop offset="1" stopColor="var(--color-primary)" stopOpacity="0.15" />
         </linearGradient>
+        {/* soft radiant corona so the sun reads as a real light source */}
+        <radialGradient id="nour-sun-glow">
+          <stop offset="0" stopColor="var(--color-sun)" stopOpacity="0.6" />
+          <stop offset="45%" stopColor="var(--color-sun)" stopOpacity="0.22" />
+          <stop offset="100%" stopColor="var(--color-sun)" stopOpacity="0" />
+        </radialGradient>
+        {/* bloom the hot core + rays for that over-bright, glowing look */}
+        <filter id="nour-sun-bloom" x="-75%" y="-75%" width="250%" height="250%">
+          <feGaussianBlur stdDeviation="2.2" />
+        </filter>
       </defs>
 
       {/* horizon */}
@@ -91,7 +101,11 @@ export function SunArc({
         }}
         stroke="var(--color-sun)"
       >
-        <g strokeWidth="2" strokeLinecap="round">
+        {/* breathing corona — large soft halo that gently pulses like real glow */}
+        <circle cx="0" cy="0" r="24" fill="url(#nour-sun-glow)" stroke="none" className="animate-pulse" />
+        {/* blurred hot core sitting under the crisp disc for a bloomed light source */}
+        <circle cx="0" cy="0" r="7" fill="var(--color-sun)" stroke="none" filter="url(#nour-sun-bloom)" />
+        <g strokeWidth="2" strokeLinecap="round" filter="url(#nour-sun-bloom)">
           <line x1="0" y1="-13" x2="0" y2="-9" />
           <line x1="0" y1="9" x2="0" y2="13" />
           <line x1="-13" y1="0" x2="-9" y2="0" />
