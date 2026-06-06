@@ -12,6 +12,7 @@ const BRAND: Record<string, { text: string; lang: string }> = {
 
 export async function SiteHeader() {
   const t = await getTranslations("nav");
+  const adhkarT = await getTranslations("adhkar");
   const locale = await getLocale();
   const brand = BRAND[locale] ?? BRAND.en!;
 
@@ -24,6 +25,13 @@ export async function SiteHeader() {
           aria-label={t("home")}
         >
           <span lang={brand.lang}>{brand.text}</span>
+        </Link>
+        <Link
+          href="/adhkar"
+          className="text-sm font-medium text-foreground hover:text-primary transition-colors"
+          aria-label={adhkarT("navLabel")}
+        >
+          {adhkarT("navLabel")}
         </Link>
         <SearchBox />
         <LocaleSwitcher />
