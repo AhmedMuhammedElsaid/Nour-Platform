@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -20,46 +20,49 @@ const azkar: SerializedAzkar = {
   ],
 };
 
-beforeEach(() => window.localStorage.clear());
+beforeEach(() => {
+  window.localStorage.clear();
+  // jsdom has no real scrollIntoView — stub it so the auto-scroll call is observable.
+  Element.prototype.scrollIntoView = vi.fn();
+});
 
-describe("AdhkarReader", () => {
-  it("shows the first dhikr and its repeat target", () => {
+const cards = () => screen.getAllByTestId("dhikr-card");
+const counters = () => screen.getAllByTestId("counter");
+
+describe("AdhkarReader (scroll list)", () => {
+  it("renders every dhikr as a card", () => {
     render(<AdhkarReader azkar={azkar} />);
+    expect(cards()).toHaveLength(2);
     expect(screen.getByText("سبحان الله")).toBeInTheDocument();
-    expect(screen.getByTestId("counter")).toHaveTextContent("0");
-    expect(screen.getByTestId("counter")).toHaveTextContent("3");
+    expect(screen.getByText("الحمد لله")).toBeInTheDocument();
   });
 
-  it("increments the counter on tap and persists", () => {
+  it("increments the tapped card's count and persists", () => {
     render(<AdhkarReader azkar={azkar} />);
-    fireEvent.click(screen.getByTestId("counter"));
-    expect(screen.getByTestId("counter")).toHaveTextContent("1");
+    fireEvent.click(counters()[0]!);
+    expect(within(cards()[0]!).getByText("1")).toBeInTheDocument();
     expect(
       JSON.parse(window.localStorage.getItem("nour.adhkar.progress")!).sets.set1["0"],
     ).toBe(1);
   });
 
-  it("auto-advances to the next dhikr when the repeat target is reached", () => {
+  it("marks done, advances active, and auto-scrolls when the active card completes", () => {
     render(<AdhkarReader azkar={azkar} />);
-    const counter = screen.getByTestId("counter");
-    fireEvent.click(counter); // 1
-    fireEvent.click(counter); // 2
-    fireEvent.click(counter); // 3 -> complete -> advance
-    expect(screen.getByText("الحمد لله")).toBeInTheDocument();
+    fireEvent.click(counters()[0]!); // 1
+    fireEvent.click(counters()[0]!); // 2
+    fireEvent.click(counters()[0]!); // 3 -> complete item 0
+    expect(cards()[0]!).toHaveAttribute("data-done");
+    expect(cards()[1]!).toHaveAttribute("data-active");
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
   });
 
-  it("does not count past the repeat target on the last dhikr", () => {
+  it("does not count past the repeat target", () => {
     render(<AdhkarReader azkar={azkar} />);
-    const counter = screen.getByTestId("counter");
-    fireEvent.click(counter); // 1
-    fireEvent.click(counter); // 2
-    fireEvent.click(counter); // 3 -> complete first item -> advance to last (repeat 1)
-    expect(screen.getByText("الحمد لله")).toBeInTheDocument();
-    fireEvent.click(counter); // 1 -> last item complete (repeat target reached)
-    const countValue = () => counter.querySelector("span")?.textContent;
-    expect(countValue()).toBe("1");
-    fireEvent.click(counter); // one extra tap must be ignored
-    expect(countValue()).toBe("1");
+    fireEvent.click(counters()[0]!);
+    fireEvent.click(counters()[0]!);
+    fireEvent.click(counters()[0]!); // complete at 3
+    fireEvent.click(counters()[0]!); // ignored
+    expect(within(cards()[0]!).getByText("3")).toBeInTheDocument();
   });
 
   it("resets a stale day's progress on mount", () => {
@@ -68,17 +71,37 @@ describe("AdhkarReader", () => {
       JSON.stringify({ date: "2000-01-01", sets: { set1: { "0": 3 } } }),
     );
     render(<AdhkarReader azkar={azkar} />);
-    expect(screen.getByTestId("counter")).toHaveTextContent("0");
+    expect(cards()[0]!).not.toHaveAttribute("data-done");
   });
 
-  it("resumes progress from a persisted same-day count", () => {
-    // Seed today's date with a count of 2 for item 0
+  it("resumes same-day progress from the store", () => {
     const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
     window.localStorage.setItem(
       "nour.adhkar.progress",
       JSON.stringify({ date: todayStr, sets: { set1: { "0": 2 } } }),
     );
-    render(<AdhkarReader azkar={{ ...azkar, locale: "ar" }} />);
-    expect(screen.getByTestId("counter")).toHaveTextContent("2");
+    render(<AdhkarReader azkar={azkar} />);
+    expect(within(cards()[0]!).getByText("2")).toBeInTheDocument();
+  });
+
+  it("tapping a non-active card counts it without changing active or scrolling", () => {
+    render(<AdhkarReader azkar={azkar} />);
+    fireEvent.click(counters()[1]!); // card 1 is NOT active (card 0 is)
+    expect(within(cards()[1]!).getByText("1")).toBeInTheDocument();
+    expect(cards()[0]!).toHaveAttribute("data-active");
+    expect(cards()[1]!).not.toHaveAttribute("data-active");
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it("reaches all-done after completing every card, with no active card", () => {
+    render(<AdhkarReader azkar={azkar} />);
+    fireEvent.click(counters()[0]!); // 1
+    fireEvent.click(counters()[0]!); // 2
+    fireEvent.click(counters()[0]!); // 3 -> card 0 done, advance to card 1
+    fireEvent.click(counters()[1]!); // card 1 (repeat 1) done -> all complete
+    expect(cards()[0]!).toHaveAttribute("data-done");
+    expect(cards()[1]!).toHaveAttribute("data-done");
+    expect(cards()[0]!).not.toHaveAttribute("data-active");
+    expect(cards()[1]!).not.toHaveAttribute("data-active");
   });
 });

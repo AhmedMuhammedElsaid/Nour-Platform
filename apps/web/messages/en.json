@@ -99,8 +99,7 @@
     "navLabel": "Adhkar",
     "todayProgress": "today",
     "itemsCount": "adhkar",
-    "previous": "Previous",
-    "next": "Next",
-    "countLabel": "Count this dhikr"
+    "countLabel": "Count this dhikr",
+    "completed": "Done"
   }
 }
