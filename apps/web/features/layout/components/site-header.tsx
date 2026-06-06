@@ -1,9 +1,12 @@
 import { getLocale, getTranslations } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
-import { SearchBox } from "@/features/search/components/search-box";
+// import { SearchBox } from "@/features/search/components/search-box";
 import { LocaleSwitcher } from "./locale-switcher";
 import { ThemeToggle } from "./theme-toggle";
+
+const NAV_LINK_CLASS =
+  "text-sm font-medium text-text-2 hover:text-primary whitespace-nowrap transition-colors";
 
 const BRAND: Record<string, { text: string; lang: string }> = {
   ar: { text: "نور", lang: "ar" },
@@ -19,7 +22,7 @@ export async function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 w-full bg-bg/85 backdrop-blur-lg border-b border-border">
-      <div className="max-w-5xl mx-auto px-6 h-14 flex items-center gap-4">
+      <div className="max-w-5xl mx-auto px-6 h-14 flex items-center gap-6">
         <Link
           href="/"
           className="font-display text-xl font-bold leading-none text-primary hover:text-primary/80 transition-colors"
@@ -27,22 +30,21 @@ export async function SiteHeader() {
         >
           <span lang={brand.lang}>{brand.text}</span>
         </Link>
-        <Link
-          href="/adhkar"
-          className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-          aria-label={adhkarT("navLabel")}
-        >
-          {adhkarT("navLabel")}
-        </Link>
-        {/* <SearchBox /> */}
-        <Link
-          href="/prayer-times"
-          className="text-sm text-text-2 hover:text-primary whitespace-nowrap transition-colors"
-        >
-          {tPrayer("nav")}
-        </Link>
-        <LocaleSwitcher />
-        <ThemeToggle />
+
+        <nav aria-label={t("primary")} className="flex items-center gap-5">
+          <Link href="/adhkar" className={NAV_LINK_CLASS}>
+            {adhkarT("navLabel")}
+          </Link>
+          <Link href="/prayer-times" className={NAV_LINK_CLASS}>
+            {tPrayer("nav")}
+          </Link>
+          {/* <SearchBox /> */}
+        </nav>
+
+        <div className="ms-auto flex items-center gap-2">
+          <LocaleSwitcher />
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   );

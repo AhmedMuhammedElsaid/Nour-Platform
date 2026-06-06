@@ -9,7 +9,8 @@
     "home": "Nour — home",
     "skipToContent": "Skip to main content",
     "language": "Language",
-    "toggleTheme": "Toggle light/dark theme"
+    "toggleTheme": "Toggle light/dark theme",
+    "primary": "Main navigation"
   },
   "footer": {
     "copyright": "© 2026 Nour Platform"
