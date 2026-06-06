@@ -22,26 +22,30 @@ export function PrayerPage({ locale }: { locale: "ar" | "en" }) {
   const { location, prefs, setLocation, setMethod, setMadhab } = usePrayerSettings();
   const [now, setNow] = useState<number>(() => Date.now());
 
+  // Tick every second so the sun glides along the arc as time passes.
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000);
+    const id = setInterval(() => setNow(Date.now()), 1_000);
     return () => clearInterval(id);
   }, []);
 
+  // Recompute the day per-minute (prayer instants only change by calendar day);
+  // the sun position reads live `now` so it still moves smoothly each second.
+  const minute = Math.floor(now / 60_000);
   const day = useMemo(
     () =>
       computePrayerTimes({
         lat: location.lat,
         lng: location.lng,
-        date: new Date(now),
+        date: new Date(minute * 60_000),
         method: prefs.method,
         madhab: prefs.madhab,
       }),
-    [location.lat, location.lng, prefs.method, prefs.madhab, now],
+    [location.lat, location.lng, prefs.method, prefs.madhab, minute],
   );
 
   const nowDate = new Date(now);
   const next = getNextPrayer(day, nowDate);
-  const dots = buildArcDots(day, next?.key ?? null);
+  const dots = buildArcDots(day, next?.key ?? null, (k) => t(k));
   const sunFraction = getDayProgress(day, nowDate);
 
   return (

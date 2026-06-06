@@ -5,6 +5,7 @@ export type ArcDot = {
   key: PrayerKey;
   fraction: number; // 0..1 position along the Fajr→Isha day
   isNext: boolean;
+  label: string; // localized prayer name shown above the point
 };
 
 export function SunArc({
@@ -52,22 +53,44 @@ export function SunArc({
         strokeDasharray="2 7"
       />
 
-      {/* prayer dots */}
+      {/* prayer dots + name labels */}
       {dots.map((d) => {
         const p = arcPoint(tForFraction(d.fraction));
-        if (d.isNext) {
-          return (
-            <g key={d.key}>
-              <circle cx={p.x} cy={p.y} r="16" fill="none" stroke="var(--color-sun)" strokeOpacity="0.32" strokeWidth="2" />
-              <circle cx={p.x} cy={p.y} r="7" fill="var(--color-sun)" />
-            </g>
-          );
-        }
-        return <circle key={d.key} cx={p.x} cy={p.y} r="3.5" fill="var(--color-text-2)" />;
+        // Lift the label clear of the dot (and clear of the glow ring for next).
+        const labelY = p.y - (d.isNext ? 24 : 14);
+        return (
+          <g key={d.key}>
+            {d.isNext ? (
+              <>
+                <circle cx={p.x} cy={p.y} r="16" fill="none" stroke="var(--color-sun)" strokeOpacity="0.32" strokeWidth="2" />
+                <circle cx={p.x} cy={p.y} r="7" fill="var(--color-sun)" />
+              </>
+            ) : (
+              <circle cx={p.x} cy={p.y} r="3.5" fill="var(--color-text-2)" />
+            )}
+            <text
+              x={p.x}
+              y={labelY}
+              textAnchor="middle"
+              fontFamily="var(--font-display)"
+              fontSize="13"
+              fontWeight={d.isNext ? 600 : 400}
+              fill={d.isNext ? "var(--color-sun)" : "var(--color-text-2)"}
+            >
+              {d.label}
+            </text>
+          </g>
+        );
       })}
 
-      {/* current sun — gold disc + rays (matches the glow) */}
-      <g transform={`translate(${sun.x}, ${sun.y})`} stroke="var(--color-sun)">
+      {/* current sun — gold disc + rays; glides toward the next prayer as time passes */}
+      <g
+        style={{
+          transform: `translate(${sun.x}px, ${sun.y}px)`,
+          transition: "transform 900ms linear",
+        }}
+        stroke="var(--color-sun)"
+      >
         <g strokeWidth="2" strokeLinecap="round">
           <line x1="0" y1="-13" x2="0" y2="-9" />
           <line x1="0" y1="9" x2="0" y2="13" />

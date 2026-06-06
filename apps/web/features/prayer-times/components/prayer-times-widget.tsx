@@ -16,8 +16,13 @@ import {
   type PrayerKey,
 } from "@repo/api/services/prayer-times";
 
-// Day fraction (Fajr→Isha) for each instant — used to place arc dots.
-export function buildArcDots(day: PrayerDay, nextKey: PrayerKey | null): ArcDot[] {
+// Day fraction (Fajr→Isha) for each instant — used to place arc dots. `labelFor`
+// resolves the localized prayer name rendered above each point.
+export function buildArcDots(
+  day: PrayerDay,
+  nextKey: PrayerKey | null,
+  labelFor: (key: PrayerKey) => string,
+): ArcDot[] {
   const fajr = day.instants.find((i) => i.key === "fajr")?.time ?? null;
   const isha = day.instants.find((i) => i.key === "isha")?.time ?? null;
   const span =
@@ -30,6 +35,7 @@ export function buildArcDots(day: PrayerDay, nextKey: PrayerKey | null): ArcDot[
       key: i.key,
       fraction: fajr ? Math.min(1, Math.max(0, (i.time!.getTime() - fajr.getTime()) / span)) : 0.5,
       isNext: i.key === nextKey,
+      label: labelFor(i.key),
     }));
 }
 
@@ -38,27 +44,31 @@ export function PrayerTimesWidget({ locale }: { locale: "ar" | "en" }) {
   const { location, prefs } = usePrayerSettings();
   const [now, setNow] = useState<number>(() => Date.now());
 
-  // Re-tick once a minute so the arc/next refresh as time passes.
+  // Tick every second so the sun visibly glides along the arc as time passes.
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000);
+    const id = setInterval(() => setNow(Date.now()), 1_000);
     return () => clearInterval(id);
   }, []);
 
+  // Prayer instants only change with the calendar day, so recompute the day
+  // per-minute (cheap) rather than every second; the sun position below reads
+  // the live `now` so it still moves smoothly each second.
+  const minute = Math.floor(now / 60_000);
   const day = useMemo(
     () =>
       computePrayerTimes({
         lat: location.lat,
         lng: location.lng,
-        date: new Date(now),
+        date: new Date(minute * 60_000),
         method: prefs.method,
         madhab: prefs.madhab,
       }),
-    [location.lat, location.lng, prefs.method, prefs.madhab, now],
+    [location.lat, location.lng, prefs.method, prefs.madhab, minute],
   );
 
   const nowDate = new Date(now);
   const next = getNextPrayer(day, nowDate);
-  const dots = buildArcDots(day, next?.key ?? null);
+  const dots = buildArcDots(day, next?.key ?? null, (k) => t(k));
   const sunFraction = getDayProgress(day, nowDate);
 
   const rowKeys: PrayerKey[] = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
