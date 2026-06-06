@@ -3,6 +3,7 @@ import { z } from "zod";
 const localePair = z.object({ ar: z.string().max(2000), en: z.string().max(2000) });
 
 export const dhikrItemFormSchema = z.object({
+  id: z.string().min(1),
   ar: z.string().min(1, "Arabic text is required").max(4000),
   en: z.string().max(4000),
   transliteration: z.string().max(4000),
@@ -22,12 +23,15 @@ export const azkarFormSchema = z.object({
 });
 export type AzkarFormValues = z.infer<typeof azkarFormSchema>;
 
-export const emptyDhikrItem: DhikrItemFormValues = {
-  ar: "",
-  en: "",
-  transliteration: "",
-  repeat: 1,
-  virtue: { ar: "", en: "" },
-  source: { ar: "", en: "" },
-  audioMediaId: "",
-};
+export function createEmptyDhikrItem(): DhikrItemFormValues {
+  return {
+    id: crypto.randomUUID(),
+    ar: "",
+    en: "",
+    transliteration: "",
+    repeat: 1,
+    virtue: { ar: "", en: "" },
+    source: { ar: "", en: "" },
+    audioMediaId: "",
+  };
+}
