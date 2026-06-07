@@ -216,10 +216,10 @@ export function AdhkarReader({ azkar }: Props) {
                   aria-label={t("countLabel")}
                   aria-disabled={isDone || undefined}
                   onClick={() => tap(i)}
-                  className="flex size-28 flex-col items-center justify-center rounded-full border-2 border-primary bg-surface-2 text-text transition-colors hover:bg-primary hover:text-primary-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex size-16 flex-col items-center justify-center rounded-full border-2 border-primary bg-surface-2 text-text transition-colors hover:bg-primary hover:text-primary-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <span className="text-3xl font-bold tabular-nums">{count}</span>
-                  <span className="text-sm text-text-2">/ {item.repeat}</span>
+                  <span className="text-xl font-bold tabular-nums">{count}</span>
+                  <span className="text-xs text-text-2">/ {item.repeat}</span>
                 </button>
               </article>
             </li>
