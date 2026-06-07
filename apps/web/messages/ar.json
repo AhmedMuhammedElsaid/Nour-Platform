@@ -37,7 +37,7 @@
     "listenOn": "استمع على نور",
     "published": "منشور",
     "backToHome": "العودة إلى الرئيسية",
-    "track":"تلاوة",
+    "track": "تلاوة",
     "by": "بصوت"
   },
   "search": {
@@ -100,6 +100,8 @@
     "todayProgress": "اليوم",
     "itemsCount": "أذكار",
     "countLabel": "عُدّ هذا الذكر",
-    "completed": "تم"
+    "completed": "تم",
+    "scrollTop": "العودة للأعلى",
+    "reset": "البدء من جديد"
   }
 }

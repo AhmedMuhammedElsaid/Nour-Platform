@@ -9,6 +9,7 @@ import {
   getDhikrCount,
   recordDhikrCount,
   resetIfNewDay,
+  resetSet,
 } from "@/features/adhkar/lib/adhkar-progress";
 import type { SerializedAzkar } from "@/features/adhkar/types";
 
@@ -27,6 +28,7 @@ export function AdhkarReader({ azkar }: Props) {
   const repeats = useMemo(() => items.map((i) => i.repeat), [azkar.id]);
 
   const [counts, setCounts] = useState<number[]>(() => items.map(() => 0));
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const cardRefs = useRef<(HTMLElement | null)[]>([]);
 
   // On mount (per set): drop stale-day progress, then seed counts from the store.
@@ -34,6 +36,26 @@ export function AdhkarReader({ azkar }: Props) {
     resetIfNewDay();
     setCounts(repeats.map((_, i) => getDhikrCount(id, i)));
   }, [id, repeats]);
+
+  // Reveal the "back to top" affordance once the user has scrolled past a
+  // screenful, so a long set of dhikr cards is quick to climb back up.
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 600);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  // Clear this set's counts and start over from the first dhikr.
+  const resetAll = useCallback(() => {
+    resetSet(id);
+    setCounts(items.map(() => 0));
+    scrollToTop();
+  }, [id, items, scrollToTop]);
 
   const done = useMemo(
     () => counts.reduce((n, c, i) => n + (c >= (repeats[i] ?? 1) ? 1 : 0), 0),
@@ -79,6 +101,7 @@ export function AdhkarReader({ azkar }: Props) {
   );
 
   const progressValue = total > 0 ? (done / total) * 100 : 0;
+  const hasProgress = counts.some((c) => c > 0);
 
   return (
     <div className="flex flex-col gap-6">
@@ -92,6 +115,30 @@ export function AdhkarReader({ azkar }: Props) {
           </span>
         </div>
         <Progress value={progressValue} />
+        <div className="flex justify-end">
+          <button
+            type="button"
+            data-testid="reset-all"
+            onClick={resetAll}
+            disabled={!hasProgress}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm text-text-2 transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:text-text-2"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="size-4"
+            >
+              <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+              <path d="M3 3v5h5" />
+            </svg>
+            {t("reset")}
+          </button>
+        </div>
       </header>
 
       <ol className="flex flex-col gap-4">
@@ -169,16 +216,41 @@ export function AdhkarReader({ azkar }: Props) {
                   aria-label={t("countLabel")}
                   aria-disabled={isDone || undefined}
                   onClick={() => tap(i)}
-                  className="flex size-28 flex-col items-center justify-center rounded-full border-2 border-primary bg-surface-2 text-text transition-colors hover:bg-primary hover:text-primary-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex size-16 flex-col items-center justify-center rounded-full border-2 border-primary bg-surface-2 text-text transition-colors hover:bg-primary hover:text-primary-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <span className="text-3xl font-bold tabular-nums">{count}</span>
-                  <span className="text-sm text-text-2">/ {item.repeat}</span>
+                  <span className="text-xl font-bold tabular-nums">{count}</span>
+                  <span className="text-xs text-text-2">/ {item.repeat}</span>
                 </button>
               </article>
             </li>
           );
         })}
       </ol>
+
+      {showScrollTop ? (
+        <button
+          type="button"
+          data-testid="scroll-top"
+          aria-label={t("scrollTop")}
+          title={t("scrollTop")}
+          onClick={scrollToTop}
+          className="fixed bottom-6 end-6 z-40 flex size-12 items-center justify-center rounded-full border border-primary bg-surface text-primary shadow-up-3 transition-colors hover:bg-primary hover:text-primary-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="size-6"
+          >
+            <path d="M12 19V5" />
+            <path d="m5 12 7-7 7 7" />
+          </svg>
+        </button>
+      ) : null}
     </div>
   );
 }

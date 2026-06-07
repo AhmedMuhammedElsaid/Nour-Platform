@@ -66,6 +66,15 @@ export function recordDhikrCount(
   return p;
 }
 
+// Clears all recorded counts for one set so the user can start it over.
+// Other sets and the stored date are left untouched. Returns new state.
+export function resetSet(setId: string): AzkarProgress {
+  const p = readAzkarProgress();
+  delete p.sets[setId];
+  write(p);
+  return p;
+}
+
 export function getDhikrCount(setId: string, itemIndex: number): number {
   return readAzkarProgress().sets[setId]?.[String(itemIndex)] ?? 0;
 }

@@ -49,6 +49,11 @@ export function PrayerTimetable({
                 {t(inst.key)}
               </div>
             </div>
+                     {isNext ? (
+              <span className="ms-2 text-2xs uppercase tracking-[0.08em] text-primary">
+                {t("next")}
+              </span>
+            ) : null}
             <div
               className={`font-display text-lg tabular-nums ${
                 isNext ? "font-semibold text-sun" : "text-text"
@@ -56,11 +61,7 @@ export function PrayerTimetable({
             >
               {formatClock(inst.time, locale)}
             </div>
-            {isNext ? (
-              <span className="ms-2 text-2xs uppercase tracking-[0.08em] text-primary">
-                {t("next")}
-              </span>
-            ) : null}
+   
           </div>
         );
       })}

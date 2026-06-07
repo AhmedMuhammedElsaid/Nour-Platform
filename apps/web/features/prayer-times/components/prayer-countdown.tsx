@@ -25,7 +25,7 @@ export function PrayerCountdown({
 
   return (
     <div className="flex items-baseline justify-center gap-2.5">
-      <span className="text-xs uppercase tracking-[0.1em] text-text-2">
+      <span className="text-xs uppercase tracking-widest text-text-2">
         {t("next")}
       </span>
       <span className="font-display text-2xl font-semibold text-text">

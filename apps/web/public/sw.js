@@ -6,13 +6,21 @@
  *   - navigations (HTML): network-first → runtime cache → offline.html.
  *       The full Response (incl. its own per-request CSP header) is cached, so
  *       an offline-served page is self-consistent with its own nonce.
+ *   - RSC payloads (client-side nav/prefetch, ?_rsc= / RSC header): network-first
+ *       → cache fallback. MUST NOT be stale-while-revalidate'd: doing so serves a
+ *       cached copy of dynamic page content first, so admin edits never reach
+ *       returning/installed users and old UI (e.g. a replaced reader) keeps
+ *       showing on in-app navigation even after deploy.
  *   - /_next/static/*: cache-first (immutable, content-hashed).
- *   - same-origin assets (icons/manifest/images): stale-while-revalidate.
+ *   - static same-origin assets (icons/manifest/images/fonts): stale-while-revalidate.
  *   - R2 audio: "cache-played" with HTTP Range support (see handleAudio).
  *   - /api/*: never handled (network-only, falls through to the browser).
  */
 
-const VERSION = "v1";
+// Bump on any change to caching strategy so the activate handler purges the
+// previous generation of caches (including any stale RSC payloads that the old
+// catch-all stale-while-revalidate wrongly stored in STATIC_CACHE).
+const VERSION = "v2";
 const SHELL_CACHE = `nour-shell-${VERSION}`;
 const PAGES_CACHE = `nour-pages-${VERSION}`;
 const STATIC_CACHE = `nour-static-${VERSION}`;
@@ -50,6 +58,14 @@ function isAudioRequest(request, url) {
   return request.destination === "audio" || AUDIO_EXT.test(url.pathname);
 }
 
+// Next.js App Router fetches RSC payloads for client-side navigation and
+// prefetch. They are dynamic page content, NOT static assets — caching them
+// stale-first makes content edits invisible and pins old UI. Detect via the
+// RSC request header or the ?_rsc= cache-busting param.
+function isRscRequest(request, url) {
+  return request.headers.get("RSC") === "1" || url.searchParams.has("_rsc");
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
@@ -75,12 +91,34 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // RSC payloads carry live page content — keep them fresh (offline falls back
+  // to the last good copy). Must run before the static SWR catch-all, which
+  // would otherwise serve them stale.
+  if (isRscRequest(request, url)) {
+    event.respondWith(networkFirstData(request));
+    return;
+  }
+
   if (request.mode === "navigate") {
     event.respondWith(networkFirstNavigation(request));
     return;
   }
 
-  event.respondWith(staleWhileRevalidate(request, STATIC_CACHE));
+  // Only genuinely static assets reach the catch-all. Restrict to safe
+  // destinations so no dynamic same-origin GET is ever served stale.
+  if (
+    request.destination === "image" ||
+    request.destination === "font" ||
+    request.destination === "style" ||
+    request.destination === "script" ||
+    url.pathname === "/manifest.webmanifest"
+  ) {
+    event.respondWith(staleWhileRevalidate(request, STATIC_CACHE));
+    return;
+  }
+
+  // Everything else (dynamic same-origin data) — network with cache fallback.
+  event.respondWith(networkFirstData(request));
 });
 
 async function cacheFirst(request, cacheName) {
@@ -102,6 +140,22 @@ async function staleWhileRevalidate(request, cacheName) {
     })
     .catch(() => cached);
   return cached || network;
+}
+
+// Network-first for dynamic non-navigation GETs (RSC payloads, data fetches).
+// Falls back to the last cached copy only when the network is unavailable, so
+// online users always see fresh content while offline still degrades gracefully.
+async function networkFirstData(request) {
+  const cache = await caches.open(PAGES_CACHE);
+  try {
+    const response = await fetch(request);
+    if (response && response.ok) cache.put(request, response.clone());
+    return response;
+  } catch {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    throw new Error("Network error and no cached copy available");
+  }
 }
 
 async function networkFirstNavigation(request) {
