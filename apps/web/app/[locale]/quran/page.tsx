@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { listSurahs } from "@repo/api/services/quran";
 import { LOCALES, type Locale } from "@repo/api/schemas/locale";
 import { localeAlternates, defaultOpenGraph, defaultTwitter } from "@/lib/seo";
+import { Link } from "@/i18n/navigation";
 
 // Opt out of static prerendering — proxy.ts sets a per-request CSP nonce and the
 // deploy build has no Atlas connection. Matches the rest of the locale tree.
@@ -50,6 +51,9 @@ export default async function QuranIndexPage({
       <h1 className="font-display text-text mb-6 text-2xl font-bold">
         {t("title")}
       </h1>
+      <Link href="/quran/bookmarks" className="text-primary mb-4 inline-block text-sm">
+        {t("bookmarks")}
+      </Link>
       <ContinueReading surahNames={surahNames} />
       <SurahJuzTabs surahs={surahs} />
     </div>
