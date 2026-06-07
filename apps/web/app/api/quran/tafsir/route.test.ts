@@ -14,7 +14,7 @@ describe("GET /api/quran/tafsir", () => {
     vi.mocked(getTafsir).mockResolvedValueOnce({
       edition: { slug: "en.ibnkathir", language: "en", name: "Ibn Kathir", author: "Ibn Kathir", type: "tafsir", dir: "ltr" },
       html: "<p>Tafsir</p>",
-    } as any);
+    });
     const res = await GET(req("/api/quran/tafsir?ayah=1&locale=en"));
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toContain("immutable");
@@ -26,7 +26,7 @@ describe("GET /api/quran/tafsir", () => {
     vi.mocked(getTafsir).mockResolvedValueOnce({
       edition: { slug: "en.ibnkathir", language: "en", name: "x", author: "x", type: "tafsir", dir: "ltr" },
       html: "<p>ok</p><script>alert(1)</script>",
-    } as any);
+    });
     const res = await GET(req("/api/quran/tafsir?ayah=1&locale=en"));
     const body = await res.json();
     expect(body.html).not.toContain("<script>");
