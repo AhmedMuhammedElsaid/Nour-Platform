@@ -63,6 +63,14 @@ async function getJson<T>(url: string): Promise<T> {
   return body.data;
 }
 
+// quran.com v4 returns the payload at the response root (e.g. { verses, pagination }),
+// unlike Al-Quran Cloud's { code, status, data } envelope — do not unwrap `.data`.
+async function getJsonRaw<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Fetch failed ${res.status} for ${url}`);
+  return (await res.json()) as T;
+}
+
 async function seedSurahsAndAyahs(): Promise<void> {
   const quran = await getJson<{ surahs: AqSurah[] }>(`${ALQURAN}/quran-uthmani`);
 
@@ -117,7 +125,7 @@ async function seedWordByWord(): Promise<void> {
   // quran.com v4: per-chapter verses with words; map onto ayahs by surah+ayah.
   for (let chapter = 1; chapter <= 114; chapter++) {
     const url = `${QURANCOM}/verses/by_chapter/${chapter}?words=true&word_fields=text_uthmani,transliteration&per_page=300`;
-    const data = await getJson<{ verses: QcVerse[] }>(url);
+    const data = await getJsonRaw<{ verses: QcVerse[] }>(url);
     // Loose bulk-op typing: Mongoose's DocumentArray type for the embedded
     // words[] subdocument isn't assignable from a plain object array here.
     const ops: AnyBulkWriteOperation[] = data.verses.map((v) => ({
