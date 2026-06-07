@@ -27,4 +27,21 @@ describe("quran-progress", () => {
     expect(isBookmarked({ surah: 1, ayah: 1 })).toBe(false);
     expect(getBookmarks()).toHaveLength(0);
   });
+
+  it("stores numberGlobal and surahName on last-read", () => {
+    setLastRead({ surah: 1, ayah: 1, numberGlobal: 1, surahName: "Al-Faatiha" });
+    expect(getLastRead()).toEqual({ surah: 1, ayah: 1, numberGlobal: 1, surahName: "Al-Faatiha" });
+  });
+
+  it("keeps numberGlobal/surahName on bookmarks", () => {
+    toggleBookmark({ surah: 2, ayah: 255, numberGlobal: 262, surahName: "Al-Baqara" });
+    const b = getBookmarks()[0]!;
+    expect(b.numberGlobal).toBe(262);
+    expect(b.surahName).toBe("Al-Baqara");
+  });
+
+  it("tolerates legacy records without the new fields", () => {
+    window.localStorage.setItem("nour.quran.lastread", JSON.stringify({ surah: 1, ayah: 1 }));
+    expect(getLastRead()).toEqual({ surah: 1, ayah: 1 });
+  });
 });

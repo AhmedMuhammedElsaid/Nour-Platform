@@ -1,6 +1,8 @@
 export interface AyahRef {
   surah: number;
-  ayah: number;
+  ayah: number; // ayah-in-surah
+  numberGlobal?: number;
+  surahName?: string;
 }
 
 const LAST_READ_KEY = "nour.quran.lastread";
