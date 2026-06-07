@@ -21,16 +21,16 @@ describe("AdhanSettings", () => {
     const user = userEvent.setup();
     renderUI();
     const toggle = await screen.findByLabelText(en.prayer.adhan.enable);
-    expect(toggle).not.toBeChecked();
-    await user.click(toggle);
+    // Adhan autoplay defaults to enabled.
     expect(toggle).toBeChecked();
-    expect(JSON.parse(localStorage.getItem("nour.prayer.adhan")!).enabled).toBe(true);
+    await user.click(toggle);
+    expect(toggle).not.toBeChecked();
+    expect(JSON.parse(localStorage.getItem("nour.prayer.adhan")!).enabled).toBe(false);
   });
 
-  it("reveals per-prayer toggles once enabled", async () => {
-    const user = userEvent.setup();
+  it("shows per-prayer toggles while enabled", async () => {
     renderUI();
-    await user.click(await screen.findByLabelText(en.prayer.adhan.enable));
-    expect(screen.getByLabelText(en.prayer.fajr)).toBeChecked();
+    // Enabled by default, so per-prayer toggles render immediately.
+    expect(await screen.findByLabelText(en.prayer.fajr)).toBeChecked();
   });
 });
