@@ -2,7 +2,12 @@ import "../globals.css";
 
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Fraunces, Inter, IBM_Plex_Sans_Arabic } from "next/font/google";
+import {
+  Fraunces,
+  Inter,
+  IBM_Plex_Sans_Arabic,
+  Amiri_Quran,
+} from "next/font/google";
 import { notFound } from "next/navigation";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
@@ -44,6 +49,15 @@ const fontArabic = IBM_Plex_Sans_Arabic({
   weight: ["400", "500", "600", "700"],
   display: "swap",
   variable: "--font-arabic",
+});
+
+// Uthmani mushaf face for Quran ayah text (single weight). Exposed as
+// --font-quran and consumed via the Tailwind `font-quran` utility.
+const fontQuran = Amiri_Quran({
+  subsets: ["arabic"],
+  weight: ["400"],
+  display: "swap",
+  variable: "--font-quran",
 });
 
 // Pre-render both locale shells (pages stay force-dynamic for the CSP nonce).
@@ -114,6 +128,7 @@ export default async function LocaleLayout({
         fontSans.variable,
         fontDisplay.variable,
         fontArabic.variable,
+        fontQuran.variable,
       )}
       // For Arabic, point the shared `--font-sans` token at the Arabic face so
       // every `font-sans` element renders Arabic text correctly.
