@@ -93,3 +93,16 @@ export const surahReaderSchema = z.object({
   reciter: quranReciterSchema.nullable(),
 });
 export type SurahReader = z.infer<typeof surahReaderSchema>;
+
+export const quranTafsirSchema = z.object({
+  editionSlug: z.string().min(1),
+  numberGlobal: z.number().int().min(1).max(6236),
+  text: z.string(), // tafsir HTML
+});
+export type QuranTafsir = z.infer<typeof quranTafsirSchema>;
+
+export const tafsirResultSchema = z.object({
+  edition: quranEditionSchema,
+  html: z.string(),
+});
+export type TafsirResult = z.infer<typeof tafsirResultSchema>;

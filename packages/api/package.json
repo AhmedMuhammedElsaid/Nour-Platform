@@ -39,6 +39,7 @@
     "./db/models/quran-edition.model": "./src/db/models/quran-edition.model.ts",
     "./db/models/quran-translation.model": "./src/db/models/quran-translation.model.ts",
     "./db/models/quran-reciter.model": "./src/db/models/quran-reciter.model.ts",
+    "./db/models/quran-tafsir.model": "./src/db/models/quran-tafsir.model.ts",
     "./utils/slug": "./src/utils/slug.ts",
     "./repositories/playlist": "./src/repositories/playlist.repo.ts",
     "./repositories/track": "./src/repositories/track.repo.ts",
