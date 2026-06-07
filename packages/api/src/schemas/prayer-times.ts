@@ -46,3 +46,32 @@ export const DEFAULT_LOCATION: PrayerLocation = {
   lng: 31.2357,
   label: "Cairo",
 };
+
+// Prayers that have an adhan (sunrise is a marker, not a prayer).
+export const ADHAN_PRAYER_KEYS = [
+  "fajr",
+  "dhuhr",
+  "asr",
+  "maghrib",
+  "isha",
+] as const;
+export type AdhanPrayerKey = (typeof ADHAN_PRAYER_KEYS)[number];
+
+const perPrayerSchema = z.object({
+  fajr: z.boolean().default(true),
+  dhuhr: z.boolean().default(true),
+  asr: z.boolean().default(true),
+  maghrib: z.boolean().default(true),
+  isha: z.boolean().default(true),
+});
+
+// User controls for the adhan. Persisted device-local (localStorage), never
+// sent to the server — no auth/DB involvement (matches prayer-times v1).
+export const adhanSettingsSchema = z.object({
+  enabled: z.boolean().default(false),
+  perPrayer: perPrayerSchema.default({}),
+  volume: z.number().min(0).max(1).default(0.8),
+});
+export type AdhanSettings = z.infer<typeof adhanSettingsSchema>;
+
+export const DEFAULT_ADHAN_SETTINGS: AdhanSettings = adhanSettingsSchema.parse({});
