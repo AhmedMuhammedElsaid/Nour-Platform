@@ -13,6 +13,7 @@ import {
   QuranReciterModel,
   type QuranReciterDoc,
 } from "../db/models/quran-reciter.model";
+import { QuranTafsirModel, type QuranTafsirDoc } from "../db/models/quran-tafsir.model";
 
 export async function findAllSurahs(): Promise<QuranSurahDoc[]> {
   await getDb();
@@ -69,4 +70,19 @@ export async function findReciterBySlug(
 ): Promise<QuranReciterDoc | null> {
   await getDb();
   return QuranReciterModel.findOne({ slug }).lean<QuranReciterDoc>();
+}
+
+export async function findTafsir(
+  editionSlug: string,
+  numberGlobal: number,
+): Promise<QuranTafsirDoc | null> {
+  await getDb();
+  return QuranTafsirModel.findOne({ editionSlug, numberGlobal }).lean<QuranTafsirDoc>();
+}
+
+export async function findEditionsByType(
+  type: "translation" | "tafsir",
+): Promise<QuranEditionDoc[]> {
+  await getDb();
+  return QuranEditionModel.find({ type }).sort({ language: 1 }).lean<QuranEditionDoc[]>();
 }
