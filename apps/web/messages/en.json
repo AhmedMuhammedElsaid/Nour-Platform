@@ -85,7 +85,17 @@
     "methodQatar": "Qatar",
     "methodSingapore": "Singapore",
     "methodTurkey": "Turkey",
-    "methodTehran": "Tehran"
+    "methodTehran": "Tehran",
+    "adhan": {
+      "title": "Adhan (call to prayer)",
+      "enable": "Play adhan at prayer times",
+      "perPrayer": "Which prayers",
+      "volume": "Volume",
+      "background": "Enable background notifications",
+      "backgroundUnsupported": "Background notifications aren't supported in this browser. The adhan still plays while Nour is open.",
+      "autoplayHint": "Keep a Nour tab open. The adhan plays automatically once you've interacted with the page.",
+      "adhanBody": "It's time for prayer."
+    }
   },
   "pwa": {
     "title": "Install Nour",

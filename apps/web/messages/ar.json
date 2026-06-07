@@ -85,7 +85,17 @@
     "methodQatar": "قطر",
     "methodSingapore": "سنغافورة",
     "methodTurkey": "تركيا",
-    "methodTehran": "طهران"
+    "methodTehran": "طهران",
+    "adhan": {
+      "title": "الأذان",
+      "enable": "تشغيل الأذان عند أوقات الصلاة",
+      "perPrayer": "الصلوات",
+      "volume": "مستوى الصوت",
+      "background": "تفعيل الإشعارات في الخلفية",
+      "backgroundUnsupported": "الإشعارات في الخلفية غير مدعومة في هذا المتصفح. يعمل الأذان أثناء فتح نور.",
+      "autoplayHint": "أبقِ صفحة نور مفتوحة. يعمل الأذان تلقائيًا بعد تفاعلك مع الصفحة.",
+      "adhanBody": "حان وقت الصلاة."
+    }
   },
   "pwa": {
     "title": "ثبّت نور",
