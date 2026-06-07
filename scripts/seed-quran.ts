@@ -8,7 +8,9 @@ import { QuranAyahModel } from "@repo/api/db/models/quran-ayah.model";
 import { QuranEditionModel } from "@repo/api/db/models/quran-edition.model";
 import { QuranTranslationModel } from "@repo/api/db/models/quran-translation.model";
 import { QuranReciterModel } from "@repo/api/db/models/quran-reciter.model";
+import { QuranTafsirModel } from "@repo/api/db/models/quran-tafsir.model";
 import * as migration0009 from "@repo/api/db/migrations/0009-quran-indexes";
+import * as migration0010 from "@repo/api/db/migrations/0010-quran-tafsir-indexes";
 
 /*
  * One-time Quran seed. Fetches open datasets at SEED TIME (run locally, not a
@@ -178,6 +180,55 @@ async function seedTranslation(
   console.log(`[seed:quran] translation ${slug}: ${ops.length} rows`);
 }
 
+interface QcTafsirRow {
+  verse_key: string;
+  text: string;
+}
+
+// quran.com v4 has no single "all ayat" tafsir endpoint — payload is at
+// /tafsirs/{id}/by_chapter/{n} (root-level `tafsirs` array, not `.data`),
+// paginated; per_page=300 covers even Al-Baqarah (286 ayat) in one request.
+async function seedTafsir(
+  slug: string,
+  edition: { language: string; name: string; author: string; dir: "rtl" | "ltr" },
+  tafsirId: number,
+): Promise<void> {
+  await QuranEditionModel.updateOne(
+    { slug },
+    { $set: { slug, type: "tafsir", ...edition } },
+    { upsert: true },
+  );
+  const ayahs = await QuranAyahModel.find(
+    {},
+    { surah: 1, ayahInSurah: 1, numberGlobal: 1 },
+  ).lean<{ surah: number; ayahInSurah: number; numberGlobal: number }[]>();
+  const globalByKey = new Map(
+    ayahs.map((a) => [`${a.surah}:${a.ayahInSurah}`, a.numberGlobal]),
+  );
+
+  let total = 0;
+  for (let chapter = 1; chapter <= 114; chapter++) {
+    const url = `${QURANCOM}/tafsirs/${tafsirId}/by_chapter/${chapter}?per_page=300`;
+    const data = await getJsonRaw<{ tafsirs: QcTafsirRow[] }>(url);
+    const ops: AnyBulkWriteOperation[] = data.tafsirs
+      .map((t) => {
+        const numberGlobal = globalByKey.get(t.verse_key);
+        if (numberGlobal === undefined) return null;
+        return {
+          updateOne: {
+            filter: { editionSlug: slug, numberGlobal },
+            update: { $set: { editionSlug: slug, numberGlobal, text: t.text ?? "" } },
+            upsert: true,
+          },
+        };
+      })
+      .filter((op): op is NonNullable<typeof op> => op !== null);
+    if (ops.length > 0) await QuranTafsirModel.bulkWrite(ops);
+    total += ops.length;
+  }
+  console.log(`[seed:quran] tafsir ${slug}: ${total} rows`);
+}
+
 async function seedReciter(): Promise<void> {
   await QuranReciterModel.updateOne(
     { slug: "alafasy" },
@@ -228,7 +279,18 @@ async function main(): Promise<void> {
       dir: "rtl",
     });
     await seedReciter();
+    await seedTafsir(
+      "en.ibnkathir",
+      { language: "en", name: "Tafsir Ibn Kathir (abridged)", author: "Ibn Kathir", dir: "ltr" },
+      169,
+    );
+    await seedTafsir(
+      "ar.saadi",
+      { language: "ar", name: "Tafsir al-Saadi", author: "al-Saadi", dir: "rtl" },
+      91,
+    );
     await migration0009.up(); // ensure indexes (self-contained; no full migrate chain)
+    await migration0010.up(); // ensure tafsir indexes (self-contained; no full migrate chain)
     console.log("[seed:quran] done.");
   } finally {
     await disconnectDb();
