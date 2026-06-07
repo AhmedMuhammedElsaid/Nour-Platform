@@ -7,10 +7,10 @@ import {
 } from "./prayer-times";
 
 describe("adhanSettingsSchema", () => {
-  it("defaults to opt-out (disabled), all prayers on, volume 0.8", () => {
+  it("defaults to opt-in (enabled), all prayers on, volume 0.8", () => {
     const parsed = adhanSettingsSchema.parse({});
     expect(parsed).toEqual(DEFAULT_ADHAN_SETTINGS);
-    expect(parsed.enabled).toBe(false);
+    expect(parsed.enabled).toBe(true);
     expect(parsed.volume).toBe(0.8);
     for (const key of ADHAN_PRAYER_KEYS) {
       expect(parsed.perPrayer[key]).toBe(true);

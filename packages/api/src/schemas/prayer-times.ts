@@ -68,7 +68,7 @@ const perPrayerSchema = z.object({
 // User controls for the adhan. Persisted device-local (localStorage), never
 // sent to the server — no auth/DB involvement (matches prayer-times v1).
 export const adhanSettingsSchema = z.object({
-  enabled: z.boolean().default(false),
+  enabled: z.boolean().default(true),
   perPrayer: perPrayerSchema.default({}),
   volume: z.number().min(0).max(1).default(0.8),
 });
