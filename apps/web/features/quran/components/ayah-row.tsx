@@ -47,7 +47,9 @@ export function AyahRow({
             disabled={!ayah.audioUrl}
             className="hover:text-primary rounded p-1.5 disabled:opacity-40"
           >
-            ▶
+            <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden="true">
+              <path d="M8 5v14l11-7z" />
+            </svg>
           </button>
           <button
             type="button"
@@ -56,7 +58,18 @@ export function AyahRow({
             onClick={() => onToggleBookmark(ayah)}
             className={`rounded p-1.5 ${isBookmarked ? "text-primary" : "hover:text-primary"}`}
           >
-            ★
+            <svg
+              viewBox="0 0 24 24"
+              className="size-4"
+              fill={isBookmarked ? "currentColor" : "none"}
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" />
+            </svg>
           </button>
           <button
             type="button"
@@ -64,7 +77,19 @@ export function AyahRow({
             onClick={() => onOpenTafsir(ayah.numberGlobal)}
             className="hover:text-primary rounded p-1.5"
           >
-            📖
+            <svg
+              viewBox="0 0 24 24"
+              className="size-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            </svg>
           </button>
         </div>
       </div>

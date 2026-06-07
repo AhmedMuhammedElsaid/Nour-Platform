@@ -69,13 +69,26 @@ export function ReaderSettingsSheet({
         aria-label="Reading settings"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="border-border text-text-2 hover:text-primary rounded-md border px-3 py-1.5 text-sm"
+        className="border-border text-text-2 hover:text-primary inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm"
       >
-        ⚙ Settings
+        <svg
+          viewBox="0 0 24 24"
+          className="size-4"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        </svg>
+        Settings
       </button>
 
       {open ? (
-        <div className="border-border bg-bg-2 absolute end-0 z-10 mt-2 w-72 max-w-[calc(100vw-2rem)] space-y-4 rounded-lg border p-4 shadow-up-3">
+        <div className="border-border bg-surface-2 absolute end-0 z-10 mt-2 w-72 max-w-[calc(100vw-2rem)] space-y-4 rounded-lg border p-4 shadow-3">
           <label className="flex items-center justify-between">
             <span>Show translation</span>
             <input

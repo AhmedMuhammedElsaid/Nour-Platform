@@ -16,7 +16,7 @@ export function ContinueReading({
   return (
     <Link
       href={`/quran/${ref.surah}#ayah-${ref.numberGlobal ?? ref.ayah}`}
-      className="border-border bg-bg-2 hover:border-primary mb-6 flex items-center justify-between rounded-lg border p-4"
+      className="border-border bg-surface hover:border-primary mb-6 flex items-center justify-between rounded-lg border p-4"
     >
       <span>
         <span className="text-text-2 block text-xs">Continue reading</span>
