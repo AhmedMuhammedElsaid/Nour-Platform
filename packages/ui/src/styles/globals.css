@@ -59,6 +59,7 @@
   --font-sans: var(--font-sans);
   --font-display: var(--font-display);
   --font-mono: var(--font-mono);
+  --font-quran: var(--font-quran);
 
   /* Type scale */
   --text-2xs: var(--fs-2xs);

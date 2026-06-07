@@ -113,5 +113,26 @@
     "completed": "تم",
     "scrollTop": "العودة للأعلى",
     "reset": "البدء من جديد"
+  },
+  "quran": {
+    "title": "القرآن الكريم",
+    "navLabel": "القرآن",
+    "ayahs": "آيات",
+    "continueReading": "متابعة القراءة",
+    "surah": "سورة",
+    "juz": "جزء",
+    "settings": "إعدادات القراءة",
+    "showTranslation": "إظهار الترجمة",
+    "wordByWord": "كلمة بكلمة",
+    "fontSize": "حجم الخط",
+    "translation": "الترجمة",
+    "reciter": "القارئ",
+    "tafsir": "التفسير",
+    "tafsirBy": "تفسير {name}",
+    "loading": "جارٍ التحميل…",
+    "tafsirError": "التفسير غير متوفر لهذه الآية.",
+    "bookmarks": "المحفوظات",
+    "bookmarksEmpty": "لا توجد محفوظات بعد.",
+    "removeBookmark": "إزالة الإشارة"
   }
 }

@@ -17,6 +17,7 @@ export async function SiteHeader() {
   const t = await getTranslations("nav");
   const adhkarT = await getTranslations("adhkar");
   const tPrayer = await getTranslations("prayer");
+  const tQuran = await getTranslations("quran");
   const locale = await getLocale();
   const brand = BRAND[locale] ?? BRAND.en!;
 
@@ -32,6 +33,9 @@ export async function SiteHeader() {
         </Link>
 
         <nav aria-label={t("primary")} className="flex items-center gap-5">
+          <Link href="/quran" className={NAV_LINK_CLASS}>
+            {tQuran("navLabel")}
+          </Link>
           <Link href="/adhkar" className={NAV_LINK_CLASS}>
             {adhkarT("navLabel")}
           </Link>

@@ -14,6 +14,7 @@ export const dynamic = "force-dynamic";
 import { PlaylistCard } from "@/features/playlists/components/playlist-card";
 import { CategoryFilterBar } from "@/features/categories/components/category-filter-bar";
 import { ContinueListening } from "@/features/player/components/continue-listening";
+import { ContinueReadingShelf } from "@/features/quran/components/continue-reading-shelf";
 import { PlaylistSortSelect } from "@/features/playlists/components/playlist-sort-select";
 import { PrayerTimesWidget } from "@/features/prayer-times/components/prayer-times-widget";
 import type { SerializedPlaylist } from "@/features/playlists/types";
@@ -143,7 +144,13 @@ export default async function HomePage({
           ))}
         </div>
       )}
-           {/* Continue listening shelf */}
+
+      {/* Continue reading shelf */}
+      <section className="mx-auto max-w-5xl px-6 mt-8">
+        <ContinueReadingShelf />
+      </section>
+
+      {/* Continue listening shelf */}
       <ContinueListening />
     </section>
   );
