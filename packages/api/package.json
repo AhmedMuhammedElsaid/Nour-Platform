@@ -53,7 +53,8 @@
     "./db/migrations/0006-search-indexes": "./src/db/migrations/0006-search-indexes.ts",
     "./db/migrations/0007-playlist-order": "./src/db/migrations/0007-playlist-order.ts",
     "./db/migrations/0008-azkar-indexes": "./src/db/migrations/0008-azkar-indexes.ts",
-    "./db/migrations/0009-quran-indexes": "./src/db/migrations/0009-quran-indexes.ts"
+    "./db/migrations/0009-quran-indexes": "./src/db/migrations/0009-quran-indexes.ts",
+    "./db/migrations/0010-quran-tafsir-indexes": "./src/db/migrations/0010-quran-tafsir-indexes.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
