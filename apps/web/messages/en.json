@@ -103,5 +103,19 @@
     "completed": "Done",
     "scrollTop": "Back to top",
     "reset": "Start over"
+  },
+  "quran": {
+    "title": "Quran",
+    "navLabel": "Quran",
+    "ayahs": "ayahs",
+    "continueReading": "Continue reading",
+    "surah": "Surah",
+    "juz": "Juz",
+    "settings": "Reading settings",
+    "showTranslation": "Show translation",
+    "wordByWord": "Word-by-word",
+    "fontSize": "Font size",
+    "translation": "Translation",
+    "reciter": "Reciter"
   }
 }
