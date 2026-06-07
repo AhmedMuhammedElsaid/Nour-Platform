@@ -11,3 +11,5 @@ export const ADHKAR = "adhkar";
 export function azkarTag(id: string): string {
   return `azkar:${id}`;
 }
+
+export const QURAN = "quran";
