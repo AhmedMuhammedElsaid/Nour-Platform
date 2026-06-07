@@ -18,3 +18,16 @@ test("quran index lists surahs and the reader renders an ayah", async ({ page })
   // First ayah article is present.
   await expect(page.locator("#ayah-1")).toBeVisible();
 });
+
+test("opening tafsir and bookmarking an ayah works", async ({ page }) => {
+  await page.goto(`${webUrl}/en/quran/1`);
+  await expect(page.locator("#ayah-1")).toBeVisible();
+  // Open tafsir for the first ayah.
+  await page.locator("#ayah-1").getByRole("button", { name: /tafsir/i }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  // Close, bookmark, and verify it shows on the bookmarks page.
+  await page.keyboard.press("Escape");
+  await page.locator("#ayah-1").getByRole("button", { name: /bookmark/i }).click();
+  await page.goto(`${webUrl}/en/quran/bookmarks`);
+  await expect(page.getByRole("link", { name: "1" })).toBeVisible();
+});
