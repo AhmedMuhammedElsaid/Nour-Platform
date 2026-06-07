@@ -116,6 +116,13 @@
     "wordByWord": "Word-by-word",
     "fontSize": "Font size",
     "translation": "Translation",
-    "reciter": "Reciter"
+    "reciter": "Reciter",
+    "tafsir": "Tafsir",
+    "tafsirBy": "Tafsir by {name}",
+    "loading": "Loading…",
+    "tafsirError": "Tafsir unavailable for this ayah.",
+    "bookmarks": "Bookmarks",
+    "bookmarksEmpty": "No bookmarks yet.",
+    "removeBookmark": "Remove bookmark"
   }
 }

@@ -116,6 +116,13 @@
     "wordByWord": "كلمة بكلمة",
     "fontSize": "حجم الخط",
     "translation": "الترجمة",
-    "reciter": "القارئ"
+    "reciter": "القارئ",
+    "tafsir": "التفسير",
+    "tafsirBy": "تفسير {name}",
+    "loading": "جارٍ التحميل…",
+    "tafsirError": "التفسير غير متوفر لهذه الآية.",
+    "bookmarks": "المحفوظات",
+    "bookmarksEmpty": "لا توجد محفوظات بعد.",
+    "removeBookmark": "إزالة الإشارة"
   }
 }
