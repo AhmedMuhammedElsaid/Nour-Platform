@@ -16,6 +16,7 @@ import { SiteHeader } from "@/features/layout/components/site-header";
 import { PlaybackPersistence } from "@/features/player/components/playback-persistence";
 import { ServiceWorkerRegister } from "@/features/pwa/components/service-worker-register";
 import { InstallPrompt } from "@/features/pwa/components/install-prompt";
+import { AdhanController } from "@/features/prayer-times/components/adhan-controller";
 import { LocaleAlternatesProvider } from "@/features/layout/locale-alternates-context";
 import { routing } from "@/i18n/routing";
 import { defaultOpenGraph, defaultTwitter } from "@/lib/seo";
@@ -142,6 +143,7 @@ export default async function LocaleLayout({
               <PlaybackPersistence />
               <InstallPrompt />
               <ServiceWorkerRegister />
+              <AdhanController />
               <Analytics />
               <SpeedInsights />
             </LocaleAlternatesProvider>
