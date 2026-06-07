@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { ReaderAyah, SurahReader } from "@repo/api/schemas/quran";
 import { AyahRow } from "./ayah-row";
 import { ReaderSettingsSheet } from "./reader-settings-sheet";
+import { TafsirSheet } from "./tafsir-sheet";
 import { useAyahAudio } from "../hooks/use-ayah-audio";
 import { loadPrefs, type QuranPrefs } from "../lib/quran-prefs";
 import {
@@ -16,12 +17,15 @@ import {
 export function Reader({
   data,
   translationDir,
+  locale,
 }: {
   data: SurahReader;
   translationDir: "rtl" | "ltr";
+  locale: string;
 }) {
   const [prefs, setPrefs] = useState<QuranPrefs>(loadPrefs);
   const [bookmarks, setBookmarks] = useState<AyahRef[]>([]);
+  const [tafsirAyah, setTafsirAyah] = useState<{ numberGlobal: number; ref: string } | null>(null);
   const audio = useAyahAudio(
     data.ayahs.map((a) => ({ numberGlobal: a.numberGlobal, audioUrl: a.audioUrl })),
   );
@@ -35,8 +39,15 @@ export function Reader({
   // Record last-read = first ayah of this surah on mount.
   useEffect(() => {
     const first = data.ayahs[0];
-    if (first) setLastRead({ surah: first.surah, ayah: first.ayahInSurah });
-  }, [data.ayahs]);
+    if (first) {
+      setLastRead({
+        surah: first.surah,
+        ayah: first.ayahInSurah,
+        numberGlobal: first.numberGlobal,
+        surahName: data.surah.name.en,
+      });
+    }
+  }, [data.ayahs, data.surah.name.en]);
 
   // Scroll the currently-playing ayah into view.
   useEffect(() => {
@@ -47,7 +58,12 @@ export function Reader({
   }, [audio.currentGlobal]);
 
   const onToggleBookmark = (ayah: ReaderAyah) => {
-    const next = toggleBookmark({ surah: ayah.surah, ayah: ayah.ayahInSurah });
+    const next = toggleBookmark({
+      surah: ayah.surah,
+      ayah: ayah.ayahInSurah,
+      numberGlobal: ayah.numberGlobal,
+      surahName: data.surah.name.en,
+    });
     setBookmarks(next);
   };
   const isBookmarked = (ayah: ReaderAyah) =>
@@ -78,8 +94,13 @@ export function Reader({
           isBookmarked={isBookmarked(ayah)}
           onPlay={audio.playAyah}
           onToggleBookmark={onToggleBookmark}
+          onOpenTafsir={(ng) => {
+            const a = data.ayahs.find((x) => x.numberGlobal === ng);
+            if (a) setTafsirAyah({ numberGlobal: ng, ref: `${a.surah}:${a.ayahInSurah}` });
+          }}
         />
       ))}
+      <TafsirSheet ayah={tafsirAyah} locale={locale} onClose={() => setTafsirAyah(null)} />
     </div>
   );
 }

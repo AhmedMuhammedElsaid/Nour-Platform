@@ -27,6 +27,7 @@ function renderRow(overrides: Partial<React.ComponentProps<typeof AyahRow>> = {}
       isBookmarked={false}
       onPlay={vi.fn()}
       onToggleBookmark={vi.fn()}
+      onOpenTafsir={vi.fn()}
       {...overrides}
     />,
   );
@@ -52,6 +53,7 @@ describe("AyahRow", () => {
         isBookmarked={false}
         onPlay={vi.fn()}
         onToggleBookmark={vi.fn()}
+        onOpenTafsir={vi.fn()}
       />,
     );
     expect(screen.queryByTestId("translation")).not.toBeInTheDocument();

@@ -13,6 +13,7 @@ export interface AyahRowProps {
   isBookmarked: boolean;
   onPlay: (numberGlobal: number) => void;
   onToggleBookmark: (ayah: ReaderAyah) => void;
+  onOpenTafsir: (numberGlobal: number) => void;
 }
 
 export function AyahRow({
@@ -24,6 +25,7 @@ export function AyahRow({
   isBookmarked,
   onPlay,
   onToggleBookmark,
+  onOpenTafsir,
 }: AyahRowProps) {
   return (
     <article
@@ -55,6 +57,14 @@ export function AyahRow({
             className={`rounded p-1.5 ${isBookmarked ? "text-primary" : "hover:text-primary"}`}
           >
             ★
+          </button>
+          <button
+            type="button"
+            aria-label="Tafsir"
+            onClick={() => onOpenTafsir(ayah.numberGlobal)}
+            className="hover:text-primary rounded p-1.5"
+          >
+            📖
           </button>
         </div>
       </div>

@@ -71,7 +71,7 @@ export default async function SurahReaderPage({ params, searchParams }: PageProp
           </p>
         ) : null}
       </header>
-      <Reader data={data} translationDir={translationDir} />
+      <Reader data={data} translationDir={translationDir} locale={loc} />
     </div>
   );
 }
