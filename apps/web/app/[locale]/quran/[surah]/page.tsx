@@ -8,6 +8,7 @@ import type { SurahReader } from "@repo/api/schemas/quran";
 
 export const dynamic = "force-dynamic";
 
+import { Link } from "@/i18n/navigation";
 import { Reader } from "@/features/quran/components/reader";
 
 interface PageProps {
@@ -57,6 +58,15 @@ export default async function SurahReaderPage({ params, searchParams }: PageProp
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
+      <Link
+        href="/quran"
+        className="text-text-2 hover:text-primary mb-4 inline-flex items-center gap-1 text-sm"
+      >
+        <span className="inline-block rtl:rotate-180" aria-hidden="true">
+          ←
+        </span>
+        {t("back")}
+      </Link>
       <header className="border-border mb-4 border-b pb-4 text-center">
         <h1 dir="rtl" className="font-quran text-primary text-3xl">
           {data.surah.name.ar}

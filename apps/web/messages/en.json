@@ -117,6 +117,7 @@
   "quran": {
     "title": "Quran",
     "navLabel": "Quran",
+    "back": "Back to surahs",
     "ayahs": "ayahs",
     "continueReading": "Continue reading",
     "surah": "Surah",
