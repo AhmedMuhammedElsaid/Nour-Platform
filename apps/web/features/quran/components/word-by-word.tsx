@@ -9,7 +9,12 @@ export function WordByWord({ words }: { words: QuranWord[] }) {
     >
       {words.map((w) => (
         <span key={w.position} className="flex flex-col items-center text-center">
-          <span className="font-quran text-2xl leading-loose">{w.arabic}</span>
+          <span
+            className="font-quran leading-loose"
+            style={{ fontSize: "calc(1.5rem * var(--quran-scale, 1))" }}
+          >
+            {w.arabic}
+          </span>
           {w.glossEn ? (
             <span className="text-text-2 text-xs" dir="ltr">
               {w.glossEn}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import type { QuranEdition, QuranReciter } from "@repo/api/schemas/quran";
@@ -26,9 +26,29 @@ export function ReaderSettingsSheet({
   reciters,
 }: ReaderSettingsSheetProps) {
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  // Close the dropdown on outside-click or Escape (it's a hand-rolled popover).
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   const update = (patch: Partial<QuranPrefs>) => {
     const next = { ...prefs, ...patch };
@@ -43,7 +63,7 @@ export function ReaderSettingsSheet({
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={rootRef}>
       <button
         type="button"
         aria-label="Reading settings"
@@ -55,7 +75,7 @@ export function ReaderSettingsSheet({
       </button>
 
       {open ? (
-        <div className="border-border bg-bg-2 absolute end-0 z-10 mt-2 w-72 space-y-4 rounded-lg border p-4 shadow-up-3">
+        <div className="border-border bg-bg-2 absolute end-0 z-10 mt-2 w-72 max-w-[calc(100vw-2rem)] space-y-4 rounded-lg border p-4 shadow-up-3">
           <label className="flex items-center justify-between">
             <span>Show translation</span>
             <input

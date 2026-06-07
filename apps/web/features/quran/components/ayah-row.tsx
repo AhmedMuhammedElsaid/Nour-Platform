@@ -72,7 +72,13 @@ export function AyahRow({
       {showWordByWord ? (
         <WordByWord words={ayah.words} />
       ) : (
-        <p dir="rtl" className="font-quran text-text text-3xl leading-[2.2]">
+        <p
+          dir="rtl"
+          className="font-quran text-text leading-[2.2]"
+          // Font-size slider: scales the ayah text via the --quran-scale var the
+          // reader sets on its wrapper (text-3xl base = 1.875rem).
+          style={{ fontSize: "calc(1.875rem * var(--quran-scale, 1))" }}
+        >
           {ayah.textUthmani}
           <span className="text-primary mx-1 align-middle text-xl">
             ۝{ayah.ayahInSurah}
