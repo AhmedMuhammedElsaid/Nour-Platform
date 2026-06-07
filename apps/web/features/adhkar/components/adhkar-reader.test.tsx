@@ -22,8 +22,9 @@ const azkar: SerializedAzkar = {
 
 beforeEach(() => {
   window.localStorage.clear();
-  // jsdom has no real scrollIntoView — stub it so the auto-scroll call is observable.
+  // jsdom has no real scrollIntoView/scrollTo — stub so calls are observable.
   Element.prototype.scrollIntoView = vi.fn();
+  window.scrollTo = vi.fn();
 });
 
 const cards = () => screen.getAllByTestId("dhikr-card");
@@ -103,5 +104,34 @@ describe("AdhkarReader (scroll list)", () => {
     expect(cards()[1]!).toHaveAttribute("data-done");
     expect(cards()[0]!).not.toHaveAttribute("data-active");
     expect(cards()[1]!).not.toHaveAttribute("data-active");
+  });
+
+  it("reset-all clears counts, scrolls to top, and is disabled when nothing is done", () => {
+    render(<AdhkarReader azkar={azkar} />);
+    const reset = screen.getByTestId("reset-all");
+    expect(reset).toBeDisabled();
+
+    fireEvent.click(counters()[0]!); // card 0 -> 1
+    expect(reset).toBeEnabled();
+
+    fireEvent.click(reset);
+    expect(within(cards()[0]!).getByText("0")).toBeInTheDocument();
+    expect(window.scrollTo).toHaveBeenCalled();
+    expect(
+      window.localStorage.getItem("nour.adhkar.progress"),
+    ).not.toContain('"set1"');
+    expect(reset).toBeDisabled();
+  });
+
+  it("shows the scroll-top button only after scrolling down and scrolls to top on click", () => {
+    render(<AdhkarReader azkar={azkar} />);
+    expect(screen.queryByTestId("scroll-top")).not.toBeInTheDocument();
+
+    Object.defineProperty(window, "scrollY", { value: 800, configurable: true });
+    fireEvent.scroll(window);
+
+    const top = screen.getByTestId("scroll-top");
+    fireEvent.click(top);
+    expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
   });
 });
