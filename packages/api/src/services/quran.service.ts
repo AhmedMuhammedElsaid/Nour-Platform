@@ -8,6 +8,7 @@ import {
   findEditionBySlug,
   findReciters,
   findReciterBySlug,
+  findTafsir,
 } from "../repositories/quran.repo";
 import { AppError } from "../errors";
 import type {
@@ -16,6 +17,7 @@ import type {
   QuranReciter,
   ReaderAyah,
   SurahReader,
+  TafsirResult,
 } from "../schemas/quran";
 import type { Locale } from "../schemas/locale";
 import type { QuranSurahDoc } from "../db/models/quran-surah.model";
@@ -34,6 +36,10 @@ const DEFAULT_TRANSLATION_BY_LOCALE: Record<Locale, string> = {
   en: "en.sahih",
 };
 const DEFAULT_RECITER_SLUG = "alafasy";
+const DEFAULT_TAFSIR_BY_LOCALE: Record<Locale, string> = {
+  ar: "ar.saadi",
+  en: "en.ibnkathir",
+};
 
 function pad3(n: number): string {
   return n.toString().padStart(3, "0");
@@ -178,6 +184,18 @@ export async function getSurahReader(
     translationEdition: edition ? editionToDto(edition) : null,
     reciter: reciter ? reciterToDto(reciter) : null,
   };
+}
+
+export async function getTafsir(
+  numberGlobal: number,
+  opts: { locale?: Locale; editionSlug?: string },
+): Promise<TafsirResult | null> {
+  const slug = opts.editionSlug ?? DEFAULT_TAFSIR_BY_LOCALE[opts.locale ?? "ar"];
+  const edition = await findEditionBySlug(slug);
+  if (!edition) return null;
+  const row = await findTafsir(edition.slug, numberGlobal);
+  if (!row) return null;
+  return { edition: editionToDto(edition), html: row.text };
 }
 
 export async function getJuzReader(

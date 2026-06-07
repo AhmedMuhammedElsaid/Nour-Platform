@@ -10,6 +10,8 @@ vi.mock("../repositories/quran.repo", () => ({
   findEditionBySlug: vi.fn(),
   findReciters: vi.fn(),
   findReciterBySlug: vi.fn(),
+  findTafsir: vi.fn(),
+  findEditionsByType: vi.fn(),
 }));
 
 const repo = await import("../repositories/quran.repo");
@@ -134,5 +136,51 @@ describe("quran.service", () => {
       vi.mocked(repo.findSurah).mockResolvedValueOnce(null);
       await expect(service.getSurahReader(999, {})).rejects.toThrow();
     });
+  });
+});
+
+describe("getTafsir", () => {
+  const saadi = {
+    _id: { toString: () => "t1" }, slug: "ar.saadi", language: "ar",
+    name: "Tafsir al-Saadi", author: "al-Saadi", type: "tafsir", dir: "rtl",
+  };
+
+  it("resolves the locale-default edition and returns html", async () => {
+    vi.mocked(repo.findEditionBySlug).mockResolvedValueOnce(saadi as any);
+    vi.mocked(repo.findTafsir).mockResolvedValueOnce({
+      editionSlug: "ar.saadi", numberGlobal: 1, text: "<p>تفسير</p>",
+    } as any);
+
+    const res = await service.getTafsir(1, { locale: "ar" });
+    expect(res).not.toBeNull();
+    expect(res!.edition.slug).toBe("ar.saadi");
+    expect(res!.html).toBe("<p>تفسير</p>");
+    expect(vi.mocked(repo.findEditionBySlug)).toHaveBeenCalledWith("ar.saadi");
+  });
+
+  it("honors an explicit editionSlug over the locale default", async () => {
+    vi.mocked(repo.findEditionBySlug).mockResolvedValueOnce({
+      ...saadi, slug: "en.ibnkathir", language: "en", dir: "ltr",
+    } as any);
+    vi.mocked(repo.findTafsir).mockResolvedValueOnce({
+      editionSlug: "en.ibnkathir", numberGlobal: 1, text: "<p>Tafsir</p>",
+    } as any);
+
+    const res = await service.getTafsir(1, { locale: "ar", editionSlug: "en.ibnkathir" });
+    expect(res!.edition.slug).toBe("en.ibnkathir");
+    expect(vi.mocked(repo.findEditionBySlug)).toHaveBeenCalledWith("en.ibnkathir");
+  });
+
+  it("returns null when the edition is missing", async () => {
+    vi.mocked(repo.findEditionBySlug).mockResolvedValueOnce(null);
+    const res = await service.getTafsir(1, { locale: "en" });
+    expect(res).toBeNull();
+  });
+
+  it("returns null when there is no tafsir row for the ayah", async () => {
+    vi.mocked(repo.findEditionBySlug).mockResolvedValueOnce(saadi as any);
+    vi.mocked(repo.findTafsir).mockResolvedValueOnce(null);
+    const res = await service.getTafsir(1, { locale: "ar" });
+    expect(res).toBeNull();
   });
 });
