@@ -20,7 +20,7 @@
 // Bump on any change to caching strategy so the activate handler purges the
 // previous generation of caches (including any stale RSC payloads that the old
 // catch-all stale-while-revalidate wrongly stored in STATIC_CACHE).
-const VERSION = "v2";
+const VERSION = "v3";
 const SHELL_CACHE = `nour-shell-${VERSION}`;
 const PAGES_CACHE = `nour-pages-${VERSION}`;
 const STATIC_CACHE = `nour-static-${VERSION}`;
@@ -28,7 +28,13 @@ const AUDIO_CACHE = `nour-audio-${VERSION}`;
 const KEEP = new Set([SHELL_CACHE, PAGES_CACHE, STATIC_CACHE, AUDIO_CACHE]);
 
 const OFFLINE_URL = "/offline.html";
-const PRECACHE = [OFFLINE_URL, "/icons/icon.svg", "/manifest.webmanifest"];
+const PRECACHE = [
+  OFFLINE_URL,
+  "/icons/icon.svg",
+  "/manifest.webmanifest",
+  "/audio/adhan.mp3",
+  "/audio/adhan-fajr.mp3",
+];
 
 const AUDIO_EXT = /\.(mp3|m4a|aac|ogg|oga|wav|flac)(\?|$)/i;
 
@@ -233,3 +239,30 @@ async function handleAudio(request, url) {
     },
   });
 }
+
+/*
+ * Adhan notifications (Layer B). When the user clicks a triggered adhan
+ * notification, focus an existing Nour tab (or open one) and tell it to play
+ * the adhan in-page. The audio itself is precached above so it works offline.
+ */
+self.addEventListener("notificationclick", (event) => {
+  const notification = event.notification;
+  if (!notification.tag || !notification.tag.startsWith("nour-adhan-")) return;
+  notification.close();
+  const adhanKey = notification.data && notification.data.adhanKey;
+
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clients) => {
+        const target = clients.find((c) => "focus" in c);
+        if (target) {
+          target.postMessage({ type: "adhan:play", adhanKey });
+          return target.focus();
+        }
+        // No open tab — open the prayer-times page; the controller mounted in
+        // the layout will not auto-play without a gesture, but the page opens.
+        return self.clients.openWindow("/");
+      }),
+  );
+});
