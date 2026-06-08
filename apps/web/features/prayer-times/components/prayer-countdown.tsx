@@ -28,7 +28,7 @@ export function PrayerCountdown({
       <span className="text-xs uppercase tracking-widest text-text-2">
         {t("next")}
       </span>
-      <span className="font-display text-2xl font-semibold text-text">
+      <span className="font-display text-xl font-semibold text-text sm:text-2xl">
         {t(nextKey)}
       </span>
       <span className="font-display text-lg font-semibold text-sun">
