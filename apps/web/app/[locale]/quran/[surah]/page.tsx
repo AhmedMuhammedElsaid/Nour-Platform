@@ -72,7 +72,7 @@ export default async function SurahReaderPage({ params, searchParams }: PageProp
         {t("back")}
       </Link>
       <header className="border-border mb-4 border-b pb-4 text-center">
-        <h1 dir="rtl" className="font-quran text-primary text-3xl">
+        <h1 dir="rtl" className="font-quran text-primary text-2xl sm:text-3xl mb-2">
           {data.surah.name.ar}
         </h1>
         <p className="text-text-2 mt-1 text-sm">
