@@ -1,39 +1,27 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
-import { useTranslations } from "next-intl";
+import { useEffect, useMemo } from "react";
 
 import { computePrayerTimes } from "@repo/api/services/prayer-times";
 
 import { usePrayerSettings } from "../hooks/use-prayer-settings";
 import { useAzkarReminderSettings } from "../hooks/use-azkar-reminder-settings";
 import { useAzkarReminderScheduler } from "../hooks/use-azkar-reminder-scheduler";
+import { makeAzkarReminderBuilder } from "../lib/azkar-reminder-content";
 import {
-  type AzkarReminderBuilder,
   scheduleAzkarReminders,
   showAzkarReminderNotification,
 } from "../lib/azkar-reminder-notifications";
 
 // Headless island: fires the Azkar al-Sabah/al-Masaa reminder `offsetMinutes`
 // after Fajr/Asr. Foreground (scheduler) + background (triggers) share one tag
-// so an overlap shows a single notification.
-export function AzkarReminderController({ locale }: { locale: "ar" | "en" }) {
-  const t = useTranslations("prayer");
+// so an overlap shows a single notification. Notifications are always Arabic.
+export function AzkarReminderController() {
   const { location, prefs, hydrated: prefsHydrated } = usePrayerSettings();
   const { settings, hydrated: azkarHydrated } = useAzkarReminderSettings();
   const ready = prefsHydrated && azkarHydrated;
 
-  const build = useCallback<AzkarReminderBuilder>(
-    (kind) => {
-      const slug = kind === "sabah" ? settings.sabah[locale] : settings.masaa[locale];
-      return {
-        url: `/${locale}/adhkar/${encodeURIComponent(slug)}`,
-        title: t(`azkar.${kind}.title`),
-        body: t(`azkar.${kind}.body`),
-      };
-    },
-    [locale, settings.sabah, settings.masaa, t],
-  );
+  const build = useMemo(() => makeAzkarReminderBuilder(settings), [settings]);
 
   useAzkarReminderScheduler({
     settings,

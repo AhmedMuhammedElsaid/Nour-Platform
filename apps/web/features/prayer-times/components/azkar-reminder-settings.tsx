@@ -1,18 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 
 import { useAzkarReminderSettings } from "../hooks/use-azkar-reminder-settings";
 import { requestAdhanPermission } from "../lib/adhan-notifications";
-import {
-  type AzkarReminderBuilder,
-  sendTestAzkarReminder,
-} from "../lib/azkar-reminder-notifications";
+import { makeAzkarReminderBuilder } from "../lib/azkar-reminder-content";
+import { sendTestAzkarReminder } from "../lib/azkar-reminder-notifications";
 
 export function AzkarReminderSettings() {
   const t = useTranslations("prayer");
-  const locale = useLocale() === "ar" ? "ar" : "en";
   const { settings, hydrated, setEnabled } = useAzkarReminderSettings();
   const [canBackground, setCanBackground] = useState(false);
   const [testMode, setTestMode] = useState(false);
@@ -30,14 +27,7 @@ export function AzkarReminderSettings() {
     );
   }, []);
 
-  const build: AzkarReminderBuilder = (kind) => {
-    const slug = kind === "sabah" ? settings.sabah[locale] : settings.masaa[locale];
-    return {
-      url: `/${locale}/adhkar/${encodeURIComponent(slug)}`,
-      title: t(`azkar.${kind}.title`),
-      body: t(`azkar.${kind}.body`),
-    };
-  };
+  const build = makeAzkarReminderBuilder(settings);
 
   if (!hydrated) return null;
 

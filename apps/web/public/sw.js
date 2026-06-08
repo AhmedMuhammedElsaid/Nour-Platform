@@ -20,7 +20,7 @@
 // Bump on any change to caching strategy so the activate handler purges the
 // previous generation of caches (including any stale RSC payloads that the old
 // catch-all stale-while-revalidate wrongly stored in STATIC_CACHE).
-const VERSION = "v4";
+const VERSION = "v5";
 const SHELL_CACHE = `nour-shell-${VERSION}`;
 const PAGES_CACHE = `nour-pages-${VERSION}`;
 const STATIC_CACHE = `nour-static-${VERSION}`;
@@ -252,18 +252,32 @@ self.addEventListener("notificationclick", (event) => {
   // Azkar al-Sabah/al-Masaa reminder → open the reader at the stored URL.
   if (tag.startsWith("nour-azkar-")) {
     notification.close();
-    const url = (notification.data && notification.data.url) || "/";
+    const raw = (notification.data && notification.data.url) || "/";
+    // Resolve to an absolute, same-origin URL so navigate()/openWindow() and
+    // the focused-tab match below all compare against the same string.
+    const url = new URL(raw, self.location.origin).href;
     event.waitUntil(
-      self.clients
-        .matchAll({ type: "window", includeUncontrolled: true })
-        .then((clients) => {
-          const target = clients.find((c) => "focus" in c);
-          if (target) {
-            target.navigate(url);
-            return target.focus();
+      (async () => {
+        const clients = await self.clients.matchAll({
+          type: "window",
+          includeUncontrolled: true,
+        });
+        // Already on the target page? Just focus it.
+        const onTarget = clients.find((c) => c.url === url);
+        if (onTarget) return onTarget.focus();
+        // Otherwise focus an existing tab and navigate it. navigate() can throw
+        // for an uncontrolled client, so fall back to opening a new window.
+        const open = clients.find((c) => "focus" in c);
+        if (open) {
+          try {
+            const navigated = await open.navigate(url);
+            return (navigated || open).focus();
+          } catch {
+            /* fall through to openWindow */
           }
-          return self.clients.openWindow(url);
-        }),
+        }
+        return self.clients.openWindow(url);
+      })(),
     );
     return;
   }

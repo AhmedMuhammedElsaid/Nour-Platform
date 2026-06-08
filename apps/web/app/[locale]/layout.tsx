@@ -160,7 +160,7 @@ export default async function LocaleLayout({
               <InstallPrompt />
               <ServiceWorkerRegister />
               <AdhanController />
-              <AzkarReminderController locale={locale === "ar" ? "ar" : "en"} />
+              <AzkarReminderController />
               <Analytics />
               <SpeedInsights />
             </LocaleAlternatesProvider>
