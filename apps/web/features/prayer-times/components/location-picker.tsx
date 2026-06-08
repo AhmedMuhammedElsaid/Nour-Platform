@@ -20,6 +20,7 @@ export function LocationPicker({
   const t = useTranslations("prayer");
   const [query, setQuery] = useState("");
   const [geoError, setGeoError] = useState(false);
+  const [locating, setLocating] = useState(false);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -31,12 +32,16 @@ export function LocationPicker({
 
   function useMyLocation(): void {
     setGeoError(false);
-    if (!("geolocation" in navigator)) {
+    // Geolocation needs a secure context (https / localhost); on insecure
+    // origins the API is absent entirely.
+    if (!("geolocation" in navigator) || !window.isSecureContext) {
       setGeoError(true);
       return;
     }
+    setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        setLocating(false);
         const near = nearestCity(pos.coords.latitude, pos.coords.longitude);
         onSelect({
           lat: pos.coords.latitude,
@@ -44,7 +49,13 @@ export function LocationPicker({
           label: near[locale],
         });
       },
-      () => setGeoError(true),
+      () => {
+        // Fires on permission denial *and* timeout — without an explicit
+        // timeout the prompt could hang indefinitely on some browsers.
+        setLocating(false);
+        setGeoError(true);
+      },
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 300_000 },
     );
   }
 
@@ -61,9 +72,10 @@ export function LocationPicker({
         <button
           type="button"
           onClick={useMyLocation}
-          className="whitespace-nowrap rounded-md border border-border px-3 py-2 text-sm text-sun hover:bg-surface-2"
+          disabled={locating}
+          className="whitespace-nowrap rounded-md border border-border px-3 py-2 text-sm text-sun hover:bg-surface-2 disabled:opacity-60"
         >
-          {t("useMyLocation")}
+          {locating ? t("locating") : t("useMyLocation")}
         </button>
       </div>
 
