@@ -13,7 +13,7 @@ const KEY = "nour.quran.prefs";
 
 export const DEFAULT_PREFS: QuranPrefs = {
   translationSlug: "en.sahih",
-  reciterSlug: "alafasy",
+  reciterSlug: "qatami",
   showTranslation: true,
   showWordByWord: false,
   fontScale: 1,

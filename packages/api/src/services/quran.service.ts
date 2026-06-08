@@ -35,7 +35,7 @@ const DEFAULT_TRANSLATION_BY_LOCALE: Record<Locale, string> = {
   ar: "ar.muyassar",
   en: "en.sahih",
 };
-const DEFAULT_RECITER_SLUG = "alafasy";
+const DEFAULT_RECITER_SLUG = "qatami";
 const DEFAULT_TAFSIR_BY_LOCALE: Record<Locale, string> = {
   ar: "ar.saadi",
   en: "en.ibnkathir",
