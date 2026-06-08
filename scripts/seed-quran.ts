@@ -229,19 +229,30 @@ async function seedTafsir(
   console.log(`[seed:quran] tafsir ${slug}: ${total} rows`);
 }
 
+// Reciter catalogue. `audioBase` follows the everyayah.com layout — append a
+// new entry to make a new reciter available; CSP already allows everyayah.com.
+const RECITERS = [
+  {
+    slug: "alafasy",
+    name: "Mishary Rashid Alafasy",
+    audioBase: "https://everyayah.com/data/Alafasy_128kbps/",
+  },
+  {
+    slug: "qatami",
+    name: "Nasser Al Qatami",
+    audioBase: "https://everyayah.com/data/Nasser_Alqatami_128kbps/",
+  },
+] as const;
+
 async function seedReciter(): Promise<void> {
-  await QuranReciterModel.updateOne(
-    { slug: "alafasy" },
-    {
-      $set: {
-        slug: "alafasy",
-        name: "Mishary Rashid Alafasy",
-        audioBase: "https://everyayah.com/data/Alafasy_128kbps/",
-      },
-    },
-    { upsert: true },
-  );
-  console.log("[seed:quran] reciter alafasy upserted");
+  for (const r of RECITERS) {
+    await QuranReciterModel.updateOne(
+      { slug: r.slug },
+      { $set: { slug: r.slug, name: r.name, audioBase: r.audioBase } },
+      { upsert: true },
+    );
+    console.log(`[seed:quran] reciter ${r.slug} upserted`);
+  }
 }
 
 async function main(): Promise<void> {
