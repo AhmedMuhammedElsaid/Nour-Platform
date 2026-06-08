@@ -64,14 +64,22 @@ export default function HomeScreen() {
         </Text>
       </View>
 
-      {/* Primary nav — bottom tabs land in Phase 10; a simple link row gets
-          Adhkar reachable for this phase's gate. */}
-      <Pressable accessibilityRole="button" onPress={() => router.push("/adhkar")}>
-        <Card className="flex-row items-center justify-between p-4">
-          <Text variant="title">{t("nav.adhkar")}</Text>
-          <Text variant="muted">{locale === "ar" ? "←" : "→"}</Text>
-        </Card>
-      </Pressable>
+      {/* Primary nav — bottom tabs land in Phase 10; simple link rows keep
+          features reachable for each phase's gate. */}
+      <View className="flex-row gap-3">
+        <Pressable accessibilityRole="button" onPress={() => router.push("/adhkar")} className="flex-1">
+          <Card className="flex-row items-center justify-between p-4">
+            <Text variant="title">{t("nav.adhkar")}</Text>
+            <Text variant="muted">{locale === "ar" ? "←" : "→"}</Text>
+          </Card>
+        </Pressable>
+        <Pressable accessibilityRole="button" onPress={() => router.push("/prayer-times")} className="flex-1">
+          <Card className="flex-row items-center justify-between p-4">
+            <Text variant="title">{t("nav.prayerTimes")}</Text>
+            <Text variant="muted">{locale === "ar" ? "←" : "→"}</Text>
+          </Card>
+        </Pressable>
+      </View>
 
       <CategoryPills
         categories={pills}

@@ -10,7 +10,24 @@
     "newArchEnabled": true,
     "backgroundColor": "#0f0d0a",
     "primaryColor": "#c8a050",
-    "plugins": ["expo-router", "expo-localization"],
+    "plugins": [
+      "expo-router",
+      "expo-localization",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Nour to access your location to show accurate prayer times."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#c8a050",
+          "sounds": []
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.nour.mobile",

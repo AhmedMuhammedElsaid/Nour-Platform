@@ -14,7 +14,8 @@
     "retry": "إعادة المحاولة"
   },
   "nav": {
-    "adhkar": "الأذكار"
+    "adhkar": "الأذكار",
+    "prayerTimes": "مواقيت الصلاة"
   },
   "home": {
     "playlistsTitle": "قوائم التشغيل",
@@ -32,6 +33,74 @@
       "newest": "الأحدث",
       "az": "أ–ي",
       "tracks": "الأكثر مقاطع"
+    }
+  },
+  "prayer": {
+    "title": "مواقيت الصلاة",
+    "nav": "مواقيت الصلاة",
+    "next": "الصلاة القادمة",
+    "countdown": "بعد {h} س {m} د",
+    "at": "الساعة {time}",
+    "now": "الآن {time}",
+    "changeCity": "تغيير المدينة",
+    "useMyLocation": "استخدم موقعي",
+    "locating": "جارٍ تحديد الموقع…",
+    "currentLocation": "الحالي",
+    "myLocation": "موقعي",
+    "locationSet": "تم ضبط موقعك: {city}",
+    "searchCity": "ابحث عن مدينة…",
+    "locationDenied": "تعذّر تحديد موقعك — نعرض مواقيت {{city}}.",
+    "locationInsecure": "تحديد الموقع يحتاج اتصالًا آمنًا.",
+    "locationUnsupported": "جهازك لا يدعم تحديد الموقع.",
+    "locationDeniedPerm": "تم حظر تحديد الموقع. فعّله من الإعدادات ثم أعد المحاولة.",
+    "locationTimeout": "استغرق تحديد الموقع وقتًا طويلًا. حاول مرة أخرى.",
+    "locationUnavailable": "موقعك غير متاح حاليًا. حاول مجددًا أو اختر مدينة.",
+    "calculation": "طريقة الحساب",
+    "method": "الطريقة",
+    "madhab": "العصر (المذهب)",
+    "madhabStandard": "الجمهور",
+    "madhabHanafi": "الحنفي",
+    "fajr": "الفجر",
+    "sunrise": "الشروق",
+    "dhuhr": "الظهر",
+    "asr": "العصر",
+    "maghrib": "المغرب",
+    "isha": "العشاء",
+    "methodMuslimWorldLeague": "رابطة العالم الإسلامي",
+    "methodEgyptian": "الهيئة المصرية العامة للمساحة",
+    "methodKarachi": "جامعة العلوم الإسلامية، كراتشي",
+    "methodUmmAlQura": "أم القرى، مكة",
+    "methodDubai": "دبي",
+    "methodMoonsightingCommittee": "لجنة رؤية الهلال",
+    "methodNorthAmerica": "أمريكا الشمالية (ISNA)",
+    "methodKuwait": "الكويت",
+    "methodQatar": "قطر",
+    "methodSingapore": "سنغافورة",
+    "methodTurkey": "تركيا",
+    "methodTehran": "طهران",
+    "adhan": {
+      "title": "الأذان",
+      "enable": "تشغيل الأذان عند أوقات الصلاة",
+      "perPrayer": "الصلوات",
+      "volume": "مستوى الصوت",
+      "background": "تفعيل الإشعارات",
+      "backgroundUnsupported": "الإشعارات غير مدعومة. يعمل الأذان أثناء فتح نور.",
+      "autoplayHint": "أبقِ نور مفتوحًا. يعمل الأذان تلقائيًا بعد تفاعلك مع التطبيق.",
+      "adhanBody": "حان وقت الصلاة."
+    },
+    "azkar": {
+      "title": "تذكير الأذكار",
+      "enable": "تذكيري بأذكار الصباح والمساء",
+      "hint": "نذكّرك بأذكار الصباح بعد الفجر، وأذكار المساء بعد العصر بربع ساعة.",
+      "foregroundOnly": "الإشعارات في الخلفية غير مدعومة. يعمل التذكير أثناء فتح نور.",
+      "sabah": {
+        "title": "أذكار الصباح",
+        "body": "حان وقت أذكار الصباح — اضغط للقراءة."
+      },
+      "masaa": {
+        "title": "أذكار المساء",
+        "body": "حان وقت أذكار المساء — اضغط للقراءة."
+      }
     }
   },
   "adhkar": {
