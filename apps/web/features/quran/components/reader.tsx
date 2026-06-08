@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { ReaderAyah, SurahReader } from "@repo/api/schemas/quran";
+import type { QuranReciter, ReaderAyah, SurahReader } from "@repo/api/schemas/quran";
 import { AyahRow } from "./ayah-row";
 import { ReaderSettingsSheet } from "./reader-settings-sheet";
 import { TafsirSheet } from "./tafsir-sheet";
@@ -16,10 +16,12 @@ import {
 
 export function Reader({
   data,
+  reciters,
   translationDir,
   locale,
 }: {
   data: SurahReader;
+  reciters: QuranReciter[];
   translationDir: "rtl" | "ltr";
   locale: string;
 }) {
@@ -70,7 +72,6 @@ export function Reader({
     bookmarks.some((b) => b.surah === ayah.surah && b.ayah === ayah.ayahInSurah);
 
   const editions = data.translationEdition ? [data.translationEdition] : [];
-  const reciters = data.reciter ? [data.reciter] : [];
 
   // Font scale applies to the Arabic ayah column via a CSS var the rows inherit.
   return (

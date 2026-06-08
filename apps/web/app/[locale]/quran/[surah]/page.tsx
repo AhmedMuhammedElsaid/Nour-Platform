@@ -2,9 +2,9 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-import { getSurahReader } from "@repo/api/services/quran";
+import { getSurahReader, listReciters } from "@repo/api/services/quran";
 import { isLocale, type Locale } from "@repo/api/schemas/locale";
-import type { SurahReader } from "@repo/api/schemas/quran";
+import type { QuranReciter, SurahReader } from "@repo/api/schemas/quran";
 
 export const dynamic = "force-dynamic";
 
@@ -43,12 +43,16 @@ export default async function SurahReaderPage({ params, searchParams }: PageProp
   setRequestLocale(loc);
 
   let data: SurahReader;
+  let reciters: QuranReciter[] = [];
   try {
-    data = await getSurahReader(n, {
-      locale: loc,
-      ...(translation ? { translationSlug: translation } : {}),
-      ...(reciter ? { reciterSlug: reciter } : {}),
-    });
+    [data, reciters] = await Promise.all([
+      getSurahReader(n, {
+        locale: loc,
+        ...(translation ? { translationSlug: translation } : {}),
+        ...(reciter ? { reciterSlug: reciter } : {}),
+      }),
+      listReciters(),
+    ]);
   } catch {
     notFound();
   }
@@ -81,7 +85,7 @@ export default async function SurahReaderPage({ params, searchParams }: PageProp
           </p>
         ) : null}
       </header>
-      <Reader data={data} translationDir={translationDir} locale={loc} />
+      <Reader data={data} reciters={reciters} translationDir={translationDir} locale={loc} />
     </div>
   );
 }
