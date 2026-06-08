@@ -71,6 +71,15 @@ export function Reader({
   const isBookmarked = (ayah: ReaderAyah) =>
     bookmarks.some((b) => b.surah === ayah.surah && b.ayah === ayah.ayahInSurah);
 
+  // Clicking the same ayah toggles play/pause; a different ayah starts fresh.
+  const onPlayToggle = (numberGlobal: number) => {
+    if (audio.currentGlobal === numberGlobal) {
+      audio.toggle();
+    } else {
+      audio.playAyah(numberGlobal);
+    }
+  };
+
   const editions = data.translationEdition ? [data.translationEdition] : [];
 
   // Font scale applies to the Arabic ayah column via a CSS var the rows inherit.
@@ -92,8 +101,9 @@ export function Reader({
           translationDir={translationDir}
           showWordByWord={prefs.showWordByWord}
           isCurrent={audio.currentGlobal === ayah.numberGlobal}
+          isPlaying={audio.isPlaying}
           isBookmarked={isBookmarked(ayah)}
-          onPlay={audio.playAyah}
+          onPlay={onPlayToggle}
           onToggleBookmark={onToggleBookmark}
           onOpenTafsir={(ng) => {
             const a = data.ayahs.find((x) => x.numberGlobal === ng);

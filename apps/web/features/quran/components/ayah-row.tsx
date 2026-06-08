@@ -10,6 +10,7 @@ export interface AyahRowProps {
   translationDir: "rtl" | "ltr";
   showWordByWord: boolean;
   isCurrent: boolean;
+  isPlaying: boolean;
   isBookmarked: boolean;
   onPlay: (numberGlobal: number) => void;
   onToggleBookmark: (ayah: ReaderAyah) => void;
@@ -22,6 +23,7 @@ export function AyahRow({
   translationDir,
   showWordByWord,
   isCurrent,
+  isPlaying,
   isBookmarked,
   onPlay,
   onToggleBookmark,
@@ -42,14 +44,21 @@ export function AyahRow({
         <div className="ms-auto flex items-center gap-1">
           <button
             type="button"
-            aria-label="Play ayah"
+            aria-label={isCurrent && isPlaying ? "Pause ayah" : "Play ayah"}
+            aria-pressed={isCurrent && isPlaying}
             onClick={() => onPlay(ayah.numberGlobal)}
             disabled={!ayah.audioUrl}
             className="hover:text-primary rounded p-1.5 disabled:opacity-40"
           >
-            <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden="true">
-              <path d="M8 5v14l11-7z" />
-            </svg>
+            {isCurrent && isPlaying ? (
+              <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden="true">
+                <path d="M7 5h4v14H7zm6 0h4v14h-4z" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden="true">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            )}
           </button>
           <button
             type="button"
