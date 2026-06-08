@@ -18,19 +18,57 @@ export interface UseAyahAudio {
   stop: () => void;
 }
 
+// Warm the browser HTTP cache (and our cross-origin audio service worker
+// cache) for one URL without playing it. Using fetch() with the audio
+// destination doesn't exist, so we trigger a parallel <audio> load.
+function prefetchUrl(el: HTMLAudioElement, url: string): void {
+  // Setting src to the same URL is a no-op; guard so we don't restart loads.
+  if (el.src === url) return;
+  el.src = url;
+  // load() initiates the download but doesn't play; the SW intercepts it and
+  // populates AUDIO_CACHE so the next play() resolves from cache instantly.
+  el.load();
+}
+
 export function useAyahAudio(ayahs: PlayableAyah[]): UseAyahAudio {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Hidden secondary element used purely to warm the cache for the next ayah
+  // while the primary one is playing. Browsers happily run two loads in
+  // parallel — this is the standard podcast/audio-app pattern.
+  const prefetchRef = useRef<HTMLAudioElement | null>(null);
   const [currentGlobal, setCurrentGlobal] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [repeatAyah, setRepeatAyah] = useState(false);
 
-  // Lazily create a single audio element (client only).
+  // Lazily create both audio elements (client only).
   if (audioRef.current === null && typeof window !== "undefined") {
-    audioRef.current = new Audio();
+    const main = new Audio();
+    // Eagerly fetch metadata + buffer so the first play() is responsive; the
+    // browser still honors a user gesture for the actual playback start.
+    main.preload = "auto";
+    main.crossOrigin = "anonymous";
+    audioRef.current = main;
+
+    const pre = new Audio();
+    pre.preload = "auto";
+    pre.crossOrigin = "anonymous";
+    prefetchRef.current = pre;
   }
 
   const indexByGlobal = useMemo(
     () => new Map(ayahs.map((a, i) => [a.numberGlobal, i])),
+    [ayahs],
+  );
+
+  // Warm the cache for the ayah after `index`, if one exists with a URL.
+  const warmNext = useCallback(
+    (index: number) => {
+      const pre = prefetchRef.current;
+      if (!pre) return;
+      const next = ayahs[index + 1];
+      if (!next?.audioUrl) return;
+      prefetchUrl(pre, next.audioUrl);
+    },
     [ayahs],
   );
 
@@ -53,8 +91,10 @@ export function useAyahAudio(ayahs: PlayableAyah[]): UseAyahAudio {
         setIsPlaying(false);
         setCurrentGlobal(null);
       });
+      // Kick off the prefetch for the *next* ayah so auto-advance is instant.
+      warmNext(index);
     },
-    [ayahs],
+    [ayahs, warmNext],
   );
 
   const playAyah = useCallback(
