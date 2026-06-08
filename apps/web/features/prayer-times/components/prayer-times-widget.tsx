@@ -70,6 +70,11 @@ export function PrayerTimesWidget({ locale }: { locale: "ar" | "en" }) {
   const next = getNextPrayer(day, nowDate);
   const dots = buildArcDots(day, next?.key ?? null, (k) => t(k));
   const sunFraction = getDayProgress(day, nowDate);
+  const fajrTime = day.instants.find((i) => i.key === "fajr")?.time ?? null;
+  const ishaTime = day.instants.find((i) => i.key === "isha")?.time ?? null;
+  const isNight =
+    (fajrTime != null && nowDate.getTime() < fajrTime.getTime()) ||
+    (ishaTime != null && nowDate.getTime() >= ishaTime.getTime());
 
   const rowKeys: PrayerKey[] = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
 
@@ -96,7 +101,7 @@ export function PrayerTimesWidget({ locale }: { locale: "ar" | "en" }) {
 
       {/* full-bleed arc */}
       <div className="mt-1">
-        <SunArc dots={dots} sunFraction={sunFraction} nextLabel={t("next")} />
+        <SunArc dots={dots} sunFraction={sunFraction} nextLabel={t("next")} isNight={isNight} />
       </div>
 
       {next ? (

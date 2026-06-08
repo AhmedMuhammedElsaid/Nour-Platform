@@ -49,6 +49,11 @@ export function PrayerPage({ locale }: { locale: "ar" | "en" }) {
   const next = getNextPrayer(day, nowDate);
   const dots = buildArcDots(day, next?.key ?? null, (k) => t(k));
   const sunFraction = getDayProgress(day, nowDate);
+  const fajrTime = day.instants.find((i) => i.key === "fajr")?.time ?? null;
+  const ishaTime = day.instants.find((i) => i.key === "isha")?.time ?? null;
+  const isNight =
+    (fajrTime != null && nowDate.getTime() < fajrTime.getTime()) ||
+    (ishaTime != null && nowDate.getTime() >= ishaTime.getTime());
 
   return (
     <section className="mx-auto max-w-5xl px-6 py-12">
@@ -56,7 +61,7 @@ export function PrayerPage({ locale }: { locale: "ar" | "en" }) {
       <p className="mt-1 text-sm text-text-2">🕌 {location.label}</p>
 
       <div className="mt-6 overflow-hidden rounded-xl border border-border bg-surface pt-2">
-        <SunArc dots={dots} sunFraction={sunFraction} nextLabel={t("next")} />
+        <SunArc dots={dots} sunFraction={sunFraction} nextLabel={t("next")} isNight={isNight} />
         {next ? (
           <div className="pb-6">
             <PrayerCountdown nextKey={next.key} target={next.time} />
