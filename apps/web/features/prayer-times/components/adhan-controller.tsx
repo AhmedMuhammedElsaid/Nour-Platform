@@ -28,6 +28,20 @@ export function AdhanController() {
   const { settings, hydrated: adhanHydrated } = useAdhanSettings();
   const ready = prefsHydrated && adhanHydrated;
 
+  // Prime the audio elements on the first user gesture anywhere on the site.
+  // Without this the browser autoplay policy blocks every scheduled play()
+  // (the elements were never user-activated), so the adhan stays silent.
+  useEffect(() => {
+    const unlock = () => player.current?.unlock();
+    const opts = { once: true, passive: true } as const;
+    window.addEventListener("pointerdown", unlock, opts);
+    window.addEventListener("keydown", unlock, opts);
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
   // Layer A — foreground autoplay.
   useAdhanScheduler({
     settings,
