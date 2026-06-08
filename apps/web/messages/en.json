@@ -62,6 +62,8 @@
     "changeCity": "Change city",
     "useMyLocation": "Use my location",
     "locating": "Locating…",
+    "currentLocation": "Current",
+    "locationSet": "Location set: {city}",
     "searchCity": "Search a city…",
     "locationDenied": "Couldn't get your location — showing times for {city}.",
     "calculation": "Calculation method",

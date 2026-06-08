@@ -62,6 +62,8 @@
     "changeCity": "تغيير المدينة",
     "useMyLocation": "استخدم موقعي",
     "locating": "جارٍ تحديد الموقع…",
+    "currentLocation": "الحالي",
+    "locationSet": "تم ضبط موقعك: {city}",
     "searchCity": "ابحث عن مدينة…",
     "locationDenied": "تعذّر تحديد موقعك — نعرض مواقيت {city}.",
     "calculation": "طريقة الحساب",
