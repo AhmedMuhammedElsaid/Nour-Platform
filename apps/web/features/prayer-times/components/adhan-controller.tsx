@@ -69,6 +69,17 @@ export function AdhanController() {
     void scheduleAdhanNotifications(day.instants, settings, (k) => t(k));
   }, [ready, settings, location.lat, location.lng, prefs.method, prefs.madhab, t]);
 
+  // Test hook (?test=1 button): play immediately. The click is a user gesture
+  // so autoplay is allowed even before the first scroll/keypress.
+  useEffect(() => {
+    const onTest = () => {
+      player.current?.unlock();
+      player.current?.play("dhuhr", settings.volume).catch(() => {});
+    };
+    window.addEventListener("nour:test-adhan", onTest);
+    return () => window.removeEventListener("nour:test-adhan", onTest);
+  }, [settings.volume]);
+
   // Notification click → SW postMessage → play in-page.
   useEffect(() => {
     if (typeof navigator === "undefined" || !navigator.serviceWorker) return;

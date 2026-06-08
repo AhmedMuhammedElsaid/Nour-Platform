@@ -12,12 +12,17 @@ export function AdhanSettings() {
   const t = useTranslations("prayer");
   const { settings, hydrated, setEnabled, setPrayer, setVolume } = useAdhanSettings();
   const [canBackground, setCanBackground] = useState(false);
+  const [testMode, setTestMode] = useState(false);
 
   useEffect(() => {
     setCanBackground(
       typeof window !== "undefined" &&
         "Notification" in window &&
         "showTrigger" in Notification.prototype,
+    );
+    setTestMode(
+      typeof window !== "undefined" &&
+        new URLSearchParams(window.location.search).has("test"),
     );
   }, []);
 
@@ -85,6 +90,16 @@ export function AdhanSettings() {
           ) : (
             <p className="text-xs text-text-2">{t("adhan.backgroundUnsupported")}</p>
           )}
+
+          {testMode ? (
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent("nour:test-adhan"))}
+              className="w-full rounded-md border border-dashed border-border bg-surface-2 px-3 py-2.5 text-sm text-text hover:bg-surface"
+            >
+              🔊 Play adhan now (test)
+            </button>
+          ) : null}
         </>
       ) : null}
     </div>

@@ -62,7 +62,6 @@ export async function scheduleAzkarReminders(
   for (const n of existing) {
     if (n.tag?.startsWith(TAG_PREFIX)) n.close();
   }
-
   const now = new Date();
   let cursor = now;
   for (let i = 0; i < 2; i++) {
@@ -73,4 +72,28 @@ export async function scheduleAzkarReminders(
     await notify(reg, event.kind, build(event.kind), new TimestampTrigger(event.time.getTime()));
     cursor = new Date(event.time.getTime() + 1_000);
   }
+}
+
+// Test helper: fire a reminder shortly from now so the flow can be verified
+// without waiting for a real prayer. `delayMs <= 0` shows it immediately
+// (foreground); otherwise it schedules a background trigger so you can close
+// the tab and confirm the OS notification still arrives.
+export async function sendTestAzkarReminder(
+  build: AzkarReminderBuilder,
+  delayMs = 10_000,
+): Promise<"shown" | "scheduled" | "no-permission" | "no-sw"> {
+  if (typeof Notification === "undefined") return "no-permission";
+  if (Notification.permission !== "granted") {
+    const res = await Notification.requestPermission();
+    if (res !== "granted") return "no-permission";
+  }
+  const reg = await navigator.serviceWorker?.ready;
+  if (!reg) return "no-sw";
+
+  if (delayMs <= 0 || !triggersSupported() || !window.TimestampTrigger) {
+    await notify(reg, "sabah", build("sabah"));
+    return "shown";
+  }
+  await notify(reg, "sabah", build("sabah"), new window.TimestampTrigger(Date.now() + delayMs));
+  return "scheduled";
 }
