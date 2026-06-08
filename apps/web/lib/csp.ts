@@ -13,6 +13,10 @@ import { EMBED_CSP_FRAME_SRC } from "@repo/config/embed-hosts";
 
 export function buildWebCsp(nonce: string, r2Hostname: string): string {
   const r2Origin = r2Hostname ? `https://${r2Hostname}` : "";
+  // Quran reciter audio host (Mishary/alafasy audioBase, see scripts/seed-quran.ts).
+  // Without this in media-src the browser silently blocks <audio> and the
+  // play button does nothing. Add additional reciter hosts here if seeded.
+  const RECITER_ORIGINS = "https://everyayah.com";
   return [
     "default-src 'self'",
     // 'strict-dynamic' lets the nonce-trusted root script load further
@@ -24,10 +28,10 @@ export function buildWebCsp(nonce: string, r2Hostname: string): string {
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data:${r2Origin ? ` ${r2Origin}` : ""}`,
     "font-src 'self'",
-    `media-src 'self'${r2Origin ? ` ${r2Origin}` : ""}`,
+    `media-src 'self'${r2Origin ? ` ${r2Origin}` : ""} ${RECITER_ORIGINS}`,
     // connect-src governs the service worker's fetch() of audio for offline
-    // caching, so the R2 origin must be allowed here (not just media-src).
-    `connect-src 'self'${r2Origin ? ` ${r2Origin}` : ""}`,
+    // caching, so the R2 + reciter origins must be allowed here too.
+    `connect-src 'self'${r2Origin ? ` ${r2Origin}` : ""} ${RECITER_ORIGINS}`,
     // PWA: allow the same-origin service worker script and web app manifest.
     "worker-src 'self'",
     "manifest-src 'self'",

@@ -46,7 +46,13 @@ export function useAyahAudio(ayahs: PlayableAyah[]): UseAyahAudio {
       el.src = ayah.audioUrl;
       setCurrentGlobal(ayah.numberGlobal);
       setIsPlaying(true);
-      void el.play();
+      // Surface playback rejections (CSP block, network error, autoplay
+      // policy) so a silent failure is diagnosable in the console.
+      el.play().catch((err) => {
+        console.warn("ayah audio play failed", ayah.audioUrl, err);
+        setIsPlaying(false);
+        setCurrentGlobal(null);
+      });
     },
     [ayahs],
   );
