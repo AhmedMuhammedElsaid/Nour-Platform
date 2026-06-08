@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { CITIES, nearestCity, type City } from "@/features/prayer-times/data/cities";
+import { CITIES, type City } from "@/features/prayer-times/data/cities";
 import type { PrayerLocation } from "@repo/api/schemas/prayer-times";
 
 function cityToLocation(c: City, locale: "ar" | "en"): PrayerLocation {
@@ -55,14 +55,14 @@ export function LocationPicker({
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLocating(false);
-        const near = nearestCity(pos.coords.latitude, pos.coords.longitude);
-        // Persist the precise device coordinates, labelled by the nearest city.
+        // Persist the precise device coordinates under a "My location" label.
+        const label = t("myLocation");
         onSelect({
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
-          label: near[locale],
+          label,
         });
-        setJustSet(near[locale]);
+        setJustSet(label);
       },
       () => {
         // Fires on permission denial *and* timeout — without an explicit

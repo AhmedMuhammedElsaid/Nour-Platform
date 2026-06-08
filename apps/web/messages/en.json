@@ -63,6 +63,7 @@
     "useMyLocation": "Use my location",
     "locating": "Locating…",
     "currentLocation": "Current",
+    "myLocation": "My location",
     "locationSet": "Location set: {city}",
     "searchCity": "Search a city…",
     "locationDenied": "Couldn't get your location — showing times for {city}.",
