@@ -87,6 +87,15 @@ These embedded-locale + slug fixes are all FIXED and committed (history kept for
 
 ---
 
+## Resolved issues — slug data hygiene (debug session 2026-06-07)
+
+**FIXED (data healed on Atlas; helper script committed to `main` `4e7f399`)** — a published playlist ("Shorts Dr Saber Adel", `6a162be8…`) 404'd **only when reached via a homepage card**, with `Minified React error #418` (hydration text mismatch) in the console; the direct `%20`-encoded URL loaded fine.
+- **Root cause**: the doc's `ar.slug`/`en.slug` held **literal spaces** (`"مقتطفات للدكتور صابر عادل"`, `"Short Dr Saber Adel"`). `PlaylistCard` rendered `<a href="/ar/playlists/…with spaces…">`; on a client-side `<Link>` nav Next re-encoded the space to a form `decodeURIComponent` can't restore (`+`/double-encode) → `getPlaylistBySlug` missed → `notFound()` rendered the 404 body, whose hydration mismatch surfaced as #418. Every working playlist is kebab-case, so only the malformed doc broke.
+- **How it got in**: `slugSchema` (`/^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u`) **rejects spaces**, and the admin form auto-`slugify`s the title (no slug input), so the record could only have entered via a **direct Atlas insert/import** that bypassed Zod. The user imports reciter content this way → it can recur.
+- **Fix**: re-`slugify`'d the malformed slugs via new `scripts/heal-malformed-slugs.ts` (`pnpm heal:malformed-slugs [--apply]`). Healed 1 playlist + 4 tracks (uppercase/trailing-space — cosmetic; track slugs are in no URL). Verified both `/ar` and `/en` detail pages now HTTP 200 with the real `<h1>`; 0 malformed slugs remain. `heal:slugs` does NOT cover this — it only fills *missing* slugs, not malformed-but-present ones.
+
+---
+
 ## Key file locations (quick-ref for implementers)
 
 ```
@@ -357,7 +366,12 @@ playwright.config.ts                     → projects for web (3000) + admin (30
 scripts/
   seed-admin.ts        → pnpm seed:admin --email --password [--force]  (--force required when NODE_ENV=production)
   seed-adhkar.ts       → pnpm seed:adhkar (requires valid MONGODB_URI; idempotent morning + evening seed)
-  migrate.ts           → pnpm migrate [--dry-run]
+  migrate.ts           → pnpm migrate [--dry-run] [--only <name>]
+  seed-quran.ts        → pnpm seed:quran (writes 6k+ docs + ~120 external API calls; idempotent)
+  heal-embedded-slugs.ts → pnpm heal:slugs — fills MISSING ar/en slugs (runs 0005.up in isolation)
+  heal-malformed-slugs.ts → pnpm heal:malformed-slugs [--apply] — re-slugifies MALFORMED-but-present
+                            slugs (whitespace/not-trimmed/not-slugify-stable) across playlists/tracks/
+                            categories; dotted $set so embedded subdoc merges. Run after direct Atlas imports.
   tsconfig.json        → path aliases for @repo/* (explicit .service.ts mappings)
 
 apps/web/vercel.json + apps/admin/vercel.json
@@ -418,6 +432,7 @@ Root docs (read in this order for new sessions)
 - **(i18n) EMBEDDED-locale documents — single doc per resource, NOT per-locale**: a playlist/category/track is ONE Mongo doc carrying embedded `ar:{…}` + `en:{…}` sub-objects. There is NO `contentId` and NO top-level `locale` field (removed in the embedded refactor — ignore any older note that mentions them). Public service reads take NO `locale` param: `getPublishedPlaylists({categoryId?})`, `listCategories()`, `getTracksWithUrls(playlistId)`. Only the slug-lookup reads carry locale to pick the sub-field: `getPlaylistBySlug(locale, slug)` / `getCategoryBySlug(locale, slug)` query `"<locale>.slug"`. Components pick the sub-object with `getLocale()` → `doc[locale]`. `playlist.categoryIds` hold category **`_id`s** (not contentIds); `track.playlistId` (renamed from `playlistContentId`) holds the playlist `_id`; query tracks by `{playlistId}` sorted by `order`. `playlist.trackIds` does not exist.
 - **(i18n) Partial updates MUST go through `flattenLocaleUpdate`**: `$set:{ar:{…}}` replaces the entire `ar` sub-object and drops untouched fields (the slug-clobber bug). All repo `updateXById` functions wrap the patch in `flattenLocaleUpdate()` (`utils/mongo-update.ts`) to emit dot-paths (`"ar.title"`) that merge. Any new write path touching `ar`/`en` must do the same.
 - **(i18n) Slugs are Unicode + globally unique per `<locale>.slug`**: the shared `utils/slug.ts` keeps any-script letters (Arabic-safe, ADR 0002); empty normalization falls back to `item-<id tail>`. `slug` is auto-derived from title ONLY on create; on update an omitted slug is preserved (admin forms have no slug field). The detail page must `decodeURIComponent` the `[slug]` route param (Next does not percent-decode Unicode).
+- **A slug with a literal SPACE 404s on client-side nav + throws React #418** (debug 2026-06-07). The card's `<a href>` carries the raw space; Next re-encodes it on a `<Link>` click to a form `decodeURIComponent` can't restore, so the slug lookup misses → 404 page → hydration mismatch. `slugSchema` rejects spaces, so such docs only enter via **direct Atlas inserts/imports** bypassing Zod. After any direct import, run `pnpm heal:malformed-slugs` (dry-run) and `--apply` if it reports changes. The `%20`-encoded URL works fine — the bug is purely the unencoded space in the rendered href.
 - **(i18n) Cache tags are bare constants/functions**: `PLAYLISTS_HOME`, `CATEGORIES`, `playlistTag(id)` from `cache/tags.ts` (the old locale-scoped `playlistsHomeTag(locale)`/`categoriesTag(locale)` were removed in the embedded refactor — do not reintroduce). Category delete `$pull`s its `_id` from every playlist's `categoryIds`.
 - **(i18n) Web is next-intl with `localePrefix:'always'`**: all routes live under `apps/web/app/[locale]/`; root `app/layout.tsx` is a passthrough, `[locale]/layout.tsx` owns `<html lang dir>`. `proxy.ts` COMPOSES next-intl routing with the CSP nonce (mutates `request.headers` x-nonce before calling the intl middleware, sets CSP on its response) — do not replace it with bare middleware or the nonce drops. Matcher excludes `/api`. Use `Link`/`useRouter` from `@/i18n/navigation` (locale-aware), not `next/navigation`. Chrome strings in `messages/{ar,en}.json`; RTL Arabic font = IBM Plex Sans Arabic swapped into `--font-sans` for `ar`. `vitest.config.ts` declares the `@`→app-root alias explicitly (vite-tsconfig-paths can't load).
 - **(i18n) Admin chrome stays English, authors BOTH locales in one form**: the playlist/category forms render AR + EN fields side-by-side (`ar.title`/`en.title`, etc.) and save a single embedded doc. There is NO per-locale "create translation" flow, no `?contentId=&locale=` links, no locale badges/row-grouping (all removed with the embedded refactor). The web locale switcher (`features/layout/components/locale-switcher.tsx`) routes between locales via `locale-alternates-context` so detail pages reach the sibling slug. `apps/admin` itself is NOT internationalized (single admin UI).
