@@ -11,7 +11,15 @@ import {
   nextAzkarReminderEvent,
 } from "../lib/azkar-reminder-schedule";
 
-const MAX_TIMEOUT = 2_147_483_647; // setTimeout 32-bit ceiling (~24.8 days)
+// Recompute at least this often so clock drift / sleep / background throttling
+// can't push the fire time out by more than one chunk; the last leg is armed to
+// the exact remaining ms so it lands on the second.
+const MAX_CHUNK = 5 * 60_000; // 5 min
+const FINAL_WINDOW = 30_000; // last 30s: arm the precise timeout
+
+function clampChunk(ms: number): number {
+  return Math.min(MAX_CHUNK, Math.max(1_000, ms));
+}
 
 // Foreground engine for azkar reminders: arms a single setTimeout to the next
 // enabled event, fires onFire, then re-arms. Mirrors useAdhanScheduler but is
@@ -49,16 +57,23 @@ export function useAzkarReminderScheduler(input: {
         // Nothing left today — wake just after midnight and recompute.
         const tomorrow = new Date(now);
         tomorrow.setHours(24, 0, 30, 0);
-        const delay = Math.min(MAX_TIMEOUT, tomorrow.getTime() - now.getTime());
-        timer = setTimeout(arm, Math.max(1_000, delay));
+        timer = setTimeout(arm, clampChunk(tomorrow.getTime() - now.getTime()));
         return;
       }
 
-      const delay = Math.min(MAX_TIMEOUT, event.time.getTime() - now.getTime());
+      const remaining = event.time.getTime() - now.getTime();
+      if (remaining > FINAL_WINDOW) {
+        // Far out: nap in capped chunks and recompute from the live clock each
+        // time, so sleep / background throttling can't push the fire time out.
+        timer = setTimeout(arm, clampChunk(remaining - FINAL_WINDOW));
+        return;
+      }
+
+      // Final window — arm the exact remaining delay so it fires on the second.
       timer = setTimeout(() => {
         onFireRef.current(event);
         timer = setTimeout(arm, 1_000);
-      }, Math.max(0, delay));
+      }, Math.max(0, remaining));
     };
 
     arm();
