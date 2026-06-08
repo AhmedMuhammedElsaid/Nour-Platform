@@ -14,6 +14,12 @@ export default [
     rules: { "@typescript-eslint/no-require-imports": "off" },
   },
   {
+    // Jest setup runs in a CommonJS Node context with the jest global.
+    files: ["jest.setup.js"],
+    languageOptions: { globals: { ...globals.node, ...globals.jest } },
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
+  {
     files: ["**/*.test.{ts,tsx}", "__tests__/**/*.{ts,tsx}"],
     languageOptions: {
       globals: { ...globals.jest },
