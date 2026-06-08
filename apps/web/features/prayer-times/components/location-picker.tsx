@@ -27,7 +27,8 @@ export function LocationPicker({
 }) {
   const t = useTranslations("prayer");
   const [query, setQuery] = useState("");
-  const [geoError, setGeoError] = useState(false);
+  // null = no error; otherwise an i18n key under prayer.* describing the cause.
+  const [geoErrorKey, setGeoErrorKey] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
   const [justSet, setJustSet] = useState<string | null>(null);
 
@@ -43,12 +44,16 @@ export function LocationPicker({
   }, [query, locale, current]);
 
   function useMyLocation(): void {
-    setGeoError(false);
+    setGeoErrorKey(null);
     setJustSet(null);
-    // Geolocation needs a secure context (https / localhost); on insecure
-    // origins the API is absent entirely.
-    if (!("geolocation" in navigator) || !window.isSecureContext) {
-      setGeoError(true);
+    // Geolocation requires a secure context (https or localhost). Plain http on
+    // a LAN IP (e.g. 192.168.x.x) is blocked, which is the most common failure.
+    if (typeof window !== "undefined" && !window.isSecureContext) {
+      setGeoErrorKey("locationInsecure");
+      return;
+    }
+    if (!("geolocation" in navigator)) {
+      setGeoErrorKey("locationUnsupported");
       return;
     }
     setLocating(true);
@@ -64,13 +69,19 @@ export function LocationPicker({
         });
         setJustSet(label);
       },
-      () => {
-        // Fires on permission denial *and* timeout — without an explicit
-        // timeout the prompt could hang indefinitely on some browsers.
+      (err) => {
         setLocating(false);
-        setGeoError(true);
+        // 1 = permission denied, 2 = position unavailable, 3 = timeout.
+        console.warn("geolocation error", err.code, err.message);
+        setGeoErrorKey(
+          err.code === err.PERMISSION_DENIED
+            ? "locationDeniedPerm"
+            : err.code === err.TIMEOUT
+              ? "locationTimeout"
+              : "locationUnavailable",
+        );
       },
-      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 300_000 },
+      { enableHighAccuracy: false, timeout: 15_000, maximumAge: 300_000 },
     );
   }
 
@@ -98,8 +109,8 @@ export function LocationPicker({
       {/* Reserved status line — always present so toggling it never shifts the
           surrounding layout. */}
       <p className="min-h-4 text-xs text-text-2" role="status" aria-live="polite">
-        {geoError
-          ? t("locationDenied", { city: "Cairo" })
+        {geoErrorKey
+          ? t(geoErrorKey)
           : justSet
             ? t("locationSet", { city: justSet })
             : ""}
