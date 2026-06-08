@@ -20,7 +20,7 @@
 // Bump on any change to caching strategy so the activate handler purges the
 // previous generation of caches (including any stale RSC payloads that the old
 // catch-all stale-while-revalidate wrongly stored in STATIC_CACHE).
-const VERSION = "v3";
+const VERSION = "v4";
 const SHELL_CACHE = `nour-shell-${VERSION}`;
 const PAGES_CACHE = `nour-pages-${VERSION}`;
 const STATIC_CACHE = `nour-static-${VERSION}`;
@@ -247,7 +247,28 @@ async function handleAudio(request, url) {
  */
 self.addEventListener("notificationclick", (event) => {
   const notification = event.notification;
-  if (!notification.tag || !notification.tag.startsWith("nour-adhan-")) return;
+  const tag = notification.tag || "";
+
+  // Azkar al-Sabah/al-Masaa reminder → open the reader at the stored URL.
+  if (tag.startsWith("nour-azkar-")) {
+    notification.close();
+    const url = (notification.data && notification.data.url) || "/";
+    event.waitUntil(
+      self.clients
+        .matchAll({ type: "window", includeUncontrolled: true })
+        .then((clients) => {
+          const target = clients.find((c) => "focus" in c);
+          if (target) {
+            target.navigate(url);
+            return target.focus();
+          }
+          return self.clients.openWindow(url);
+        }),
+    );
+    return;
+  }
+
+  if (!tag.startsWith("nour-adhan-")) return;
   notification.close();
   const adhanKey = notification.data && notification.data.adhanKey;
 

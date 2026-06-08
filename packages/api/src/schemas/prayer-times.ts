@@ -75,3 +75,23 @@ export const adhanSettingsSchema = z.object({
 export type AdhanSettings = z.infer<typeof adhanSettingsSchema>;
 
 export const DEFAULT_ADHAN_SETTINGS: AdhanSettings = adhanSettingsSchema.parse({});
+
+// Per-locale slugs for the morning/evening Adhkar collections (seeded by
+// scripts/seed-adhkar.ts). The reader route resolves by the locale's own slug.
+const azkarSlugLocaleSchema = z.object({
+  ar: z.string().min(1),
+  en: z.string().min(1),
+});
+
+// Azkar al-Sabah/al-Masaa reminder, fired `offsetMinutes` after Fajr/Asr.
+// Device-local only (localStorage), independent of the adhan toggle.
+export const azkarReminderSettingsSchema = z.object({
+  enabled: z.boolean().default(false),
+  offsetMinutes: z.number().int().min(0).max(120).default(15),
+  sabah: azkarSlugLocaleSchema.default({ ar: "أذكار-الصباح", en: "morning-adhkar" }),
+  masaa: azkarSlugLocaleSchema.default({ ar: "أذكار-المساء", en: "evening-adhkar" }),
+});
+export type AzkarReminderSettings = z.infer<typeof azkarReminderSettingsSchema>;
+
+export const DEFAULT_AZKAR_REMINDER_SETTINGS: AzkarReminderSettings =
+  azkarReminderSettingsSchema.parse({});

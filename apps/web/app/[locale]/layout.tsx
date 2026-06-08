@@ -22,6 +22,7 @@ import { PlaybackPersistence } from "@/features/player/components/playback-persi
 import { ServiceWorkerRegister } from "@/features/pwa/components/service-worker-register";
 import { InstallPrompt } from "@/features/pwa/components/install-prompt";
 import { AdhanController } from "@/features/prayer-times/components/adhan-controller";
+import { AzkarReminderController } from "@/features/prayer-times/components/azkar-reminder-controller";
 import { LocaleAlternatesProvider } from "@/features/layout/locale-alternates-context";
 import { routing } from "@/i18n/routing";
 import { defaultOpenGraph, defaultTwitter } from "@/lib/seo";
@@ -159,6 +160,7 @@ export default async function LocaleLayout({
               <InstallPrompt />
               <ServiceWorkerRegister />
               <AdhanController />
+              <AzkarReminderController locale={locale === "ar" ? "ar" : "en"} />
               <Analytics />
               <SpeedInsights />
             </LocaleAlternatesProvider>

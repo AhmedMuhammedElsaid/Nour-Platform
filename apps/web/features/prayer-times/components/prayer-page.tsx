@@ -10,6 +10,7 @@ import { PrayerCountdown } from "@/features/prayer-times/components/prayer-count
 import { PrayerTimetable } from "@/features/prayer-times/components/prayer-timetable";
 import { SunArc } from "@/features/prayer-times/components/sun-arc";
 import { AdhanSettings } from "@/features/prayer-times/components/adhan-settings";
+import { AzkarReminderSettings } from "@/features/prayer-times/components/azkar-reminder-settings";
 import { buildArcDots } from "@/features/prayer-times/components/prayer-times-widget";
 import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-settings";
 import {
@@ -80,6 +81,10 @@ export function PrayerPage({ locale }: { locale: "ar" | "en" }) {
           <div className="rounded-lg border border-border bg-surface p-4">
             <h2 className="mb-3 font-display text-base text-text">{t("adhan.title")}</h2>
             <AdhanSettings />
+          </div>
+          <div className="rounded-lg border border-border bg-surface p-4">
+            <h2 className="mb-3 font-display text-base text-text">{t("azkar.title")}</h2>
+            <AzkarReminderSettings />
           </div>
           <div className="rounded-lg border border-border bg-surface p-4">
             <h2 className="mb-3 font-display text-base text-text">{t("changeCity")}</h2>

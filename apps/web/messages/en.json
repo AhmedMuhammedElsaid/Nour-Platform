@@ -61,6 +61,7 @@
     "now": "now {time}",
     "changeCity": "Change city",
     "useMyLocation": "Use my location",
+    "locating": "Locating…",
     "searchCity": "Search a city…",
     "locationDenied": "Couldn't get your location — showing times for {city}.",
     "calculation": "Calculation method",
@@ -95,6 +96,20 @@
       "backgroundUnsupported": "Background notifications aren't supported in this browser. The adhan still plays while Nour is open.",
       "autoplayHint": "Keep a Nour tab open. The adhan plays automatically once you've interacted with the page.",
       "adhanBody": "It's time for prayer."
+    },
+    "azkar": {
+      "title": "Adhkar reminder",
+      "enable": "Remind me of morning & evening adhkar",
+      "hint": "We'll remind you of Adhkar al-Sabah 15 min after Fajr, and Adhkar al-Masaa 15 min after Asr.",
+      "foregroundOnly": "Background notifications aren't supported in this browser. The reminder still fires while Nour is open.",
+      "sabah": {
+        "title": "Adhkar al-Sabah",
+        "body": "Time for the morning adhkar — tap to read."
+      },
+      "masaa": {
+        "title": "Adhkar al-Masaa",
+        "body": "Time for the evening adhkar — tap to read."
+      }
     }
   },
   "pwa": {
