@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react-native";
 
 import PlaylistDetailScreen from "@/app/playlist/[slug]";
+import { PlayerProvider } from "@/lib/player-context";
 import { getJson } from "@/lib/api";
 
 jest.mock("@/lib/api", () => ({ getJson: jest.fn() }));
@@ -15,7 +16,9 @@ function renderDetail() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <PlaylistDetailScreen />
+      <PlayerProvider>
+        <PlaylistDetailScreen />
+      </PlayerProvider>
     </QueryClientProvider>,
   );
 }
@@ -36,7 +39,7 @@ describe("PlaylistDetailScreen", () => {
           order: 0,
         },
         tracks: [
-          { id: "t1", ar: { title: "م1", slug: "m1" }, en: { title: "Track One", slug: "t1" }, order: 0, srcUrl: null },
+          { id: "t1", ar: { title: "م1", slug: "m1" }, en: { title: "Track One", slug: "t1" }, order: 0, srcUrl: "https://r2.example.com/t1.mp3" },
         ],
       });
     });
@@ -45,7 +48,7 @@ describe("PlaylistDetailScreen", () => {
 
     await waitFor(() => expect(screen.getByText(/Alpha|أ/)).toBeTruthy());
     expect(screen.getByText(/Track One|م1/)).toBeTruthy();
-    // Play-all button is present (disabled stub until Phase 6).
+    // Play-all button is present (now enabled when tracks have srcUrl).
     expect(screen.getByText(/Play all|تشغيل الكل/)).toBeTruthy();
   });
 
