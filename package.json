@@ -23,6 +23,7 @@
     "migrate:dry": "pnpm migrate --dry-run",
     "migrate:search": "tsx --env-file-if-exists=.env.local scripts/migrate-search-indexes.ts",
     "heal:slugs": "tsx --env-file-if-exists=.env.local scripts/heal-embedded-slugs.ts",
+    "heal:malformed-slugs": "tsx --env-file-if-exists=.env.local scripts/heal-malformed-slugs.ts",
     "reset:admin-password": "tsx --env-file-if-exists=.env.local scripts/reset-admin-password.ts"
   },
   "devDependencies": {
