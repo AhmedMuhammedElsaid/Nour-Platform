@@ -64,8 +64,14 @@ export function PrayerPage({ locale }: { locale: "ar" | "en" }) {
         ) : null}
       </div>
 
-      <div className="mt-6 grid gap-6 md:grid-cols-[1.3fr_0.9fr]">
-        <PrayerTimetable instants={day.instants} nextKey={next?.key ?? null} locale={locale} />
+      <div className="mt-6 grid items-start gap-6 md:grid-cols-[1.3fr_0.9fr]">
+        <div className="space-y-6">
+          <PrayerTimetable instants={day.instants} nextKey={next?.key ?? null} locale={locale} />
+          <div className="rounded-lg border border-border bg-surface p-4">
+            <h2 className="mb-3 font-display text-base text-text">{t("changeCity")}</h2>
+            <LocationPicker locale={locale} current={location} onSelect={setLocation} />
+          </div>
+        </div>
 
         <div className="space-y-4">
           <DateCard date={new Date(now)} locale={locale} />
@@ -85,10 +91,6 @@ export function PrayerPage({ locale }: { locale: "ar" | "en" }) {
           <div className="rounded-lg border border-border bg-surface p-4">
             <h2 className="mb-3 font-display text-base text-text">{t("azkar.title")}</h2>
             <AzkarReminderSettings />
-          </div>
-          <div className="rounded-lg border border-border bg-surface p-4">
-            <h2 className="mb-3 font-display text-base text-text">{t("changeCity")}</h2>
-            <LocationPicker locale={locale} current={location} onSelect={setLocation} />
           </div>
         </div>
       </div>
