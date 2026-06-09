@@ -8,6 +8,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const RECENT_KEY = "nour.player.recent";
 const QURAN_LAST_READ_KEY = "nour.quran.lastread";
+const QURAN_PREFS_KEY = "nour.quran.prefs";
+const QURAN_BOOKMARKS_KEY = "nour.quran.bookmarks";
 const ADHKAR_PROGRESS_KEY = "nour.adhkar.progress";
 
 export type RecentTrack = {
@@ -62,6 +64,86 @@ export async function getQuranLastRead(): Promise<AyahRef | null> {
       v !== null &&
       typeof (v as AyahRef).surah === "number",
   );
+}
+
+export async function setQuranLastRead(ref: AyahRef): Promise<void> {
+  try {
+    await AsyncStorage.setItem(QURAN_LAST_READ_KEY, JSON.stringify(ref));
+  } catch {
+    /* storage unavailable — non-fatal */
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Quran reader prefs — `nour.quran.prefs`. Mirrors the web shape
+// (apps/web/features/quran/lib/quran-prefs.ts) minus the `layout` field
+// (mushaf-page toggle is deferred). `translationSlug: ""` means "let the
+// server resolve the locale default" (ar.muyassar / en.sahih); a non-empty
+// value is an explicit user override passed as the ?translation= param.
+// ---------------------------------------------------------------------------
+
+export type QuranPrefs = {
+  translationSlug: string;
+  reciterSlug: string;
+  showTranslation: boolean;
+  showWordByWord: boolean;
+  fontScale: number; // 1 = base; clamped 0.8..1.6 by the settings UI
+};
+
+export const DEFAULT_QURAN_PREFS: QuranPrefs = {
+  translationSlug: "",
+  reciterSlug: "alafasy",
+  showTranslation: true,
+  showWordByWord: false,
+  fontScale: 1,
+};
+
+function isQuranPrefs(value: unknown): value is Partial<QuranPrefs> {
+  return typeof value === "object" && value !== null;
+}
+
+export async function getQuranPrefs(): Promise<QuranPrefs> {
+  const stored = await read<Partial<QuranPrefs>>(QURAN_PREFS_KEY, isQuranPrefs);
+  return { ...DEFAULT_QURAN_PREFS, ...(stored ?? {}) };
+}
+
+export async function setQuranPrefs(prefs: QuranPrefs): Promise<void> {
+  try {
+    await AsyncStorage.setItem(QURAN_PREFS_KEY, JSON.stringify(prefs));
+  } catch {
+    /* storage unavailable — non-fatal */
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Quran bookmarks — `nour.quran.bookmarks`. Array of AyahRef, deduped by
+// (surah, ayahInSurah). Mirrors apps/web/features/quran/lib/quran-progress.ts.
+// ---------------------------------------------------------------------------
+
+export async function getQuranBookmarks(): Promise<AyahRef[]> {
+  const list = await read<AyahRef[]>(
+    QURAN_BOOKMARKS_KEY,
+    (v): v is AyahRef[] => Array.isArray(v),
+  );
+  return list ?? [];
+}
+
+export function isAyahBookmarked(list: AyahRef[], ref: AyahRef): boolean {
+  return list.some((b) => b.surah === ref.surah && b.ayahInSurah === ref.ayahInSurah);
+}
+
+export async function toggleQuranBookmark(ref: AyahRef): Promise<AyahRef[]> {
+  const current = await getQuranBookmarks();
+  const exists = isAyahBookmarked(current, ref);
+  const next = exists
+    ? current.filter((b) => !(b.surah === ref.surah && b.ayahInSurah === ref.ayahInSurah))
+    : [...current, ref];
+  try {
+    await AsyncStorage.setItem(QURAN_BOOKMARKS_KEY, JSON.stringify(next));
+  } catch {
+    /* storage unavailable — non-fatal */
+  }
+  return next;
 }
 
 // ---------------------------------------------------------------------------

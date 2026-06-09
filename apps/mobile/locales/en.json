@@ -6,6 +6,7 @@
     "retry": "Retry"
   },
   "nav": {
+    "quran": "Quran",
     "adhkar": "Adhkar",
     "prayerTimes": "Prayer Times"
   },
@@ -116,5 +117,30 @@
     "tracksHeading": "Tracks",
     "playAll": "Play all",
     "noTracks": "No tracks yet."
+  },
+  "quran": {
+    "title": "Quran",
+    "surah": "Surah",
+    "juz": "Juz",
+    "juzPlaceholder": "Juz navigation arrives in the next update.",
+    "ayahs": "ayahs",
+    "bookmarks": "Bookmarks",
+    "bookmarksEmpty": "No bookmarks yet.",
+    "settings": "Reading settings",
+    "showTranslation": "Show translation",
+    "wordByWord": "Word-by-word",
+    "fontSize": "Font size",
+    "fontSmaller": "Smaller text",
+    "fontLarger": "Larger text",
+    "translation": "Translation",
+    "reciter": "Reciter",
+    "repeatAyah": "Repeat",
+    "playAyah": "Play ayah",
+    "pauseAyah": "Pause ayah",
+    "addBookmark": "Add bookmark",
+    "removeBookmark": "Remove bookmark",
+    "tafsir": "Tafsir",
+    "loading": "Loading…",
+    "tafsirError": "Tafsir unavailable for this ayah."
   }
 }

@@ -66,19 +66,27 @@ export default function HomeScreen() {
 
       {/* Primary nav — bottom tabs land in Phase 10; simple link rows keep
           features reachable for each phase's gate. */}
-      <View className="flex-row gap-3">
-        <Pressable accessibilityRole="button" onPress={() => router.push("/adhkar")} className="flex-1">
+      <View className="gap-3">
+        <Pressable accessibilityRole="button" onPress={() => router.push("/quran")}>
           <Card className="flex-row items-center justify-between p-4">
-            <Text variant="title">{t("nav.adhkar")}</Text>
+            <Text variant="title">{t("nav.quran")}</Text>
             <Text variant="muted">{locale === "ar" ? "←" : "→"}</Text>
           </Card>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => router.push("/prayer-times")} className="flex-1">
-          <Card className="flex-row items-center justify-between p-4">
-            <Text variant="title">{t("nav.prayerTimes")}</Text>
-            <Text variant="muted">{locale === "ar" ? "←" : "→"}</Text>
-          </Card>
-        </Pressable>
+        <View className="flex-row gap-3">
+          <Pressable accessibilityRole="button" onPress={() => router.push("/adhkar")} className="flex-1">
+            <Card className="flex-row items-center justify-between p-4">
+              <Text variant="title">{t("nav.adhkar")}</Text>
+              <Text variant="muted">{locale === "ar" ? "←" : "→"}</Text>
+            </Card>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={() => router.push("/prayer-times")} className="flex-1">
+            <Card className="flex-row items-center justify-between p-4">
+              <Text variant="title">{t("nav.prayerTimes")}</Text>
+              <Text variant="muted">{locale === "ar" ? "←" : "→"}</Text>
+            </Card>
+          </Pressable>
+        </View>
       </View>
 
       <CategoryPills
