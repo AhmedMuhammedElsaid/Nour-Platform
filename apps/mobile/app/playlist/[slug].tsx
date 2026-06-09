@@ -2,13 +2,14 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams } from "expo-router";
-import { ActivityIndicator, FlatList, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, View } from "react-native";
 
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Text } from "@/components/ui/text";
 import { Cover } from "@/features/playlists/components/cover";
 import { initialLocale } from "@/lib/i18n";
+import { usePlayer, type QueueTrack } from "@/lib/player-context";
 import { categoriesQuery, playlistDetailQuery } from "@/lib/queries";
 import type { CategoryChip, PlayableTrack } from "@/lib/types";
 
@@ -23,6 +24,7 @@ export default function PlaylistDetailScreen() {
   const { t } = useTranslation();
   const locale = initialLocale;
   const { slug } = useLocalSearchParams<{ slug: string }>();
+  const { loadQueue, currentTrack, isPlaying } = usePlayer();
 
   const detail = useQuery(playlistDetailQuery(slug ?? "", locale));
   const categories = useQuery(categoriesQuery());
@@ -36,6 +38,31 @@ export default function PlaylistDetailScreen() {
       .filter((c): c is NonNullable<typeof c> => c != null)
       .map((c) => ({ slug: c[locale].slug, name: c[locale].name }));
   }, [detail.data, categories.data, locale]);
+
+  // Build the queue tracks for the player.
+  const queueTracks = useMemo<QueueTrack[]>(() => {
+    if (!detail.data) return [];
+    const { playlist, tracks } = detail.data;
+    return tracks
+      .filter((tr): tr is PlayableTrack & { srcUrl: string } => tr.srcUrl != null)
+      .map((tr) => ({
+        id: tr.id,
+        title: tr[locale].title,
+        mediaUrl: tr.srcUrl,
+        durationSecs: tr.durationSecs,
+        playlistTitle: playlist[locale].title,
+        playlistSlug: playlist[locale].slug,
+        locale,
+      }));
+  }, [detail.data, locale]);
+
+  const playAll = () => {
+    if (queueTracks.length > 0) loadQueue(queueTracks, 0);
+  };
+
+  const playTrack = (index: number) => {
+    if (queueTracks.length > 0) loadQueue(queueTracks, index);
+  };
 
   if (detail.isPending) {
     return (
@@ -85,9 +112,8 @@ export default function PlaylistDetailScreen() {
         <Text variant="muted">{t("playlist.trackCount", { count: tracks.length })}</Text>
       </View>
 
-      {tracks.length > 0 && (
-        // Wired to the audio engine in Phase 6; a no-op placeholder until then.
-        <Button label={t("playlist.playAll")} disabled />
+      {queueTracks.length > 0 && (
+        <Button label={t("playlist.playAll")} onPress={playAll} />
       )}
 
       <Text variant="label" className="mt-2">
@@ -104,20 +130,43 @@ export default function PlaylistDetailScreen() {
         data={tracks}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={header}
-        contentContainerClassName="gap-1 pb-12"
+        contentContainerClassName="gap-1 pb-24"
         ListEmptyComponent={<Text variant="muted">{t("playlist.noTracks")}</Text>}
         renderItem={({ item, index }) => {
           const dur = formatDuration(item.durationSecs);
+          const isActive = currentTrack?.id === item.id;
+          const playable = item.srcUrl != null;
+          // Find this track's index in the playable queue (may differ from
+          // FlatList index if some tracks lack srcUrl).
+          const queueIndex = playable
+            ? queueTracks.findIndex((q) => q.id === item.id)
+            : -1;
+
           return (
-            <View className="flex-row items-center gap-3 border-b border-border py-3">
-              <Text variant="muted" className="w-6 text-center">
-                {index + 1}
-              </Text>
-              <Text variant="body" numberOfLines={1} className="flex-1">
-                {item[locale].title}
-              </Text>
-              {dur != null && <Text variant="muted">{dur}</Text>}
-            </View>
+            <Pressable
+              accessibilityRole="button"
+              disabled={!playable}
+              onPress={() => {
+                if (queueIndex >= 0) playTrack(queueIndex);
+              }}
+            >
+              <View className="flex-row items-center gap-3 border-b border-border py-3">
+                <Text
+                  variant="muted"
+                  className={`w-6 text-center ${isActive && isPlaying ? "text-primary font-bold" : ""}`}
+                >
+                  {isActive && isPlaying ? "▶" : String(index + 1)}
+                </Text>
+                <Text
+                  variant="body"
+                  numberOfLines={1}
+                  className={`flex-1 ${isActive ? "text-primary font-medium" : ""}`}
+                >
+                  {item[locale].title}
+                </Text>
+                {dur != null && <Text variant="muted">{dur}</Text>}
+              </View>
+            </Pressable>
           );
         }}
       />

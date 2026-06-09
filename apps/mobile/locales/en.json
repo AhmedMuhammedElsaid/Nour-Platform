@@ -26,6 +26,14 @@
       "tracks": "Most tracks"
     }
   },
+  "player": {
+    "miniPlayer": "Now playing",
+    "play": "Play",
+    "pause": "Pause",
+    "next": "Next track",
+    "prev": "Previous track",
+    "retry": "Retry"
+  },
   "adhkar": {
     "heading": "Adhkar",
     "empty": "No adhkar sets published yet.",

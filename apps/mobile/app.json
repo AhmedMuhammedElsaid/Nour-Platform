@@ -13,7 +13,10 @@
     "plugins": ["expo-router", "expo-localization"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.nour.mobile"
+      "bundleIdentifier": "com.nour.mobile",
+      "infoPlist": {
+        "UIBackgroundModes": ["audio"]
+      }
     },
     "android": {
       "package": "com.nour.mobile",
