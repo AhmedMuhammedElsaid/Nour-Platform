@@ -1,0 +1,122 @@
+# APP_CONTEXT.md — Nour Mobile
+
+> **AI agents: read this FIRST before any work in `apps/mobile`.** Hand-maintained
+> snapshot of the mobile app's stack, structure, and gotchas. The root
+> `APP_CONTEXT.md` covers the web/monorepo; this is the mobile companion. Don't
+> re-explore what's listed here. See `apps/mobile/deploy.md` for run/build steps.
+
+---
+
+## Stack snapshot
+
+- **Expo SDK ~56**, New Architecture / bridgeless. React Native 0.85.x · React 19.
+- **expo-router** (file-based, `app/`). **NativeWind v4** (Tailwind tokens ported
+  verbatim from `packages/ui/src/styles/tokens.css` — dark-default gold/near-black).
+- **TanStack Query** for data; **i18next/react-i18next** for i18n (AR/EN).
+- **react-native-track-player v4** — audio engine (background + lock-screen).
+- **expo-location** + **expo-notifications** — prayer times + local azan.
+- **react-native-svg** — sun-arc. **AsyncStorage** — all device-local state.
+- Tests: **jest-expo + @testing-library/react-native** (NOT vitest).
+
+## Hard boundaries (mobile-specific)
+
+- **Never import `@repo/api`** (pulls in Mongoose) or **`@repo/config/env`**. The
+  app talks only to the web app's read-only **`/api/v1/*`** HTTP endpoints, via
+  `lib/api.ts`. Shared pure logic comes from **`@repo/shared-core`** (schemas,
+  prayer-times compute/format/sun-arc, quran audio-url).
+- **Env**: only `EXPO_PUBLIC_*` (build-time inlined, like `NEXT_PUBLIC_*`). The
+  one var is `EXPO_PUBLIC_API_BASE_URL` (web origin, no `/api/v1` suffix). Set in
+  `apps/mobile/.env.local` for dev and in the EAS build env for store builds.
+- **Cannot run in Expo Go** — native modules + New Arch require a **custom dev
+  client** (`eas build --profile development` or `npx expo run:android/ios`).
+- AsyncStorage keys **mirror the web's localStorage keys exactly** so behaviour
+  matches: `nour.player.recent`/`.prefs`/`.positions`, `nour.adhkar.progress`,
+  `nour.quran.lastread`/`.prefs`/`.bookmarks`, `nour.prayer.location`/`.prefs`.
+
+## Build phases (all merged to `main`)
+
+P1 shared-core extraction · P2 `/api/v1` endpoints (web) · P3 Expo scaffold ·
+P4 design primitives + Home & Playlist Detail · P5 Adhkar reader + category
+filter · P6 audio engine (track-player) · P7 prayer-times + azan notifications ·
+P8 Quran reader · P9 offline downloads (expo-file-system) · P10 i18n/RTL,
+theming, deep links, icon/splash + EAS build config. (Original plan was
+`Documentation/mobile_migration_plan.md`, which is **gitignored**.)
+
+## Key file locations
+
+```
+apps/mobile/
+  app/                       expo-router screens
+    _layout.tsx              providers: QueryClient, ThemeProvider, PlayerProvider;
+                             mounts <MiniPlayer>; registers RNTP playback service;
+                             splash/fonts (expo-splash-screen + useFonts)
+    index.tsx                Home (hero, CategoryPills, sort, grid, shelves, nav cards)
+    playlist/[slug].tsx      Playlist detail — Play-All, tap-to-play, DownloadButton
+    adhkar/{index,[slug]}.tsx  Adhkar list + tap-counter reader
+    prayer-times/index.tsx   Sun-arc + countdown + timetable + settings + notif toggle
+    quran/…                  Quran reader (index, reader, word-by-word, tafsir, bookmarks)
+  components/
+    ui/                      text, button, card, skeleton, chip, progress (NativeWind)
+    mini-player.tsx          sticky bottom transport bar (uses usePlayer)
+  features/
+    home/ playlists/ downloads/ prayer-times/
+    prayer-times/
+      components/sun-arc.tsx        RN-SVG arc; sun by day, mask-carved crescent MOON
+                                    at night (isNight = before Fajr / at-or-after Isha)
+      components/{prayer-timetable,location-picker,method-settings}.tsx
+      hooks/use-prayer-settings.ts  AsyncStorage nour.prayer.location/.prefs
+      hooks/use-azan-notifications.ts  schedules expo-notifications (next 2 days)
+      data/cities.ts                copied verbatim from web
+    downloads/                      use-downloads hook + DownloadButton (expo-file-system)
+  lib/
+    api.ts                   getJson(path, params) → EXPO_PUBLIC_API_BASE_URL + /api/v1
+    queries.ts               TanStack query factories (playlists, categories, adhkar, …)
+    player-context.tsx       PlayerProvider/usePlayer — RNTP wrapper, parity with web
+                             player-context: queue, Fisher–Yates shuffle, repeat
+                             off/all/one, rate, volume, sleep timer, resume positions,
+                             prefs, recently-played writes
+    playback-service.ts      RNTP background event handler (lock-screen transport)
+    device-local.ts          AsyncStorage readers/writers (recent, quran, adhkar progress)
+    theme-context.tsx        dark/light ThemeProvider
+    i18n.ts                  i18next init; initialLocale
+  locales/{ar,en}.json       all UI strings (common, nav, home, playlist, player,
+                             adhkar, prayer, quran namespaces)
+  app.json                   Expo config (plugins: router, localization, location,
+                             notifications; iOS UIBackgroundModes:[audio]; New Arch)
+  eas.json                   build/submit profiles (dev client, preview APK, prod AAB)
+  jest.setup.js              mocks: AsyncStorage, react-native-track-player,
+                             expo-location, expo-notifications
+  __tests__/                 home-screen, playlist-detail, adhkar, player,
+                             prayer-times, sun-arc
+```
+
+## Known gotchas
+
+- **Sun-arc moon**: `isNight` swaps the rayed sun for a glowing crescent. Mobile
+  carves the crescent with an RN-SVG `<Mask>` using **absolute** cx/cy (no
+  transforms in this SVG), so it always aligns — and degrades to a visible full
+  disc if `Mask` is unsupported. (The web bug was a CSS-transform vs
+  `userSpaceOnUse` mask mismatch; mobile sidesteps it by not transforming.)
+- **ESLint**: `react-hooks/exhaustive-deps` rule is **not configured** here —
+  never add an `// eslint-disable-next-line react-hooks/exhaustive-deps`; it errors
+  ("Definition for rule not found"). Just omit deps and leave a plain comment.
+- **`Skeleton`** is a static dimmed `View` (no running animation) — animated
+  timers leaked under jest and caused "worker failed to exit"/timeouts.
+- **RNTP setup is idempotent** (`setupPlayer()` swallows the double-setup throw).
+  Native track-player behaviour (background audio, lock-screen) only verifiable on
+  a **physical device** — jest mocks all RNTP methods/hooks.
+- **expo-notifications / expo-location** are mocked in `jest.setup.js`; real
+  firing/permission flows need a device.
+- A physical phone can't reach `localhost` — point `EXPO_PUBLIC_API_BASE_URL` at
+  your machine's LAN IP (Android emulator: `http://10.0.2.2:3000`).
+- Adding a native module or editing `app.json` plugins requires a **new dev-client
+  build**, not just a Metro reload.
+
+## Verify before shipping
+
+```bash
+cd apps/mobile
+pnpm typecheck && pnpm lint && pnpm test
+npx expo export --platform android   # confirms the JS bundle compiles
+```
+Device checklist + build/submit steps: see `apps/mobile/deploy.md`.
