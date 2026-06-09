@@ -154,6 +154,65 @@ export function getUpcomingPrayer(
   return { key: "fajr", time: fajr, msUntil: fajr.getTime() - now.getTime() };
 }
 
+function clamp01(n: number): number {
+  return Math.min(1, Math.max(0, n));
+}
+
+// Whether it's currently night (sun is down: after sunset / before sunrise) and,
+// if so, how far through the night we are — 0 at sunset → 1 at the next sunrise.
+// The night window straddles the calendar boundary, so this needs the location +
+// params (not just a single PrayerDay) to reach into the adjacent day.
+export function getNightInfo(
+  input: {
+    lat: number;
+    lng: number;
+    method: CalculationMethodId;
+    madhab: MadhabId;
+  },
+  now: Date,
+): { isNight: boolean; fraction: number } {
+  const today = computePrayerTimes({ ...input, date: now });
+  const sunrise = today.instants.find((i) => i.key === "sunrise")?.time ?? null;
+  const maghrib = today.instants.find((i) => i.key === "maghrib")?.time ?? null;
+
+  // Pre-dawn: still the night that began at *yesterday's* sunset.
+  if (sunrise != null && now.getTime() < sunrise.getTime()) {
+    const yest = computePrayerTimes({
+      ...input,
+      date: new Date(now.getTime() - DAY_MS),
+    });
+    const start =
+      yest.instants.find((i) => i.key === "maghrib")?.time ?? maghrib;
+    if (start == null) return { isNight: true, fraction: 0 };
+    return {
+      isNight: true,
+      fraction: clamp01(
+        (now.getTime() - start.getTime()) /
+          (sunrise.getTime() - start.getTime()),
+      ),
+    };
+  }
+
+  // After sunset: night runs until *tomorrow's* sunrise.
+  if (maghrib != null && now.getTime() >= maghrib.getTime()) {
+    const tom = computePrayerTimes({
+      ...input,
+      date: new Date(now.getTime() + DAY_MS),
+    });
+    const end = tom.instants.find((i) => i.key === "sunrise")?.time ?? sunrise;
+    if (end == null) return { isNight: true, fraction: 1 };
+    return {
+      isNight: true,
+      fraction: clamp01(
+        (now.getTime() - maghrib.getTime()) /
+          (end.getTime() - maghrib.getTime()),
+      ),
+    };
+  }
+
+  return { isNight: false, fraction: 0.5 };
+}
+
 // Position of the sun along the day, anchored Fajr(0) → Isha(1), clamped.
 export function getDayProgress(day: PrayerDay, now: Date): number {
   const fajr = day.instants.find((i) => i.key === "fajr")?.time ?? null;

@@ -17,6 +17,7 @@ import {
   computePrayerTimes,
   getDayProgress,
   getNextPrayer,
+  getNightInfo,
 } from "@repo/api/services/prayer-times";
 
 export function PrayerPage({ locale }: { locale: "ar" | "en" }) {
@@ -48,12 +49,14 @@ export function PrayerPage({ locale }: { locale: "ar" | "en" }) {
   const nowDate = new Date(now);
   const next = getNextPrayer(day, nowDate);
   const dots = buildArcDots(day, next?.key ?? null, (k) => t(k));
-  const sunFraction = getDayProgress(day, nowDate);
-  const fajrTime = day.instants.find((i) => i.key === "fajr")?.time ?? null;
-  const ishaTime = day.instants.find((i) => i.key === "isha")?.time ?? null;
-  const isNight =
-    (fajrTime != null && nowDate.getTime() < fajrTime.getTime()) ||
-    (ishaTime != null && nowDate.getTime() >= ishaTime.getTime());
+  // After sunset the sun becomes a moon that travels the arc on its own
+  // sunset→sunrise progress; during the day it's the Fajr→Isha sun.
+  const night = getNightInfo(
+    { lat: location.lat, lng: location.lng, method: prefs.method, madhab: prefs.madhab },
+    nowDate,
+  );
+  const isNight = night.isNight;
+  const sunFraction = isNight ? night.fraction : getDayProgress(day, nowDate);
 
   return (
     <section className="mx-auto max-w-5xl px-6 py-12">

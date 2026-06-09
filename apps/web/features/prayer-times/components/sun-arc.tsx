@@ -20,11 +20,10 @@ export function SunArc({
   // True before Fajr / after Isha — swap the sun for a glowing moon.
   isNight?: boolean;
 }) {
-  // During the day the sun rides the Fajr→Isha progress. At night that progress
-  // clamps to 0/1, which would pin the moon to a horizon corner (barely visible,
-  // often read as "no moon"). Lift the night moon onto the apex of the arc so it
-  // clearly glows in the sky; the countdown below still shows the real next time.
-  const sun = arcPoint(tForFraction(isNight ? 0.5 : sunFraction));
+  // `sunFraction` is the day's Fajr→Isha progress for the sun, or the night's
+  // sunset→sunrise progress for the moon (computed by the caller). Either way it
+  // rides the same arc left→right.
+  const sun = arcPoint(tForFraction(sunFraction));
 
   return (
     <svg

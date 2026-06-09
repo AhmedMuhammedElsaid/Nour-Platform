@@ -5,6 +5,7 @@ import {
   getNextPrayer,
   getUpcomingPrayer,
   getDayProgress,
+  getNightInfo,
   type PrayerDay,
 } from "./prayer-times.service";
 
@@ -106,5 +107,47 @@ describe("getDayProgress", () => {
     const day = cairoDay();
     const fajr = day.instants.find((i) => i.key === "fajr")!.time as Date;
     expect(getDayProgress(day, new Date(fajr.getTime() - 3_600_000))).toBe(0);
+  });
+});
+
+describe("getNightInfo", () => {
+  const PARAMS = { ...CAIRO, method: "Egyptian", madhab: "standard" } as const;
+
+  it("is not night during the day (between sunrise and sunset)", () => {
+    const day = cairoDay();
+    const dhuhr = day.instants.find((i) => i.key === "dhuhr")!.time as Date;
+    expect(getNightInfo(PARAMS, dhuhr).isNight).toBe(false);
+  });
+
+  it("is night just after sunset, near fraction 0", () => {
+    const day = cairoDay();
+    const maghrib = day.instants.find((i) => i.key === "maghrib")!.time as Date;
+    const info = getNightInfo(PARAMS, new Date(maghrib.getTime() + 60_000));
+    expect(info.isNight).toBe(true);
+    expect(info.fraction).toBeGreaterThanOrEqual(0);
+    expect(info.fraction).toBeLessThan(0.1);
+  });
+
+  it("is night just before sunrise, near fraction 1", () => {
+    const day = cairoDay();
+    const sunrise = day.instants.find((i) => i.key === "sunrise")!.time as Date;
+    const info = getNightInfo(PARAMS, new Date(sunrise.getTime() - 60_000));
+    expect(info.isNight).toBe(true);
+    expect(info.fraction).toBeGreaterThan(0.9);
+    expect(info.fraction).toBeLessThanOrEqual(1);
+  });
+
+  it("progresses monotonically across the night", () => {
+    const day = cairoDay();
+    const maghrib = day.instants.find((i) => i.key === "maghrib")!.time as Date;
+    const fEarly = getNightInfo(
+      PARAMS,
+      new Date(maghrib.getTime() + 60 * 60_000),
+    ).fraction;
+    const fLate = getNightInfo(
+      PARAMS,
+      new Date(maghrib.getTime() + 6 * 60 * 60_000),
+    ).fraction;
+    expect(fLate).toBeGreaterThan(fEarly);
   });
 });
