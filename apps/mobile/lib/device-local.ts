@@ -8,6 +8,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const RECENT_KEY = "nour.player.recent";
 const QURAN_LAST_READ_KEY = "nour.quran.lastread";
+const ADHKAR_PROGRESS_KEY = "nour.adhkar.progress";
 
 export type RecentTrack = {
   trackId: string;
@@ -61,4 +62,91 @@ export async function getQuranLastRead(): Promise<AyahRef | null> {
       v !== null &&
       typeof (v as AyahRef).surah === "number",
   );
+}
+
+// ---------------------------------------------------------------------------
+// Adhkar progress — `nour.adhkar.progress`. Mirrors the web shape exactly
+// (apps/web/features/adhkar/lib/adhkar-progress.ts): resets each calendar day
+// so morning/evening adhkar behave like a daily checklist. Ported with both
+// readers AND writers (unlike the player/Quran shelves) since the Adhkar
+// reader ships in this phase.
+// ---------------------------------------------------------------------------
+
+export type AzkarProgress = {
+  date: string; // YYYY-MM-DD (local)
+  sets: Record<string, Record<string, number>>; // setId -> itemIndex -> count
+};
+
+function today(): string {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+function emptyProgress(): AzkarProgress {
+  return { date: today(), sets: {} };
+}
+
+function isAzkarProgress(value: unknown): value is AzkarProgress {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as AzkarProgress).date === "string" &&
+    typeof (value as AzkarProgress).sets === "object"
+  );
+}
+
+async function readProgress(): Promise<AzkarProgress> {
+  const parsed = await read<AzkarProgress>(ADHKAR_PROGRESS_KEY, isAzkarProgress);
+  return parsed ?? emptyProgress();
+}
+
+async function writeProgress(p: AzkarProgress): Promise<void> {
+  try {
+    await AsyncStorage.setItem(ADHKAR_PROGRESS_KEY, JSON.stringify(p));
+  } catch {
+    /* storage unavailable — non-fatal */
+  }
+}
+
+// Clears all progress if the stored date isn't today. Call on mount.
+export async function resetAzkarProgressIfNewDay(): Promise<AzkarProgress> {
+  const current = await readProgress();
+  if (current.date === today()) return current;
+  const fresh = emptyProgress();
+  await writeProgress(fresh);
+  return fresh;
+}
+
+export async function getAzkarProgress(): Promise<AzkarProgress> {
+  return readProgress();
+}
+
+// Sets the absolute count for one dhikr (clamped >= 0). Returns new state.
+export async function recordDhikrCount(
+  setId: string,
+  itemIndex: number,
+  count: number,
+): Promise<AzkarProgress> {
+  const p = await readProgress();
+  const set = p.sets[setId] ?? {};
+  set[String(itemIndex)] = Math.max(0, count);
+  p.sets[setId] = set;
+  await writeProgress(p);
+  return p;
+}
+
+// Clears all recorded counts for one set so the user can start over.
+export async function resetAzkarSet(setId: string): Promise<AzkarProgress> {
+  const p = await readProgress();
+  delete p.sets[setId];
+  await writeProgress(p);
+  return p;
+}
+
+// Count of items fully completed for a set — drives landing progress bars.
+export function azkarCompletedCount(progress: AzkarProgress, setId: string, repeats: number[]): number {
+  const set = progress.sets[setId] ?? {};
+  return repeats.reduce((n, r, i) => n + ((set[String(i)] ?? 0) >= r ? 1 : 0), 0);
 }

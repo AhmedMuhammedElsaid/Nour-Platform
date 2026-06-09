@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { FlatList, View } from "react-native";
+import { useRouter } from "expo-router";
+import { FlatList, Pressable, View } from "react-native";
 
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { CategoryPills } from "@/features/home/components/category-pills";
@@ -17,6 +19,7 @@ import type { CategoryChip } from "@/lib/types";
 
 export default function HomeScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const locale = initialLocale;
 
   const playlists = useQuery(playlistsQuery(locale));
@@ -60,6 +63,15 @@ export default function HomeScreen() {
           {t("home.heroSubtitle")}
         </Text>
       </View>
+
+      {/* Primary nav — bottom tabs land in Phase 10; a simple link row gets
+          Adhkar reachable for this phase's gate. */}
+      <Pressable accessibilityRole="button" onPress={() => router.push("/adhkar")}>
+        <Card className="flex-row items-center justify-between p-4">
+          <Text variant="title">{t("nav.adhkar")}</Text>
+          <Text variant="muted">{locale === "ar" ? "←" : "→"}</Text>
+        </Card>
+      </Pressable>
 
       <CategoryPills
         categories={pills}

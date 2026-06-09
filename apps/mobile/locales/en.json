@@ -5,6 +5,9 @@
     "error": "Something went wrong.",
     "retry": "Retry"
   },
+  "nav": {
+    "adhkar": "Adhkar"
+  },
   "home": {
     "playlistsTitle": "Playlists",
     "heroTitle": "Your Islamic Audio Library",
@@ -22,6 +25,13 @@
       "az": "A–Z",
       "tracks": "Most tracks"
     }
+  },
+  "adhkar": {
+    "heading": "Adhkar",
+    "empty": "No adhkar sets published yet.",
+    "reset": "Start over",
+    "completed": "Done",
+    "countLabel": "Count this dhikr"
   },
   "playlist": {
     "by": "By",
