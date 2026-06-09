@@ -26,10 +26,14 @@ export function SunArc({
   // above the horizon scaled by NIGHT_BAND) so it never overlaps the daytime
   // prayer labels. Only one of the sun/moon is ever rendered (see isNight below).
   const NIGHT_BAND = 0.34;
+  const lowerToBand = (y: number) => ARC.p0.y - (ARC.p0.y - y) * NIGHT_BAND;
   const point = arcPoint(tForFraction(sunFraction));
-  const sun = isNight
-    ? { x: point.x, y: ARC.p0.y - (ARC.p0.y - point.y) * NIGHT_BAND }
-    : point;
+  const sun = isNight ? { x: point.x, y: lowerToBand(point.y) } : point;
+  // The night band is the day arc scaled toward the horizon by NIGHT_BAND —
+  // lowering the quadratic's control point yields the same lowered curve.
+  const nightBandPath = `M${ARC.p0.x} ${ARC.p0.y} Q${ARC.p1.x} ${lowerToBand(
+    ARC.p1.y,
+  )} ${ARC.p2.x} ${ARC.p2.y}`;
 
   return (
     <svg
@@ -81,11 +85,21 @@ export function SunArc({
         stroke="var(--color-primary)"
         strokeOpacity="0.14"
       />
-      {/* arc */}
+      {/* day arc — the sun's Fajr→Isha track */}
       <path
         d={arcPath()}
         fill="none"
         stroke="url(#nour-arc-grad)"
+        strokeWidth="2"
+        strokeDasharray="2 7"
+      />
+      {/* night band — the moon's lower Isha→Fajr track (the second axis). Same
+          arc lowered by NIGHT_BAND so the moon has a visible path to ride. */}
+      <path
+        d={nightBandPath}
+        fill="none"
+        stroke="var(--color-moon)"
+        strokeOpacity="0.22"
         strokeWidth="2"
         strokeDasharray="2 7"
       />
