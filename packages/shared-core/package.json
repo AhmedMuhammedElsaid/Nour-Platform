@@ -1,0 +1,42 @@
+{
+  "name": "@repo/shared-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schemas/locale": "./src/schemas/locale.ts",
+    "./schemas/playlist": "./src/schemas/playlist.ts",
+    "./schemas/track": "./src/schemas/track.ts",
+    "./schemas/media": "./src/schemas/media.ts",
+    "./schemas/category": "./src/schemas/category.ts",
+    "./schemas/azkar": "./src/schemas/azkar.ts",
+    "./schemas/prayer-times": "./src/schemas/prayer-times.ts",
+    "./schemas/quran": "./src/schemas/quran.ts",
+    "./utils/slug": "./src/utils/slug.ts",
+    "./prayer-times/compute": "./src/prayer-times/compute.ts",
+    "./prayer-times/sun-arc": "./src/prayer-times/sun-arc.ts",
+    "./prayer-times/format": "./src/prayer-times/format.ts",
+    "./quran/audio-url": "./src/quran/audio-url.ts"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf .turbo node_modules"
+  },
+  "dependencies": {
+    "@repo/config": "workspace:*",
+    "adhan": "^4.4.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/tsconfig": "workspace:*",
+    "@types/node": "^22.10.0",
+    "eslint": "^9.15.0",
+    "typescript": "5.6.3",
+    "vitest": "^2.1.8"
+  }
+}
