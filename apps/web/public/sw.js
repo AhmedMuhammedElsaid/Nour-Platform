@@ -20,7 +20,9 @@
 // Bump on any change to caching strategy so the activate handler purges the
 // previous generation of caches (including any stale RSC payloads that the old
 // catch-all stale-while-revalidate wrongly stored in STATIC_CACHE).
-const VERSION = "v5";
+// v6 (2026-06-09): one-time cache-bust so every browser + installed-PWA client
+// purges old caches and reloads once into the latest build on its next open.
+const VERSION = "v6";
 const SHELL_CACHE = `nour-shell-${VERSION}`;
 const PAGES_CACHE = `nour-pages-${VERSION}`;
 const STATIC_CACHE = `nour-static-${VERSION}`;
