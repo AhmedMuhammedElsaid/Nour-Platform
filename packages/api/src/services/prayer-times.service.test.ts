@@ -5,7 +5,7 @@ import {
   getNextPrayer,
   getUpcomingPrayer,
   getDayProgress,
-  getNightInfo,
+  getArcPosition,
   type PrayerDay,
 } from "./prayer-times.service";
 
@@ -110,44 +110,54 @@ describe("getDayProgress", () => {
   });
 });
 
-describe("getNightInfo", () => {
+describe("getArcPosition", () => {
   const PARAMS = { ...CAIRO, method: "Egyptian", madhab: "standard" } as const;
 
-  it("is not night during the day (between sunrise and sunset)", () => {
+  it("is the sun (not night) from just after sunrise (~0) to just before sunset (~1)", () => {
     const day = cairoDay();
-    const dhuhr = day.instants.find((i) => i.key === "dhuhr")!.time as Date;
-    expect(getNightInfo(PARAMS, dhuhr).isNight).toBe(false);
+    const sunrise = day.instants.find((i) => i.key === "sunrise")!.time as Date;
+    const maghrib = day.instants.find((i) => i.key === "maghrib")!.time as Date;
+
+    const dawn = getArcPosition(PARAMS, new Date(sunrise.getTime() + 60_000));
+    expect(dawn.isNight).toBe(false);
+    expect(dawn.fraction).toBeGreaterThanOrEqual(0);
+    expect(dawn.fraction).toBeLessThan(0.1);
+
+    const dusk = getArcPosition(PARAMS, new Date(maghrib.getTime() - 60_000));
+    expect(dusk.isNight).toBe(false);
+    expect(dusk.fraction).toBeGreaterThan(0.9);
+    expect(dusk.fraction).toBeLessThanOrEqual(1);
   });
 
-  it("is night just after sunset, near fraction 0", () => {
+  it("is the moon (night) just after sunset, near fraction 0", () => {
     const day = cairoDay();
     const maghrib = day.instants.find((i) => i.key === "maghrib")!.time as Date;
-    const info = getNightInfo(PARAMS, new Date(maghrib.getTime() + 60_000));
+    const info = getArcPosition(PARAMS, new Date(maghrib.getTime() + 60_000));
     expect(info.isNight).toBe(true);
     expect(info.fraction).toBeGreaterThanOrEqual(0);
     expect(info.fraction).toBeLessThan(0.1);
   });
 
-  it("is night just before sunrise, near fraction 1", () => {
+  it("is the moon (night) just before sunrise, near fraction 1", () => {
     const day = cairoDay();
     const sunrise = day.instants.find((i) => i.key === "sunrise")!.time as Date;
-    const info = getNightInfo(PARAMS, new Date(sunrise.getTime() - 60_000));
+    const info = getArcPosition(PARAMS, new Date(sunrise.getTime() - 60_000));
     expect(info.isNight).toBe(true);
     expect(info.fraction).toBeGreaterThan(0.9);
     expect(info.fraction).toBeLessThanOrEqual(1);
   });
 
-  it("progresses monotonically across the night", () => {
+  it("progresses monotonically across both day and night", () => {
     const day = cairoDay();
+    const sunrise = day.instants.find((i) => i.key === "sunrise")!.time as Date;
     const maghrib = day.instants.find((i) => i.key === "maghrib")!.time as Date;
-    const fEarly = getNightInfo(
-      PARAMS,
-      new Date(maghrib.getTime() + 60 * 60_000),
-    ).fraction;
-    const fLate = getNightInfo(
-      PARAMS,
-      new Date(maghrib.getTime() + 6 * 60 * 60_000),
-    ).fraction;
-    expect(fLate).toBeGreaterThan(fEarly);
+
+    const sunEarly = getArcPosition(PARAMS, new Date(sunrise.getTime() + 60 * 60_000)).fraction;
+    const sunLate = getArcPosition(PARAMS, new Date(sunrise.getTime() + 6 * 60 * 60_000)).fraction;
+    expect(sunLate).toBeGreaterThan(sunEarly);
+
+    const moonEarly = getArcPosition(PARAMS, new Date(maghrib.getTime() + 60 * 60_000)).fraction;
+    const moonLate = getArcPosition(PARAMS, new Date(maghrib.getTime() + 6 * 60 * 60_000)).fraction;
+    expect(moonLate).toBeGreaterThan(moonEarly);
   });
 });

@@ -158,11 +158,13 @@ function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
 }
 
-// Whether it's currently night (sun is down: after sunset / before sunrise) and,
-// if so, how far through the night we are — 0 at sunset → 1 at the next sunrise.
+// Position of the currently-visible celestial body along the arc, and whether
+// it's the moon. The sun is up from sunrise (shorouk) → sunset (maghrib); the
+// moon from sunset → the next sunrise. `fraction` is 0 when that body rises and
+// 1 when it sets, so each rides the full arc left→right over its own window.
 // The night window straddles the calendar boundary, so this needs the location +
 // params (not just a single PrayerDay) to reach into the adjacent day.
-export function getNightInfo(
+export function getArcPosition(
   input: {
     lat: number;
     lng: number;
@@ -174,6 +176,22 @@ export function getNightInfo(
   const today = computePrayerTimes({ ...input, date: now });
   const sunrise = today.instants.find((i) => i.key === "sunrise")?.time ?? null;
   const maghrib = today.instants.find((i) => i.key === "maghrib")?.time ?? null;
+
+  // Daytime: sun rides sunrise → sunset.
+  if (
+    sunrise != null &&
+    maghrib != null &&
+    now.getTime() >= sunrise.getTime() &&
+    now.getTime() < maghrib.getTime()
+  ) {
+    return {
+      isNight: false,
+      fraction: clamp01(
+        (now.getTime() - sunrise.getTime()) /
+          (maghrib.getTime() - sunrise.getTime()),
+      ),
+    };
+  }
 
   // Pre-dawn: still the night that began at *yesterday's* sunset.
   if (sunrise != null && now.getTime() < sunrise.getTime()) {

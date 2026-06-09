@@ -15,9 +15,8 @@ import { buildArcDots } from "@/features/prayer-times/components/prayer-times-wi
 import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-settings";
 import {
   computePrayerTimes,
-  getDayProgress,
+  getArcPosition,
   getNextPrayer,
-  getNightInfo,
 } from "@repo/api/services/prayer-times";
 
 export function PrayerPage({ locale }: { locale: "ar" | "en" }) {
@@ -49,14 +48,14 @@ export function PrayerPage({ locale }: { locale: "ar" | "en" }) {
   const nowDate = new Date(now);
   const next = getNextPrayer(day, nowDate);
   const dots = buildArcDots(day, next?.key ?? null, (k) => t(k));
-  // After sunset the sun becomes a moon that travels the arc on its own
-  // sunset→sunrise progress; during the day it's the Fajr→Isha sun.
-  const night = getNightInfo(
+  // Sun rides the arc sunrise→sunset; after sunset it becomes a moon that rides
+  // the arc sunset→sunrise. One helper returns the active body's position.
+  const arc = getArcPosition(
     { lat: location.lat, lng: location.lng, method: prefs.method, madhab: prefs.madhab },
     nowDate,
   );
-  const isNight = night.isNight;
-  const sunFraction = isNight ? night.fraction : getDayProgress(day, nowDate);
+  const isNight = arc.isNight;
+  const sunFraction = arc.fraction;
 
   return (
     <section className="mx-auto max-w-5xl px-6 py-12">
