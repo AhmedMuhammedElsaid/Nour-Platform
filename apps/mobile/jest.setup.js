@@ -1,3 +1,15 @@
+// expo-splash-screen has no native module under Jest.
+jest.mock("expo-splash-screen", () => ({
+  preventAutoHideAsync: jest.fn().mockResolvedValue(undefined),
+  hideAsync: jest.fn().mockResolvedValue(undefined),
+}));
+
+// expo-font has no native module under Jest.
+jest.mock("expo-font", () => ({
+  useFonts: jest.fn().mockReturnValue([true, null]),
+  loadAsync: jest.fn().mockResolvedValue(undefined),
+}));
+
 // expo-file-system@56 uses a class-based API. Provide stable mocks so tests
 // don't hit native modules.
 jest.mock("expo-file-system", () => {

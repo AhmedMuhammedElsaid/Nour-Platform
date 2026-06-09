@@ -3,7 +3,14 @@
     "appName": "نور",
     "loading": "جارٍ التحميل…",
     "error": "حدث خطأ ما.",
-    "retry": "إعادة المحاولة"
+    "retry": "إعادة المحاولة",
+    "ok": "حسنًا"
+  },
+  "settings": {
+    "toggleTheme": "تبديل السمة",
+    "switchLocale": "التبديل إلى {{locale}}",
+    "localeChanged": "تم تغيير اللغة",
+    "restartRequired": "أعِد تشغيل التطبيق لتفعيل اتجاه النص الجديد."
   },
   "player": {
     "miniPlayer": "يعمل الآن",

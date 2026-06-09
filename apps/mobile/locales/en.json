@@ -3,7 +3,14 @@
     "appName": "Nour",
     "loading": "Loading…",
     "error": "Something went wrong.",
-    "retry": "Retry"
+    "retry": "Retry",
+    "ok": "OK"
+  },
+  "settings": {
+    "toggleTheme": "Toggle theme",
+    "switchLocale": "Switch to {{locale}}",
+    "localeChanged": "Language changed",
+    "restartRequired": "Restart the app to apply the new text direction."
   },
   "nav": {
     "quran": "Quran",

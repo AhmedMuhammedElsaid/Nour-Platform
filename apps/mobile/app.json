@@ -10,7 +10,13 @@
     "newArchEnabled": true,
     "backgroundColor": "#0f0d0a",
     "primaryColor": "#c8a050",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f0d0a"
+    },
     "plugins": [
+      "expo-font",
       "expo-router",
       "expo-localization",
       [
