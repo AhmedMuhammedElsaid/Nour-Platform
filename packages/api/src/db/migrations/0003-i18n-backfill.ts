@@ -20,12 +20,48 @@ import { getDb } from "../client";
  *
  * Idempotent: documents that already have a `locale` are skipped, so re-running
  * is a no-op. Run order is guaranteed by the array in scripts/migrate.ts.
+ *
+ * SAFETY GUARD: after the embedded-locale refactor (0005) documents carry
+ * `ar`/`en` sub-objects and NO top-level `locale` — they would match this
+ * migration's `{ locale: { $exists: false } }` filter and get a bogus
+ * `locale:'ar'` + `contentId` written back, corrupting the embedded shape.
+ * If any embedded document is detected the whole migration no-ops, so the
+ * full `pnpm migrate` chain is safe to run against an already-embedded DB.
  */
 export const name = "0003-i18n-backfill";
+
+type EmbeddedCheckDb = {
+  collection(name: string): {
+    findOne(
+      filter: Record<string, unknown>,
+      options?: Record<string, unknown>,
+    ): Promise<unknown>;
+  };
+};
+
+export async function dbHasEmbeddedLocaleDocs(
+  db: EmbeddedCheckDb,
+): Promise<boolean> {
+  for (const name of ["playlists", "categories", "tracks"]) {
+    const doc = await db
+      .collection(name)
+      .findOne({ ar: { $exists: true } }, { projection: { _id: 1 } });
+    if (doc) return true;
+  }
+  return false;
+}
 
 export async function up(): Promise<void> {
   const conn = await getDb();
   const db = conn.connection.db!;
+
+  if (await dbHasEmbeddedLocaleDocs(db)) {
+    console.warn(
+      "[0003] embedded-locale documents detected — this transitional migration " +
+        "no longer applies and would corrupt them; skipping.",
+    );
+    return;
+  }
 
   const playlists = db.collection("playlists");
   const categories = db.collection("categories");
