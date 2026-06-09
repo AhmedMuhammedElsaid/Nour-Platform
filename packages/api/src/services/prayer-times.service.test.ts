@@ -113,51 +113,54 @@ describe("getDayProgress", () => {
 describe("getArcPosition", () => {
   const PARAMS = { ...CAIRO, method: "Egyptian", madhab: "standard" } as const;
 
-  it("is the sun (not night) from just after sunrise (~0) to just before sunset (~1)", () => {
+  it("is the sun (not night) riding Fajr(~0) → Isha(~1) during the day", () => {
     const day = cairoDay();
-    const sunrise = day.instants.find((i) => i.key === "sunrise")!.time as Date;
-    const maghrib = day.instants.find((i) => i.key === "maghrib")!.time as Date;
+    const fajr = day.instants.find((i) => i.key === "fajr")!.time as Date;
+    const isha = day.instants.find((i) => i.key === "isha")!.time as Date;
 
-    const dawn = getArcPosition(PARAMS, new Date(sunrise.getTime() + 60_000));
+    const dawn = getArcPosition(PARAMS, new Date(fajr.getTime() + 60_000));
     expect(dawn.isNight).toBe(false);
     expect(dawn.fraction).toBeGreaterThanOrEqual(0);
     expect(dawn.fraction).toBeLessThan(0.1);
 
-    const dusk = getArcPosition(PARAMS, new Date(maghrib.getTime() - 60_000));
+    const dusk = getArcPosition(PARAMS, new Date(isha.getTime() - 60_000));
     expect(dusk.isNight).toBe(false);
     expect(dusk.fraction).toBeGreaterThan(0.9);
     expect(dusk.fraction).toBeLessThanOrEqual(1);
   });
 
-  it("is the moon (night) just after sunset, near fraction 0", () => {
+  it("shows the moon just after Isha, near the Isha point (fraction ~1)", () => {
     const day = cairoDay();
-    const maghrib = day.instants.find((i) => i.key === "maghrib")!.time as Date;
-    const info = getArcPosition(PARAMS, new Date(maghrib.getTime() + 60_000));
-    expect(info.isNight).toBe(true);
-    expect(info.fraction).toBeGreaterThanOrEqual(0);
-    expect(info.fraction).toBeLessThan(0.1);
-  });
-
-  it("is the moon (night) just before sunrise, near fraction 1", () => {
-    const day = cairoDay();
-    const sunrise = day.instants.find((i) => i.key === "sunrise")!.time as Date;
-    const info = getArcPosition(PARAMS, new Date(sunrise.getTime() - 60_000));
+    const isha = day.instants.find((i) => i.key === "isha")!.time as Date;
+    const info = getArcPosition(PARAMS, new Date(isha.getTime() + 60_000));
     expect(info.isNight).toBe(true);
     expect(info.fraction).toBeGreaterThan(0.9);
     expect(info.fraction).toBeLessThanOrEqual(1);
   });
 
-  it("progresses monotonically across both day and night", () => {
+  it("shows the moon just before Fajr, near the Fajr point (fraction ~0)", () => {
     const day = cairoDay();
-    const sunrise = day.instants.find((i) => i.key === "sunrise")!.time as Date;
+    const fajr = day.instants.find((i) => i.key === "fajr")!.time as Date;
+    const info = getArcPosition(PARAMS, new Date(fajr.getTime() - 60_000));
+    expect(info.isNight).toBe(true);
+    expect(info.fraction).toBeGreaterThanOrEqual(0);
+    expect(info.fraction).toBeLessThan(0.1);
+  });
+
+  it("is the moon (not the sun) between Maghrib and Isha as well as after Isha", () => {
+    const day = cairoDay();
     const maghrib = day.instants.find((i) => i.key === "maghrib")!.time as Date;
+    // Between Maghrib and Isha the sun has set but it's pre-Isha → still day.
+    const beforeIsha = getArcPosition(PARAMS, new Date(maghrib.getTime() + 60_000));
+    expect(beforeIsha.isNight).toBe(false);
+  });
 
-    const sunEarly = getArcPosition(PARAMS, new Date(sunrise.getTime() + 60 * 60_000)).fraction;
-    const sunLate = getArcPosition(PARAMS, new Date(sunrise.getTime() + 6 * 60 * 60_000)).fraction;
-    expect(sunLate).toBeGreaterThan(sunEarly);
-
-    const moonEarly = getArcPosition(PARAMS, new Date(maghrib.getTime() + 60 * 60_000)).fraction;
-    const moonLate = getArcPosition(PARAMS, new Date(maghrib.getTime() + 6 * 60 * 60_000)).fraction;
-    expect(moonLate).toBeGreaterThan(moonEarly);
+  it("moon descends from the Isha point toward Fajr as the night advances", () => {
+    const day = cairoDay();
+    const isha = day.instants.find((i) => i.key === "isha")!.time as Date;
+    const early = getArcPosition(PARAMS, new Date(isha.getTime() + 60 * 60_000)).fraction;
+    const late = getArcPosition(PARAMS, new Date(isha.getTime() + 4 * 60 * 60_000)).fraction;
+    // Travelling right(1)→left(0), so the fraction decreases over the night.
+    expect(late).toBeLessThan(early);
   });
 });
