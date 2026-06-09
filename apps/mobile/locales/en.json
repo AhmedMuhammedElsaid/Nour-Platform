@@ -8,7 +8,19 @@
   "nav": {
     "quran": "Quran",
     "adhkar": "Adhkar",
-    "prayerTimes": "Prayer Times"
+    "prayerTimes": "Prayer Times",
+    "downloads": "Downloads"
+  },
+  "downloads": {
+    "heading": "Downloads",
+    "empty": "No downloads yet. Download tracks to listen offline.",
+    "downloadAll": "Download all",
+    "downloaded": "Downloaded",
+    "downloading_sr": "Downloading {{title}}",
+    "download_sr": "Download {{title}}",
+    "retry": "Retry download",
+    "delete": "Delete",
+    "totalSize": "{{size}} downloaded"
   },
   "home": {
     "playlistsTitle": "Playlists",

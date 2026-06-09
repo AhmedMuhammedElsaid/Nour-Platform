@@ -7,6 +7,8 @@ import { ActivityIndicator, FlatList, Pressable, View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Text } from "@/components/ui/text";
+import { DownloadButton } from "@/features/downloads/components/download-button";
+import { useDownloads } from "@/features/downloads/hooks/use-downloads";
 import { Cover } from "@/features/playlists/components/cover";
 import { initialLocale } from "@/lib/i18n";
 import { usePlayer, type QueueTrack } from "@/lib/player-context";
@@ -25,6 +27,7 @@ export default function PlaylistDetailScreen() {
   const locale = initialLocale;
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { loadQueue, currentTrack, isPlaying } = usePlayer();
+  const downloads = useDownloads();
 
   const detail = useQuery(playlistDetailQuery(slug ?? "", locale));
   const categories = useQuery(categoriesQuery());
@@ -39,22 +42,28 @@ export default function PlaylistDetailScreen() {
       .map((c) => ({ slug: c[locale].slug, name: c[locale].name }));
   }, [detail.data, categories.data, locale]);
 
+  // Playable tracks with srcUrl.
+  const playableTracks = useMemo(() => {
+    if (!detail.data) return [];
+    return detail.data.tracks.filter(
+      (tr): tr is PlayableTrack & { srcUrl: string } => tr.srcUrl != null,
+    );
+  }, [detail.data]);
+
   // Build the queue tracks for the player.
   const queueTracks = useMemo<QueueTrack[]>(() => {
     if (!detail.data) return [];
-    const { playlist, tracks } = detail.data;
-    return tracks
-      .filter((tr): tr is PlayableTrack & { srcUrl: string } => tr.srcUrl != null)
-      .map((tr) => ({
-        id: tr.id,
-        title: tr[locale].title,
-        mediaUrl: tr.srcUrl,
-        durationSecs: tr.durationSecs,
-        playlistTitle: playlist[locale].title,
-        playlistSlug: playlist[locale].slug,
-        locale,
-      }));
-  }, [detail.data, locale]);
+    const { playlist } = detail.data;
+    return playableTracks.map((tr) => ({
+      id: tr.id,
+      title: tr[locale].title,
+      mediaUrl: tr.srcUrl,
+      durationSecs: tr.durationSecs,
+      playlistTitle: playlist[locale].title,
+      playlistSlug: playlist[locale].slug,
+      locale,
+    }));
+  }, [detail.data, playableTracks, locale]);
 
   const playAll = () => {
     if (queueTracks.length > 0) loadQueue(queueTracks, 0);
@@ -62,6 +71,19 @@ export default function PlaylistDetailScreen() {
 
   const playTrack = (index: number) => {
     if (queueTracks.length > 0) loadQueue(queueTracks, index);
+  };
+
+  const downloadAll = () => {
+    if (!detail.data) return;
+    for (const tr of playableTracks) {
+      downloads.startDownload({
+        id: tr.id,
+        title: tr[locale].title,
+        srcUrl: tr.srcUrl,
+        playlistTitle: detail.data.playlist[locale].title,
+        playlistSlug: detail.data.playlist[locale].slug,
+      });
+    }
   };
 
   if (detail.isPending) {
@@ -113,7 +135,16 @@ export default function PlaylistDetailScreen() {
       </View>
 
       {queueTracks.length > 0 && (
-        <Button label={t("playlist.playAll")} onPress={playAll} />
+        <View className="flex-row gap-2">
+          <View className="flex-1">
+            <Button label={t("playlist.playAll")} onPress={playAll} />
+          </View>
+          <Button
+            label={t("downloads.downloadAll")}
+            variant="outline"
+            onPress={downloadAll}
+          />
+        </View>
       )}
 
       <Text variant="label" className="mt-2">
@@ -136,11 +167,10 @@ export default function PlaylistDetailScreen() {
           const dur = formatDuration(item.durationSecs);
           const isActive = currentTrack?.id === item.id;
           const playable = item.srcUrl != null;
-          // Find this track's index in the playable queue (may differ from
-          // FlatList index if some tracks lack srcUrl).
           const queueIndex = playable
             ? queueTracks.findIndex((q) => q.id === item.id)
             : -1;
+          const dlStatus = downloads.getStatus(item.id);
 
           return (
             <Pressable
@@ -165,6 +195,23 @@ export default function PlaylistDetailScreen() {
                   {item[locale].title}
                 </Text>
                 {dur != null && <Text variant="muted">{dur}</Text>}
+                {playable && (
+                  <DownloadButton
+                    trackId={item.id}
+                    title={item[locale].title}
+                    status={dlStatus}
+                    onDownload={() =>
+                      downloads.startDownload({
+                        id: item.id,
+                        title: item[locale].title,
+                        srcUrl: item.srcUrl as string,
+                        playlistTitle: display.title,
+                        playlistSlug: display.slug,
+                      })
+                    }
+                    onDelete={() => downloads.remove(item.id)}
+                  />
+                )}
               </View>
             </Pressable>
           );

@@ -1,3 +1,49 @@
+// expo-file-system@56 uses a class-based API. Provide stable mocks so tests
+// don't hit native modules.
+jest.mock("expo-file-system", () => {
+  const DOC_URI = "file:///test/document/";
+
+  class MockDirectory {
+    uri = DOC_URI;
+    exists = false; // default: not present so create() is exercised
+    constructor(...uris) {
+      this.uri = uris
+        .map((u) => (typeof u === "string" ? u : u?.uri ?? ""))
+        .join("")
+        .replace(/\/+$/, "") + "/";
+    }
+    create() {}
+    delete() {}
+  }
+
+  class MockFile {
+    uri = "";
+    exists = false;
+    size = 0;
+    constructor(...uris) {
+      this.uri = uris
+        .map((u) => (typeof u === "string" ? u : u?.uri ?? ""))
+        .join("")
+        .replace(/\/+$/, "");
+    }
+    delete() {}
+  }
+  MockFile.downloadFileAsync = jest.fn().mockImplementation((_url, dest) => {
+    const f = new MockFile(dest.uri);
+    f.exists = true;
+    f.size = 1024 * 512;
+    return Promise.resolve(f);
+  });
+
+  return {
+    Paths: {
+      document: new MockDirectory(DOC_URI),
+    },
+    Directory: MockDirectory,
+    File: MockFile,
+  };
+});
+
 // AsyncStorage has no native module under Jest — swap in the official mock.
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),

@@ -16,7 +16,19 @@
   "nav": {
     "quran": "القرآن",
     "adhkar": "الأذكار",
-    "prayerTimes": "مواقيت الصلاة"
+    "prayerTimes": "مواقيت الصلاة",
+    "downloads": "التنزيلات"
+  },
+  "downloads": {
+    "heading": "التنزيلات",
+    "empty": "لا توجد تنزيلات بعد. نزّل المقاطع للاستماع دون اتصال.",
+    "downloadAll": "تنزيل الكل",
+    "downloaded": "تم التنزيل",
+    "downloading_sr": "جارٍ تنزيل {{title}}",
+    "download_sr": "تنزيل {{title}}",
+    "retry": "إعادة المحاولة",
+    "delete": "حذف",
+    "totalSize": "{{size}} منزّل"
   },
   "home": {
     "playlistsTitle": "قوائم التشغيل",

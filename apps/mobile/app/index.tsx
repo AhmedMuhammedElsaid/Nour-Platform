@@ -87,6 +87,13 @@ export default function HomeScreen() {
             </Card>
           </Pressable>
         </View>
+
+        <Pressable accessibilityRole="button" onPress={() => router.push("/downloads")}>
+          <Card className="flex-row items-center justify-between p-4">
+            <Text variant="title">{t("nav.downloads")}</Text>
+            <Text variant="muted">{locale === "ar" ? "←" : "→"}</Text>
+          </Card>
+        </Pressable>
       </View>
 
       <CategoryPills
