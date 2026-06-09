@@ -111,13 +111,14 @@ export function SunArc({
         );
       })}
 
-      {/* current sun or moon — glides toward the next prayer as time passes */}
-      <g
-        style={{
-          transform: `translate(${sun.x}px, ${sun.y}px)`,
-          transition: "transform 900ms linear",
-        }}
-      >
+      {/* current sun or moon — positioned along the arc. Uses the SVG
+          `transform` attribute (not a CSS transform) so the moon's
+          `userSpaceOnUse` crescent mask resolves in the same translated user
+          space as the disc; a CSS transform leaves the mask anchored at the
+          SVG origin, which silently masked the whole crescent out (the moon
+          never appeared at night). Movement is sub-pixel per second, so no
+          glide transition is needed. */}
+      <g transform={`translate(${sun.x} ${sun.y})`}>
         {isNight ? (
           // Night: glowing silver-blue crescent. Same radial halo + bloom
           // recipe as the sun so the two read as siblings, not different
