@@ -3,7 +3,7 @@
 // Gold rayed sun = current time; glowing dot = next prayer.
 
 import { View } from "react-native";
-import Svg, { Circle, Path, Text as SvgText } from "react-native-svg";
+import Svg, { Circle, Defs, Mask, Path, Text as SvgText } from "react-native-svg";
 
 import {
   ARC,
@@ -15,9 +15,10 @@ import type { PrayerInstant, PrayerKey } from "@repo/shared-core/prayer-times/co
 import { getDayProgress } from "@repo/shared-core/prayer-times/compute";
 import type { PrayerDay } from "@repo/shared-core/prayer-times/compute";
 
-// Gold / near-black from design tokens.
+// Design tokens (dark palette). MOON is the silver-blue from tokens.css.
 const GOLD = "#c8a050";
 const MUTED = "#7a6a52";
+const MOON = "#d6e3ff";
 
 type ArcDot = {
   key: PrayerKey;
@@ -37,6 +38,14 @@ export function SunArc({ day, now, nextPrayerKey, prayerLabels }: SunArcProps) {
   const progress = getDayProgress(day, now);
   const sunT = tForFraction(progress);
   const sunPt = arcPoint(sunT);
+
+  // Night = before today's Fajr or at/after today's Isha — swap the sun for a
+  // glowing crescent moon (parity with the web sun-arc).
+  const fajr = day.instants.find((i) => i.key === "fajr")?.time ?? null;
+  const isha = day.instants.find((i) => i.key === "isha")?.time ?? null;
+  const isNight =
+    (fajr != null && now.getTime() < fajr.getTime()) ||
+    (isha != null && now.getTime() >= isha.getTime());
 
   const dots: ArcDot[] = day.instants
     .filter((inst): inst is PrayerInstant & { time: Date } => inst.time != null)
@@ -70,6 +79,18 @@ export function SunArc({ day, now, nextPrayerKey, prayerLabels }: SunArcProps) {
         style={{ aspectRatio: ARC.w / ARC.h }}
         accessibilityLabel="Sun arc prayer times visualization"
       >
+        {isNight && (
+          <Defs>
+            {/* Crescent: subtract an offset disc from the moon disc. White =
+                visible, black = hidden. Absolute coords match the moon's
+                cx/cy (no transforms in this SVG), so it always aligns. */}
+            <Mask id="moon-crescent">
+              <Circle cx={sunPt.x} cy={sunPt.y} r={11} fill="white" />
+              <Circle cx={sunPt.x + 4} cy={sunPt.y - 2.5} r={10} fill="black" />
+            </Mask>
+          </Defs>
+        )}
+
         {/* Background arc path */}
         <Path
           d={arcPath()}
@@ -114,25 +135,45 @@ export function SunArc({ day, now, nextPrayerKey, prayerLabels }: SunArcProps) {
           );
         })}
 
-        {/* Sun (current time) */}
-        <Circle cx={sunPt.x} cy={sunPt.y} r={10} fill={GOLD} />
-        {/* Simple rays */}
-        {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => {
-          const rad = (angle * Math.PI) / 180;
-          const x1 = sunPt.x + Math.cos(rad) * 13;
-          const y1 = sunPt.y + Math.sin(rad) * 13;
-          const x2 = sunPt.x + Math.cos(rad) * 17;
-          const y2 = sunPt.y + Math.sin(rad) * 17;
-          return (
-            <Path
-              key={angle}
-              d={`M${x1} ${y1} L${x2} ${y2}`}
-              stroke={GOLD}
-              strokeWidth={2}
-              strokeLinecap="round"
+        {/* Current time marker — glowing crescent moon at night, rayed sun by day. */}
+        {isNight ? (
+          <>
+            {/* soft moonlight halo */}
+            <Circle cx={sunPt.x} cy={sunPt.y} r={17} fill={MOON} opacity={0.16} />
+            {/* crescent (mask-carved; degrades to a full disc if Mask is
+                unsupported — either way the moon stays visible) */}
+            <Circle
+              testID="prayer-moon"
+              cx={sunPt.x}
+              cy={sunPt.y}
+              r={11}
+              fill={MOON}
+              mask="url(#moon-crescent)"
             />
-          );
-        })}
+          </>
+        ) : (
+          <>
+            {/* Sun (current time) */}
+            <Circle testID="prayer-sun" cx={sunPt.x} cy={sunPt.y} r={10} fill={GOLD} />
+            {/* Simple rays */}
+            {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => {
+              const rad = (angle * Math.PI) / 180;
+              const x1 = sunPt.x + Math.cos(rad) * 13;
+              const y1 = sunPt.y + Math.sin(rad) * 13;
+              const x2 = sunPt.x + Math.cos(rad) * 17;
+              const y2 = sunPt.y + Math.sin(rad) * 17;
+              return (
+                <Path
+                  key={angle}
+                  d={`M${x1} ${y1} L${x2} ${y2}`}
+                  stroke={GOLD}
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                />
+              );
+            })}
+          </>
+        )}
       </Svg>
     </View>
   );
