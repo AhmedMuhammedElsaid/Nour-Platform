@@ -1,0 +1,165 @@
+{
+  "common": {
+    "appName": "Nour",
+    "loading": "Loading…",
+    "error": "Something went wrong.",
+    "retry": "Retry",
+    "ok": "OK"
+  },
+  "settings": {
+    "toggleTheme": "Toggle theme",
+    "switchLocale": "Switch to {{locale}}",
+    "localeChanged": "Language changed",
+    "restartRequired": "Restart the app to apply the new text direction."
+  },
+  "nav": {
+    "quran": "Quran",
+    "adhkar": "Adhkar",
+    "prayerTimes": "Prayer Times",
+    "downloads": "Downloads"
+  },
+  "downloads": {
+    "heading": "Downloads",
+    "empty": "No downloads yet. Download tracks to listen offline.",
+    "downloadAll": "Download all",
+    "downloaded": "Downloaded",
+    "downloading_sr": "Downloading {{title}}",
+    "download_sr": "Download {{title}}",
+    "retry": "Retry download",
+    "delete": "Delete",
+    "totalSize": "{{size}} downloaded"
+  },
+  "home": {
+    "playlistsTitle": "Playlists",
+    "heroTitle": "Your Islamic Audio Library",
+    "heroSubtitle": "Listen to Quran, lectures, and more — in Arabic and English",
+    "library": "Library",
+    "empty": "No playlists in this category yet.",
+    "allCategories": "All",
+    "trackCount": "{{count}} tracks",
+    "continueListening": "Continue listening",
+    "continueReading": "Continue reading",
+    "surah": "Surah",
+    "ayah": "Ayah {{number}}",
+    "sort": {
+      "newest": "Newest",
+      "az": "A–Z",
+      "tracks": "Most tracks"
+    }
+  },
+  "player": {
+    "miniPlayer": "Now playing",
+    "play": "Play",
+    "pause": "Pause",
+    "next": "Next track",
+    "prev": "Previous track",
+    "retry": "Retry"
+  },
+  "adhkar": {
+    "heading": "Adhkar",
+    "empty": "No adhkar sets published yet.",
+    "reset": "Start over",
+    "completed": "Done",
+    "countLabel": "Count this dhikr"
+  },
+  "prayer": {
+    "title": "Prayer Times",
+    "nav": "Prayer Times",
+    "next": "Next prayer",
+    "countdown": "in {h}h {m}m",
+    "at": "at {time}",
+    "now": "now {time}",
+    "changeCity": "Change city",
+    "useMyLocation": "Use my location",
+    "locating": "Locating…",
+    "currentLocation": "Current",
+    "myLocation": "My location",
+    "locationSet": "Location set: {city}",
+    "searchCity": "Search a city…",
+    "locationDenied": "Couldn't get your location — showing times for {{city}}.",
+    "locationInsecure": "Location needs a secure connection.",
+    "locationUnsupported": "Your device doesn't support location.",
+    "locationDeniedPerm": "Location is blocked. Allow it in Settings, then retry.",
+    "locationTimeout": "Locating took too long. Please try again.",
+    "locationUnavailable": "Your location is unavailable right now. Try again or pick a city.",
+    "calculation": "Calculation method",
+    "method": "Method",
+    "madhab": "Asr (madhab)",
+    "madhabStandard": "Standard",
+    "madhabHanafi": "Hanafi",
+    "fajr": "Fajr",
+    "sunrise": "Sunrise",
+    "dhuhr": "Dhuhr",
+    "asr": "Asr",
+    "maghrib": "Maghrib",
+    "isha": "Isha",
+    "methodMuslimWorldLeague": "Muslim World League",
+    "methodEgyptian": "Egyptian General Authority",
+    "methodKarachi": "University of Islamic Sciences, Karachi",
+    "methodUmmAlQura": "Umm al-Qura, Makkah",
+    "methodDubai": "Dubai",
+    "methodMoonsightingCommittee": "Moonsighting Committee",
+    "methodNorthAmerica": "North America (ISNA)",
+    "methodKuwait": "Kuwait",
+    "methodQatar": "Qatar",
+    "methodSingapore": "Singapore",
+    "methodTurkey": "Turkey",
+    "methodTehran": "Tehran",
+    "adhan": {
+      "title": "Adhan (call to prayer)",
+      "enable": "Play adhan at prayer times",
+      "perPrayer": "Which prayers",
+      "volume": "Volume",
+      "background": "Enable notifications",
+      "backgroundUnsupported": "Notifications aren't supported. The adhan still plays while Nour is open.",
+      "autoplayHint": "Keep Nour open. The adhan plays once you've interacted with the app.",
+      "adhanBody": "It's time for prayer."
+    },
+    "azkar": {
+      "title": "Adhkar reminder",
+      "enable": "Remind me of morning & evening adhkar",
+      "hint": "We'll remind you of Adhkar al-Sabah 15 min after Fajr, and Adhkar al-Masaa 15 min after Asr.",
+      "foregroundOnly": "Background notifications aren't supported. The reminder still fires while Nour is open.",
+      "sabah": {
+        "title": "Adhkar al-Sabah",
+        "body": "Time for the morning adhkar — tap to read."
+      },
+      "masaa": {
+        "title": "Adhkar al-Masaa",
+        "body": "Time for the evening adhkar — tap to read."
+      }
+    }
+  },
+  "playlist": {
+    "by": "By",
+    "trackCount": "{{count}} tracks",
+    "tracksHeading": "Tracks",
+    "playAll": "Play all",
+    "noTracks": "No tracks yet."
+  },
+  "quran": {
+    "title": "Quran",
+    "surah": "Surah",
+    "juz": "Juz",
+    "juzPlaceholder": "Juz navigation arrives in the next update.",
+    "ayahs": "ayahs",
+    "bookmarks": "Bookmarks",
+    "bookmarksEmpty": "No bookmarks yet.",
+    "settings": "Reading settings",
+    "showTranslation": "Show translation",
+    "wordByWord": "Word-by-word",
+    "fontSize": "Font size",
+    "fontSmaller": "Smaller text",
+    "fontLarger": "Larger text",
+    "translation": "Translation",
+    "reciter": "Reciter",
+    "repeatAyah": "Repeat",
+    "playAyah": "Play ayah",
+    "pauseAyah": "Pause ayah",
+    "addBookmark": "Add bookmark",
+    "removeBookmark": "Remove bookmark",
+    "tafsir": "Tafsir",
+    "loading": "Loading…",
+    "tafsirError": "Tafsir unavailable for this ayah."
+  }
+}
