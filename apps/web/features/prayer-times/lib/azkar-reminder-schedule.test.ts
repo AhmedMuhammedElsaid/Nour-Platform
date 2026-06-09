@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_AZKAR_REMINDER_SETTINGS } from "@repo/api/schemas/prayer-times";
 import type { PrayerInstant } from "@repo/api/services/prayer-times";
 
-import { nextAzkarReminderEvent } from "./azkar-reminder-schedule";
+import {
+  nextAzkarReminderEvent,
+  recentlyMissedAzkarReminder,
+} from "./azkar-reminder-schedule";
 
 function instants(): PrayerInstant[] {
   const d = (h: number, m = 0) => new Date(2026, 5, 7, h, m, 0, 0);
@@ -46,5 +49,33 @@ describe("nextAzkarReminderEvent", () => {
 
   it("returns null when nothing remains today", () => {
     expect(nextAzkarReminderEvent(instants(), enabled, new Date(2026, 5, 7, 16, 0))).toBeNull();
+  });
+});
+
+describe("recentlyMissedAzkarReminder", () => {
+  const GRACE = 2 * 60_000; // 2 min
+
+  it("recovers a sabah reminder that passed within the grace window", () => {
+    // sabah = Fajr(4:00) + 15 = 4:15; now 4:16 → within 2 min.
+    const ev = recentlyMissedAzkarReminder(instants(), enabled, new Date(2026, 5, 7, 4, 16), GRACE);
+    expect(ev?.kind).toBe("sabah");
+    expect(ev?.time).toEqual(new Date(2026, 5, 7, 4, 15));
+  });
+
+  it("returns null when the reminder is older than the grace window", () => {
+    const ev = recentlyMissedAzkarReminder(instants(), enabled, new Date(2026, 5, 7, 4, 20), GRACE);
+    expect(ev).toBeNull();
+  });
+
+  it("returns null when disabled", () => {
+    expect(
+      recentlyMissedAzkarReminder(instants(), DEFAULT_AZKAR_REMINDER_SETTINGS, new Date(2026, 5, 7, 4, 16), GRACE),
+    ).toBeNull();
+  });
+
+  it("does not return a future reminder", () => {
+    expect(
+      recentlyMissedAzkarReminder(instants(), enabled, new Date(2026, 5, 7, 4, 10), GRACE),
+    ).toBeNull();
   });
 });

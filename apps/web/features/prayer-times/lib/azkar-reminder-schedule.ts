@@ -32,3 +32,29 @@ export function nextAzkarReminderEvent(
   }
   return best;
 }
+
+// Most-recent enabled azkar reminder within the last `graceMs` — window
+// (now - graceMs, now]. Catches up a reminder the foreground timer missed
+// while the tab was backgrounded/asleep. Pure — no DOM/Date.now.
+export function recentlyMissedAzkarReminder(
+  instants: PrayerInstant[],
+  settings: AzkarReminderSettings,
+  now: Date,
+  graceMs: number,
+): AzkarReminderEvent | null {
+  if (!settings.enabled) return null;
+  const offsetMs = settings.offsetMinutes * 60_000;
+  const lo = now.getTime() - graceMs;
+
+  let best: AzkarReminderEvent | null = null;
+  for (const kind of ["sabah", "masaa"] as const) {
+    const base = instants.find((i) => i.key === BASE_PRAYER[kind]);
+    if (!base?.time) continue;
+    const tt = base.time.getTime() + offsetMs;
+    if (tt > now.getTime() || tt <= lo) continue;
+    if (best == null || tt > best.time.getTime()) {
+      best = { kind, time: new Date(tt) };
+    }
+  }
+  return best;
+}

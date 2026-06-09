@@ -6,13 +6,21 @@ import type { AdhanSettings } from "@repo/api/schemas/prayer-times";
 import type { PrayerLocation, PrayerPreferences } from "@repo/api/schemas/prayer-times";
 import { computePrayerTimes } from "@repo/api/services/prayer-times";
 
-import { type AdhanEvent, nextAdhanEvent } from "../lib/adhan-schedule";
+import {
+  type AdhanEvent,
+  nextAdhanEvent,
+  recentlyMissedAdhan,
+} from "../lib/adhan-schedule";
 
 // Recompute at least this often so clock drift / sleep / background throttling
 // can't push the fire time out by more than one chunk; the last leg is armed to
 // the exact remaining ms so it lands on the second.
 const MAX_CHUNK = 5 * 60_000; // 5 min
 const FINAL_WINDOW = 30_000; // last 30s: arm the precise timeout
+// When the tab regains focus (or wakes from sleep), play an adhan whose time
+// passed within this window but that we never got to fire — keeps it "on time"
+// to within ~2 min instead of silently skipping it.
+const CATCH_UP_WINDOW = 2 * 60_000; // 2 min
 
 function clampChunk(ms: number): number {
   return Math.min(MAX_CHUNK, Math.max(1_000, ms));
@@ -38,8 +46,21 @@ export function useAdhanScheduler(input: {
     if (!enabled || !settings.enabled) return;
 
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
+    // ISO time of the last adhan we played — dedups across re-arms, catch-up,
+    // and tab-focus recomputes so the same prayer never fires twice.
+    let lastFiredAt: string | null = null;
 
-    const arm = () => {
+    const fire = (event: AdhanEvent) => {
+      const id = event.time.toISOString();
+      if (lastFiredAt === id) return;
+      lastFiredAt = id;
+      onFireRef.current(event);
+    };
+
+    const arm = (allowCatchUp = false) => {
+      if (cancelled) return;
+      if (timer) clearTimeout(timer);
       const now = new Date();
       const day = computePrayerTimes({
         lat: location.lat,
@@ -48,6 +69,19 @@ export function useAdhanScheduler(input: {
         method: prefs.method,
         madhab: prefs.madhab,
       });
+
+      // On wake/refocus, recover an adhan whose time just passed while we were
+      // throttled — but only if it's still close enough to count as "on time".
+      if (allowCatchUp) {
+        const missed = recentlyMissedAdhan(
+          day.instants,
+          settings,
+          now,
+          CATCH_UP_WINDOW,
+        );
+        if (missed) fire(missed);
+      }
+
       const event = nextAdhanEvent(day.instants, settings, now);
 
       if (!event) {
@@ -69,15 +103,26 @@ export function useAdhanScheduler(input: {
 
       // Final window — arm the exact remaining delay so it fires on the second.
       timer = setTimeout(() => {
-        onFireRef.current(event);
+        fire(event);
         // Re-arm a second later so we don't refire the same instant.
         timer = setTimeout(arm, 1_000);
       }, Math.max(0, remaining));
     };
 
+    // Returning to the tab (or waking the device) re-arms immediately and
+    // catches up a just-missed adhan, instead of waiting out a throttled timer.
+    const onWake = () => {
+      if (document.visibilityState === "visible") arm(true);
+    };
+
     arm();
+    document.addEventListener("visibilitychange", onWake);
+    window.addEventListener("focus", onWake);
     return () => {
+      cancelled = true;
       if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onWake);
+      window.removeEventListener("focus", onWake);
     };
   }, [
     enabled,

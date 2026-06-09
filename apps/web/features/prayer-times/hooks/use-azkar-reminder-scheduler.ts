@@ -9,6 +9,7 @@ import { computePrayerTimes } from "@repo/api/services/prayer-times";
 import {
   type AzkarReminderEvent,
   nextAzkarReminderEvent,
+  recentlyMissedAzkarReminder,
 } from "../lib/azkar-reminder-schedule";
 
 // Recompute at least this often so clock drift / sleep / background throttling
@@ -16,6 +17,7 @@ import {
 // the exact remaining ms so it lands on the second.
 const MAX_CHUNK = 5 * 60_000; // 5 min
 const FINAL_WINDOW = 30_000; // last 30s: arm the precise timeout
+const CATCH_UP_WINDOW = 2 * 60_000; // 2 min — recover a just-missed reminder
 
 function clampChunk(ms: number): number {
   return Math.min(MAX_CHUNK, Math.max(1_000, ms));
@@ -41,8 +43,19 @@ export function useAzkarReminderScheduler(input: {
     if (!enabled || !settings.enabled) return;
 
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
+    let lastFiredAt: string | null = null;
 
-    const arm = () => {
+    const fire = (event: AzkarReminderEvent) => {
+      const id = event.time.toISOString();
+      if (lastFiredAt === id) return;
+      lastFiredAt = id;
+      onFireRef.current(event);
+    };
+
+    const arm = (allowCatchUp = false) => {
+      if (cancelled) return;
+      if (timer) clearTimeout(timer);
       const now = new Date();
       const day = computePrayerTimes({
         lat: location.lat,
@@ -51,6 +64,17 @@ export function useAzkarReminderScheduler(input: {
         method: prefs.method,
         madhab: prefs.madhab,
       });
+
+      if (allowCatchUp) {
+        const missed = recentlyMissedAzkarReminder(
+          day.instants,
+          settings,
+          now,
+          CATCH_UP_WINDOW,
+        );
+        if (missed) fire(missed);
+      }
+
       const event = nextAzkarReminderEvent(day.instants, settings, now);
 
       if (!event) {
@@ -71,14 +95,23 @@ export function useAzkarReminderScheduler(input: {
 
       // Final window — arm the exact remaining delay so it fires on the second.
       timer = setTimeout(() => {
-        onFireRef.current(event);
+        fire(event);
         timer = setTimeout(arm, 1_000);
       }, Math.max(0, remaining));
     };
 
+    const onWake = () => {
+      if (document.visibilityState === "visible") arm(true);
+    };
+
     arm();
+    document.addEventListener("visibilitychange", onWake);
+    window.addEventListener("focus", onWake);
     return () => {
+      cancelled = true;
       if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onWake);
+      window.removeEventListener("focus", onWake);
     };
   }, [
     enabled,
