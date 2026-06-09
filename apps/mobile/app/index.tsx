@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
+import { LocaleSwitcher } from "@/components/locale-switcher";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { CategoryPills } from "@/features/home/components/category-pills";
 import { ContinueListening } from "@/features/home/components/continue-listening";
 import { ContinueReading } from "@/features/home/components/continue-reading";
@@ -55,6 +57,15 @@ export default function HomeScreen() {
 
   const header = (
     <View className="gap-6 pb-4">
+      {/* Top bar: theme toggle + locale switcher */}
+      <View className="flex-row items-center justify-between">
+        <Text variant="display" className="text-xl">{t("common.appName")}</Text>
+        <View className="flex-row items-center gap-2">
+          <LocaleSwitcher />
+          <ThemeToggle />
+        </View>
+      </View>
+
       <View>
         <Text variant="display" className="text-4xl">
           {t("home.heroTitle")}
@@ -87,6 +98,13 @@ export default function HomeScreen() {
             </Card>
           </Pressable>
         </View>
+
+        <Pressable accessibilityRole="button" onPress={() => router.push("/downloads")}>
+          <Card className="flex-row items-center justify-between p-4">
+            <Text variant="title">{t("nav.downloads")}</Text>
+            <Text variant="muted">{locale === "ar" ? "←" : "→"}</Text>
+          </Card>
+        </Pressable>
       </View>
 
       <CategoryPills

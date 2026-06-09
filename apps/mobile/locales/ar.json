@@ -3,7 +3,14 @@
     "appName": "نور",
     "loading": "جارٍ التحميل…",
     "error": "حدث خطأ ما.",
-    "retry": "إعادة المحاولة"
+    "retry": "إعادة المحاولة",
+    "ok": "حسنًا"
+  },
+  "settings": {
+    "toggleTheme": "تبديل السمة",
+    "switchLocale": "التبديل إلى {{locale}}",
+    "localeChanged": "تم تغيير اللغة",
+    "restartRequired": "أعِد تشغيل التطبيق لتفعيل اتجاه النص الجديد."
   },
   "player": {
     "miniPlayer": "يعمل الآن",
@@ -16,7 +23,19 @@
   "nav": {
     "quran": "القرآن",
     "adhkar": "الأذكار",
-    "prayerTimes": "مواقيت الصلاة"
+    "prayerTimes": "مواقيت الصلاة",
+    "downloads": "التنزيلات"
+  },
+  "downloads": {
+    "heading": "التنزيلات",
+    "empty": "لا توجد تنزيلات بعد. نزّل المقاطع للاستماع دون اتصال.",
+    "downloadAll": "تنزيل الكل",
+    "downloaded": "تم التنزيل",
+    "downloading_sr": "جارٍ تنزيل {{title}}",
+    "download_sr": "تنزيل {{title}}",
+    "retry": "إعادة المحاولة",
+    "delete": "حذف",
+    "totalSize": "{{size}} منزّل"
   },
   "home": {
     "playlistsTitle": "قوائم التشغيل",

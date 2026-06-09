@@ -5,51 +5,32 @@ module.exports = {
   presets: [require("nativewind/preset")],
   theme: {
     extend: {
-      // Verbatim from packages/ui/src/styles/tokens.css (CLAUDE.md §3.1 / plan §3.1).
-      // Dark values are the defaults; `dark:` variants below carry the light theme
-      // — NativeWind's `darkMode: "class"` toggles on the root `dark` class, so we
-      // invert the usual pairing (base = dark token, `dark:` = light token) to keep
-      // the app's default (dark) palette as the bare utility.
+      // Semantic colors are CSS custom properties resolved at runtime by
+      // lib/theme-context.tsx (NativeWind vars() helper). This lets the
+      // ThemeProvider swap dark ↔ light by changing the CSS var values on the
+      // root View — no component needs updating when the theme changes.
       colors: {
-        bg: "#0f0d0a",
-        surface: "#1c1915",
-        "surface-2": "#252018",
-        border: "rgb(200 160 80 / 0.15)",
-        text: "#f0e6cc",
-        "text-2": "#8a7a62",
-        muted: "#5a4a38",
-        primary: "#c8a050",
-        "primary-fg": "#0f0d0a",
-        sun: "#e4c57e",
-        secondary: "#0e6e59",
-        accent: "#c6a266",
-        success: "#48b57c",
-        warning: "#e0a14a",
-        danger: "#e26a63",
-        focus: "#c8a050",
-        // Light-theme counterparts — referenced explicitly (e.g. `bg-light-bg`)
-        // by the theme provider when `colorScheme === "light"".
-        "light-bg": "#fdfaf4",
-        "light-surface": "#ffffff",
-        "light-surface-2": "#f4f1e8",
-        "light-border": "#e6e2d7",
-        "light-text": "#13201a",
-        "light-text-2": "#3f4a44",
-        "light-muted": "#6b7670",
-        "light-primary": "#9a7830",
-        "light-primary-fg": "#ffffff",
-        "light-sun": "#c8a050",
-        "light-secondary": "#0e6e59",
-        "light-accent": "#a8884a",
-        "light-success": "#147d4a",
-        "light-warning": "#a66400",
-        "light-danger": "#b3261e",
-        "light-focus": "#9a7830",
+        bg: "var(--color-bg)",
+        surface: "var(--color-surface)",
+        "surface-2": "var(--color-surface-2)",
+        border: "var(--color-border)",
+        text: "var(--color-text)",
+        "text-2": "var(--color-text-2)",
+        muted: "var(--color-muted)",
+        primary: "var(--color-primary)",
+        "primary-fg": "var(--color-primary-fg)",
+        sun: "var(--color-sun)",
+        secondary: "var(--color-secondary)",
+        accent: "var(--color-accent)",
+        success: "var(--color-success)",
+        warning: "var(--color-warning)",
+        danger: "var(--color-danger)",
+        focus: "var(--color-focus)",
       },
       fontFamily: {
-        display: ["Fraunces"],
-        sans: ["Inter"],
-        quran: ["Amiri Quran"],
+        display: ["Fraunces_400Regular", "System"],
+        sans: ["Inter_400Regular", "System"],
+        quran: ["AmiriQuran_400Regular", "System"],
       },
       borderRadius: {
         sm: "6px",

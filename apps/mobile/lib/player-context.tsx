@@ -5,6 +5,7 @@
 // background playback, lock-screen controls, and the OS Now-Playing card.
 
 import * as React from "react";
+import { getLocalPath } from "@/lib/downloads";
 import TrackPlayer, {
   Capability,
   Event,
@@ -417,9 +418,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     const load = async (): Promise<void> => {
       await setupPlayer();
       await TrackPlayer.reset();
+      // Prefer a locally downloaded file over the remote URL (offline support).
+      const localPath = await getLocalPath(track.id);
       await TrackPlayer.add({
         id: track.id,
-        url: track.mediaUrl,
+        url: localPath ?? track.mediaUrl,
         title: track.title,
         artist: track.playlistTitle ?? "",
         artwork: track.coverUrl,
