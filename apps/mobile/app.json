@@ -43,6 +43,7 @@
     },
     "android": {
       "package": "com.nour.mobile",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#0f0d0a",
         "foregroundImage": "./assets/android-icon-foreground.png",
