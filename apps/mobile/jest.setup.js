@@ -3,6 +3,23 @@ jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 );
 
+// expo-location mock.
+jest.mock("expo-location", () => ({
+  requestForegroundPermissionsAsync: jest.fn().mockResolvedValue({ status: "granted" }),
+  getCurrentPositionAsync: jest.fn().mockResolvedValue({ coords: { latitude: 30.0444, longitude: 31.2357 } }),
+  Accuracy: { Balanced: 3 },
+}));
+
+// expo-notifications mock.
+jest.mock("expo-notifications", () => ({
+  getPermissionsAsync: jest.fn().mockResolvedValue({ status: "undetermined" }),
+  requestPermissionsAsync: jest.fn().mockResolvedValue({ status: "granted" }),
+  getAllScheduledNotificationsAsync: jest.fn().mockResolvedValue([]),
+  scheduleNotificationAsync: jest.fn().mockResolvedValue("notif-id"),
+  cancelScheduledNotificationAsync: jest.fn().mockResolvedValue(undefined),
+  SchedulableTriggerInputTypes: { DATE: "date" },
+}));
+
 // react-native-track-player has no JS-only fallback — provide a complete mock.
 jest.mock("react-native-track-player", () => {
   const State = { None: "none", Playing: "playing", Paused: "paused", Buffering: "buffering", Loading: "loading" };

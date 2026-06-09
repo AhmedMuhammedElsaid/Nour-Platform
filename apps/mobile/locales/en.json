@@ -6,7 +6,8 @@
     "retry": "Retry"
   },
   "nav": {
-    "adhkar": "Adhkar"
+    "adhkar": "Adhkar",
+    "prayerTimes": "Prayer Times"
   },
   "home": {
     "playlistsTitle": "Playlists",
@@ -40,6 +41,74 @@
     "reset": "Start over",
     "completed": "Done",
     "countLabel": "Count this dhikr"
+  },
+  "prayer": {
+    "title": "Prayer Times",
+    "nav": "Prayer Times",
+    "next": "Next prayer",
+    "countdown": "in {h}h {m}m",
+    "at": "at {time}",
+    "now": "now {time}",
+    "changeCity": "Change city",
+    "useMyLocation": "Use my location",
+    "locating": "Locating…",
+    "currentLocation": "Current",
+    "myLocation": "My location",
+    "locationSet": "Location set: {city}",
+    "searchCity": "Search a city…",
+    "locationDenied": "Couldn't get your location — showing times for {{city}}.",
+    "locationInsecure": "Location needs a secure connection.",
+    "locationUnsupported": "Your device doesn't support location.",
+    "locationDeniedPerm": "Location is blocked. Allow it in Settings, then retry.",
+    "locationTimeout": "Locating took too long. Please try again.",
+    "locationUnavailable": "Your location is unavailable right now. Try again or pick a city.",
+    "calculation": "Calculation method",
+    "method": "Method",
+    "madhab": "Asr (madhab)",
+    "madhabStandard": "Standard",
+    "madhabHanafi": "Hanafi",
+    "fajr": "Fajr",
+    "sunrise": "Sunrise",
+    "dhuhr": "Dhuhr",
+    "asr": "Asr",
+    "maghrib": "Maghrib",
+    "isha": "Isha",
+    "methodMuslimWorldLeague": "Muslim World League",
+    "methodEgyptian": "Egyptian General Authority",
+    "methodKarachi": "University of Islamic Sciences, Karachi",
+    "methodUmmAlQura": "Umm al-Qura, Makkah",
+    "methodDubai": "Dubai",
+    "methodMoonsightingCommittee": "Moonsighting Committee",
+    "methodNorthAmerica": "North America (ISNA)",
+    "methodKuwait": "Kuwait",
+    "methodQatar": "Qatar",
+    "methodSingapore": "Singapore",
+    "methodTurkey": "Turkey",
+    "methodTehran": "Tehran",
+    "adhan": {
+      "title": "Adhan (call to prayer)",
+      "enable": "Play adhan at prayer times",
+      "perPrayer": "Which prayers",
+      "volume": "Volume",
+      "background": "Enable notifications",
+      "backgroundUnsupported": "Notifications aren't supported. The adhan still plays while Nour is open.",
+      "autoplayHint": "Keep Nour open. The adhan plays once you've interacted with the app.",
+      "adhanBody": "It's time for prayer."
+    },
+    "azkar": {
+      "title": "Adhkar reminder",
+      "enable": "Remind me of morning & evening adhkar",
+      "hint": "We'll remind you of Adhkar al-Sabah 15 min after Fajr, and Adhkar al-Masaa 15 min after Asr.",
+      "foregroundOnly": "Background notifications aren't supported. The reminder still fires while Nour is open.",
+      "sabah": {
+        "title": "Adhkar al-Sabah",
+        "body": "Time for the morning adhkar — tap to read."
+      },
+      "masaa": {
+        "title": "Adhkar al-Masaa",
+        "body": "Time for the evening adhkar — tap to read."
+      }
+    }
   },
   "playlist": {
     "by": "By",
