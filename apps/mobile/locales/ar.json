@@ -14,6 +14,7 @@
     "retry": "إعادة المحاولة"
   },
   "nav": {
+    "quran": "القرآن",
     "adhkar": "الأذكار",
     "prayerTimes": "مواقيت الصلاة"
   },
@@ -116,5 +117,30 @@
     "tracksHeading": "المقاطع",
     "playAll": "تشغيل الكل",
     "noTracks": "لا توجد مقاطع بعد."
+  },
+  "quran": {
+    "title": "القرآن الكريم",
+    "surah": "سورة",
+    "juz": "جزء",
+    "juzPlaceholder": "التنقّل بالأجزاء سيتوفّر في التحديث القادم.",
+    "ayahs": "آية",
+    "bookmarks": "المحفوظات",
+    "bookmarksEmpty": "لا توجد محفوظات بعد.",
+    "settings": "إعدادات القراءة",
+    "showTranslation": "إظهار الترجمة",
+    "wordByWord": "كلمة بكلمة",
+    "fontSize": "حجم الخط",
+    "fontSmaller": "تصغير الخط",
+    "fontLarger": "تكبير الخط",
+    "translation": "الترجمة",
+    "reciter": "القارئ",
+    "repeatAyah": "تكرار",
+    "playAyah": "تشغيل الآية",
+    "pauseAyah": "إيقاف الآية",
+    "addBookmark": "إضافة إشارة",
+    "removeBookmark": "إزالة الإشارة",
+    "tafsir": "التفسير",
+    "loading": "جارٍ التحميل…",
+    "tafsirError": "التفسير غير متوفر لهذه الآية."
   }
 }

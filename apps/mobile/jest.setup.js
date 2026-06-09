@@ -20,6 +20,29 @@ jest.mock("expo-notifications", () => ({
   SchedulableTriggerInputTypes: { DATE: "date" },
 }));
 
+// expo-audio (Quran reciter playback) — stable player object so the reader's
+// useCallback deps don't churn under test.
+jest.mock("expo-audio", () => {
+  const player = {
+    play: jest.fn(),
+    pause: jest.fn(),
+    replace: jest.fn(),
+    seekTo: jest.fn(),
+    remove: jest.fn(),
+  };
+  return {
+    useAudioPlayer: () => player,
+    useAudioPlayerStatus: () => ({
+      playing: false,
+      didJustFinish: false,
+      isLoaded: false,
+      currentTime: 0,
+      duration: 0,
+    }),
+    setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
+  };
+});
+
 // react-native-track-player has no JS-only fallback — provide a complete mock.
 jest.mock("react-native-track-player", () => {
   const State = { None: "none", Playing: "playing", Paused: "paused", Buffering: "buffering", Loading: "loading" };
