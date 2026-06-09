@@ -11,8 +11,8 @@ export type AdhanPlayerHandle = {
   // Play the adhan for `key` at the given volume (0..1). Returns the audio
   // element's play() promise so callers can detect autoplay-block rejection.
   play: (key: AdhanPrayerKey, volume: number) => Promise<void>;
-  // Prime both elements during a user gesture so later timed playback is
-  // allowed by the browser autoplay policy (load() counts as the gesture).
+  // Prime both elements during a user gesture (silent muted play/pause) so a
+  // later timed playback is allowed by the browser autoplay policy.
   unlock: () => void;
 };
 
@@ -34,10 +34,23 @@ export const AdhanPlayer = forwardRef<AdhanPlayerHandle>(function AdhanPlayer(
       await el.play();
     },
     unlock: () => {
+      // load() alone does NOT satisfy the autoplay policy — only a play()
+      // invoked inside a user gesture grants the element the sticky activation
+      // that lets a later *timed* play() (no gesture) run. Prime each element
+      // with a muted play()/pause() so it's silent but unlocked.
       for (const el of [regularRef.current, fajrRef.current]) {
-        // load() during a user gesture marks the element as user-activated
-        // without making sound, so the scheduled play() later won't be blocked.
-        el?.load();
+        if (!el) continue;
+        const wasMuted = el.muted;
+        el.muted = true;
+        el.play()
+          .then(() => {
+            el.pause();
+            el.currentTime = 0;
+            el.muted = wasMuted;
+          })
+          .catch(() => {
+            el.muted = wasMuted;
+          });
       }
     },
   }));
