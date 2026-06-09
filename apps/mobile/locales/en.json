@@ -6,6 +6,28 @@
     "retry": "Retry"
   },
   "home": {
-    "playlistsTitle": "Playlists"
+    "playlistsTitle": "Playlists",
+    "heroTitle": "Your Islamic Audio Library",
+    "heroSubtitle": "Listen to Quran, lectures, and more — in Arabic and English",
+    "library": "Library",
+    "empty": "No playlists in this category yet.",
+    "allCategories": "All",
+    "trackCount": "{{count}} tracks",
+    "continueListening": "Continue listening",
+    "continueReading": "Continue reading",
+    "surah": "Surah",
+    "ayah": "Ayah {{number}}",
+    "sort": {
+      "newest": "Newest",
+      "az": "A–Z",
+      "tracks": "Most tracks"
+    }
+  },
+  "playlist": {
+    "by": "By",
+    "trackCount": "{{count}} tracks",
+    "tracksHeading": "Tracks",
+    "playAll": "Play all",
+    "noTracks": "No tracks yet."
   }
 }

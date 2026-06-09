@@ -6,6 +6,28 @@
     "retry": "إعادة المحاولة"
   },
   "home": {
-    "playlistsTitle": "قوائم التشغيل"
+    "playlistsTitle": "قوائم التشغيل",
+    "heroTitle": "مكتبتك الصوتية الإسلامية",
+    "heroSubtitle": "استمع إلى القرآن والمحاضرات وغيرها — بالعربية والإنجليزية",
+    "library": "المكتبة",
+    "empty": "لا توجد قوائم تشغيل في هذا التصنيف بعد.",
+    "allCategories": "الكل",
+    "trackCount": "{{count}} مقطع",
+    "continueListening": "متابعة الاستماع",
+    "continueReading": "متابعة القراءة",
+    "surah": "سورة",
+    "ayah": "الآية {{number}}",
+    "sort": {
+      "newest": "الأحدث",
+      "az": "أ–ي",
+      "tracks": "الأكثر مقاطع"
+    }
+  },
+  "playlist": {
+    "by": "بصوت",
+    "trackCount": "{{count}} مقطع",
+    "tracksHeading": "المقاطع",
+    "playAll": "تشغيل الكل",
+    "noTracks": "لا توجد مقاطع بعد."
   }
 }
