@@ -21,9 +21,15 @@ export function SunArc({
   isNight?: boolean;
 }) {
   // `sunFraction` is the day's Fajr→Isha progress for the sun, or the night's
-  // sunset→sunrise progress for the moon (computed by the caller). Either way it
-  // rides the same arc left→right.
-  const sun = arcPoint(tForFraction(sunFraction));
+  // Isha→Fajr progress for the moon (computed by the caller). Both ride the same
+  // left→right arc; the moon is lowered onto a separate night band (its height
+  // above the horizon scaled by NIGHT_BAND) so it never overlaps the daytime
+  // prayer labels. Only one of the sun/moon is ever rendered (see isNight below).
+  const NIGHT_BAND = 0.34;
+  const point = arcPoint(tForFraction(sunFraction));
+  const sun = isNight
+    ? { x: point.x, y: ARC.p0.y - (ARC.p0.y - point.y) * NIGHT_BAND }
+    : point;
 
   return (
     <svg
