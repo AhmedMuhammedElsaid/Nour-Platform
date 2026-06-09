@@ -1,0 +1,11 @@
+{
+  "common": {
+    "appName": "Nour",
+    "loading": "Loading…",
+    "error": "Something went wrong.",
+    "retry": "Retry"
+  },
+  "home": {
+    "playlistsTitle": "Playlists"
+  }
+}
