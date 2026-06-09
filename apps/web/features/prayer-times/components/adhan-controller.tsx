@@ -42,6 +42,18 @@ export function AdhanController() {
     };
   }, []);
 
+  // The adhan mp3s (~13.5 MB) are no longer precached for every visitor — ask
+  // the service worker to cache them once azan is actually enabled, so timed
+  // playback works offline too. The SW skips files it already has; no-op in
+  // dev (no SW registered) and on browsers without service workers.
+  useEffect(() => {
+    if (!ready || !settings.enabled) return;
+    if (typeof navigator === "undefined" || !navigator.serviceWorker) return;
+    void navigator.serviceWorker.ready.then((reg) => {
+      reg.active?.postMessage({ type: "nour:cache-adhan" });
+    });
+  }, [ready, settings.enabled]);
+
   // Layer A — foreground autoplay.
   useAdhanScheduler({
     settings,
