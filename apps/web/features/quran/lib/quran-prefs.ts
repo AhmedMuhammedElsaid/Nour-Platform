@@ -1,41 +1,27 @@
+import { z } from "zod";
+
+import { readDeviceStore, writeDeviceStore } from "@/lib/device-store";
+
 export type ReaderLayout = "list" | "mushaf";
 
-export interface QuranPrefs {
-  translationSlug: string;
-  reciterSlug: string;
-  showTranslation: boolean;
-  showWordByWord: boolean;
-  fontScale: number; // 1 = base; clamped 0.8..1.6 by the settings UI
-  layout: ReaderLayout;
-}
+const quranPrefsSchema = z.object({
+  translationSlug: z.string().default("en.sahih"),
+  reciterSlug: z.string().default("qatami"),
+  showTranslation: z.boolean().default(true),
+  showWordByWord: z.boolean().default(false),
+  fontScale: z.number().default(1), // 1 = base; clamped 0.8..1.6 by the settings UI
+  layout: z.enum(["list", "mushaf"]).default("list"),
+});
+export type QuranPrefs = z.infer<typeof quranPrefsSchema>;
 
 const KEY = "nour.quran.prefs";
 
-export const DEFAULT_PREFS: QuranPrefs = {
-  translationSlug: "en.sahih",
-  reciterSlug: "qatami",
-  showTranslation: true,
-  showWordByWord: false,
-  fontScale: 1,
-  layout: "list",
-};
+export const DEFAULT_PREFS: QuranPrefs = quranPrefsSchema.parse({});
 
 export function loadPrefs(): QuranPrefs {
-  if (typeof window === "undefined") return DEFAULT_PREFS;
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    if (!raw) return DEFAULT_PREFS;
-    return { ...DEFAULT_PREFS, ...(JSON.parse(raw) as Partial<QuranPrefs>) };
-  } catch {
-    return DEFAULT_PREFS;
-  }
+  return readDeviceStore(KEY, quranPrefsSchema, DEFAULT_PREFS);
 }
 
 export function savePrefs(prefs: QuranPrefs): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(KEY, JSON.stringify(prefs));
-  } catch {
-    // best-effort — prefs are non-critical
-  }
+  writeDeviceStore(KEY, prefs);
 }

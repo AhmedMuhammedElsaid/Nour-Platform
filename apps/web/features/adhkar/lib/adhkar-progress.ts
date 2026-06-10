@@ -1,12 +1,17 @@
 // Device-local adhkar progress (APP_CONTEXT: device-local, no auth). Resets
 // each calendar day so morning/evening adhkar behave like a daily checklist.
 
+import { z } from "zod";
+
+import { readDeviceStore, writeDeviceStore } from "@/lib/device-store";
+
 const STORAGE_KEY = "nour.adhkar.progress";
 
-export type AzkarProgress = {
-  date: string; // YYYY-MM-DD (local)
-  sets: Record<string, Record<string, number>>; // setId -> itemIndex -> count
-};
+const azkarProgressSchema = z.object({
+  date: z.string(), // YYYY-MM-DD (local)
+  sets: z.record(z.string(), z.record(z.string(), z.number())), // setId -> itemIndex -> count
+});
+export type AzkarProgress = z.infer<typeof azkarProgressSchema>;
 
 function today(): string {
   const d = new Date();
@@ -20,27 +25,11 @@ function empty(): AzkarProgress {
 }
 
 export function readAzkarProgress(): AzkarProgress {
-  if (typeof window === "undefined") return empty();
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return empty();
-    const parsed = JSON.parse(raw) as AzkarProgress;
-    if (typeof parsed?.date !== "string" || typeof parsed?.sets !== "object") {
-      return empty();
-    }
-    return parsed;
-  } catch {
-    return empty();
-  }
+  return readDeviceStore(STORAGE_KEY, azkarProgressSchema, empty());
 }
 
 function write(p: AzkarProgress): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
-  } catch {
-    /* non-fatal */
-  }
+  writeDeviceStore(STORAGE_KEY, p);
 }
 
 // Clears all progress if the stored date is not today. Call on mount.

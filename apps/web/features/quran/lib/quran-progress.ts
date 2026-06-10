@@ -1,42 +1,28 @@
-export interface AyahRef {
-  surah: number;
-  ayah: number; // ayah-in-surah
-  numberGlobal?: number;
-  surahName?: string;
-}
+import { z } from "zod";
+
+import { readDeviceStore, writeDeviceStore } from "@/lib/device-store";
+
+const ayahRefSchema = z.object({
+  surah: z.number(),
+  ayah: z.number(), // ayah-in-surah
+  numberGlobal: z.number().optional(),
+  surahName: z.string().optional(),
+});
+export type AyahRef = z.infer<typeof ayahRefSchema>;
 
 const LAST_READ_KEY = "nour.quran.lastread";
 const BOOKMARKS_KEY = "nour.quran.bookmarks";
 
-function read<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function write(key: string, value: unknown): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // best-effort
-  }
-}
-
 export function setLastRead(ref: AyahRef): void {
-  write(LAST_READ_KEY, ref);
+  writeDeviceStore(LAST_READ_KEY, ref);
 }
 
 export function getLastRead(): AyahRef | null {
-  return read<AyahRef | null>(LAST_READ_KEY, null);
+  return readDeviceStore(LAST_READ_KEY, ayahRefSchema.nullable(), null);
 }
 
 export function getBookmarks(): AyahRef[] {
-  return read<AyahRef[]>(BOOKMARKS_KEY, []);
+  return readDeviceStore(BOOKMARKS_KEY, z.array(ayahRefSchema), []);
 }
 
 export function isBookmarked(ref: AyahRef): boolean {
@@ -49,6 +35,6 @@ export function toggleBookmark(ref: AyahRef): AyahRef[] {
   const next = exists
     ? current.filter((b) => !(b.surah === ref.surah && b.ayah === ref.ayah))
     : [...current, ref];
-  write(BOOKMARKS_KEY, next);
+  writeDeviceStore(BOOKMARKS_KEY, next);
   return next;
 }
