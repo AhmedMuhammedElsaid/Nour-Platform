@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-import { getPublishedPlaylists } from "@repo/api/services/playlist";
-import { listCategories } from "@repo/api/services/category";
 import { LOCALES, type Locale } from "@repo/api/schemas/locale";
 import type { Playlist } from "@repo/api/schemas/playlist";
+import {
+  getCachedPublishedPlaylists,
+  getCachedCategories,
+} from "@/lib/cached-content";
 import { localeAlternates, defaultOpenGraph, defaultTwitter } from "@/lib/seo";
 
 // Opt out of static prerendering. proxy.ts sets a per-request CSP nonce,
@@ -65,16 +67,14 @@ export default async function HomePage({
   const t = await getTranslations("home");
 
   // Fetch all categories (no locale param — embedded ar/en on each doc).
-  const categories = await listCategories();
+  const categories = await getCachedCategories();
 
   // Match the ?category= slug against the locale-specific slug field.
   const matchedCategory =
     category != null ? categories.find((c) => c[locale].slug === category) : undefined;
   const categoryId = matchedCategory?.id;
 
-  const playlists = await getPublishedPlaylists(
-    categoryId != null ? { categoryId } : undefined,
-  );
+  const playlists = await getCachedPublishedPlaylists(categoryId);
 
   // Sort server-side from the ?sort= URL param so order is shareable and
   // the RSC grid renders the right sequence on first load.

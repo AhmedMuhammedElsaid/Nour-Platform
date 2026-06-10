@@ -1,4 +1,4 @@
-import { listCategories } from "@repo/api/services/category";
+import { getCachedCategories } from "@/lib/cached-content";
 
 import { corsPreflight } from "@/lib/cors";
 import { jsonOk, jsonError } from "../_lib/respond";
@@ -13,7 +13,7 @@ export function OPTIONS(): Response {
 
 export async function GET(): Promise<Response> {
   try {
-    const categories = await listCategories();
+    const categories = await getCachedCategories();
     return jsonOk(categories.map(withIsoDates));
   } catch (error) {
     return jsonError(error);

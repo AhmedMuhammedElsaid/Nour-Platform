@@ -1,5 +1,7 @@
-import { getPublishedPlaylists } from "@repo/api/services/playlist";
-import { listCategories } from "@repo/api/services/category";
+import {
+  getCachedPublishedPlaylists,
+  getCachedCategories,
+} from "@/lib/cached-content";
 
 import { corsPreflight } from "@/lib/cors";
 import { jsonOk, jsonError } from "../_lib/respond";
@@ -20,7 +22,7 @@ export async function GET(request: Request): Promise<Response> {
 
     let categoryId: string | undefined;
     if (categorySlug != null) {
-      const categories = await listCategories();
+      const categories = await getCachedCategories();
       categoryId = categories.find(
         (c) => c.ar.slug === categorySlug || c.en.slug === categorySlug,
       )?.id;
@@ -29,7 +31,7 @@ export async function GET(request: Request): Promise<Response> {
       }
     }
 
-    const playlists = await getPublishedPlaylists(categoryId != null ? { categoryId } : undefined);
+    const playlists = await getCachedPublishedPlaylists(categoryId);
     const sorted =
       sort === "tracks"
         ? [...playlists].sort((a, b) => (b.trackCount ?? 0) - (a.trackCount ?? 0))

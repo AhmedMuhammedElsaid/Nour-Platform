@@ -118,8 +118,11 @@ curl -sI -H "Origin: https://<domain>" -H "Range: bytes=0-1" \
    | `R2_PUBLIC_BASE` | `https://<cdn-domain>` (will resolve in step 6) |
    | `NEXT_PUBLIC_WEB_URL` | `https://<domain>` |
    | `NEXT_PUBLIC_ADMIN_URL` | `https://<admin-domain>` |
+   | `REVALIDATE_SECRET` | a shared secret (`openssl rand -hex 16`) — **same value on web AND admin** |
 
    (Reference: [`.env.example`](./.env.example) is the source of truth for the full list. `SENTRY_DSN` and `R2_MAX_UPLOAD_BYTES` are optional.)
+
+   > **Cache invalidation:** the web app caches its public read path (5-min TTL). For admin content edits to appear on web *immediately* rather than within 5 minutes, the admin project also needs `WEB_REVALIDATE_URL=https://<domain>/api/revalidate` and the same `REVALIDATE_SECRET` (see step 4). Without them the cache still self-heals on the TTL.
 
 4. **Deploy**. The first build will take 2–4 minutes.
 
@@ -134,6 +137,7 @@ Repeat step 3 with these changes:
 - **Project name**: `nour-admin`
 - **Root Directory**: `apps/admin`
 - Same env vars as web. `NEXT_PUBLIC_ADMIN_URL` still points at `https://<admin-domain>` and `NEXT_PUBLIC_WEB_URL` still points at `https://<domain>`.
+- **Add `WEB_REVALIDATE_URL`** = `https://<domain>/api/revalidate` and the **same `REVALIDATE_SECRET`** as web, so admin mutations bust web's data cache immediately (otherwise edits appear within the 5-min TTL).
 
 **Verify:** visiting the `*.vercel.app` URL redirects you to `/login` (middleware gate working).
 

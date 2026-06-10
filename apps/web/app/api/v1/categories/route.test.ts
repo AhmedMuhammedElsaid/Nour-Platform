@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@repo/api/services/category", () => ({ listCategories: vi.fn() }));
+vi.mock("@/lib/cached-content", () => ({ getCachedCategories: vi.fn() }));
 
-const { listCategories } = await import("@repo/api/services/category");
+const { getCachedCategories } = await import("@/lib/cached-content");
 const { GET, OPTIONS } = await import("./route");
 
 describe("GET /api/v1/categories", () => {
   it("returns categories with embedded ar+en", async () => {
-    vi.mocked(listCategories).mockResolvedValueOnce([
+    vi.mocked(getCachedCategories).mockResolvedValueOnce([
       { id: "cat1", ar: { name: "ك", slug: "k" }, en: { name: "C", slug: "c" }, createdAt: new Date("2024-01-01"), updatedAt: new Date("2024-01-01") },
     ]);
     const res = await GET();
@@ -18,7 +18,7 @@ describe("GET /api/v1/categories", () => {
   });
 
   it("returns empty array", async () => {
-    vi.mocked(listCategories).mockResolvedValueOnce([]);
+    vi.mocked(getCachedCategories).mockResolvedValueOnce([]);
     const res = await GET();
     expect(await res.json()).toEqual([]);
   });

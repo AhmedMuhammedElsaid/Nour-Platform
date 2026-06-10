@@ -1,10 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@repo/api/services/playlist", () => ({ getPublishedPlaylists: vi.fn() }));
-vi.mock("@repo/api/services/category", () => ({ listCategories: vi.fn() }));
+vi.mock("@/lib/cached-content", () => ({
+  getCachedPublishedPlaylists: vi.fn(),
+  getCachedCategories: vi.fn(),
+}));
 
-const { getPublishedPlaylists } = await import("@repo/api/services/playlist");
-const { listCategories } = await import("@repo/api/services/category");
+const { getCachedPublishedPlaylists, getCachedCategories } = await import(
+  "@/lib/cached-content"
+);
 const { GET, OPTIONS } = await import("./route");
 
 function req(url: string): Request {
@@ -25,7 +28,7 @@ const playlist = {
 
 describe("GET /api/v1/playlists", () => {
   it("returns playlists with embedded ar+en and ISO dates", async () => {
-    vi.mocked(getPublishedPlaylists).mockResolvedValueOnce([playlist]);
+    vi.mocked(getCachedPublishedPlaylists).mockResolvedValueOnce([playlist]);
     const res = await GET(req("/api/v1/playlists"));
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -35,23 +38,23 @@ describe("GET /api/v1/playlists", () => {
   });
 
   it("sets CORS headers", async () => {
-    vi.mocked(getPublishedPlaylists).mockResolvedValueOnce([]);
+    vi.mocked(getCachedPublishedPlaylists).mockResolvedValueOnce([]);
     const res = await GET(req("/api/v1/playlists"));
     expect(res.headers.get("access-control-allow-origin")).toBeTruthy();
   });
 
   it("resolves ?category=<slug> to an id", async () => {
-    vi.mocked(listCategories).mockResolvedValueOnce([
+    vi.mocked(getCachedCategories).mockResolvedValueOnce([
       { id: "cat1", ar: { name: "ك", slug: "k" }, en: { name: "C", slug: "c" }, createdAt: new Date(), updatedAt: new Date() },
     ]);
-    vi.mocked(getPublishedPlaylists).mockResolvedValueOnce([playlist]);
+    vi.mocked(getCachedPublishedPlaylists).mockResolvedValueOnce([playlist]);
     const res = await GET(req("/api/v1/playlists?category=c"));
-    expect(getPublishedPlaylists).toHaveBeenCalledWith({ categoryId: "cat1" });
+    expect(getCachedPublishedPlaylists).toHaveBeenCalledWith("cat1");
     expect(res.status).toBe(200);
   });
 
   it("returns empty array for unknown category slug", async () => {
-    vi.mocked(listCategories).mockResolvedValueOnce([]);
+    vi.mocked(getCachedCategories).mockResolvedValueOnce([]);
     const res = await GET(req("/api/v1/playlists?category=missing"));
     const body = await res.json();
     expect(body).toEqual([]);

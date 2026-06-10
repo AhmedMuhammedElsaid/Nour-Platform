@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-import { getPlaylistBySlug } from "@repo/api/services/playlist";
 import { LOCALES } from "@repo/api/schemas/locale";
 import {
   localeAlternates,
@@ -32,9 +31,12 @@ function decodeSlug(raw: string): string {
 // which would mismatch a cached static HTML body; forcing dynamic rendering
 // is also what the deploy build (no Atlas connection at build time) requires.
 export const dynamic = "force-dynamic";
-import { getTracksWithUrls } from "@repo/api/services/track";
 import { getMediaUrlById } from "@repo/api/services/media";
-import { listCategories } from "@repo/api/services/category";
+import {
+  getCachedPlaylistBySlug,
+  getCachedTracksWithUrls,
+  getCachedCategories,
+} from "@/lib/cached-content";
 import Image from "next/image";
 import type { Locale } from "@repo/api/schemas/locale";
 import type { Playlist } from "@repo/api/schemas/playlist";
@@ -89,7 +91,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale, slug } = await params;
   const t = await getTranslations({ locale, namespace: "metadata" });
-  const playlist = await getPlaylistBySlug(locale, decodeSlug(slug));
+  const playlist = await getCachedPlaylistBySlug(locale, decodeSlug(slug));
 
   if (!playlist || playlist.status !== "published") {
     return { title: t("notFound"), robots: { index: false } };
@@ -145,12 +147,14 @@ export default async function PlaylistDetailPage({
   setRequestLocale(locale);
   const t = await getTranslations("playlist");
 
-  const playlist = await getPlaylistBySlug(locale, decodeSlug(slug));
+  const playlist = await getCachedPlaylistBySlug(locale, decodeSlug(slug));
   if (!playlist || playlist.status !== "published") notFound();
 
   // Skip R2 track resolution when an external embed URL is set — audio is
   // handled entirely by the embedded third-party page/player.
-  const tracks = playlist.embedUrl ? [] : await getTracksWithUrls(playlist.id);
+  const tracks = playlist.embedUrl
+    ? []
+    : await getCachedTracksWithUrls(playlist.id);
   const embed = playlist.embedUrl ? await resolveEmbed(playlist.embedUrl) : null;
   const coverUrl = playlist.coverMediaId
     ? await getMediaUrlById(playlist.coverMediaId)
@@ -160,7 +164,8 @@ export default async function PlaylistDetailPage({
   const serializedPlaylist = serializePlaylist(playlist);
   const displayTracks = tracks.map((t) => toDisplayTrack(t, locale));
 
-  const allCategories = playlist.categoryIds.length > 0 ? await listCategories() : [];
+  const allCategories =
+    playlist.categoryIds.length > 0 ? await getCachedCategories() : [];
   const playlistCategories = playlist.categoryIds
     .map((id) => allCategories.find((c) => c.id === id))
     .filter((c): c is NonNullable<typeof c> => c != null)
