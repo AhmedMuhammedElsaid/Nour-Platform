@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../auth/require-session", () => ({ requireSession: vi.fn() }));
-vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }));
+vi.mock("../cache/invalidate", () => ({ invalidate: vi.fn() }));
 vi.mock("../repositories/azkar.repo", () => ({
   findPublishedAzkar: vi.fn(),
   findAllAzkar: vi.fn(),
@@ -17,7 +17,7 @@ vi.mock("../db/models/azkar.model", () => ({
 }));
 
 import { requireSession } from "../auth/require-session";
-import { revalidateTag } from "next/cache";
+import { invalidate } from "../cache/invalidate";
 import * as repo from "../repositories/azkar.repo";
 import {
   getPublishedAzkar,
@@ -107,8 +107,7 @@ describe("azkar.service mutations", () => {
   it("publishAzkar revalidates tags", async () => {
     vi.mocked(repo.updateAzkarById).mockResolvedValue(lean as never);
     await publishAzkar("a1");
-    expect(revalidateTag).toHaveBeenCalledWith("adhkar", "default");
-    expect(revalidateTag).toHaveBeenCalledWith("azkar:a1", "default");
+    expect(invalidate).toHaveBeenCalledWith(["adhkar", "azkar:a1"]);
   });
 
   it("deleteAzkar requires existing doc", async () => {
@@ -120,13 +119,13 @@ describe("azkar.service mutations", () => {
     vi.mocked(repo.updateAzkarById).mockResolvedValue(lean as never);
     await unpublishAzkar("a1");
     expect(repo.updateAzkarById).toHaveBeenCalledWith("a1", { status: "draft" });
-    expect(revalidateTag).toHaveBeenCalledWith("adhkar", "default");
+    expect(invalidate).toHaveBeenCalledWith(["adhkar", "azkar:a1"]);
   });
 
   it("reorderAzkar checks session + revalidates", async () => {
     await reorderAzkar(["a1", "a2"]);
     expect(requireSession).toHaveBeenCalledWith(["admin"]);
     expect(repo.updateAzkarOrder).toHaveBeenCalledWith(["a1", "a2"]);
-    expect(revalidateTag).toHaveBeenCalledWith("adhkar", "default");
+    expect(invalidate).toHaveBeenCalledWith(["adhkar"]);
   });
 });

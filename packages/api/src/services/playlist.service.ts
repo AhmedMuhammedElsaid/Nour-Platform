@@ -1,7 +1,6 @@
-import { revalidateTag } from "next/cache";
-
 import { requireSession } from "../auth/require-session";
 import { PLAYLISTS_HOME, playlistTag } from "../cache/tags";
+import { invalidate } from "../cache/invalidate";
 import {
   createPlaylist as repoCreatePlaylist,
   deletePlaylistById,
@@ -209,8 +208,7 @@ export async function updatePlaylist(
   const lean = await updatePlaylistById(id, parsed);
   if (!lean) throw AppError.NotFound("Playlist");
 
-  revalidateTag(PLAYLISTS_HOME, "default");
-  revalidateTag(playlistTag(lean._id.toString()), "default");
+  await invalidate([PLAYLISTS_HOME, playlistTag(lean._id.toString())]);
 
   return toDto(lean);
 }
@@ -224,8 +222,7 @@ export async function deletePlaylist(id: string): Promise<void> {
 
   await deletePlaylistById(id);
 
-  revalidateTag(PLAYLISTS_HOME, "default");
-  revalidateTag(playlistTag(id), "default");
+  await invalidate([PLAYLISTS_HOME, playlistTag(id)]);
 }
 
 export async function publishPlaylist(id: string): Promise<Playlist> {
@@ -234,8 +231,7 @@ export async function publishPlaylist(id: string): Promise<Playlist> {
   const lean = await updatePlaylistById(id, { status: "published" });
   if (!lean) throw AppError.NotFound("Playlist");
 
-  revalidateTag(PLAYLISTS_HOME, "default");
-  revalidateTag(playlistTag(lean._id.toString()), "default");
+  await invalidate([PLAYLISTS_HOME, playlistTag(lean._id.toString())]);
 
   return toDto(lean);
 }
@@ -246,8 +242,7 @@ export async function unpublishPlaylist(id: string): Promise<Playlist> {
   const lean = await updatePlaylistById(id, { status: "draft" });
   if (!lean) throw AppError.NotFound("Playlist");
 
-  revalidateTag(PLAYLISTS_HOME, "default");
-  revalidateTag(playlistTag(lean._id.toString()), "default");
+  await invalidate([PLAYLISTS_HOME, playlistTag(lean._id.toString())]);
 
   return toDto(lean);
 }
@@ -257,5 +252,5 @@ export async function reorderPlaylists(
 ): Promise<void> {
   await requireSession(["admin"]);
   await updatePlaylistOrder(orderedPlaylistIds);
-  revalidateTag(PLAYLISTS_HOME, "default");
+  await invalidate([PLAYLISTS_HOME]);
 }

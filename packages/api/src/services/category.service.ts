@@ -1,5 +1,3 @@
-import { revalidateTag } from "next/cache";
-
 import { requireSession } from "../auth/require-session";
 import {
   create as repoCreate,
@@ -20,6 +18,7 @@ import {
 import { getDb } from "../db/client";
 import { PlaylistModel } from "../db/models/playlist.model";
 import { PLAYLISTS_HOME, CATEGORIES } from "../cache/tags";
+import { invalidate } from "../cache/invalidate";
 import type { Locale } from "../schemas/locale";
 import { slugify } from "../utils/slug";
 import type { CategoryLean } from "../repositories/category.repo";
@@ -150,7 +149,7 @@ export async function createCategory(
     );
   }
 
-  revalidateTag(CATEGORIES, "default");
+  await invalidate([CATEGORIES]);
 
   return toDto(lean);
 }
@@ -166,7 +165,7 @@ export async function updateCategory(
   const lean = await repoUpdateById(id, parsed);
   if (!lean) throw AppError.NotFound("Category");
 
-  revalidateTag(CATEGORIES, "default");
+  await invalidate([CATEGORIES]);
 
   return toDto(lean);
 }
@@ -192,6 +191,5 @@ export async function deleteCategory(id: string): Promise<void> {
     { $pull: { categoryIds: existing._id } },
   );
 
-  revalidateTag(PLAYLISTS_HOME, "default");
-  revalidateTag(CATEGORIES, "default");
+  await invalidate([PLAYLISTS_HOME, CATEGORIES]);
 }

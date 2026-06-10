@@ -4,8 +4,8 @@ import { PLAYLISTS_HOME, playlistTag } from "../cache/tags";
 import { AppError } from "../errors";
 
 // Module-level mocks. Hoisted by vitest before service import.
-vi.mock("next/cache", () => ({
-  revalidateTag: vi.fn(),
+vi.mock("../cache/invalidate", () => ({
+  invalidate: vi.fn(),
 }));
 
 vi.mock("../auth/require-session", () => ({
@@ -34,7 +34,7 @@ vi.mock("../db/models/playlist.model", () => ({
   },
 }));
 
-const { revalidateTag } = await import("next/cache");
+const { invalidate } = await import("../cache/invalidate");
 const { requireSession } = await import("../auth/require-session");
 const repo = await import("../repositories/playlist.repo");
 const service = await import("./playlist.service");
@@ -277,11 +277,10 @@ describe("playlist.service", () => {
       expect(repo.updatePlaylistById).toHaveBeenCalledWith("playlist123456789012", {
         status: "published",
       });
-      expect(revalidateTag).toHaveBeenCalledWith(PLAYLISTS_HOME, "default");
-      expect(revalidateTag).toHaveBeenCalledWith(
+      expect(invalidate).toHaveBeenCalledWith([
+        PLAYLISTS_HOME,
         playlistTag("playlist123456789012"),
-        "default",
-      );
+      ]);
     });
 
     it("throws NotFound and skips revalidation when the playlist is missing", async () => {
@@ -291,7 +290,7 @@ describe("playlist.service", () => {
       await expect(service.publishPlaylist("missing")).rejects.toBeInstanceOf(
         AppError,
       );
-      expect(revalidateTag).not.toHaveBeenCalled();
+      expect(invalidate).not.toHaveBeenCalled();
     });
   });
 
@@ -307,11 +306,10 @@ describe("playlist.service", () => {
 
       await service.unpublishPlaylist("playlist123456789012");
 
-      expect(revalidateTag).toHaveBeenCalledWith(PLAYLISTS_HOME, "default");
-      expect(revalidateTag).toHaveBeenCalledWith(
+      expect(invalidate).toHaveBeenCalledWith([
+        PLAYLISTS_HOME,
         playlistTag("playlist123456789012"),
-        "default",
-      );
+      ]);
     });
   });
 
@@ -327,11 +325,10 @@ describe("playlist.service", () => {
 
       expect(repo.findPlaylistById).toHaveBeenCalledWith("playlist123456789012");
       expect(repo.deletePlaylistById).toHaveBeenCalledWith("playlist123456789012");
-      expect(revalidateTag).toHaveBeenCalledWith(PLAYLISTS_HOME, "default");
-      expect(revalidateTag).toHaveBeenCalledWith(
+      expect(invalidate).toHaveBeenCalledWith([
+        PLAYLISTS_HOME,
         playlistTag("playlist123456789012"),
-        "default",
-      );
+      ]);
     });
 
     it("throws NotFound when the playlist does not exist", async () => {
@@ -393,7 +390,7 @@ describe("playlist.service", () => {
         "playlist123456789012",
         "playlist123456789013",
       ]);
-      expect(revalidateTag).toHaveBeenCalledWith(PLAYLISTS_HOME, "default");
+      expect(invalidate).toHaveBeenCalledWith([PLAYLISTS_HOME]);
     });
 
     it("does not call updatePlaylistOrder when requireSession rejects", async () => {
@@ -427,7 +424,10 @@ describe("playlist.service", () => {
         "playlist123456789012",
         expect.objectContaining({ ar: { scholarName: "جديد" } }),
       );
-      expect(revalidateTag).toHaveBeenCalledWith(PLAYLISTS_HOME, "default");
+      expect(invalidate).toHaveBeenCalledWith([
+        PLAYLISTS_HOME,
+        playlistTag("playlist123456789012"),
+      ]);
     });
 
     it("forwards an embedUrl patch (and accepts null to clear it)", async () => {

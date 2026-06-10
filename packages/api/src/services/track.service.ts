@@ -1,9 +1,8 @@
-import { revalidateTag } from "next/cache";
-
 import { env } from "@repo/config/env";
 
 import { requireSession } from "../auth/require-session";
 import { playlistTag } from "../cache/tags";
+import { invalidate } from "../cache/invalidate";
 import { findMediaById } from "../repositories/media.repo";
 import { findPlaylistById } from "../repositories/playlist.repo";
 import {
@@ -118,7 +117,7 @@ export async function createTrack(input: TrackCreateInput): Promise<Track> {
     order,
   });
 
-  revalidateTag(playlistTag(parsed.playlistId), "default");
+  await invalidate([playlistTag(parsed.playlistId)]);
 
   return toDto(lean);
 }
@@ -131,7 +130,7 @@ export async function updateTrack(id: string, input: TrackUpdateInput): Promise<
   const lean = await updateTrackById(id, parsed);
   if (!lean) throw AppError.NotFound("Track");
 
-  revalidateTag(playlistTag(lean.playlistId.toString()), "default");
+  await invalidate([playlistTag(lean.playlistId.toString())]);
 
   return toDto(lean);
 }
@@ -144,7 +143,7 @@ export async function deleteTrack(id: string): Promise<void> {
 
   await deleteTrackById(id);
 
-  revalidateTag(playlistTag(existing.playlistId.toString()), "default");
+  await invalidate([playlistTag(existing.playlistId.toString())]);
 }
 
 export async function reorderTracks(
@@ -158,5 +157,5 @@ export async function reorderTracks(
 
   await updateTrackOrder(orderedTrackIds);
 
-  revalidateTag(playlistTag(playlistId), "default");
+  await invalidate([playlistTag(playlistId)]);
 }

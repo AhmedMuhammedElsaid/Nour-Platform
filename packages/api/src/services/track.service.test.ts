@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { playlistTag } from "../cache/tags";
 import { AppError } from "../errors";
 
-vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }));
+vi.mock("../cache/invalidate", () => ({ invalidate: vi.fn() }));
 vi.mock("../auth/require-session", () => ({ requireSession: vi.fn() }));
 vi.mock("../repositories/media.repo", () => ({ findMediaById: vi.fn() }));
 vi.mock("../repositories/playlist.repo", () => ({
@@ -18,7 +18,7 @@ vi.mock("../repositories/track.repo", () => ({
   updateTrackOrder: vi.fn(),
 }));
 
-const { revalidateTag } = await import("next/cache");
+const { invalidate } = await import("../cache/invalidate");
 const { requireSession } = await import("../auth/require-session");
 const playlistRepo = await import("../repositories/playlist.repo");
 const trackRepo = await import("../repositories/track.repo");
@@ -87,10 +87,7 @@ describe("track.service", () => {
       expect(createArg.en.slug).toBe("intro");
       // order defaults to the current track count when not supplied.
       expect(createArg.order).toBe(1);
-      expect(revalidateTag).toHaveBeenCalledWith(
-        playlistTag(PLAYLIST_ID),
-        "default",
-      );
+      expect(invalidate).toHaveBeenCalledWith([playlistTag(PLAYLIST_ID)]);
       expect(result.id).toBe(TRACK_ID);
     });
 
@@ -131,10 +128,7 @@ describe("track.service", () => {
       await service.reorderTracks(PLAYLIST_ID, newOrder);
 
       expect(trackRepo.updateTrackOrder).toHaveBeenCalledWith(newOrder);
-      expect(revalidateTag).toHaveBeenCalledWith(
-        playlistTag(PLAYLIST_ID),
-        "default",
-      );
+      expect(invalidate).toHaveBeenCalledWith([playlistTag(PLAYLIST_ID)]);
     });
   });
 });

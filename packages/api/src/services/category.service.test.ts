@@ -4,8 +4,8 @@ import { CATEGORIES, PLAYLISTS_HOME } from "../cache/tags";
 import { AppError } from "../errors";
 
 // Module-level mocks. Hoisted by vitest before service import.
-vi.mock("next/cache", () => ({
-  revalidateTag: vi.fn(),
+vi.mock("../cache/invalidate", () => ({
+  invalidate: vi.fn(),
 }));
 
 vi.mock("../auth/require-session", () => ({
@@ -33,7 +33,7 @@ vi.mock("../db/client", () => ({
   getDb: vi.fn().mockResolvedValue(undefined),
 }));
 
-const { revalidateTag } = await import("next/cache");
+const { invalidate } = await import("../cache/invalidate");
 const { requireSession } = await import("../auth/require-session");
 const repo = await import("../repositories/category.repo");
 const { PlaylistModel } = await import("../db/models/playlist.model");
@@ -136,7 +136,7 @@ describe("category.service", () => {
       expect(createArg.en.slug.length).toBeGreaterThan(0);
       expect(result.ar.name).toBe("فئتي");
       expect(result.en.name).toBe("My Category");
-      expect(revalidateTag).toHaveBeenCalledWith(CATEGORIES, "default");
+      expect(invalidate).toHaveBeenCalledWith([CATEGORIES]);
     });
 
     it("uses caller-supplied slugs when provided", async () => {
@@ -215,7 +215,7 @@ describe("category.service", () => {
       expect(requireSession).toHaveBeenCalledWith(["admin"]);
       expect(repo.updateById).toHaveBeenCalledWith("cat1234567890123456", { ar: { name: "السنة" } });
       expect(result.en.name).toBe("Sunnah");
-      expect(revalidateTag).toHaveBeenCalledWith(CATEGORIES, "default");
+      expect(invalidate).toHaveBeenCalledWith([CATEGORIES]);
     });
 
     it("throws AppError NOT_FOUND when updateById returns null", async () => {
@@ -226,7 +226,7 @@ describe("category.service", () => {
         service.updateCategory("missing", { ar: { name: "X" } }),
       ).rejects.toMatchObject({ code: "NOT_FOUND" });
 
-      expect(revalidateTag).not.toHaveBeenCalled();
+      expect(invalidate).not.toHaveBeenCalled();
     });
   });
 
@@ -245,8 +245,7 @@ describe("category.service", () => {
         { categoryIds: mockId },
         { $pull: { categoryIds: mockId } },
       );
-      expect(revalidateTag).toHaveBeenCalledWith(PLAYLISTS_HOME, "default");
-      expect(revalidateTag).toHaveBeenCalledWith(CATEGORIES, "default");
+      expect(invalidate).toHaveBeenCalledWith([PLAYLISTS_HOME, CATEGORIES]);
     });
 
     it("throws AppError NOT_FOUND when the category does not exist", async () => {

@@ -1,7 +1,6 @@
-import { revalidateTag } from "next/cache";
-
 import { requireSession } from "../auth/require-session";
 import { ADHKAR, azkarTag } from "../cache/tags";
+import { invalidate } from "../cache/invalidate";
 import {
   createAzkar as repoCreate,
   deleteAzkarById as repoDelete,
@@ -213,8 +212,7 @@ export async function updateAzkar(
   const parsed = azkarUpdateInputSchema.parse(input);
   const lean = await repoUpdate(id, parsed);
   if (!lean) throw AppError.NotFound("Azkar");
-  revalidateTag(ADHKAR, "default");
-  revalidateTag(azkarTag(lean._id.toString()), "default");
+  await invalidate([ADHKAR, azkarTag(lean._id.toString())]);
   return toDto(lean);
 }
 
@@ -224,16 +222,14 @@ export async function deleteAzkar(id: string): Promise<void> {
   const existing = await repoFindById(id);
   if (!existing) throw AppError.NotFound("Azkar");
   await repoDelete(id);
-  revalidateTag(ADHKAR, "default");
-  revalidateTag(azkarTag(id), "default");
+  await invalidate([ADHKAR, azkarTag(id)]);
 }
 
 export async function publishAzkar(id: string): Promise<Azkar> {
   await requireSession(["admin"]);
   const lean = await repoUpdate(id, { status: "published" });
   if (!lean) throw AppError.NotFound("Azkar");
-  revalidateTag(ADHKAR, "default");
-  revalidateTag(azkarTag(lean._id.toString()), "default");
+  await invalidate([ADHKAR, azkarTag(lean._id.toString())]);
   return toDto(lean);
 }
 
@@ -241,13 +237,12 @@ export async function unpublishAzkar(id: string): Promise<Azkar> {
   await requireSession(["admin"]);
   const lean = await repoUpdate(id, { status: "draft" });
   if (!lean) throw AppError.NotFound("Azkar");
-  revalidateTag(ADHKAR, "default");
-  revalidateTag(azkarTag(lean._id.toString()), "default");
+  await invalidate([ADHKAR, azkarTag(lean._id.toString())]);
   return toDto(lean);
 }
 
 export async function reorderAzkar(orderedIds: string[]): Promise<void> {
   await requireSession(["admin"]);
   await updateAzkarOrder(orderedIds);
-  revalidateTag(ADHKAR, "default");
+  await invalidate([ADHKAR]);
 }
