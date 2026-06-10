@@ -8,7 +8,18 @@
 
 **Tech Stack:** Next 16 (`unstable_cache`, `revalidateTag`), Zod, Mongoose/`@repo/api` repos, `@sentry/nextjs`, Vitest + RTL.
 
-**Model routing (CLAUDE.md §15):** Task 1–4 Opus→Sonnet (first instance of the cache tier locks the pattern — do Task 1 and 4 on Opus, 2–3 on Sonnet). Phase 2 Task 6–7 Sonnet, Task 8 Haiku (mechanical clones). Phase 3 Sonnet. Phase 4 Sonnet. Phase 5 Opus (security-adjacent: CSP edit). Phase 6 Haiku.
+**Model routing (CLAUDE.md §15) — one model per phase, switch at the ⏸ STOP point that ends each phase:**
+
+| Phase | Model | Why |
+|---|---|---|
+| 1 — Data-cache tier + invalidation | **Opus 4.7** | First instance of a new architectural pattern (cache tier + cross-deployment invalidation) — locks the template |
+| 2 — Device storage | **Sonnet 4.6** | Helper + migrations against an established pattern |
+| 3 — Import pipeline | **Sonnet 4.6** | Standalone script over existing schemas/repos |
+| 4 — Migration chain split | **Sonnet 4.6** | Small but touches a data-dangerous area — don't Haiku it |
+| 5 — Sentry | **Opus 4.7** | Security-sensitive (CSP edit) + new-dependency ADR |
+| 6 — Housekeeping | **Haiku 4.5** | Mechanical rename + config files |
+
+Run each phase in a **fresh session** on its assigned model. At the ⏸ STOP block, verify, commit, push, end the session, and start the next phase on the next model.
 
 ---
 
@@ -32,6 +43,8 @@
 ---
 
 # Phase 1 — Public data-cache tier + cross-app invalidation
+
+> **Model: Opus 4.7** — first instance of the cache-tier pattern; everything later clones it.
 
 **Why critical:** every public request hits Atlas because pages are `force-dynamic`. Content changes a few times a week; reads should come from Next's data cache and be invalidated by tag. The trap: `revalidateTag` in `packages/api` services runs inside the **admin** deployment — it cannot invalidate the **web** deployment's cache. So invalidation must also cross deployments via webhook. A 5-minute `revalidate` TTL on every cache entry is the self-healing fallback if the webhook ever fails.
 
@@ -442,7 +455,19 @@ export async function getCachedTracksWithUrls(playlistId: string) {
 
 ---
 
+---
+
+> ## ⏸ STOP — end of Phase 1. Switch model before continuing.
+> 1. Full pipeline: `pnpm turbo run lint typecheck test build` — all green.
+> 2. Confirm the Phase-1 manual check (admin edit → web reflects via webhook).
+> 3. Commit anything pending, push, and **end this session**.
+> 4. Start a **new session on Sonnet 4.6** (`/model sonnet`) for Phase 2. First action there: read `APP_CONTEXT.md`, then this plan's Phase 2.
+
+---
+
 # Phase 2 — Shape-safe device storage (web)
+
+> **Model: Sonnet 4.6** — helper + mechanical hook migrations.
 
 **Why:** ~12 `nour.*` localStorage keys are read with hand-rolled `try/JSON.parse/guard` blocks. A future shape change silently breaks returning visitors. One Zod-validated helper, reused everywhere, makes every change safe (invalid/stale data → fallback, never a crash).
 
@@ -611,7 +636,18 @@ export function savePrefs(prefs: QuranPrefs): void {
 
 ---
 
+---
+
+> ## ⏸ STOP — end of Phase 2.
+> 1. `pnpm turbo run lint typecheck test build` — all green (the migrated stores' existing tests define the contract; none may change behavior).
+> 2. Commit pending work, push, **end this session**.
+> 3. Phase 3 stays on **Sonnet 4.6** — still start a fresh session (clean context beats a warm one mid-plan).
+
+---
+
 # Phase 3 — Validated content-import pipeline
+
+> **Model: Sonnet 4.6** — standalone script over existing schemas/repos.
 
 **Why:** content imported straight into Atlas bypasses Zod and has already produced malformed slugs twice (space-slug 404 + React #418). Imports must go through the same validation as the admin forms.
 
@@ -757,7 +793,18 @@ main().catch((err) => {
 
 ---
 
+---
+
+> ## ⏸ STOP — end of Phase 3.
+> 1. Verify against a dev DB: `pnpm import:content ./import.sample.json --dry-run` then `--apply`; drafts appear in admin; `pnpm heal:malformed-slugs` (dry-run) reports clean.
+> 2. Full pipeline green, commit, push, **end this session**.
+> 3. Phase 4 stays on **Sonnet 4.6** — fresh session.
+
+---
+
 # Phase 4 — Retire the transitional migrations from the default chain
+
+> **Model: Sonnet 4.6** — small diff, but in a data-dangerous area; do not delegate to Haiku.
 
 **Why:** 0003/0004/0005 are one-time embedded-locale transforms. 0003 now self-guards, but the default chain still replays them on every full run and the runbook depends on tribal knowledge. New/already-embedded DBs only need the steady-state migrations.
 
@@ -819,7 +866,18 @@ Also delete the now-stale header warning block (lines 29–31) and the 0003-orde
 
 ---
 
+---
+
+> ## ⏸ STOP — end of Phase 4. Switch model.
+> 1. `pnpm migrate --dry-run` lists ONLY the 7 steady-state migrations; `--only 0005-embedded-locale --dry-run` resolves with the legacy warning.
+> 2. Full pipeline green, commit, push, **end this session**.
+> 3. Start a **new session on Opus 4.7** (`/model opus`) for Phase 5 — it edits the CSP, which is security-sensitive per CLAUDE.md §15.1.
+
+---
+
 # Phase 5 — Sentry error reporting (web + admin)
+
+> **Model: Opus 4.7** — new-dependency ADR + CSP `connect-src` change (security-sensitive).
 
 **Why:** the client surface (SW, schedulers, two audio engines) fails silently in production today; the azan-was-silent bug is exactly the class that goes unseen. `SENTRY_DSN` is already in the env schema and turbo's build env list. New dependency ⇒ ADR (CLAUDE.md §5).
 
@@ -894,7 +952,18 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
 
 ---
 
-# Phase 6 — Housekeeping / community standards (Haiku)
+---
+
+> ## ⏸ STOP — end of Phase 5. Switch model.
+> 1. Build green WITHOUT a DSN set (init must no-op); with a DSN, a thrown test error reaches the Sentry dashboard and the console shows no CSP violation. Remove the test throw.
+> 2. Commit both Phase-5 commits, push, **end this session**.
+> 3. Start a **new session on Haiku 4.5** (`/model haiku`) for Phase 6 — purely mechanical from here.
+
+---
+
+# Phase 6 — Housekeeping / community standards
+
+> **Model: Haiku 4.5** — mechanical rename + config files. If anything surprises (e.g. the rename breaks an exports-map entry non-obviously), escalate to Sonnet, not more Haiku retries (§15.4).
 
 ### Task 12: Fix the `Category.model.ts` filename outlier
 
@@ -934,6 +1003,15 @@ updates:
 ```
 
 - [ ] **Step 2:** **Commit** `[AhmedMuhammedElsaid][chore]: weekly grouped dependabot for npm + actions`. Note in the PR description that dependency PRs will churn `pnpm-lock.yaml` — review them individually (repo rule: lockfile changes are deliberate).
+
+---
+
+---
+
+> ## ⏸ STOP — end of Phase 6 (plan complete).
+> 1. Full pipeline green, commit, push.
+> 2. Update `APP_CONTEXT.md`'s "Next phase" section to mark refactor-hardening done (Haiku task).
+> 3. Open/refresh the PR referencing this plan; request review (security-touching phases 1 & 5 ⇒ reviewer one tier up per §15.7).
 
 ---
 
