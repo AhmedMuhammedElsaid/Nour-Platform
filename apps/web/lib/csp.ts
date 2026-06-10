@@ -11,12 +11,20 @@
  */
 import { EMBED_CSP_FRAME_SRC } from "@repo/config/embed-hosts";
 
-export function buildWebCsp(nonce: string, r2Hostname: string): string {
+export function buildWebCsp(
+  nonce: string,
+  r2Hostname: string,
+  sentryOrigin?: string,
+): string {
   const r2Origin = r2Hostname ? `https://${r2Hostname}` : "";
   // Quran reciter audio host (Mishary/alafasy audioBase, see scripts/seed-quran.ts).
   // Without this in media-src the browser silently blocks <audio> and the
   // play button does nothing. Add additional reciter hosts here if seeded.
   const RECITER_ORIGINS = "https://everyayah.com";
+  // Sentry ingest origin — only added when a DSN is configured. Computed at
+  // proxy runtime from process.env.NEXT_PUBLIC_SENTRY_DSN (proxy cannot import
+  // the env barrel) so unconfigured envs don't widen CSP. See ADR 0007.
+  const sentryPart = sentryOrigin ? ` ${sentryOrigin}` : "";
   return [
     "default-src 'self'",
     // 'strict-dynamic' lets the nonce-trusted root script load further
@@ -31,7 +39,7 @@ export function buildWebCsp(nonce: string, r2Hostname: string): string {
     `media-src 'self'${r2Origin ? ` ${r2Origin}` : ""} ${RECITER_ORIGINS}`,
     // connect-src governs the service worker's fetch() of audio for offline
     // caching, so the R2 + reciter origins must be allowed here too.
-    `connect-src 'self'${r2Origin ? ` ${r2Origin}` : ""} ${RECITER_ORIGINS}`,
+    `connect-src 'self'${r2Origin ? ` ${r2Origin}` : ""} ${RECITER_ORIGINS}${sentryPart}`,
     // PWA: allow the same-origin service worker script and web app manifest.
     "worker-src 'self'",
     "manifest-src 'self'",

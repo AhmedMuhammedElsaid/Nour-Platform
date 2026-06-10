@@ -14,6 +14,19 @@ if (r2Base) {
   }
 }
 
+// Sentry ingest origin — read once at module load. proxy.ts cannot import the
+// env barrel (it evaluates during next build); a malformed DSN simply skips
+// the connect-src widening rather than crashing the edge runtime.
+let sentryOrigin: string | undefined;
+const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+if (sentryDsn) {
+  try {
+    sentryOrigin = new URL(sentryDsn).origin;
+  } catch {
+    sentryOrigin = undefined;
+  }
+}
+
 const handleI18nRouting = createMiddleware(routing);
 
 /*
@@ -33,7 +46,7 @@ const handleI18nRouting = createMiddleware(routing);
 export function proxy(request: NextRequest): NextResponse {
   // Web Crypto is available in the Edge runtime; no Node imports needed.
   const nonce = btoa(crypto.randomUUID());
-  const csp = buildWebCsp(nonce, r2Hostname);
+  const csp = buildWebCsp(nonce, r2Hostname, sentryOrigin);
 
   // Forwarded to the rendered request so server components can read the nonce.
   // next-intl rewrites reuse the request headers, so this propagates.

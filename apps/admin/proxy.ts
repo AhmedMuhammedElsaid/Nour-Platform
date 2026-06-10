@@ -6,6 +6,19 @@ import { authConfigEdge } from "@repo/api/auth/edge";
 
 import { buildAdminCsp } from "@/lib/csp";
 
+// Sentry ingest origin — read once at module load. proxy.ts cannot import the
+// env barrel (it evaluates during next build); a malformed DSN simply skips
+// the connect-src widening rather than crashing the edge runtime.
+let sentryOrigin: string | undefined;
+const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+if (sentryDsn) {
+  try {
+    sentryOrigin = new URL(sentryDsn).origin;
+  } catch {
+    sentryOrigin = undefined;
+  }
+}
+
 /*
  * Edge-runtime proxy for the admin app.
  * Uses the Edge-safe config slice (no Mongoose / argon2) so that it
@@ -22,7 +35,10 @@ function withCspNonce(response: NextResponse): NextResponse {
   // Web Crypto is Edge-runtime native; no Node imports needed.
   const nonce = btoa(crypto.randomUUID());
   response.headers.set("x-middleware-csp-nonce", nonce);
-  response.headers.set("Content-Security-Policy", buildAdminCsp(nonce));
+  response.headers.set(
+    "Content-Security-Policy",
+    buildAdminCsp(nonce, sentryOrigin),
+  );
   return response;
 }
 

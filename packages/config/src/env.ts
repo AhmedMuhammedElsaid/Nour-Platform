@@ -50,8 +50,11 @@ const envSchema = z.object({
   WEB_REVALIDATE_URL: z.string().url().optional(),
   REVALIDATE_SECRET: z.string().min(16).optional(),
 
-  // Observability (Wave 5).
+  // Observability (Wave 5 / refactor-hardening Phase 5). SENTRY_DSN is server-
+  // side; NEXT_PUBLIC_SENTRY_DSN is inlined into the client bundle. Both
+  // optional per environment — Sentry init no-ops when unset (see ADR 0007).
   SENTRY_DSN: z.string().url().optional(),
+  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
 
   // Vercel-injected build metadata. Available in production builds; absent in
   // local dev. Health endpoints expose the short SHA as `version`.
