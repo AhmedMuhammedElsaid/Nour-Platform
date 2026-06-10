@@ -10,39 +10,21 @@ import {
   DEFAULT_LOCATION,
   DEFAULT_MADHAB,
   DEFAULT_METHOD,
-  calculationMethodSchema,
-  madhabSchema,
   prayerLocationSchema,
+  prayerPreferencesSchema,
 } from "@repo/api/schemas/prayer-times";
+import { readDeviceStore, writeDeviceStore } from "@/lib/device-store";
 
 const LOCATION_KEY = "nour.prayer.location";
 const PREFS_KEY = "nour.prayer.prefs";
+const DEFAULT_PREFS: PrayerPreferences = { method: DEFAULT_METHOD, madhab: DEFAULT_MADHAB };
 
 function readLocation(): PrayerLocation {
-  try {
-    const raw = localStorage.getItem(LOCATION_KEY);
-    if (!raw) return DEFAULT_LOCATION;
-    const parsed = prayerLocationSchema.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data : DEFAULT_LOCATION;
-  } catch {
-    return DEFAULT_LOCATION;
-  }
+  return readDeviceStore(LOCATION_KEY, prayerLocationSchema, DEFAULT_LOCATION);
 }
 
 function readPrefs(): PrayerPreferences {
-  try {
-    const raw = localStorage.getItem(PREFS_KEY);
-    if (!raw) return { method: DEFAULT_METHOD, madhab: DEFAULT_MADHAB };
-    const obj = JSON.parse(raw) as Record<string, unknown>;
-    const method = calculationMethodSchema.safeParse(obj.method);
-    const madhab = madhabSchema.safeParse(obj.madhab);
-    return {
-      method: method.success ? method.data : DEFAULT_METHOD,
-      madhab: madhab.success ? madhab.data : DEFAULT_MADHAB,
-    };
-  } catch {
-    return { method: DEFAULT_METHOD, madhab: DEFAULT_MADHAB };
-  }
+  return readDeviceStore(PREFS_KEY, prayerPreferencesSchema, DEFAULT_PREFS);
 }
 
 export type PrayerSettings = {
@@ -71,20 +53,12 @@ export function usePrayerSettings(): PrayerSettings {
 
   const setLocation = useCallback((loc: PrayerLocation) => {
     setLocationState(loc);
-    try {
-      localStorage.setItem(LOCATION_KEY, JSON.stringify(loc));
-    } catch {
-      /* storage unavailable — keep in-memory state */
-    }
+    writeDeviceStore(LOCATION_KEY, loc);
   }, []);
 
   const persistPrefs = useCallback((next: PrayerPreferences) => {
     setPrefs(next);
-    try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify(next));
-    } catch {
-      /* ignore */
-    }
+    writeDeviceStore(PREFS_KEY, next);
   }, []);
 
   const setMethod = useCallback(

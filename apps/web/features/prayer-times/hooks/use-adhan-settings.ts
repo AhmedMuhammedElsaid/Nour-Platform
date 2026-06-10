@@ -8,18 +8,12 @@ import {
   DEFAULT_ADHAN_SETTINGS,
   adhanSettingsSchema,
 } from "@repo/api/schemas/prayer-times";
+import { readDeviceStore, writeDeviceStore } from "@/lib/device-store";
 
 const ADHAN_KEY = "nour.prayer.adhan";
 
 function readSettings(): AdhanSettings {
-  try {
-    const raw = localStorage.getItem(ADHAN_KEY);
-    if (!raw) return DEFAULT_ADHAN_SETTINGS;
-    const parsed = adhanSettingsSchema.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data : DEFAULT_ADHAN_SETTINGS;
-  } catch {
-    return DEFAULT_ADHAN_SETTINGS;
-  }
+  return readDeviceStore(ADHAN_KEY, adhanSettingsSchema, DEFAULT_ADHAN_SETTINGS);
 }
 
 export type AdhanSettingsApi = {
@@ -42,11 +36,7 @@ export function useAdhanSettings(): AdhanSettingsApi {
 
   const persist = useCallback((next: AdhanSettings) => {
     setSettings(next);
-    try {
-      localStorage.setItem(ADHAN_KEY, JSON.stringify(next));
-    } catch {
-      /* storage unavailable — keep in-memory state */
-    }
+    writeDeviceStore(ADHAN_KEY, next);
   }, []);
 
   const setEnabled = useCallback(

@@ -8,7 +8,8 @@ import type { ZodType } from "zod";
  */
 export function readDeviceStore<T>(
   key: string,
-  schema: ZodType<T>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- schema's Input type may differ from T (e.g. fields with .default()); only the parsed Output (T) matters here.
+  schema: ZodType<T, any, any>,
   fallback: T,
 ): T {
   if (typeof window === "undefined") return fallback;

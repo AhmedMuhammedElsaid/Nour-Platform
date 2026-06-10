@@ -7,18 +7,12 @@ import {
   DEFAULT_AZKAR_REMINDER_SETTINGS,
   azkarReminderSettingsSchema,
 } from "@repo/api/schemas/prayer-times";
+import { readDeviceStore, writeDeviceStore } from "@/lib/device-store";
 
 const STORAGE_KEY = "nour.azkar.reminder";
 
 function readSettings(): AzkarReminderSettings {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_AZKAR_REMINDER_SETTINGS;
-    const parsed = azkarReminderSettingsSchema.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data : DEFAULT_AZKAR_REMINDER_SETTINGS;
-  } catch {
-    return DEFAULT_AZKAR_REMINDER_SETTINGS;
-  }
+  return readDeviceStore(STORAGE_KEY, azkarReminderSettingsSchema, DEFAULT_AZKAR_REMINDER_SETTINGS);
 }
 
 export type AzkarReminderSettingsApi = {
@@ -42,11 +36,7 @@ export function useAzkarReminderSettings(): AzkarReminderSettingsApi {
 
   const persist = useCallback((next: AzkarReminderSettings) => {
     setSettings(next);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      /* storage unavailable — keep in-memory state */
-    }
+    writeDeviceStore(STORAGE_KEY, next);
   }, []);
 
   const setEnabled = useCallback(
