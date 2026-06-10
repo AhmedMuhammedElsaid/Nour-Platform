@@ -1,7 +1,7 @@
 import type mongoose from "mongoose";
 
 import { getDb } from "../db/client";
-import { CategoryModel, type CategoryDoc } from "../db/models/Category.model";
+import { CategoryModel, type CategoryDoc } from "../db/models/category.model";
 import type { Locale } from "../schemas/locale";
 import type { CategoryCreateInput, CategoryUpdateInput } from "../schemas/category";
 import { flattenLocaleUpdate } from "../utils/mongo-update";

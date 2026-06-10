@@ -1,7 +1,7 @@
 import { getDb } from "../client";
 import { PlaylistModel } from "../models/playlist.model";
 import { TrackModel } from "../models/track.model";
-import { CategoryModel } from "../models/Category.model";
+import { CategoryModel } from "../models/category.model";
 import { slugify } from "../../utils/slug";
 
 /*
