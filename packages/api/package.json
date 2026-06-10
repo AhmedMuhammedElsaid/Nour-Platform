@@ -45,6 +45,7 @@
     "./utils/slug": "./src/utils/slug.ts",
     "./repositories/playlist": "./src/repositories/playlist.repo.ts",
     "./repositories/track": "./src/repositories/track.repo.ts",
+    "./repositories/category": "./src/repositories/category.repo.ts",
     "./repositories/media": "./src/repositories/media.repo.ts",
     "./repositories/quran": "./src/repositories/quran.repo.ts",
     "./db/migrations/0001-indexes": "./src/db/migrations/0001-indexes.ts",
