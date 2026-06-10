@@ -39,12 +39,16 @@ export function SunArc({ day, now, nextPrayerKey, prayerLabels }: SunArcProps) {
   const sunT = tForFraction(progress);
   const sunPt = arcPoint(sunT);
 
-  // Night = before today's Fajr or at/after today's Isha — swap the sun for a
-  // glowing crescent moon (parity with the web sun-arc).
-  const fajr = day.instants.find((i) => i.key === "fajr")?.time ?? null;
+  // Night = before today's Sunrise (shorouk) or at/after today's Isha — swap
+  // the sun for a glowing crescent moon (parity with the web sun-arc: the moon
+  // stays up through Fajr and only sets at shorouk).
+  const sunrise =
+    day.instants.find((i) => i.key === "sunrise")?.time ??
+    day.instants.find((i) => i.key === "fajr")?.time ??
+    null;
   const isha = day.instants.find((i) => i.key === "isha")?.time ?? null;
   const isNight =
-    (fajr != null && now.getTime() < fajr.getTime()) ||
+    (sunrise != null && now.getTime() < sunrise.getTime()) ||
     (isha != null && now.getTime() >= isha.getTime());
 
   const dots: ArcDot[] = day.instants

@@ -160,12 +160,12 @@ function clamp01(n: number): number {
 
 // Position of the currently-visible celestial body along the arc, and whether
 // it's the moon. The arc's dots run Fajr (far left) → Isha (far right). The SUN
-// is shown during the day (Fajr → Isha) and rides the arc left→right, landing on
-// each prayer dot. The MOON is shown at night (Isha → next Fajr) and rides the
-// arc the other way — entering at the Isha point (right), peaking at the apex
-// around solar midnight, and setting at the Fajr point (left) — so it always
-// sits *between* the Isha and Fajr dots. The handoffs are seamless: at Isha both
-// bodies are at the right edge, at Fajr both at the left edge.
+// is shown while it is actually up (Sunrise/shorouk → Isha) and rides the arc
+// left→right, landing on each prayer dot. The MOON is shown at night (Isha →
+// next Sunrise) and rides the arc the other way — entering at the Isha point
+// (right), peaking around solar midnight, and setting at the far left exactly
+// at shorouk. Between Fajr and Sunrise the moon is therefore still visible,
+// low over the Fajr point (the sky is not yet day at Fajr).
 //
 // `fraction` is the left→right arc position (0 = Fajr/left, 1 = Isha/right). The
 // night window straddles the calendar boundary, so this needs the location +
@@ -180,27 +180,35 @@ export function getArcPosition(
   now: Date,
 ): { isNight: boolean; fraction: number } {
   const today = computePrayerTimes({ ...input, date: now });
-  const fajr = today.instants.find((i) => i.key === "fajr")?.time ?? null;
+  // High-latitude fallback: if sunrise never occurs, anchor the night to Fajr
+  // so the degenerate day still renders.
+  const sunrise =
+    today.instants.find((i) => i.key === "sunrise")?.time ??
+    today.instants.find((i) => i.key === "fajr")?.time ??
+    null;
   const isha = today.instants.find((i) => i.key === "isha")?.time ?? null;
 
-  // Daytime: Fajr ≤ now < Isha — sun rides Fajr(left) → Isha(right).
+  // Daytime: Sunrise ≤ now < Isha — sun rides the arc left→right.
   if (
-    fajr != null &&
+    sunrise != null &&
     isha != null &&
-    now.getTime() >= fajr.getTime() &&
+    now.getTime() >= sunrise.getTime() &&
     now.getTime() < isha.getTime()
   ) {
     return { isNight: false, fraction: getDayProgress(today, now) };
   }
 
-  // After Isha: night runs until *tomorrow's* Fajr. The moon descends from the
-  // Isha point (fraction 1) back toward Fajr (fraction 0), so fraction = 1 − p.
+  // After Isha: night runs until *tomorrow's* Sunrise. The moon descends from
+  // the Isha point (fraction 1) back toward the left edge, so fraction = 1 − p.
   if (isha != null && now.getTime() >= isha.getTime()) {
     const tom = computePrayerTimes({
       ...input,
       date: new Date(now.getTime() + DAY_MS),
     });
-    const end = tom.instants.find((i) => i.key === "fajr")?.time ?? fajr;
+    const end =
+      tom.instants.find((i) => i.key === "sunrise")?.time ??
+      tom.instants.find((i) => i.key === "fajr")?.time ??
+      sunrise;
     if (end == null) return { isNight: true, fraction: 1 };
     const p = clamp01(
       (now.getTime() - isha.getTime()) / (end.getTime() - isha.getTime()),
@@ -208,8 +216,8 @@ export function getArcPosition(
     return { isNight: true, fraction: 1 - p };
   }
 
-  // Pre-dawn: still the night that began at *yesterday's* Isha.
-  if (fajr != null && now.getTime() < fajr.getTime()) {
+  // Pre-shorouk: still the night that began at *yesterday's* Isha.
+  if (sunrise != null && now.getTime() < sunrise.getTime()) {
     const yest = computePrayerTimes({
       ...input,
       date: new Date(now.getTime() - DAY_MS),
@@ -217,7 +225,7 @@ export function getArcPosition(
     const start = yest.instants.find((i) => i.key === "isha")?.time ?? isha;
     if (start == null) return { isNight: true, fraction: 0 };
     const p = clamp01(
-      (now.getTime() - start.getTime()) / (fajr.getTime() - start.getTime()),
+      (now.getTime() - start.getTime()) / (sunrise.getTime() - start.getTime()),
     );
     return { isNight: true, fraction: 1 - p };
   }

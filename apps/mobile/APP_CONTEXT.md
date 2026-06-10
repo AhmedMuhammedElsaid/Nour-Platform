@@ -62,7 +62,8 @@ apps/mobile/
     home/ playlists/ downloads/ prayer-times/
     prayer-times/
       components/sun-arc.tsx        RN-SVG arc; sun by day, mask-carved crescent MOON
-                                    at night (isNight = before Fajr / at-or-after Isha)
+                                    at night (isNight = before SUNRISE/shorouk / at-or-after
+                                    Isha — moon stays up through Fajr, parity with web)
       components/{prayer-timetable,location-picker,method-settings}.tsx
       hooks/use-prayer-settings.ts  AsyncStorage nour.prayer.location/.prefs
       hooks/use-azan-notifications.ts  schedules expo-notifications (next 2 days)

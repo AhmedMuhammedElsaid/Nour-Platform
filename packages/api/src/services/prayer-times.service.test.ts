@@ -113,20 +113,36 @@ describe("getDayProgress", () => {
 describe("getArcPosition", () => {
   const PARAMS = { ...CAIRO, method: "Egyptian", madhab: "standard" } as const;
 
-  it("is the sun (not night) riding Fajr(~0) → Isha(~1) during the day", () => {
+  it("is the sun (not night) riding Sunrise → Isha(~1) during the day", () => {
     const day = cairoDay();
-    const fajr = day.instants.find((i) => i.key === "fajr")!.time as Date;
+    const sunrise = day.instants.find((i) => i.key === "sunrise")!.time as Date;
     const isha = day.instants.find((i) => i.key === "isha")!.time as Date;
 
-    const dawn = getArcPosition(PARAMS, new Date(fajr.getTime() + 60_000));
+    // The sun appears at shorouk, at the sunrise dot's day-progress position.
+    const dawn = getArcPosition(PARAMS, new Date(sunrise.getTime() + 60_000));
     expect(dawn.isNight).toBe(false);
-    expect(dawn.fraction).toBeGreaterThanOrEqual(0);
-    expect(dawn.fraction).toBeLessThan(0.1);
+    expect(dawn.fraction).toBeGreaterThan(0);
+    expect(dawn.fraction).toBeLessThan(0.2);
 
     const dusk = getArcPosition(PARAMS, new Date(isha.getTime() - 60_000));
     expect(dusk.isNight).toBe(false);
     expect(dusk.fraction).toBeGreaterThan(0.9);
     expect(dusk.fraction).toBeLessThanOrEqual(1);
+  });
+
+  it("keeps the moon up between Fajr and Sunrise (night ends at shorouk, not Fajr)", () => {
+    const day = cairoDay();
+    const fajr = day.instants.find((i) => i.key === "fajr")!.time as Date;
+    const sunrise = day.instants.find((i) => i.key === "sunrise")!.time as Date;
+
+    const afterFajr = getArcPosition(PARAMS, new Date(fajr.getTime() + 60_000));
+    expect(afterFajr.isNight).toBe(true);
+
+    // Just before shorouk the moon is about to set at the far left.
+    const beforeSunrise = getArcPosition(PARAMS, new Date(sunrise.getTime() - 60_000));
+    expect(beforeSunrise.isNight).toBe(true);
+    expect(beforeSunrise.fraction).toBeGreaterThanOrEqual(0);
+    expect(beforeSunrise.fraction).toBeLessThan(0.05);
   });
 
   it("shows the moon just after Isha, near the Isha point (fraction ~1)", () => {
@@ -138,13 +154,15 @@ describe("getArcPosition", () => {
     expect(info.fraction).toBeLessThanOrEqual(1);
   });
 
-  it("shows the moon just before Fajr, near the Fajr point (fraction ~0)", () => {
+  it("shows the moon just before Fajr, low on the arc but not yet set", () => {
     const day = cairoDay();
     const fajr = day.instants.find((i) => i.key === "fajr")!.time as Date;
     const info = getArcPosition(PARAMS, new Date(fajr.getTime() - 60_000));
     expect(info.isNight).toBe(true);
-    expect(info.fraction).toBeGreaterThanOrEqual(0);
-    expect(info.fraction).toBeLessThan(0.1);
+    // Night now spans Isha → sunrise, so just before Fajr the moon still has
+    // the Fajr→Shorouk leg left to travel — low, but clearly above zero.
+    expect(info.fraction).toBeGreaterThan(0.05);
+    expect(info.fraction).toBeLessThan(0.5);
   });
 
   it("is the moon (not the sun) between Maghrib and Isha as well as after Isha", () => {
