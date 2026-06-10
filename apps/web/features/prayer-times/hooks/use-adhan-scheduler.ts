@@ -26,6 +26,29 @@ function clampChunk(ms: number): number {
   return Math.min(MAX_CHUNK, Math.max(1_000, ms));
 }
 
+// The dedupe marker must survive reloads AND be shared across tabs/installed-
+// PWA windows. With only the effect-closure `lastFiredAt`, a reload (or the SW
+// controllerchange reload) within the catch-up window refired the same adhan,
+// and every open window played its own copy at prayer time — the "two azans at
+// Fajr" bug. localStorage is per-origin, so one fire marks it for all windows.
+const LAST_FIRED_KEY = "nour.prayer.adhan.lastFired";
+
+function readLastFired(): string | null {
+  try {
+    return window.localStorage.getItem(LAST_FIRED_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeLastFired(id: string): void {
+  try {
+    window.localStorage.setItem(LAST_FIRED_KEY, id);
+  } catch {
+    /* storage unavailable — the closure dedupe still applies */
+  }
+}
+
 // Arms a single setTimeout to the next enabled adhan event. On fire it invokes
 // onFire(event), then re-arms. Re-runs whenever settings/location/prefs change.
 // Cross-day rollover: when no event remains today, it sleeps to just after
@@ -53,8 +76,9 @@ export function useAdhanScheduler(input: {
 
     const fire = (event: AdhanEvent) => {
       const id = event.time.toISOString();
-      if (lastFiredAt === id) return;
+      if (lastFiredAt === id || readLastFired() === id) return;
       lastFiredAt = id;
+      writeLastFired(id);
       onFireRef.current(event);
     };
 

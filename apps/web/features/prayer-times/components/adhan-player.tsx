@@ -24,10 +24,18 @@ export const AdhanPlayer = forwardRef<AdhanPlayerHandle>(function AdhanPlayer(
 ) {
   const regularRef = useRef<HTMLAudioElement>(null);
   const fajrRef = useRef<HTMLAudioElement>(null);
+  const unlockedRef = useRef(false);
 
   useImperativeHandle(ref, () => ({
     play: async (key, volume) => {
       const el = key === "fajr" ? fajrRef.current : regularRef.current;
+      const sibling = key === "fajr" ? regularRef.current : fajrRef.current;
+      // Only one adhan may sound at a time, whatever triggered each play —
+      // silence the other recording before starting this one.
+      if (sibling && !sibling.paused) {
+        sibling.pause();
+        sibling.currentTime = 0;
+      }
       if (!el) return;
       el.volume = Math.min(1, Math.max(0, volume));
       el.currentTime = 0;
@@ -38,8 +46,14 @@ export const AdhanPlayer = forwardRef<AdhanPlayerHandle>(function AdhanPlayer(
       // invoked inside a user gesture grants the element the sticky activation
       // that lets a later *timed* play() (no gesture) run. Prime each element
       // with a muted play()/pause() so it's silent but unlocked.
+      // Runs once: a repeat unlock (remount, test button) must not re-prime —
+      // its pause()/currentTime reset would cut off an adhan already sounding.
+      if (unlockedRef.current) return;
+      unlockedRef.current = true;
       for (const el of [regularRef.current, fajrRef.current]) {
-        if (!el) continue;
+        // Never prime an element that is actively playing: it's mid-adhan
+        // (autoplay was evidently allowed) and muting/pausing would kill it.
+        if (!el || !el.paused) continue;
         const wasMuted = el.muted;
         el.muted = true;
         el.play()
