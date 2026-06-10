@@ -40,6 +40,22 @@ describe("useAyahAudio", () => {
     expect(result.current.isPlaying).toBe(false);
   });
 
+  it("invokes onPlaybackStart when an ayah starts", async () => {
+    const onPlaybackStart = vi.fn();
+    const { result } = renderHook(() => useAyahAudio(playable, { onPlaybackStart }));
+    await act(async () => result.current.playAyah(1));
+    expect(onPlaybackStart).toHaveBeenCalledTimes(1);
+  });
+
+  it("invokes onPlaybackStart again when toggling from paused to playing", async () => {
+    const onPlaybackStart = vi.fn();
+    const { result } = renderHook(() => useAyahAudio(playable, { onPlaybackStart }));
+    await act(async () => result.current.playAyah(1));
+    await act(async () => result.current.toggle()); // pause
+    await act(async () => result.current.toggle()); // resume
+    expect(onPlaybackStart).toHaveBeenCalledTimes(2);
+  });
+
   it("repeats the same ayah when repeatAyah is on", async () => {
     const { result } = renderHook(() => useAyahAudio(playable));
     await act(async () => result.current.setRepeatAyah(true));

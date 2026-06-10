@@ -22,7 +22,10 @@
 // catch-all stale-while-revalidate wrongly stored in STATIC_CACHE).
 // v6 (2026-06-09): one-time cache-bust so every browser + installed-PWA client
 // purges old caches and reloads once into the latest build on its next open.
-const VERSION = "v6";
+// v7 (2026-06-10): adhan mp3s (~13.5 MB total) removed from PRECACHE — every
+// visitor was downloading them on SW install even with azan disabled. They are
+// now cached on demand via the "nour:cache-adhan" message (see below).
+const VERSION = "v7";
 const SHELL_CACHE = `nour-shell-${VERSION}`;
 const PAGES_CACHE = `nour-pages-${VERSION}`;
 const STATIC_CACHE = `nour-static-${VERSION}`;
@@ -30,13 +33,14 @@ const AUDIO_CACHE = `nour-audio-${VERSION}`;
 const KEEP = new Set([SHELL_CACHE, PAGES_CACHE, STATIC_CACHE, AUDIO_CACHE]);
 
 const OFFLINE_URL = "/offline.html";
-const PRECACHE = [
-  OFFLINE_URL,
-  "/icons/icon.svg",
-  "/manifest.webmanifest",
-  "/audio/adhan.mp3",
-  "/audio/adhan-fajr.mp3",
-];
+const PRECACHE = [OFFLINE_URL, "/icons/icon.svg", "/manifest.webmanifest"];
+
+// Adhan recordings are large and only useful to users who enable azan, so they
+// are NOT precached. The adhan controller posts "nour:cache-adhan" when azan
+// is enabled (and on every visit while it stays enabled) and we warm
+// AUDIO_CACHE on demand; first foreground playback also lands in AUDIO_CACHE
+// via handleAudio as a fallback.
+const ADHAN_AUDIO = ["/audio/adhan.mp3", "/audio/adhan-fajr.mp3"];
 
 const AUDIO_EXT = /\.(mp3|m4a|aac|ogg|oga|wav|flac)(\?|$)/i;
 
@@ -242,10 +246,36 @@ async function handleAudio(request, url) {
   });
 }
 
+// On-demand adhan caching (replaces the old precache). Keys are absolute-URL
+// Requests so they match the ones handleAudio reads/writes.
+self.addEventListener("message", (event) => {
+  const data = event.data;
+  if (!data || data.type !== "nour:cache-adhan") return;
+  event.waitUntil(
+    caches.open(AUDIO_CACHE).then(async (cache) => {
+      for (const path of ADHAN_AUDIO) {
+        const url = new URL(path, self.location.origin).toString();
+        const key = new Request(url, { method: "GET" });
+        if (await cache.match(key)) continue;
+        try {
+          const response = await fetch(url);
+          if (response && response.status === 200) {
+            await cache.put(key, response);
+          }
+        } catch {
+          // Offline / fetch failed — the next enable-visit or the first
+          // foreground playback (handleAudio) will cache it instead.
+        }
+      }
+    }),
+  );
+});
+
 /*
  * Adhan notifications (Layer B). When the user clicks a triggered adhan
  * notification, focus an existing Nour tab (or open one) and tell it to play
- * the adhan in-page. The audio itself is precached above so it works offline.
+ * the adhan in-page. The audio is cached on demand (see "nour:cache-adhan")
+ * so it works offline once azan has been enabled.
  */
 self.addEventListener("notificationclick", (event) => {
   const notification = event.notification;
