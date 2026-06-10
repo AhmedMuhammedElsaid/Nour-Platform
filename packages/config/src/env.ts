@@ -42,6 +42,14 @@ const envSchema = z.object({
   NEXT_PUBLIC_WEB_URL: z.string().url().default("http://localhost:3000"),
   NEXT_PUBLIC_ADMIN_URL: z.string().url().default("http://localhost:3001"),
 
+  // Cross-deployment cache invalidation (refactor-hardening Phase 1).
+  // Admin mutations POST mutated tags to web's /api/revalidate so web's data
+  // cache drops them — revalidateTag alone only invalidates the deployment it
+  // runs in. Both optional: dev sessions and the web app itself work without
+  // them, and a 5-min cache TTL self-heals a missed webhook.
+  WEB_REVALIDATE_URL: z.string().url().optional(),
+  REVALIDATE_SECRET: z.string().min(16).optional(),
+
   // Observability (Wave 5).
   SENTRY_DSN: z.string().url().optional(),
 

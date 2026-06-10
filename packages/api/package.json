@@ -26,6 +26,8 @@
     "./schemas/azkar": "./src/schemas/azkar.ts",
     "./schemas/prayer-times": "./src/schemas/prayer-times.ts",
     "./schemas/quran": "./src/schemas/quran.ts",
+    "./cache/tags": "./src/cache/tags.ts",
+    "./cache/invalidate": "./src/cache/invalidate.ts",
     "./media/r2-client": "./src/media/r2-client.ts",
     "./auth": "./src/auth/index.ts",
     "./auth/password": "./src/auth/password.ts",
