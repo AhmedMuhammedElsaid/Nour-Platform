@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-import { listSurahs } from "@repo/api/services/quran";
+import { getCachedSurahList } from "@/lib/cached-content";
 import { LOCALES, type Locale } from "@repo/api/schemas/locale";
 import { localeAlternates, defaultOpenGraph, defaultTwitter } from "@/lib/seo";
 import { Link } from "@/i18n/navigation";
@@ -41,7 +41,7 @@ export default async function QuranIndexPage({
   setRequestLocale(locale);
 
   const t = await getTranslations("quran");
-  const surahs = await listSurahs();
+  const surahs = await getCachedSurahList();
   const surahNames: Record<number, string> = Object.fromEntries(
     surahs.map((s) => [s.number, s.name.en]),
   );

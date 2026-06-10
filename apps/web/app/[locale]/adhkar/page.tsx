@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 
-import { getPublishedAzkar } from "@repo/api/services/azkar";
+import { getCachedPublishedAzkar } from "@/lib/cached-content";
 import { LOCALES, type Locale } from "@repo/api/schemas/locale";
 import { localeAlternates, defaultOpenGraph, defaultTwitter } from "@/lib/seo";
 import { AdhkarCard } from "@/features/adhkar/components/adhkar-card";
@@ -46,7 +46,7 @@ export default async function AdhkarPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const azkarSets = await getPublishedAzkar();
+  const azkarSets = await getCachedPublishedAzkar();
 
   return (
     <section className="mx-auto max-w-6xl px-6 py-16">

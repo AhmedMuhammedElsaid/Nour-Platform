@@ -21,12 +21,22 @@ const getTracksWithUrls = vi.fn().mockResolvedValue([]);
 vi.mock("@repo/api/services/track", () => ({
   getTracksWithUrls: (...a: unknown[]) => getTracksWithUrls(...a),
 }));
+const getPublishedAzkar = vi.fn().mockResolvedValue([]);
+vi.mock("@repo/api/services/azkar", () => ({
+  getPublishedAzkar: (...a: unknown[]) => getPublishedAzkar(...a),
+}));
+const listSurahs = vi.fn().mockResolvedValue([]);
+vi.mock("@repo/api/services/quran", () => ({
+  listSurahs: (...a: unknown[]) => listSurahs(...a),
+}));
 
 const {
   getCachedPublishedPlaylists,
   getCachedCategories,
   getCachedPlaylistBySlug,
   getCachedTracksWithUrls,
+  getCachedPublishedAzkar,
+  getCachedSurahList,
 } = await import("./cached-content");
 
 describe("cached-content wrappers forward to their services", () => {
@@ -53,5 +63,15 @@ describe("cached-content wrappers forward to their services", () => {
   it("calls listCategories", async () => {
     await getCachedCategories();
     expect(listCategories).toHaveBeenCalled();
+  });
+
+  it("calls getPublishedAzkar", async () => {
+    await getCachedPublishedAzkar();
+    expect(getPublishedAzkar).toHaveBeenCalled();
+  });
+
+  it("calls listSurahs", async () => {
+    await getCachedSurahList();
+    expect(listSurahs).toHaveBeenCalled();
   });
 });

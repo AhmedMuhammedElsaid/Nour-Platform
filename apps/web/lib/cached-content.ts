@@ -1,12 +1,20 @@
 import { unstable_cache } from "next/cache";
 
-import { PLAYLISTS_HOME, CATEGORIES, playlistTag } from "@repo/api/cache/tags";
+import {
+  PLAYLISTS_HOME,
+  CATEGORIES,
+  ADHKAR,
+  QURAN,
+  playlistTag,
+} from "@repo/api/cache/tags";
 import {
   getPublishedPlaylists,
   getPlaylistBySlug,
 } from "@repo/api/services/playlist";
 import { listCategories } from "@repo/api/services/category";
 import { getTracksWithUrls } from "@repo/api/services/track";
+import { getPublishedAzkar } from "@repo/api/services/azkar";
+import { listSurahs } from "@repo/api/services/quran";
 import type { Locale } from "@repo/api/schemas/locale";
 
 /*
@@ -61,4 +69,20 @@ export function getCachedTracksWithUrls(playlistId: string) {
     ["tracks-with-urls"],
     { tags: [playlistTag(playlistId)], revalidate: TTL },
   )(playlistId);
+}
+
+export function getCachedPublishedAzkar() {
+  return unstable_cache(() => getPublishedAzkar(), ["published-azkar"], {
+    tags: [ADHKAR],
+    revalidate: TTL,
+  })();
+}
+
+// Quran surah list is immutable seed data — cache it for an hour. The QURAN tag
+// is still attached so a re-seed migration can bust it explicitly if needed.
+export function getCachedSurahList() {
+  return unstable_cache(() => listSurahs(), ["surah-list"], {
+    tags: [QURAN],
+    revalidate: 3600,
+  })();
 }
