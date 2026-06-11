@@ -24,7 +24,13 @@ export function buildWebCsp(nonce: string, r2Hostname: string): string {
     // 'unsafe-inline' as a fallback: CSP2-only clients would honor it and
     // silently disable nonce enforcement. Next 16 nonce propagation is
     // reliable enough that this trade-off favors stricter security.
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    // Dev ONLY: React dev builds + Turbopack HMR need eval() (e.g. for
+    // reconstructing component stacks when logging warnings); without it the
+    // dev error path throws and streamed Suspense boundaries never resolve
+    // (page freezes on its skeleton). NEVER add 'unsafe-eval' to production.
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${
+      process.env.NODE_ENV !== "production" ? " 'unsafe-eval'" : ""
+    }`,
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data:${r2Origin ? ` ${r2Origin}` : ""}`,
     "font-src 'self'",
