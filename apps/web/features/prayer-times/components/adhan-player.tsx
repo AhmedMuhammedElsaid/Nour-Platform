@@ -29,6 +29,13 @@ export const AdhanPlayer = forwardRef<AdhanPlayerHandle>(function AdhanPlayer(
     play: async (key, volume) => {
       const el = key === "fajr" ? fajrRef.current : regularRef.current;
       if (!el) return;
+      // Stop the sibling recording first — the regular and Fajr adhans must
+      // never overlap (each lives in its own <audio> element).
+      const sibling = key === "fajr" ? regularRef.current : fajrRef.current;
+      if (sibling && !sibling.paused) {
+        sibling.pause();
+        sibling.currentTime = 0;
+      }
       el.volume = Math.min(1, Math.max(0, volume));
       el.currentTime = 0;
       await el.play();
@@ -40,6 +47,9 @@ export const AdhanPlayer = forwardRef<AdhanPlayerHandle>(function AdhanPlayer(
       // with a muted play()/pause() so it's silent but unlocked.
       for (const el of [regularRef.current, fajrRef.current]) {
         if (!el) continue;
+        // Never prime an element that is mid-adhan — the mute/pause cycle
+        // would silence a live azan (unlock re-arms on remount/locale nav).
+        if (!el.paused) continue;
         const wasMuted = el.muted;
         el.muted = true;
         el.play()
