@@ -119,7 +119,12 @@ export function SunArc({
             ) : (
               <circle cx={p.x} cy={p.y} r="3.5" fill="var(--color-text-2)" />
             )}
+            {/* Hidden below `sm`: the viewBox scales labels to ~7px there
+                (unreadable, Maghrib/Isha collide). The countdown + time row
+                under the arc carry names/times on phones; the gold glowing
+                dot still marks the next prayer. */}
             <text
+              className="max-sm:hidden"
               x={p.x}
               y={labelY}
               textAnchor="middle"
