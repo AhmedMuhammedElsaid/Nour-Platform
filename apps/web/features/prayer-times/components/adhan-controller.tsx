@@ -13,6 +13,7 @@ import { usePrayerSettings } from "../hooks/use-prayer-settings";
 import { useAdhanSettings } from "../hooks/use-adhan-settings";
 import { useAdhanScheduler } from "../hooks/use-adhan-scheduler";
 import { scheduleAdhanNotifications } from "../lib/adhan-notifications";
+import { ADHAN_FIRED_KEY, claimFiredEvent } from "../lib/fired-event-store";
 import { AdhanPlayer, type AdhanPlayerHandle } from "./adhan-player";
 
 function isAdhanKey(value: unknown): value is AdhanPrayerKey {
@@ -80,18 +81,37 @@ export function AdhanController() {
     return () => window.removeEventListener("nour:test-adhan", onTest);
   }, [settings.volume]);
 
-  // Notification click → SW postMessage → play in-page.
+  // Notification click → SW postMessage → play in-page. Shares the durable
+  // fired-event claim with the foreground scheduler so a click can't replay an
+  // adhan the catch-up (or another tab) already played.
   useEffect(() => {
     if (typeof navigator === "undefined" || !navigator.serviceWorker) return;
     const handler = (e: MessageEvent) => {
       const data = e.data as { type?: string; adhanKey?: unknown } | null;
-      if (data?.type === "adhan:play" && isAdhanKey(data.adhanKey)) {
-        player.current?.play(data.adhanKey, settings.volume).catch(() => {});
+      if (data?.type !== "adhan:play" || !isAdhanKey(data.adhanKey)) return;
+      const key = data.adhanKey;
+      const play = () => player.current?.play(key, settings.volume).catch(() => {});
+      const day = computePrayerTimes({
+        lat: location.lat,
+        lng: location.lng,
+        date: new Date(),
+        method: prefs.method,
+        madhab: prefs.madhab,
+      });
+      const iso = day.instants
+        .find((i) => i.key === key)
+        ?.time?.toISOString();
+      if (!iso) {
+        play();
+        return;
       }
+      void claimFiredEvent(ADHAN_FIRED_KEY, iso).then((owned) => {
+        if (owned) play();
+      });
     };
     navigator.serviceWorker.addEventListener("message", handler);
     return () => navigator.serviceWorker.removeEventListener("message", handler);
-  }, [settings.volume]);
+  }, [settings.volume, location.lat, location.lng, prefs.method, prefs.madhab]);
 
   return <AdhanPlayer ref={player} />;
 }

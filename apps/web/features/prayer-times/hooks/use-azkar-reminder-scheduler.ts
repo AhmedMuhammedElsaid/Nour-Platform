@@ -11,6 +11,10 @@ import {
   nextAzkarReminderEvent,
   recentlyMissedAzkarReminder,
 } from "../lib/azkar-reminder-schedule";
+import {
+  AZKAR_REMINDER_FIRED_KEY,
+  claimFiredEvent,
+} from "../lib/fired-event-store";
 
 // Recompute at least this often so clock drift / sleep / background throttling
 // can't push the fire time out by more than one chunk; the last leg is armed to
@@ -44,13 +48,17 @@ export function useAzkarReminderScheduler(input: {
 
     let timer: ReturnType<typeof setTimeout> | undefined;
     let cancelled = false;
+    // Fast-path dedup within this closure; durable dedup in localStorage —
+    // see fired-event-store.ts (closure resets + second tab can't double-fire).
     let lastFiredAt: string | null = null;
 
     const fire = (event: AzkarReminderEvent) => {
       const id = event.time.toISOString();
       if (lastFiredAt === id) return;
       lastFiredAt = id;
-      onFireRef.current(event);
+      void claimFiredEvent(AZKAR_REMINDER_FIRED_KEY, id).then((owned) => {
+        if (owned && !cancelled) onFireRef.current(event);
+      });
     };
 
     const arm = (allowCatchUp = false) => {

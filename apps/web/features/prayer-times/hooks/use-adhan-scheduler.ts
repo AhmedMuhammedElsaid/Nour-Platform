@@ -11,6 +11,7 @@ import {
   nextAdhanEvent,
   recentlyMissedAdhan,
 } from "../lib/adhan-schedule";
+import { ADHAN_FIRED_KEY, claimFiredEvent } from "../lib/fired-event-store";
 
 // Recompute at least this often so clock drift / sleep / background throttling
 // can't push the fire time out by more than one chunk; the last leg is armed to
@@ -47,15 +48,18 @@ export function useAdhanScheduler(input: {
 
     let timer: ReturnType<typeof setTimeout> | undefined;
     let cancelled = false;
-    // ISO time of the last adhan we played — dedups across re-arms, catch-up,
-    // and tab-focus recomputes so the same prayer never fires twice.
+    // Fast-path dedup within this closure; the durable dedup lives in
+    // localStorage (claimFiredEvent) because this closure is recreated on any
+    // settings/location change and other tabs/paths can't see it.
     let lastFiredAt: string | null = null;
 
     const fire = (event: AdhanEvent) => {
       const id = event.time.toISOString();
       if (lastFiredAt === id) return;
       lastFiredAt = id;
-      onFireRef.current(event);
+      void claimFiredEvent(ADHAN_FIRED_KEY, id).then((owned) => {
+        if (owned && !cancelled) onFireRef.current(event);
+      });
     };
 
     const arm = (allowCatchUp = false) => {
