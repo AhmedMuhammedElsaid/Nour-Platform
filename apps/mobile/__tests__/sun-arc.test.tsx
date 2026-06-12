@@ -19,33 +19,24 @@ function day(): PrayerDay {
   };
 }
 
-const labels = {
-  fajr: "Fajr",
-  sunrise: "Sunrise",
-  dhuhr: "Dhuhr",
-  asr: "Asr",
-  maghrib: "Maghrib",
-  isha: "Isha",
-};
-
 describe("SunArc day/night marker", () => {
   it("shows the sun during the day (between Fajr and Isha)", () => {
     const noon = new Date(2026, 5, 9, 13, 0, 0); // after Asr, before Maghrib
-    render(<SunArc day={day()} now={noon} nextPrayerKey="maghrib" prayerLabels={labels} />);
+    render(<SunArc day={day()} now={noon} nextPrayerKey="maghrib" />);
     expect(screen.getByTestId("prayer-sun")).toBeTruthy();
     expect(screen.queryByTestId("prayer-moon")).toBeNull();
   });
 
   it("shows the moon after Isha", () => {
     const night = new Date(2026, 5, 9, 22, 0, 0); // after Isha 20:30
-    render(<SunArc day={day()} now={night} nextPrayerKey={null} prayerLabels={labels} />);
+    render(<SunArc day={day()} now={night} nextPrayerKey={null} />);
     expect(screen.getByTestId("prayer-moon")).toBeTruthy();
     expect(screen.queryByTestId("prayer-sun")).toBeNull();
   });
 
   it("shows the moon before Fajr", () => {
     const preDawn = new Date(2026, 5, 9, 3, 0, 0); // before Fajr 04:00
-    render(<SunArc day={day()} now={preDawn} nextPrayerKey="fajr" prayerLabels={labels} />);
+    render(<SunArc day={day()} now={preDawn} nextPrayerKey="fajr" />);
     expect(screen.getByTestId("prayer-moon")).toBeTruthy();
     expect(screen.queryByTestId("prayer-sun")).toBeNull();
   });

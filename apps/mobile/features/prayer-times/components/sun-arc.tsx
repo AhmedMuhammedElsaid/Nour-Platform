@@ -3,7 +3,7 @@
 // Gold rayed sun = current time; glowing dot = next prayer.
 
 import { View } from "react-native";
-import Svg, { Circle, Defs, Mask, Path, Text as SvgText } from "react-native-svg";
+import Svg, { Circle, Defs, Mask, Path } from "react-native-svg";
 
 import {
   ARC,
@@ -22,7 +22,6 @@ const MOON = "#d6e3ff";
 
 type ArcDot = {
   key: PrayerKey;
-  label: string;
   fraction: number;
   isNext: boolean;
 };
@@ -31,10 +30,14 @@ type SunArcProps = {
   day: PrayerDay;
   now: Date;
   nextPrayerKey: PrayerKey | null;
-  prayerLabels: Partial<Record<PrayerKey, string>>;
 };
 
-export function SunArc({ day, now, nextPrayerKey, prayerLabels }: SunArcProps) {
+// The arc shows the sun/moon position and highlights the next prayer's dot; the
+// prayer names + times live in the countdown and timetable directly below it.
+// In-arc labels are deliberately omitted — at phone width the 600-unit viewBox
+// scales them to ~6px and they collide (the same readability bug the web arc
+// hides below `sm`). Mobile is always phone-width, so they're dropped outright.
+export function SunArc({ day, now, nextPrayerKey }: SunArcProps) {
   const progress = getDayProgress(day, now);
   const sunT = tForFraction(progress);
   const sunPt = arcPoint(sunT);
@@ -65,7 +68,6 @@ export function SunArc({ day, now, nextPrayerKey, prayerLabels }: SunArcProps) {
       }
       return {
         key: inst.key,
-        label: prayerLabels[inst.key] ?? inst.key,
         fraction,
         isNext: inst.key === nextPrayerKey,
       };
@@ -113,25 +115,6 @@ export function SunArc({ day, now, nextPrayerKey, prayerLabels }: SunArcProps) {
               fill={dot.isNext ? GOLD : MUTED}
               opacity={dot.isNext ? 1 : 0.7}
             />
-          );
-        })}
-
-        {/* Labels below dots */}
-        {dots.map((dot) => {
-          const t = tForFraction(dot.fraction);
-          const pt = arcPoint(t);
-          return (
-            <SvgText
-              key={`${dot.key}-label`}
-              x={pt.x}
-              y={pt.y + 20}
-              fontSize={10}
-              textAnchor="middle"
-              fill={dot.isNext ? GOLD : MUTED}
-              fontWeight={dot.isNext ? "bold" : "normal"}
-            >
-              {dot.label}
-            </SvgText>
           );
         })}
 

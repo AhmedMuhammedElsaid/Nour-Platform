@@ -97,18 +97,6 @@ export default function PrayerTimesScreen() {
     [t],
   );
 
-  const prayerLabels = useMemo<Partial<Record<PrayerKey, string>>>(
-    () => ({
-      fajr: t("prayer.fajr"),
-      sunrise: t("prayer.sunrise"),
-      dhuhr: t("prayer.dhuhr"),
-      asr: t("prayer.asr"),
-      maghrib: t("prayer.maghrib"),
-      isha: t("prayer.isha"),
-    }),
-    [t],
-  );
-
   useAzanNotifications(
     notifEnabled && notifGranted,
     location,
@@ -146,12 +134,7 @@ export default function PrayerTimesScreen() {
 
         {/* Sun arc */}
         {hydrated && (
-          <SunArc
-            day={day}
-            now={now}
-            nextPrayerKey={upcoming.key}
-            prayerLabels={prayerLabels}
-          />
+          <SunArc day={day} now={now} nextPrayerKey={upcoming.key} />
         )}
 
         {/* Countdown */}
