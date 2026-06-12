@@ -33,6 +33,20 @@ export function nextAzkarReminderEvent(
   return best;
 }
 
+// True when a reminder's scheduled instant is more than `graceMs` in the past
+// at `now` — i.e. its timer resolved long after it was armed. Browser timers
+// are paused while the device sleeps and resume on wake, so the final-window
+// setTimeout (which captures a specific event) can fire hours late. Mirrors the
+// adhan scheduler's freshness guard so a reminder only ever shows within
+// `graceMs` of its time. Pure — no DOM/Date.now.
+export function isAzkarReminderEventStale(
+  event: AzkarReminderEvent,
+  now: Date,
+  graceMs: number,
+): boolean {
+  return now.getTime() - event.time.getTime() > graceMs;
+}
+
 // Most-recent enabled azkar reminder within the last `graceMs` — window
 // (now - graceMs, now]. Catches up a reminder the foreground timer missed
 // while the tab was backgrounded/asleep. Pure — no DOM/Date.now.

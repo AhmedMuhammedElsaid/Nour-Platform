@@ -8,6 +8,7 @@ import { computePrayerTimes } from "@repo/api/services/prayer-times";
 
 import {
   type AdhanEvent,
+  isAdhanEventStale,
   nextAdhanEvent,
   recentlyMissedAdhan,
 } from "../lib/adhan-schedule";
@@ -56,6 +57,13 @@ export function useAdhanScheduler(input: {
     const fire = (event: AdhanEvent) => {
       const id = event.time.toISOString();
       if (lastFiredAt === id) return;
+      // A precise timer paused during device sleep resumes on wake and resolves
+      // its captured event late — e.g. the pre-Fajr timer firing at Maghrib,
+      // which would play the Fajr adhan hours after Fajr. Drop any event more
+      // than the catch-up grace late; the re-arm below picks the correct
+      // upcoming prayer. (recentlyMissedAdhan only ever passes fresh events, so
+      // this guard rejects only stale precise-timer fires.)
+      if (isAdhanEventStale(event, new Date(), CATCH_UP_WINDOW)) return;
       lastFiredAt = id;
       void claimFiredEvent(ADHAN_FIRED_KEY, id).then((owned) => {
         if (owned && !cancelled) onFireRef.current(event);

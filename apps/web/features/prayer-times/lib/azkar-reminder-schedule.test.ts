@@ -4,6 +4,7 @@ import { DEFAULT_AZKAR_REMINDER_SETTINGS } from "@repo/api/schemas/prayer-times"
 import type { PrayerInstant } from "@repo/api/services/prayer-times";
 
 import {
+  isAzkarReminderEventStale,
   nextAzkarReminderEvent,
   recentlyMissedAzkarReminder,
 } from "./azkar-reminder-schedule";
@@ -77,5 +78,30 @@ describe("recentlyMissedAzkarReminder", () => {
     expect(
       recentlyMissedAzkarReminder(instants(), enabled, new Date(2026, 5, 7, 4, 10), GRACE),
     ).toBeNull();
+  });
+});
+
+describe("isAzkarReminderEventStale", () => {
+  const GRACE = 2 * 60_000; // 2 min
+  const ev = (h: number, m = 0) => ({
+    kind: "sabah" as const,
+    time: new Date(2026, 5, 7, h, m, 0, 0),
+  });
+
+  it("is stale when a morning timer resolves on wake hours late", () => {
+    const now = new Date(2026, 5, 7, 19, 0, 0); // sabah 04:15 timer fires at 19:00
+    expect(isAzkarReminderEventStale(ev(4, 15), now, GRACE)).toBe(true);
+  });
+
+  it("is not stale when fired within the grace window", () => {
+    expect(isAzkarReminderEventStale(ev(4, 15), new Date(2026, 5, 7, 4, 16), GRACE)).toBe(false);
+  });
+
+  it("is not stale at exactly the grace boundary", () => {
+    expect(isAzkarReminderEventStale(ev(4, 15), new Date(2026, 5, 7, 4, 17), GRACE)).toBe(false);
+  });
+
+  it("is not stale when the timer fires slightly early", () => {
+    expect(isAzkarReminderEventStale(ev(4, 15), new Date(2026, 5, 7, 4, 14, 59), GRACE)).toBe(false);
   });
 });

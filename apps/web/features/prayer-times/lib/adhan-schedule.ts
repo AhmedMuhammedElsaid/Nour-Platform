@@ -34,6 +34,24 @@ export function nextAdhanEvent(
   return best;
 }
 
+// True when an event's scheduled instant is more than `graceMs` in the past at
+// `now` — i.e. its timer resolved long after it was armed. Browser timers are
+// *paused* while the device sleeps and resume on wake, so the final-window
+// setTimeout (which captures a specific event) can fire its event hours late:
+// a precise timer armed just before Fajr that resolves on wake at Maghrib would
+// otherwise play the Fajr adhan. Such fires must be dropped — the re-arm then
+// picks the correct upcoming prayer from the live clock. Mirrors the
+// `recentlyMissedAdhan` grace so an adhan only ever plays within `graceMs` of
+// its time. A timer that fires slightly early (now < time) is never stale.
+// Pure — no DOM, no Date.now().
+export function isAdhanEventStale(
+  event: AdhanEvent,
+  now: Date,
+  graceMs: number,
+): boolean {
+  return now.getTime() - event.time.getTime() > graceMs;
+}
+
 // Most-recent *enabled* adhan whose time falls within the last `graceMs`, i.e.
 // in the half-open window (now - graceMs, now]. Used to catch up an adhan that
 // the foreground timer missed because the tab was backgrounded/throttled or the

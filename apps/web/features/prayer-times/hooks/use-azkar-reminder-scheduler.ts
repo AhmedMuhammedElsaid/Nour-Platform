@@ -8,6 +8,7 @@ import { computePrayerTimes } from "@repo/api/services/prayer-times";
 
 import {
   type AzkarReminderEvent,
+  isAzkarReminderEventStale,
   nextAzkarReminderEvent,
   recentlyMissedAzkarReminder,
 } from "../lib/azkar-reminder-schedule";
@@ -55,6 +56,11 @@ export function useAzkarReminderScheduler(input: {
     const fire = (event: AzkarReminderEvent) => {
       const id = event.time.toISOString();
       if (lastFiredAt === id) return;
+      // A precise timer paused during device sleep resumes on wake and resolves
+      // its captured event late — drop any reminder more than the catch-up
+      // grace late so a morning reminder can't fire hours later (mirrors the
+      // adhan scheduler). recentlyMissedAzkarReminder only passes fresh events.
+      if (isAzkarReminderEventStale(event, new Date(), CATCH_UP_WINDOW)) return;
       lastFiredAt = id;
       void claimFiredEvent(AZKAR_REMINDER_FIRED_KEY, id).then((owned) => {
         if (owned && !cancelled) onFireRef.current(event);

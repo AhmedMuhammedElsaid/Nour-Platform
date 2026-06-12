@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_ADHAN_SETTINGS } from "@repo/api/schemas/prayer-times";
 import type { PrayerInstant } from "@repo/api/services/prayer-times";
 
-import { nextAdhanEvent, recentlyMissedAdhan } from "./adhan-schedule";
+import {
+  isAdhanEventStale,
+  nextAdhanEvent,
+  recentlyMissedAdhan,
+} from "./adhan-schedule";
 
 function instants(): PrayerInstant[] {
   const d = (h: number, m = 0) => new Date(2026, 5, 7, h, m, 0, 0);
@@ -96,5 +100,35 @@ describe("recentlyMissedAdhan", () => {
     expect(
       recentlyMissedAdhan(instants(), DEFAULT_ADHAN_SETTINGS, now, GRACE),
     ).toBeNull();
+  });
+});
+
+describe("isAdhanEventStale", () => {
+  const GRACE = 2 * 60_000; // 2 min
+  const ev = (h: number, m = 0) => ({
+    key: "fajr" as const,
+    time: new Date(2026, 5, 7, h, m, 0, 0),
+  });
+
+  it("is stale when a pre-Fajr timer resolves on wake at Maghrib", () => {
+    // The bug: Fajr precise timer (04:00) paused during device sleep resumes at
+    // Maghrib (19:00) — ~15h late — and would otherwise play the Fajr adhan.
+    const now = new Date(2026, 5, 7, 19, 0, 0);
+    expect(isAdhanEventStale(ev(4), now, GRACE)).toBe(true);
+  });
+
+  it("is not stale when fired within the grace window", () => {
+    const now = new Date(2026, 5, 7, 4, 1, 0); // 1 min after a 04:00 event
+    expect(isAdhanEventStale(ev(4), now, GRACE)).toBe(false);
+  });
+
+  it("is not stale at exactly the grace boundary", () => {
+    const now = new Date(2026, 5, 7, 4, 2, 0); // exactly 2 min after
+    expect(isAdhanEventStale(ev(4), now, GRACE)).toBe(false);
+  });
+
+  it("is not stale when the timer fires slightly early", () => {
+    const now = new Date(2026, 5, 7, 3, 59, 59); // event still 1s in the future
+    expect(isAdhanEventStale(ev(4), now, GRACE)).toBe(false);
   });
 });
