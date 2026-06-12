@@ -1,0 +1,67 @@
+# .easignore — files excluded from the EAS Build project archive.
+#
+# WHY THIS FILE EXISTS: in a monorepo, EAS uploads the whole workspace root,
+# not just apps/mobile. Without this, ~15 MB of web-only assets (the adhan
+# MP3s + web icons in apps/web/public) ride along on every mobile build.
+#
+# CRITICAL: once an .easignore exists, EAS uses it INSTEAD of .gitignore.
+# So every build artifact / secret normally hidden by .gitignore MUST be
+# re-listed below, or it will start getting uploaded.
+
+# ---- Dependencies & build output (mirrors .gitignore) ----
+node_modules/
+.next/
+.turbo/
+dist/
+out/
+build/
+coverage/
+.cache/
+web-build/
+*.tsbuildinfo
+next-env.d.ts
+expo-env.d.ts
+
+# ---- Secrets / env / signing material (NEVER upload) ----
+.env
+.env.local
+.env.*.local
+*.pem
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# ---- Expo / generated native (CNG: EAS regenerates these during prebuild) ----
+.expo/
+.metro-health-check*
+.kotlin/
+apps/mobile/android/
+apps/mobile/ios/
+
+# ---- Logs / OS / editor cruft ----
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.vercel/
+
+# ---- Repo tooling/meta not needed by the build ----
+.claude/
+.superpowers/
+.git/
+
+# ---- THE 21.6 MB CULPRIT: web-only assets the mobile build never uses ----
+# 13 MB of adhan MP3s + ~2 MB of web icons/images live here. Mobile bundles
+# its own assets under apps/mobile/assets, so none of this is needed.
+apps/web/public/
+
+# ---- Docs (not part of the build) ----
+docs/
+Documentation/
+*.md
