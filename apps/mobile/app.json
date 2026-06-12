@@ -28,7 +28,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
+          "icon": "./assets/android-icon-monochrome.png",
           "color": "#c8a050",
           "sounds": []
         }
@@ -47,9 +47,8 @@
       "package": "com.nour.mobile",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#0f0d0a",
+        "backgroundColor": "#0E6E59",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,

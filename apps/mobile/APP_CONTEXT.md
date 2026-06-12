@@ -92,6 +92,15 @@ apps/mobile/
 
 ## Known gotchas
 
+- **App icon / splash are a deliberate hybrid** (don't "simplify" to one source): `icon.png`
+  + `splash-icon.png` are the full **og-image** scene (`apps/web/public/og-image.png`, 512² →
+  upscaled 1024²) — its baked-in "Nour Platform" text only works full-bleed. The Android
+  **adaptive** icon (`android-icon-foreground.png` + `-monochrome.png`) and the notification
+  icon instead use the clean white **ن mark** redrawn from `apps/web/public/icons/icon.svg`,
+  centered inside the safe zone so the circle mask never clips text/badges; adaptive bg is the
+  solid brand green `#0E6E59` via `backgroundColor` (no `backgroundImage`). No ImageMagick on
+  this machine — assets were generated with a throwaway PowerShell + `System.Drawing` script
+  (resize og-image; stroke the noon cup path + dot from the SVG). Regenerate the same way.
 - **Sun-arc moon**: `isNight` swaps the rayed sun for a glowing crescent. Mobile
   carves the crescent with an RN-SVG `<Mask>` using **absolute** cx/cy (no
   transforms in this SVG), so it always aligns — and degrades to a visible full
