@@ -4,9 +4,6 @@
   },
   "build": {
     "production": {
-      "env": {
-        "EAS_NO_VCS": "1"
-      },
       "android": {
         "buildType": "app-bundle"
       },
@@ -16,9 +13,6 @@
     },
     "preview": {
       "environment": "preview",
-      "env": {
-        "EAS_NO_VCS": "1"
-      },
       "android": {
         "buildType": "apk"
       },
