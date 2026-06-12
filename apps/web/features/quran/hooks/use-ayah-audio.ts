@@ -18,6 +18,13 @@ export interface UseAyahAudio {
   stop: () => void;
 }
 
+export interface UseAyahAudioOptions {
+  // Invoked right before any ayah playback starts or resumes. The reader uses
+  // this to pause the site-wide PlayerProvider — the two audio engines are
+  // independent HTMLAudioElements and would otherwise play over each other.
+  onPlaybackStart?: () => void;
+}
+
 // Warm the browser HTTP cache (and our cross-origin audio service worker
 // cache) for one URL without playing it. Using fetch() with the audio
 // destination doesn't exist, so we trigger a parallel <audio> load.
@@ -30,8 +37,17 @@ function prefetchUrl(el: HTMLAudioElement, url: string): void {
   el.load();
 }
 
-export function useAyahAudio(ayahs: PlayableAyah[]): UseAyahAudio {
+export function useAyahAudio(
+  ayahs: PlayableAyah[],
+  opts?: UseAyahAudioOptions,
+): UseAyahAudio {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Latest-callback ref so a per-render inline callback doesn't churn the
+  // memoized playAt/toggle below.
+  const onPlaybackStartRef = useRef(opts?.onPlaybackStart);
+  useEffect(() => {
+    onPlaybackStartRef.current = opts?.onPlaybackStart;
+  });
   // Hidden secondary element used purely to warm the cache for the next ayah
   // while the primary one is playing. Browsers happily run two loads in
   // parallel — this is the standard podcast/audio-app pattern.
@@ -82,6 +98,7 @@ export function useAyahAudio(ayahs: PlayableAyah[]): UseAyahAudio {
         return;
       }
       el.src = ayah.audioUrl;
+      onPlaybackStartRef.current?.();
       setCurrentGlobal(ayah.numberGlobal);
       setIsPlaying(true);
       // Surface playback rejections (CSP block, network error, autoplay
@@ -119,6 +136,7 @@ export function useAyahAudio(ayahs: PlayableAyah[]): UseAyahAudio {
       el.pause();
       setIsPlaying(false);
     } else if (currentGlobal !== null) {
+      onPlaybackStartRef.current?.();
       void el.play();
       setIsPlaying(true);
     }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { QuranReciter, ReaderAyah, SurahReader } from "@repo/api/schemas/quran";
+import { usePlayer } from "@repo/ui/blocks/player-context";
 import { AyahRow } from "./ayah-row";
 import { ReaderSettingsSheet } from "./reader-settings-sheet";
 import { TafsirSheet } from "./tafsir-sheet";
@@ -28,9 +29,23 @@ export function Reader({
   const [prefs, setPrefs] = useState<QuranPrefs>(loadPrefs);
   const [bookmarks, setBookmarks] = useState<AyahRef[]>([]);
   const [tafsirAyah, setTafsirAyah] = useState<{ numberGlobal: number; ref: string } | null>(null);
+  // The reader's ayah audio and the site-wide player are independent
+  // HTMLAudioElements — coordinate them so they never play simultaneously.
+  const player = usePlayer();
   const audio = useAyahAudio(
     data.ayahs.map((a) => ({ numberGlobal: a.numberGlobal, audioUrl: a.audioUrl })),
+    {
+      onPlaybackStart: () => {
+        if (player.isPlaying) player.pause();
+      },
+    },
   );
+
+  // Reverse direction: starting the site-wide player stops the ayah audio.
+  const { isPlaying: ayahPlaying, stop: stopAyah } = audio;
+  useEffect(() => {
+    if (player.isPlaying && ayahPlaying) stopAyah();
+  }, [player.isPlaying, ayahPlaying, stopAyah]);
 
   // Hydrate prefs + bookmarks client-side (avoids SSR/client mismatch).
   useEffect(() => {
