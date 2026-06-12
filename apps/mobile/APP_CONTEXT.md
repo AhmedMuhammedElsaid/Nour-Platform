@@ -129,6 +129,21 @@ apps/mobile/
     `react-native-worklets` deps in `apps/mobile/package.json`.
   - EAS only reads `apps/mobile/eas.json`; never run `eas` from the repo root (a stray
     root `eas.json` from such a run was deleted).
+- **RNTP New-Arch runtime crash (APK closes instantly, before splash)**: distinct from the
+  compile patch above — fixing the build was necessary but NOT sufficient. RNTP 4.1.2's async
+  `@ReactMethod`s in `MusicModule.kt` are Kotlin expression bodies (`fun x(...) = scope.launch { }`)
+  whose inferred return type is `kotlinx.coroutines.Job` (non-void). RN 0.85 New-Arch / bridgeless
+  TurboModule interop rejects a non-void return on a non-synchronous `@ReactMethod`, so the module
+  fails to parse on the first route load: `TurboModuleInteropUtils$ParsingException: Unable to
+  parse @ReactMethod annotations from native module: TrackPlayerModule. Details: TurboModule system
+  assumes returnType == void iff the method is synchronous.` Fix (in the same
+  `patches/react-native-track-player@4.1.2.patch`): a `Unit`-returning wrapper
+  `private fun launchInScope(block: suspend kotlinx.coroutines.CoroutineScope.() -> Unit) { scope.launch(block = block) }`
+  that every `scope.launch {` routes through, so each `@ReactMethod` returns `Unit`. Behaviour is
+  identical (the `Job` was never used). **Re-verify BOTH the compile and runtime patches on any RNTP
+  bump.** Diagnose native startup crashes with `adb logcat -b crash`; if USB won't authorize (no
+  "Allow" popup / generic WinUSB driver), use **Wireless debugging** (`adb pair IP:PORT CODE`, then
+  mDNS auto-connects) with Google's standalone platform-tools — this machine has no Android SDK installed.
 
 ## Verify before shipping
 
