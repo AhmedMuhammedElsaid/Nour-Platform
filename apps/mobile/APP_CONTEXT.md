@@ -111,6 +111,24 @@ apps/mobile/
   your machine's LAN IP (Android emulator: `http://10.0.2.2:3000`).
 - Adding a native module or editing `app.json` plugins requires a **new dev-client
   build**, not just a Metro reload.
+- **EAS cloud builds (preview APK = `eas build --profile preview --platform android`,
+  run from `apps/mobile`)**: hard-won gotchas from the first green build (2026-06-12):
+  - Builds resolve the **`production`** EAS env environment by default; the preview
+    profile is pinned to `"environment": "preview"` in `eas.json` so it sees the
+    `EXPO_PUBLIC_API_BASE_URL` var created there (`eas env:list --environment preview`).
+    Without the var the APK silently falls back to `http://localhost:3000`.
+  - `react-native-track-player` 4.1.2 needs `patches/react-native-track-player@4.1.2.patch`
+    (Kotlin `Bundle?` vs `Bundle` compile error on RN 0.85) — applied automatically by
+    pnpm; do not delete the root `patches/` dir or `pnpm.patchedDependencies`.
+  - Babel plugins loaded **by bare name** (babel-preset-expo internals, worklets) must
+    resolve from `apps/mobile` with plain Node resolution or cloud bundling fails with
+    "Cannot find module". The faithful pre-flight check is
+    `require.resolve(name, { paths: ['./apps/mobile'] })` — local `npx expo export`
+    can pass while the cloud fails. Covered by `.npmrc public-hoist-pattern[]=@babel/*`
+    + explicit `babel-preset-expo` / `@babel/plugin-transform-react-jsx` /
+    `react-native-worklets` deps in `apps/mobile/package.json`.
+  - EAS only reads `apps/mobile/eas.json`; never run `eas` from the repo root (a stray
+    root `eas.json` from such a run was deleted).
 
 ## Verify before shipping
 
