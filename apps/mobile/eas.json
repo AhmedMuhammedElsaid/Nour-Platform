@@ -5,24 +5,19 @@
   "build": {
     "production": {
       "android": {
-        "buildType": "app-bundle",
-        "keystore": {
-          "keystorePath": "nour-release-key.keystore",
-          "keystorePassword": "env:KEYSTORE_PASSWORD",
-          "keyAlias": "nour-release",
-          "keyPassword": "env:KEY_PASSWORD"
-        }
+        "buildType": "app-bundle"
       },
       "ios": {
-        "buildType": "archive"
+        "distribution": "store"
       }
     },
     "preview": {
+      "environment": "preview",
       "android": {
         "buildType": "apk"
       },
       "ios": {
-        "buildType": "simulator"
+        "simulator": true
       }
     },
     "development": {
@@ -38,8 +33,7 @@
       },
       "ios": {
         "appleId": "env:APPLE_ID",
-        "appleTeamId": "env:APPLE_TEAM_ID",
-        "appSpecificPassword": "env:APPLE_APP_PASSWORD"
+        "appleTeamId": "env:APPLE_TEAM_ID"
       }
     }
   }

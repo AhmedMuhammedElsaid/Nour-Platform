@@ -67,6 +67,28 @@ EXPO_PUBLIC_API_BASE_URL=http://192.168.1.50:3000
 > (works only on an emulator running on the same machine, and even then Android
 > emulators need `http://10.0.2.2:3000`).
 
+### Set EAS environment variables (one-time, for cloud builds)
+
+`EXPO_PUBLIC_*` vars are **inlined at build time** — they must be set in EAS
+before running any cloud build, not just locally:
+
+```bash
+cd apps/mobile
+
+# Production (preview / release builds point at live API):
+eas env:create --name EXPO_PUBLIC_API_BASE_URL \
+  --value https://your-web-domain.com \
+  --environment production --visibility plaintext
+
+# Development (dev-client builds can point at a staging or local tunnel):
+eas env:create --name EXPO_PUBLIC_API_BASE_URL \
+  --value https://your-staging-domain.com \
+  --environment development --visibility plaintext
+```
+
+> Run once per environment. To update later: `eas env:update --name EXPO_PUBLIC_API_BASE_URL`.
+> View all vars: `eas env:list`.
+
 ---
 
 ## 3. Run in development (custom dev client)
@@ -189,7 +211,7 @@ eas build --profile preview --platform android   # standalone .apk to sideload
 | `KEYSTORE_PASSWORD`, `KEY_PASSWORD` | EAS secret / shell | Android release signing (`eas.json`). |
 | `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD` | EAS secret / shell | iOS submission. |
 
-Set EAS secrets with `eas secret:create` so they're available to cloud builds.
+Set env vars with `eas env:create` (plain-text) and secrets with `eas secret:create` (sensitive) so they're available to cloud builds.
 
 > **`EXPO_PUBLIC_*` is build-time inlined**, the mobile analogue of
 > `NEXT_PUBLIC_*`. A production build pointed at the wrong origin must be
