@@ -149,10 +149,24 @@ apps/mobile/
   `patches/react-native-track-player@4.1.2.patch`): a `Unit`-returning wrapper
   `private fun launchInScope(block: suspend kotlinx.coroutines.CoroutineScope.() -> Unit) { scope.launch(block = block) }`
   that every `scope.launch {` routes through, so each `@ReactMethod` returns `Unit`. Behaviour is
-  identical (the `Job` was never used). **Re-verify BOTH the compile and runtime patches on any RNTP
-  bump.** Diagnose native startup crashes with `adb logcat -b crash`; if USB won't authorize (no
-  "Allow" popup / generic WinUSB driver), use **Wireless debugging** (`adb pair IP:PORT CODE`, then
-  mDNS auto-connects) with Google's standalone platform-tools — this machine has no Android SDK installed.
+  identical (the `Job` was never used). ⚠️ **Renaming the builder also forces renaming the lambdas'
+  `return@launch` → `return@launchInScope` (40 of them)** — Kotlin labels a lambda by its enclosing
+  function name, so the old labels orphan and `:react-native-track-player:compileReleaseKotlin` fails.
+  (Two commits: `761d1a3` wrapper, `60016c0` label rename.) **Re-verify BOTH the compile and runtime
+  patches on any RNTP bump.** Diagnose native startup crashes with `adb logcat -b crash`; if USB won't
+  authorize (no "Allow" popup / generic WinUSB driver — seen on the Huawei CMA-LX2), use **Wireless
+  debugging** (`adb pair IP:PORT CODE`, then mDNS auto-connects) with Google's standalone
+  platform-tools — this machine has no Android SDK/adb installed.
+  - **EAS Free plan caps Android builds/month** — exhausted 2026-06-12 (resets **2026-07-01**); builds
+    then fail with "This account has used its Android builds from the Free plan this month." Options:
+    wait for reset, upgrade the Expo plan, or build locally.
+  - **Local Android build (Windows)**: `eas build --local` is **not supported on Windows** → use
+    `npx expo prebuild --platform android` (the `apps/mobile/android/` project is already generated)
+    then `cd android && ./gradlew assembleRelease`. Needs **JDK 17 + Android SDK/NDK** installed from
+    scratch (none present here; `winget` is available). Gradle wrapper is 9.3.1; New Arch + Hermes on.
+  - **Upload size**: `eas build` uploads the WHOLE monorepo (~21.6 MB); ~13 MB of that is two web-only
+    adhan MP3s in `apps/web/public/audio/`. Add an `apps/mobile/.easignore` excluding
+    `apps/web/public/audio/`, `apps/admin/`, `docs/` to shrink uploads (~6 MB) and reduce upload stalls.
 
 ## Verify before shipping
 
