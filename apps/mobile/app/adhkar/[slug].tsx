@@ -7,6 +7,7 @@ import type { DhikrItem } from "@repo/shared-core/schemas/azkar";
 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 import { initialLocale } from "@/lib/i18n";
@@ -98,7 +99,7 @@ export default function AdhkarReaderScreen() {
   if (detail.isPending) {
     return (
       <View className="flex-1 items-center justify-center bg-bg">
-        <Text variant="muted">{t("common.loading")}</Text>
+        <Spinner label={t("common.loading")} />
       </View>
     );
   }

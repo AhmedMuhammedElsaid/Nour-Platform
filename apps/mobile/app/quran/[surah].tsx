@@ -5,6 +5,7 @@ import { Stack, useLocalSearchParams } from "expo-router";
 import { View } from "react-native";
 
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { Reader } from "@/features/quran/components/reader";
 import { initialLocale } from "@/lib/i18n";
@@ -54,7 +55,7 @@ export default function QuranReaderScreen() {
       <>
         <Stack.Screen options={{ headerShown: true, title: t("quran.title") }} />
         <View className="flex-1 items-center justify-center bg-bg">
-          <Text variant="muted">{t("common.loading")}</Text>
+          <Spinner label={t("common.loading")} />
         </View>
       </>
     );
