@@ -8,6 +8,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import TrackPlayer from "react-native-track-player";
 
+import { AnimatedSplash } from "@/components/animated-splash";
 import { MiniPlayer } from "@/components/mini-player";
 import { ThemeProvider } from "@/lib/theme-context";
 import { PlayerProvider } from "@/lib/player-context";
@@ -21,6 +22,8 @@ void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient());
+  // Animated brand splash overlays the app on cold start, then unmounts itself.
+  const [splashDone, setSplashDone] = useState(false);
 
   // Load custom fonts. Falls back to system fonts if the .ttf assets are not
   // bundled (acceptable in development; add @expo-google-fonts packages for a
@@ -42,6 +45,7 @@ export default function RootLayout() {
           <MiniPlayer />
         </PlayerProvider>
       </ThemeProvider>
+      {!splashDone && <AnimatedSplash onFinish={() => setSplashDone(true)} />}
     </QueryClientProvider>
   );
 }

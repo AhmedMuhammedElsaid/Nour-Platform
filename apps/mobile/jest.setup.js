@@ -1,3 +1,25 @@
+// react-native-reanimated has no worklet runtime under Jest — provide a
+// deterministic mock (animations resolve to their target value synchronously,
+// Animated.View is a plain View). Tests assert behaviour via timers, not motion.
+jest.mock("react-native-reanimated", () => {
+  const { View } = require("react-native");
+  return {
+    __esModule: true,
+    default: { View, createAnimatedComponent: (c) => c },
+    useSharedValue: (v) => ({ value: v }),
+    useAnimatedStyle: () => ({}),
+    useAnimatedProps: () => ({}),
+    withTiming: (to) => to,
+    withSpring: (to) => to,
+    withDelay: (_d, anim) => anim,
+    withSequence: (...a) => a[a.length - 1],
+    withRepeat: (anim) => anim,
+    cancelAnimation: () => {},
+    runOnJS: (fn) => fn,
+    Easing: new Proxy({}, { get: () => () => 0 }),
+  };
+});
+
 // expo-splash-screen has no native module under Jest.
 jest.mock("expo-splash-screen", () => ({
   preventAutoHideAsync: jest.fn().mockResolvedValue(undefined),
