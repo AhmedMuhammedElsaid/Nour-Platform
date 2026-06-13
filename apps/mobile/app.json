@@ -11,7 +11,7 @@
     "backgroundColor": "#0f0d0a",
     "primaryColor": "#c8a050",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#0f0d0a"
     },
@@ -48,7 +48,7 @@
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#0E6E59",
-        "foregroundImage": "./assets/android-icon-foreground.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
@@ -58,7 +58,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png",
+      "favicon": "./assets/icon.png",
       "bundler": "metro"
     },
     "experiments": {

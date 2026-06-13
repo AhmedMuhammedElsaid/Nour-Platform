@@ -92,15 +92,31 @@ apps/mobile/
 
 ## Known gotchas
 
-- **App icon / splash are a deliberate hybrid** (don't "simplify" to one source): `icon.png`
-  + `splash-icon.png` are the full **og-image** scene (`apps/web/public/og-image.png`, 512² →
-  upscaled 1024²) — its baked-in "Nour Platform" text only works full-bleed. The Android
-  **adaptive** icon (`android-icon-foreground.png` + `-monochrome.png`) and the notification
-  icon instead use the clean white **ن mark** redrawn from `apps/web/public/icons/icon.svg`,
-  centered inside the safe zone so the circle mask never clips text/badges; adaptive bg is the
-  solid brand green `#0E6E59` via `backgroundColor` (no `backgroundImage`). No ImageMagick on
-  this machine — assets were generated with a throwaway PowerShell + `System.Drawing` script
-  (resize og-image; stroke the noon cup path + dot from the SVG). Regenerate the same way.
+- **App icons (rationalized 2026-06-13).** All branding derives from the **og-image** scene
+  (`apps/web/public/og-image.png` → 1024² — open Quran + golden light + "Nour Platform"
+  wordmark). The earlier "deliberate ن-mark hybrid" was **intentionally dropped per user
+  request** (they want the colorful scene, not the monochrome mark, on the launcher) — do NOT
+  revert it. Current asset set (only 3 PNGs in `assets/`):
+  - **`icon.png`** — the full scene, **flattened to opaque RGB** (the source had an alpha
+    channel; iOS App Store rejects icons with alpha — re-flatten if you ever regenerate).
+    Used for top-level `icon` (iOS + base), `splash.image` (`resizeMode: contain`, so the
+    whole scene + wordmark shows), and `web.favicon`.
+  - **`adaptive-icon.png`** — Android `adaptiveIcon.foregroundImage`. A **subject-focused
+    derivative**: `icon.png` zoomed 1.4× and center-cropped so the Quran fills the safe
+    zone and the corner wordmark/badges are pushed out of the circle/squircle mask. Opaque
+    full-bleed (so the green `backgroundColor #0E6E59` is just a fallback, never shown).
+    Verified the inscribed-circle crop renders a clean centered-Quran icon.
+  - **`android-icon-monochrome.png`** — the flat white ن silhouette. Used for the Android-13
+    themed-icon `monochromeImage` AND the expo-notifications plugin icon. Leave it: themed +
+    notification icons MUST be a flat single-color silhouette, not the color scene.
+  - Deleted: `android-icon-foreground.png`, `favicon.png`, and `splash-icon.png` (the last
+    was byte-identical to `icon.png`).
+  - **Tooling**: this machine now has **Python PIL** (`from PIL import Image`) — use it to
+    regenerate, not the old PowerShell `System.Drawing` hack. iOS still rounds corners and
+    Android masks the launcher, so any full-scene `icon.png` will lose its corners on those
+    surfaces by design; the wordmark only fully survives on the splash.
+  - The animated splash (`components/animated-splash.tsx`) is **drawn in code** (SVG ن +
+    reanimated), independent of every image asset — icon changes never affect the animation.
 - **Sun-arc moon**: `isNight` swaps the rayed sun for a glowing crescent. Mobile
   carves the crescent with an RN-SVG `<Mask>` using **absolute** cx/cy (no
   transforms in this SVG), so it always aligns — and degrades to a visible full
