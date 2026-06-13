@@ -15,6 +15,7 @@ import { ContinueListening } from "@/features/home/components/continue-listening
 import { ContinueReading } from "@/features/home/components/continue-reading";
 import { SortSelect, type SortOption } from "@/features/home/components/sort-select";
 import { PlaylistCard } from "@/features/playlists/components/playlist-card";
+import { PrayerTimesWidget } from "@/features/prayer-times/components/prayer-times-widget";
 import { initialLocale } from "@/lib/i18n";
 import { categoriesQuery, playlistsQuery } from "@/lib/queries";
 import type { CategoryChip } from "@/lib/types";
@@ -74,6 +75,10 @@ export default function HomeScreen() {
           {t("home.heroSubtitle")}
         </Text>
       </View>
+
+      {/* Live prayer-times arc (sun by day, moon by night) — same widget the
+          web home mounts; tapping opens the full /prayer-times screen. */}
+      <PrayerTimesWidget />
 
       {/* Primary nav — bottom tabs land in Phase 10; simple link rows keep
           features reachable for each phase's gate. */}

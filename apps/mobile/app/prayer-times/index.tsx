@@ -9,6 +9,7 @@ import * as Notifications from "expo-notifications";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { SunArc } from "@/features/prayer-times/components/sun-arc";
+import { buildArcDots } from "@/features/prayer-times/lib/arc-dots";
 import { PrayerTimetable } from "@/features/prayer-times/components/prayer-timetable";
 import { LocationPicker } from "@/features/prayer-times/components/location-picker";
 import { MethodSettings } from "@/features/prayer-times/components/method-settings";
@@ -25,6 +26,7 @@ import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-sett
 import { initialLocale } from "@/lib/i18n";
 import {
   computePrayerTimes,
+  getArcPosition,
   getUpcomingPrayer,
   type PrayerDay,
   type PrayerKey,
@@ -161,6 +163,14 @@ export default function PrayerTimesScreen() {
   const countdown = formatCountdown(upcoming.msUntil);
   const upcomingTime = formatClock(upcoming.time, locale);
 
+  // Active body (sun by day, moon by night) + its progress, plus the day-arc dot
+  // positions. Recomputed each tick so the body glides; both are cheap + pure.
+  const arc = getArcPosition(
+    { lat: location.lat, lng: location.lng, method: prefs.method, madhab: prefs.madhab },
+    now,
+  );
+  const dots = buildArcDots(day, upcoming.key);
+
   return (
     <>
       <ScrollView className="flex-1 bg-bg px-4 pt-16" contentContainerClassName="gap-6 pb-24">
@@ -179,9 +189,9 @@ export default function PrayerTimesScreen() {
           </Pressable>
         </View>
 
-        {/* Sun arc */}
+        {/* Sun/moon arc */}
         {hydrated && (
-          <SunArc day={day} now={now} nextPrayerKey={upcoming.key} />
+          <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} />
         )}
 
         {/* Countdown */}
