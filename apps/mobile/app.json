@@ -20,6 +20,15 @@
       "expo-router",
       "expo-localization",
       [
+        "expo-splash-screen",
+        {
+          "image": "./assets/icon.png",
+          "imageWidth": 240,
+          "resizeMode": "contain",
+          "backgroundColor": "#0f0d0a"
+        }
+      ],
+      [
         "expo-location",
         {
           "locationWhenInUsePermission": "Allow Nour to access your location to show accurate prayer times."

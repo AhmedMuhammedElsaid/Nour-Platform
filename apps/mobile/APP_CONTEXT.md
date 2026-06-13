@@ -42,30 +42,53 @@ P8 Quran reader · P9 offline downloads (expo-file-system) · P10 i18n/RTL,
 theming, deep links, icon/splash + EAS build config. (Original plan was
 `Documentation/mobile_migration_plan.md`, which is **gitignored**.)
 
+**Post-P10 polish (on `main`, 2026-06-13):** azkar morning/evening reminders ·
+**Home `PrayerTimesWidget`** (live sun/moon arc + countdown, taps → /prayer-times)
+with a `SunArc` refactor to a presentational `{dots, fraction, isNight}` API ·
+**SoundCloud-style animated bottom tab bar** (replaced the Home top nav-card list).
+
 ## Key file locations
 
 ```
 apps/mobile/
   app/                       expo-router screens
-    _layout.tsx              providers: QueryClient, ThemeProvider, PlayerProvider;
-                             mounts <MiniPlayer>; registers RNTP playback service;
-                             splash/fonts (expo-splash-screen + useFonts)
-    index.tsx                Home (hero, CategoryPills, sort, grid, shelves, nav cards)
+    _layout.tsx              providers: SafeAreaProvider, QueryClient, ThemeProvider,
+                             PlayerProvider; mounts <BottomDock> (MiniPlayer + bottom
+                             tab bar); registers RNTP playback service; splash/fonts
+    index.tsx                Home (hero, PrayerTimesWidget, CategoryPills, sort, grid,
+                             shelves) — top nav cards removed → bottom tab bar
     playlist/[slug].tsx      Playlist detail — Play-All, tap-to-play, DownloadButton
     adhkar/{index,[slug]}.tsx  Adhkar list + tap-counter reader
     prayer-times/index.tsx   Sun-arc + countdown + timetable + settings + notif toggle
     quran/…                  Quran reader (index, reader, word-by-word, tafsir, bookmarks)
   components/
     ui/                      text, button, card, skeleton, chip, progress (NativeWind)
-    mini-player.tsx          sticky bottom transport bar (uses usePlayer)
+    mini-player.tsx          sticky transport bar (uses usePlayer); takes a bottomInset
+    bottom-tab-bar.tsx       SoundCloud-style bottom nav (Home/Quran/Adhkar/Prayer/
+                             Downloads). PRESENTATIONAL, not expo-router <Tabs>: driven
+                             by usePathname + router.navigate, so existing nested stacks +
+                             deep links are untouched. Animated gold active pill; exports
+                             isTabRoot() (bar shows only on the 5 roots, hides on details)
+    bottom-dock.tsx          stacks <MiniPlayer> directly above <BottomTabBar> and owns
+                             the home-indicator safe-area inset (routes it to whichever is
+                             bottom-most). Rendered once in _layout
+    icons/tab-icons.tsx      5 RN-SVG stroke icons for the tab bar; take a `color` prop
+                             (SVG can't read NativeWind classes) — NO new icon dep
   features/
     home/ playlists/ downloads/ prayer-times/
     prayer-times/
       components/sun-arc.tsx        RN-SVG arc; sun by day, mask-carved crescent MOON
-                                    at night (isNight = before Fajr / at-or-after Isha)
+                                    at night. PRESENTATIONAL — props are now
+                                    {dots, fraction, isNight}; callers compute via
+                                    getArcPosition + buildArcDots (both the Home widget
+                                    AND prayer-times/index.tsx must pass the new API)
+      components/prayer-times-widget.tsx  Home widget: live arc + countdown + 5-prayer
+                                    row; taps → /prayer-times (mirrors web widget)
       components/{prayer-timetable,location-picker,method-settings}.tsx
+      lib/arc-dots.ts               buildArcDots(day,nextKey) → per-prayer day fractions
       hooks/use-prayer-settings.ts  AsyncStorage nour.prayer.location/.prefs
       hooks/use-azan-notifications.ts  schedules expo-notifications (next 2 days)
+      hooks/use-azkar-reminder{s,-settings}.ts  morning/evening adhkar reminders
       data/cities.ts                copied verbatim from web
     downloads/                      use-downloads hook + DownloadButton (expo-file-system)
   lib/
@@ -87,7 +110,7 @@ apps/mobile/
   jest.setup.js              mocks: AsyncStorage, react-native-track-player,
                              expo-location, expo-notifications
   __tests__/                 home-screen, playlist-detail, adhkar, player,
-                             prayer-times, sun-arc
+                             prayer-times, sun-arc, bottom-tab-bar, api, theme-locale
 ```
 
 ## Known gotchas
@@ -99,8 +122,8 @@ apps/mobile/
   revert it. Current asset set (only 3 PNGs in `assets/`):
   - **`icon.png`** — the full scene, **flattened to opaque RGB** (the source had an alpha
     channel; iOS App Store rejects icons with alpha — re-flatten if you ever regenerate).
-    Used for top-level `icon` (iOS + base), `splash.image` (`resizeMode: contain`, so the
-    whole scene + wordmark shows), and `web.favicon`.
+    Used for top-level `icon` (iOS + base), the native splash + the animated-splash overlay
+    (see the two-splash-layers note below), and `web.favicon`.
   - **`adaptive-icon.png`** — Android `adaptiveIcon.foregroundImage`. A **subject-focused
     derivative**: `icon.png` zoomed 1.4× and center-cropped so the Quran fills the safe
     zone and the corner wordmark/badges are pushed out of the circle/squircle mask. Opaque
@@ -115,8 +138,22 @@ apps/mobile/
     regenerate, not the old PowerShell `System.Drawing` hack. iOS still rounds corners and
     Android masks the launcher, so any full-scene `icon.png` will lose its corners on those
     surfaces by design; the wordmark only fully survives on the splash.
-  - The animated splash (`components/animated-splash.tsx`) is **drawn in code** (SVG ن +
-    reanimated), independent of every image asset — icon changes never affect the animation.
+  - **Two splash layers** (both now show `icon.png`):
+    1. **Native splash** via the **`expo-splash-screen` config plugin** in `app.json` plugins
+       (`image: ./assets/icon.png`, `imageWidth: 240`, `resizeMode: contain`,
+       `backgroundColor: #0f0d0a`). **CRITICAL SDK-56 gotcha:** the legacy top-level
+       `expo.splash` key is **silently ignored by prebuild** — without the plugin, prebuild
+       bakes Expo's *placeholder* (grid + circles) on a *white* bg. The legacy `splash` block
+       is kept only as a harmless fallback; the plugin is authoritative. Verify after prebuild:
+       `android/app/src/main/res/values/colors.xml` → `splashscreen_background` should be
+       `#0f0d0a`, and `drawable-*/splashscreen_logo.png` should be the Quran scene.
+    2. **`components/animated-splash.tsx`** — a reanimated JS overlay that fades+springs the
+       **`icon.png`** image in over the native splash, holds, then fades out (smooth hand-off
+       to the app). As of 2026-06-13 the old code-drawn gold **ن** mark + "Nour Platform"
+       wordmark was **replaced with the icon image** per user request (icon already carries the
+       wordmark, so no separate text layer). Honours reduce-motion; 2.6s safety timeout. Uses
+       `require("../assets/icon.png")` with a `@typescript-eslint/no-require-imports` disable
+       (that rule IS on for `.tsx` here — only off for config/jest files).
 - **Sun-arc moon**: `isNight` swaps the rayed sun for a glowing crescent. Mobile
   carves the crescent with an RN-SVG `<Mask>` using **absolute** cx/cy (no
   transforms in this SVG), so it always aligns — and degrades to a visible full
@@ -220,10 +257,11 @@ screen, NOT the pairing port) for `adb connect IP:PORT`. `adb logcat -b crash` f
 `apps/mobile/capture-crash.sh` (untracked helper) clears the buffer, launches `com.nour.mobile`, and dumps
 the crash + JS errors.
 
-**Local APK build (in progress, not finished):** chosen over EAS (free-plan quota). `apps/mobile/android/` is
-prebuilt; `gradlew` build needs **JDK 17 + Android SDK + NDK** (none were installed). JDK 17 install started
-via `winget install Microsoft.OpenJDK.17`; **Android SDK/NDK + the actual `./gradlew assembleRelease` + signing
-config are still TODO.** `assembleRelease` needs a release keystore (verify `android/app/build.gradle` signingConfigs).
+**Local APK build (NOT pursued — user opted to stay on EAS for now, 2026-06-13):** `apps/mobile/android/` is
+prebuilt. **JDK 17 IS now installed** (`winget install Microsoft.OpenJDK.17` completed). Still missing to build
+locally: **Android SDK + NDK** (set `ANDROID_HOME`), a **release keystore** (verify `android/app/build.gradle`
+signingConfigs), then `cd android && ./gradlew assembleRelease` + `adb install -r`. Resume only if the user
+asks; otherwise keep using `eas build --profile preview --platform android` on `volunteering-apps/nour-platform`.
 
 ## Verify before shipping
 

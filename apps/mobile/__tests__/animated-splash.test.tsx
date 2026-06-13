@@ -5,12 +5,9 @@ import { AnimatedSplash } from "@/components/animated-splash";
 jest.useFakeTimers();
 
 describe("AnimatedSplash", () => {
-  it("renders the brand mark and wordmark", () => {
-    const { getByLabelText, getByText } = render(
-      <AnimatedSplash onFinish={jest.fn()} />,
-    );
+  it("renders the brand icon", () => {
+    const { getByLabelText } = render(<AnimatedSplash onFinish={jest.fn()} />);
     expect(getByLabelText("Nour")).toBeTruthy();
-    expect(getByText("Nour Platform")).toBeTruthy();
   });
 
   it("calls onFinish exactly once when the sequence completes", () => {
