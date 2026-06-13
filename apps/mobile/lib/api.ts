@@ -18,7 +18,13 @@ export class ApiError extends Error {
 type ErrorBody = { error?: string; message?: string };
 
 export async function getJson<T>(path: string, params?: Record<string, string | undefined>): Promise<T> {
-  const url = new URL(path, API_BASE_URL);
+  // Concatenate, don't use `new URL(path, base)`: with a leading-slash `path`
+  // (e.g. "/playlists") and a base whose path is "/api/v1" (no trailing slash),
+  // URL resolution treats the path as root-relative and drops "/api/v1" entirely
+  // — every request hit "https://host/playlists" (404/redirect) instead of
+  // "https://host/api/v1/playlists". `path` always starts with "/", so a plain
+  // join is correct and unambiguous.
+  const url = new URL(`${API_BASE_URL}${path}`);
   for (const [key, value] of Object.entries(params ?? {})) {
     if (value != null) url.searchParams.set(key, value);
   }
