@@ -184,6 +184,47 @@ apps/mobile/
     adhan MP3s in `apps/web/public/audio/`. Add an `apps/mobile/.easignore` excluding
     `apps/web/public/audio/`, `apps/admin/`, `docs/` to shrink uploads (~6 MB) and reduce upload stalls.
 
+## Resolved on-device (debug session 2026-06-13) — APK now opens AND loads data
+
+Two separate bugs made the installed APK unusable; both fixed + committed to `main`.
+
+1. **Third RNTP New-Arch crash — app opened then closed instantly (commit `c3cb6d6`).** After the
+   compile + TurboModule patches, the app still crashed on the first player event. `adb logcat -b crash`:
+   `java.lang.RuntimeException: You should not use ReactNativeHost directly in the New Architecture`
+   at `MusicService.emit(MusicService.kt:744)` via `HeadlessJsTaskService.getReactNativeHost`. RNTP
+   4.1.2's `MusicService.emit`/`emitList` reach the JS event emitter through the legacy
+   `reactNativeHost`, which throws under bridgeless. Fix (same `patches/react-native-track-player@4.1.2.patch`,
+   now 486 lines): a `reactContextCompat` getter preferring `ReactApplication.reactHost.currentReactContext`
+   (non-null on New Arch), falling back to `reactNativeHost` only when `reactHost` is null. **RNTP 4.x now
+   has THREE New-Arch landmines (Bundle? compile, TurboModule return-type, ReactHost emit) — re-verify all
+   three on any bump.**
+2. **"Something went wrong" on every screen — URL-join bug in `lib/api.ts` (commit `d0b7d6b`).**
+   `getJson` did `new URL(path, API_BASE_URL)` where `API_BASE_URL` = `…/api/v1` (no trailing slash) and
+   every `queries.ts` path has a **leading slash** → URL resolution dropped `/api/v1`, hitting
+   `https://host/playlists` (307→HTML) instead of `/api/v1/playlists` (200 JSON). Fix: join by concat,
+   `new URL(\`${API_BASE_URL}${path}\`)`. Regression test `__tests__/api.test.tsx`. Latent until now —
+   earlier builds crashed before any fetch ran.
+
+**Backend / EAS config (current):** web is deployed at **`https://nour-platform-web.vercel.app`** (`/api/v1/*`
+returns 200 JSON). The EAS project is **`volunteering-apps/nour-platform`** (re-link `9175d00`); its **preview**
+environment now has `EXPO_PUBLIC_API_BASE_URL=https://nour-platform-web.vercel.app` (`eas env:create … --environment preview`).
+EXPO_PUBLIC_* is build-time inlined → **every URL/backend change needs a rebuild**. Diagnose an installed APK's
+baked URL without source: `adb shell pm path com.nour.mobile` → `adb pull` → `unzip` → `grep -a` the
+`assets/index.android.bundle`.
+
+**Diagnosing on a connected device:** `adb` is Google standalone platform-tools at
+`C:\Users\Ahmed Elsaid\adb-tools\platform-tools\adb.exe` (no full SDK). USB won't authorize on the Huawei
+CMA-LX2 → use **Wireless debugging**: the connection drops between sessions and mDNS auto-discovery is flaky
+on Windows, so re-pair/reconnect each session — need the device's **connect** address (main Wireless-debugging
+screen, NOT the pairing port) for `adb connect IP:PORT`. `adb logcat -b crash` for native crashes;
+`apps/mobile/capture-crash.sh` (untracked helper) clears the buffer, launches `com.nour.mobile`, and dumps
+the crash + JS errors.
+
+**Local APK build (in progress, not finished):** chosen over EAS (free-plan quota). `apps/mobile/android/` is
+prebuilt; `gradlew` build needs **JDK 17 + Android SDK + NDK** (none were installed). JDK 17 install started
+via `winget install Microsoft.OpenJDK.17`; **Android SDK/NDK + the actual `./gradlew assembleRelease` + signing
+config are still TODO.** `assembleRelease` needs a release keystore (verify `android/app/build.gradle` signingConfigs).
+
 ## Verify before shipping
 
 ```bash
