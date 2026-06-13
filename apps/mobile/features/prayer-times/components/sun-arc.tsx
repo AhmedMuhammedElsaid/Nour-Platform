@@ -9,7 +9,16 @@
 // + an feGaussianBlur bloom on the hot core and rays (react-native-svg ≥15 ships
 // SVG filters, so the same <Filter><FeGaussianBlur/> the web uses works here).
 
+import { useEffect } from "react";
 import { View } from "react-native";
+import Animated, {
+  cancelAnimation,
+  Easing,
+  useAnimatedProps,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 import Svg, {
   Circle,
   Defs,
@@ -26,6 +35,10 @@ import Svg, {
 
 import { ARC, arcPath, arcPoint, tForFraction } from "@repo/shared-core/prayer-times/sun-arc";
 import type { ArcDot } from "@/features/prayer-times/lib/arc-dots";
+
+// Animated corona so the sun/moon glow gently throbs like a real light source,
+// mirroring the web component's `animate-pulse` on the corona circle.
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 // Design tokens (dark palette, mirrored from packages/ui/src/styles/tokens.css).
 // SVG fills can't read NativeWind classes, so they're local consts — same pattern
@@ -63,6 +76,21 @@ export function SunArc({ dots, fraction, isNight = false }: SunArcProps) {
   const nightBandPath = `M${ARC.p0.x} ${ARC.p0.y} Q${ARC.p1.x} ${lowerToBand(
     ARC.p1.y,
   )} ${ARC.p2.x} ${ARC.p2.y}`;
+
+  // Mirror the web corona's `animate-pulse`: a 2s ease-in-out breathe between
+  // full and half opacity (1s each way via the reversing repeat). Runs on the
+  // UI thread, so there are no JS timers to leak under jest.
+  const coronaOpacity = useSharedValue(1);
+  useEffect(() => {
+    coronaOpacity.value = withRepeat(
+      withTiming(0.5, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true,
+    );
+    return () => cancelAnimation(coronaOpacity);
+    // coronaOpacity is a stable shared-value ref (exhaustive-deps not configured).
+  }, []);
+  const coronaProps = useAnimatedProps(() => ({ opacity: coronaOpacity.value }));
 
   return (
     <View>
@@ -154,8 +182,8 @@ export function SunArc({ dots, fraction, isNight = false }: SunArcProps) {
         {/* current body: glowing crescent moon at night, rayed sun by day */}
         {isNight ? (
           <>
-            {/* moonlight corona */}
-            <Circle cx={body.x} cy={body.y} r={26} fill="url(#moon-glow)" />
+            {/* moonlight corona — gently pulses, mirroring the web's animate-pulse */}
+            <AnimatedCircle cx={body.x} cy={body.y} r={26} fill="url(#moon-glow)" animatedProps={coronaProps} />
             {/* blurred crescent under the crisp one → soft glowing edge */}
             <Circle
               cx={body.x}
@@ -176,8 +204,8 @@ export function SunArc({ dots, fraction, isNight = false }: SunArcProps) {
           </>
         ) : (
           <>
-            {/* breathing corona — large soft halo like real glow */}
-            <Circle cx={body.x} cy={body.y} r={24} fill="url(#sun-glow)" />
+            {/* breathing corona — large soft halo that gently pulses like real glow */}
+            <AnimatedCircle cx={body.x} cy={body.y} r={24} fill="url(#sun-glow)" animatedProps={coronaProps} />
             {/* blurred hot core under the crisp disc for a bloomed light source */}
             <Circle cx={body.x} cy={body.y} r={7} fill={SUN} filter="url(#sun-bloom)" />
             {/* bloomed rays */}
