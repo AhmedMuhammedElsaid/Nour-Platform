@@ -5,16 +5,16 @@ import { getJson } from "@/lib/api";
 // "/api/v1" (root-relative), which sent every request to "https://host/playlists"
 // and surfaced as "something went wrong" on every screen.
 describe("getJson URL construction", () => {
-  const realFetch = global.fetch;
+  const realFetch = globalThis.fetch;
   afterEach(() => {
-    global.fetch = realFetch;
+    globalThis.fetch = realFetch;
   });
 
   function mockFetch() {
     const fetchMock = jest
       .fn()
       .mockResolvedValue({ ok: true, json: async () => [] } as unknown as Response);
-    global.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
     return fetchMock;
   }
 
