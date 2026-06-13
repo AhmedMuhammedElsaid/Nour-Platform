@@ -16,6 +16,11 @@ import {
   requestNotificationPermission,
   useAzanNotifications,
 } from "@/features/prayer-times/hooks/use-azan-notifications";
+import { useAzkarReminderSettings } from "@/features/prayer-times/hooks/use-azkar-reminder-settings";
+import {
+  type AzkarReminderContent,
+  useAzkarReminders,
+} from "@/features/prayer-times/hooks/use-azkar-reminders";
 import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-settings";
 import { initialLocale } from "@/lib/i18n";
 import {
@@ -31,6 +36,8 @@ export default function PrayerTimesScreen() {
   const locale = initialLocale;
   const { location, prefs, hydrated, setLocation, setMethod, setMadhab } =
     usePrayerSettings();
+  const { settings: azkar, hydrated: azkarHydrated, setEnabled: setAzkarEnabled } =
+    useAzkarReminderSettings();
 
   const [now, setNow] = useState(() => new Date());
   const [showLocationPicker, setShowLocationPicker] = useState(false);
@@ -105,11 +112,51 @@ export default function PrayerTimesScreen() {
     hydrated,
   );
 
+  // Reminders are always delivered in Arabic regardless of UI language — the
+  // content is Arabic dhikr, so the title/body and the reader slug are the
+  // Arabic ones (matches the web's makeAzkarReminderBuilder).
+  const azkarContent = useMemo<AzkarReminderContent>(
+    () => ({
+      sabah: {
+        title: t("prayer.azkar.sabah.title", { lng: "ar" }),
+        body: t("prayer.azkar.sabah.body", { lng: "ar" }),
+        slug: azkar.sabah.ar,
+      },
+      masaa: {
+        title: t("prayer.azkar.masaa.title", { lng: "ar" }),
+        body: t("prayer.azkar.masaa.body", { lng: "ar" }),
+        slug: azkar.masaa.ar,
+      },
+    }),
+    [t, azkar.sabah, azkar.masaa],
+  );
+
+  useAzkarReminders(
+    azkar.enabled && notifGranted,
+    location,
+    prefs,
+    azkar,
+    azkarContent,
+    hydrated && azkarHydrated,
+  );
+
   const requestNotifs = useCallback(async () => {
     const granted = await requestNotificationPermission();
     setNotifGranted(granted);
     if (granted) setNotifEnabled(true);
   }, []);
+
+  // Toggle the azkar reminder; request notification permission on first enable
+  // (mirrors the web's requestAdhanPermission on enable).
+  const toggleAzkar = useCallback(
+    (next: boolean) => {
+      setAzkarEnabled(next);
+      if (next && !notifGranted) {
+        void requestNotificationPermission().then(setNotifGranted);
+      }
+    },
+    [setAzkarEnabled, notifGranted],
+  );
 
   const countdown = formatCountdown(upcoming.msUntil);
   const upcomingTime = formatClock(upcoming.time, locale);
@@ -188,6 +235,32 @@ export default function PrayerTimesScreen() {
               </Pressable>
             </View>
           )}
+        </View>
+
+        {/* Adhkar reminder toggle — sabah after Fajr, masaa after Asr */}
+        <View className="gap-3 rounded-lg border border-border bg-surface p-4">
+          <Text variant="label">{t("prayer.azkar.title")}</Text>
+          <View className="flex-row items-center justify-between">
+            <Text variant="body" className="flex-1 pe-3">
+              {t("prayer.azkar.enable")}
+            </Text>
+            <Pressable
+              accessibilityRole="switch"
+              accessibilityState={{ checked: azkar.enabled }}
+              accessibilityLabel={t("prayer.azkar.enable")}
+              onPress={() => toggleAzkar(!azkar.enabled)}
+              className={`h-7 w-12 rounded-full ${azkar.enabled ? "bg-primary" : "bg-surface-2"}`}
+            >
+              <View
+                className={`size-5 rounded-full bg-white shadow m-1 ${azkar.enabled ? "ms-auto" : ""}`}
+              />
+            </Pressable>
+          </View>
+          {azkar.enabled ? (
+            <Text variant="muted" className="text-xs">
+              {notifGranted ? t("prayer.azkar.hint") : t("prayer.azkar.foregroundOnly")}
+            </Text>
+          ) : null}
         </View>
       </ScrollView>
 

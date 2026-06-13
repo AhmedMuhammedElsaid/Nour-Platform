@@ -30,4 +30,16 @@ describe("PrayerTimesScreen", () => {
       expect(screen.getByText(/Change city|تغيير المدينة/)).toBeTruthy(),
     );
   });
+
+  it("renders the adhkar reminder toggle", async () => {
+    render(<PrayerTimesScreen />);
+    await waitFor(() =>
+      expect(screen.getByText(/Adhkar reminder|تذكير الأذكار/)).toBeTruthy(),
+    );
+    expect(
+      screen.getByLabelText(
+        /Remind me of morning & evening adhkar|تذكيري بأذكار الصباح والمساء/,
+      ),
+    ).toBeTruthy();
+  });
 });
