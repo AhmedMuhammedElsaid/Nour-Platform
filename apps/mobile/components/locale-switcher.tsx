@@ -41,7 +41,7 @@ export function LocaleSwitcher() {
       className="rounded-md border border-border px-2.5 py-1"
     >
       <Text className="text-sm font-semibold text-text">
-        {currentLocale === "ar" ? "EN" : "عر"}
+        {currentLocale === "ar" ? "EN" : "ع"}
       </Text>
     </Pressable>
   );

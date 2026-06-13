@@ -37,7 +37,7 @@ describe("ThemeToggle", () => {
 describe("LocaleSwitcher", () => {
   it("renders the target locale label for the current language", async () => {
     renderWith(<LocaleSwitcher />);
-    // Default i18n locale in test env is "en" → shows "عر" (press to switch to AR).
-    await waitFor(() => expect(screen.getByText("عر")).toBeTruthy());
+    // Default i18n locale in test env is "en" → shows "ع" (press to switch to AR).
+    await waitFor(() => expect(screen.getByText("ع")).toBeTruthy());
   });
 });
