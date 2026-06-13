@@ -1,11 +1,9 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
-import { FlatList, Pressable, View } from "react-native";
+import { FlatList, View } from "react-native";
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { LocaleSwitcher } from "@/components/locale-switcher";
@@ -22,7 +20,6 @@ import type { CategoryChip } from "@/lib/types";
 
 export default function HomeScreen() {
   const { t } = useTranslation();
-  const router = useRouter();
   const locale = initialLocale;
 
   const playlists = useQuery(playlistsQuery(locale));
@@ -79,38 +76,6 @@ export default function HomeScreen() {
       {/* Live prayer-times arc (sun by day, moon by night) — same widget the
           web home mounts; tapping opens the full /prayer-times screen. */}
       <PrayerTimesWidget />
-
-      {/* Primary nav — bottom tabs land in Phase 10; simple link rows keep
-          features reachable for each phase's gate. */}
-      <View className="gap-3">
-        <Pressable accessibilityRole="button" onPress={() => router.push("/quran")}>
-          <Card className="flex-row items-center justify-between p-4">
-            <Text variant="title">{t("nav.quran")}</Text>
-            <Text variant="muted">{locale === "ar" ? "←" : "→"}</Text>
-          </Card>
-        </Pressable>
-        <View className="flex-row gap-3">
-          <Pressable accessibilityRole="button" onPress={() => router.push("/adhkar")} className="flex-1">
-            <Card className="flex-row items-center justify-between p-4">
-              <Text variant="title">{t("nav.adhkar")}</Text>
-              <Text variant="muted">{locale === "ar" ? "←" : "→"}</Text>
-            </Card>
-          </Pressable>
-          <Pressable accessibilityRole="button" onPress={() => router.push("/prayer-times")} className="flex-1">
-            <Card className="flex-row items-center justify-between p-4">
-              <Text variant="title">{t("nav.prayerTimes")}</Text>
-              <Text variant="muted">{locale === "ar" ? "←" : "→"}</Text>
-            </Card>
-          </Pressable>
-        </View>
-
-        <Pressable accessibilityRole="button" onPress={() => router.push("/downloads")}>
-          <Card className="flex-row items-center justify-between p-4">
-            <Text variant="title">{t("nav.downloads")}</Text>
-            <Text variant="muted">{locale === "ar" ? "←" : "→"}</Text>
-          </Card>
-        </Pressable>
-      </View>
 
       <CategoryPills
         categories={pills}

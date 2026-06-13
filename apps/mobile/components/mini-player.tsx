@@ -14,7 +14,7 @@ function formatTime(secs: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export function MiniPlayer() {
+export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
   const { t } = useTranslation();
   const {
     hasQueue,
@@ -36,7 +36,8 @@ export function MiniPlayer() {
 
   return (
     <View
-      className="border-t border-border bg-surface px-4 pb-6 pt-2"
+      className="border-t border-border bg-surface px-4 pt-2"
+      style={{ paddingBottom: bottomInset + 8 }}
       accessibilityRole="toolbar"
       accessibilityLabel={t("player.miniPlayer")}
     >

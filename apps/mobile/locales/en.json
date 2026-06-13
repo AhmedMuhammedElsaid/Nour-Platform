@@ -13,6 +13,7 @@
     "restartRequired": "Restart the app to apply the new text direction."
   },
   "nav": {
+    "home": "Home",
     "quran": "Quran",
     "adhkar": "Adhkar",
     "prayerTimes": "Prayer Times",

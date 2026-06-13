@@ -6,10 +6,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import TrackPlayer from "react-native-track-player";
 
 import { AnimatedSplash } from "@/components/animated-splash";
-import { MiniPlayer } from "@/components/mini-player";
+import { BottomDock } from "@/components/bottom-dock";
 import { ThemeProvider } from "@/lib/theme-context";
 import { PlayerProvider } from "@/lib/player-context";
 import { playbackService } from "@/lib/playback-service";
@@ -38,14 +39,16 @@ export default function RootLayout() {
   }, [fontsLoaded]);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <PlayerProvider>
-          <Stack screenOptions={{ headerShown: false }} />
-          <MiniPlayer />
-        </PlayerProvider>
-      </ThemeProvider>
-      {!splashDone && <AnimatedSplash onFinish={() => setSplashDone(true)} />}
-    </QueryClientProvider>
+    <SafeAreaProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <PlayerProvider>
+            <Stack screenOptions={{ headerShown: false }} />
+            <BottomDock />
+          </PlayerProvider>
+        </ThemeProvider>
+        {!splashDone && <AnimatedSplash onFinish={() => setSplashDone(true)} />}
+      </QueryClientProvider>
+    </SafeAreaProvider>
   );
 }
