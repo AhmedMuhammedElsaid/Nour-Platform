@@ -1,5 +1,5 @@
 diff --git a/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt b/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt
-index b2409a09939164c49c0f7a16bb6d3284e8eab8fb..c102d45a2df5b8ecd7de05c49579500fba7f2169 100644
+index b2409a09939164c49c0f7a16bb6d3284e8eab8fb..d57f899237bdea81ba436b2ba93b5b8f259c35d5 100644
 --- a/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt
 +++ b/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt	
 @@ -35,6 +35,14 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
@@ -441,3 +441,46 @@ index b2409a09939164c49c0f7a16bb6d3284e8eab8fb..c102d45a2df5b8ecd7de05c49579500f
          callback.resolve(Arguments.fromBundle(musicService.getPlayerStateBundle(musicService.state)))
      }
  }
+diff --git a/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt b/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
+index afa6b0f335714de0cc8741d5bbdd51b4e04bb3bb..5465e7071413c53150a4546cf94c25e39c5fd1fe 100644
+--- a/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
++++ b/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt	
+@@ -739,9 +739,28 @@ class MusicService : HeadlessJsTaskService() {
+         return bundle
+     }
+ 
++    /**
++     * Resolve the current [ReactContext] without touching the legacy
++     * `reactNativeHost`, which throws ("You should not use ReactNativeHost
++     * directly in the New Architecture") under bridgeless. On the New
++     * Architecture `reactHost` is non-null, so prefer it; fall back to the
++     * legacy host only when the app has no `reactHost` (old architecture).
++     */
++    private val reactContextCompat: com.facebook.react.bridge.ReactContext?
++        get() {
++            val reactApplication = applicationContext as com.facebook.react.ReactApplication
++            val host = reactApplication.reactHost
++            return if (host != null) {
++                host.currentReactContext
++            } else {
++                @Suppress("DEPRECATION")
++                reactApplication.reactNativeHost.reactInstanceManager.currentReactContext
++            }
++        }
++
+     @MainThread
+     private fun emit(event: String, data: Bundle? = null) {
+-        reactNativeHost.reactInstanceManager.currentReactContext
++        reactContextCompat
+             ?.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+             ?.emit(event, data?.let { Arguments.fromBundle(it) })
+     }
+@@ -751,7 +770,7 @@ class MusicService : HeadlessJsTaskService() {
+         val payload = Arguments.createArray()
+         data.forEach { payload.pushMap(Arguments.fromBundle(it)) }
+ 
+-        reactNativeHost.reactInstanceManager.currentReactContext
++        reactContextCompat
+             ?.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+             ?.emit(event, payload)
+     }
