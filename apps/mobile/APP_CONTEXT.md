@@ -45,7 +45,15 @@ theming, deep links, icon/splash + EAS build config. (Original plan was
 **Post-P10 polish (on `main`, 2026-06-13):** azkar morning/evening reminders ·
 **Home `PrayerTimesWidget`** (live sun/moon arc + countdown, taps → /prayer-times)
 with a `SunArc` refactor to a presentational `{dots, fraction, isNight}` API ·
-**SoundCloud-style animated bottom tab bar** (replaced the Home top nav-card list).
+**SoundCloud-style animated bottom tab bar** (replaced the Home top nav-card list) ·
+**SunArc corona breathing pulse** (`49b5cfd`) — the sun/moon glow halo now pulses via
+a UI-thread Reanimated `withRepeat(withTiming(0.5, 1s, ease-in-out), -1, true)` loop on
+an `Animated.createAnimatedComponent(Circle)`, mirroring the web corona's `animate-pulse`
+(closes the last sun-arc parity gap vs web; the crisp disc/crescent are untouched) ·
+**`components/ui/spinner.tsx`** (`f9098dd`) — reusable `<Spinner>` over RN's native
+`ActivityIndicator` (OS-drawn, no JS loop / SVG / new dep), gold `#c8a050`, `label` →
+`accessibilityLabel`; replaced the `Loading…` text on the adhkar reader + both Quran
+screens. Skeleton-based loaders (Home/Playlist/Adhkar list) intentionally left as-is.
 
 ## Key file locations
 
@@ -247,7 +255,10 @@ returns 200 JSON). The EAS project is **`volunteering-apps/nour-platform`** (re-
 environment now has `EXPO_PUBLIC_API_BASE_URL=https://nour-platform-web.vercel.app` (`eas env:create … --environment preview`).
 EXPO_PUBLIC_* is build-time inlined → **every URL/backend change needs a rebuild**. Diagnose an installed APK's
 baked URL without source: `adb shell pm path com.nour.mobile` → `adb pull` → `unzip` → `grep -a` the
-`assets/index.android.bundle`.
+`assets/index.android.bundle`. **Re-verified live 2026-06-13:** `…/api/v1/playlists?locale=ar` → 200 JSON,
+the old un-prefixed `…/playlists` → 307 text/plain (the "something went wrong" source); all 8 `queries.ts`
+paths start with `/` so the concat join is correct everywhere. The error users *still saw* was a stale APK
+built before `d0b7d6b` — code + env are both settled; the next preview build resolves it.
 
 **Diagnosing on a connected device:** `adb` is Google standalone platform-tools at
 `C:\Users\Ahmed Elsaid\adb-tools\platform-tools\adb.exe` (no full SDK). USB won't authorize on the Huawei
