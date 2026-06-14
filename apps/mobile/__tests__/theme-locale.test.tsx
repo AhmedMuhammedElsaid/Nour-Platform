@@ -24,13 +24,13 @@ describe("ThemeToggle", () => {
     renderWith(<ThemeToggle />);
 
     // Wait for ThemeProvider's AsyncStorage hydration effect to settle.
-    // Default theme is dark → shows ☀ (press to switch to light).
-    await waitFor(() => expect(screen.getByText("☀")).toBeTruthy());
+    // Default theme is dark → shows the sun icon (press to switch to light).
+    await waitFor(() => expect(screen.getByTestId("theme-icon-sun")).toBeTruthy());
 
     fireEvent.press(screen.getByRole("button"));
 
-    // After toggle → light theme → shows ☾
-    await waitFor(() => expect(screen.getByText("☾")).toBeTruthy());
+    // After toggle → light theme → shows the moon icon.
+    await waitFor(() => expect(screen.getByTestId("theme-icon-moon")).toBeTruthy());
   });
 });
 
