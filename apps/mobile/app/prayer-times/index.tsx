@@ -26,6 +26,7 @@ import {
 } from "@/features/prayer-times/hooks/use-azkar-reminders";
 import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-settings";
 import { initialLocale } from "@/lib/i18n";
+import { useTheme } from "@/lib/theme-context";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
 import {
   computePrayerTimes,
@@ -41,6 +42,7 @@ export default function PrayerTimesScreen() {
   const locale = initialLocale;
   const dockSpacing = useDockSpacing();
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
   const { location, prefs, hydrated, setLocation, setMethod, setMadhab } =
     usePrayerSettings();
   const { settings: azkar, hydrated: azkarHydrated, setEnabled: setAzkarEnabled } =
@@ -201,7 +203,7 @@ export default function PrayerTimesScreen() {
 
         {/* Sun/moon arc */}
         {hydrated && (
-          <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} />
+          <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} theme={theme} />
         )}
 
         {/* Countdown */}

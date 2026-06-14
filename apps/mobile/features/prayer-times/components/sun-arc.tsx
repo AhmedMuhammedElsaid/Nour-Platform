@@ -35,19 +35,34 @@ import Svg, {
 
 import { ARC, arcPath, arcPoint, tForFraction } from "@repo/shared-core/prayer-times/sun-arc";
 import type { ArcDot } from "@/features/prayer-times/lib/arc-dots";
+import type { ThemeMode } from "@/lib/theme-context";
 
 // Animated corona so the sun/moon glow gently throbs like a real light source,
 // mirroring the web component's `animate-pulse` on the corona circle.
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-// Design tokens (dark palette, mirrored from packages/ui/src/styles/tokens.css).
-// SVG fills can't read NativeWind classes, so they're local consts — same pattern
-// the web component uses with CSS vars. GOLD = --color-primary, SUN = --color-sun
-// (brighter gold), MOON = --color-moon (silver-blue).
-const GOLD = "#c8a050";
-const SUN = "#e4c57e";
-const MUTED = "#7a6a52";
-const MOON = "#d6e3ff";
+// Design tokens, mirrored from packages/ui/src/styles/tokens.css. SVG fills can't
+// read NativeWind classes, so the palette is resolved here from the active theme —
+// the same hexes the web reads via CSS vars (`var(--color-*)`) that flip per theme.
+// GOLD = --color-primary, SUN = --color-sun, MOON = --color-moon, MUTED =
+// --color-text-2 (the web's non-next dot fill). Light values keep the moon legible
+// on the pale background, where the dark silver-blue would wash out (point 9).
+type ArcPalette = { gold: string; sun: string; moon: string; muted: string };
+const PALETTES: Record<ThemeMode, ArcPalette> = {
+  dark: { gold: "#c8a050", sun: "#e4c57e", moon: "#d6e3ff", muted: "#8a7a62" },
+  light: { gold: "#9a7830", sun: "#c8a050", moon: "#4a6fb8", muted: "#3f4a44" },
+};
+
+// Body sizes, enlarged from the web's phone-cramped defaults so the sun/moon read
+// clearly on a handset (point 2). Sun disc 5.5→9, moon disc 9→12, coronas scaled
+// to match; rays extend proportionally from the larger disc.
+const SUN_DISC = 9;
+const SUN_CORE = 11;
+const SUN_CORONA = 28;
+const SUN_RAY_INNER = 14;
+const SUN_RAY_OUTER = 20;
+const MOON_DISC = 12;
+const MOON_CORONA = 30;
 
 // The night track is the day arc scaled toward the horizon. Mirrors the web
 // component's inline NIGHT_BAND/lowerToBand (shared-core owns only the base arc
@@ -55,7 +70,7 @@ const MOON = "#d6e3ff";
 const NIGHT_BAND = 0.34;
 const lowerToBand = (y: number) => ARC.p0.y - (ARC.p0.y - y) * NIGHT_BAND;
 
-// 8 sun rays, each a short line between radius 9 and 13 around the disc.
+// 8 sun rays, each a short line between SUN_RAY_INNER and SUN_RAY_OUTER.
 const RAY_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
 
 type SunArcProps = {
@@ -66,9 +81,12 @@ type SunArcProps = {
   // True before Fajr / at-or-after Isha — render a glowing crescent moon on the
   // night band instead of the sun on the day arc.
   isNight?: boolean;
+  // Active theme — selects the light/dark hex palette (SVG can't read NativeWind).
+  theme?: ThemeMode;
 };
 
-export function SunArc({ dots, fraction, isNight = false }: SunArcProps) {
+export function SunArc({ dots, fraction, isNight = false, theme = "dark" }: SunArcProps) {
+  const { gold: GOLD, sun: SUN, moon: MOON, muted: MUTED } = PALETTES[theme];
   const point = arcPoint(tForFraction(fraction));
   // The moon rides the lowered night band; the sun rides the day arc as-is.
   const body = isNight ? { x: point.x, y: lowerToBand(point.y) } : point;
@@ -131,8 +149,8 @@ export function SunArc({ dots, fraction, isNight = false }: SunArcProps) {
             // visible, black = hidden. Absolute coords match the moon's cx/cy
             // (no transforms in this SVG), so the mask always aligns.
             <Mask id="moon-crescent">
-              <Circle cx={body.x} cy={body.y} r={9} fill="white" />
-              <Circle cx={body.x + 3.5} cy={body.y - 2} r={8.5} fill="black" />
+              <Circle cx={body.x} cy={body.y} r={MOON_DISC} fill="white" />
+              <Circle cx={body.x + 4.5} cy={body.y - 2.5} r={MOON_DISC - 1} fill="black" />
             </Mask>
           )}
         </Defs>
@@ -183,12 +201,12 @@ export function SunArc({ dots, fraction, isNight = false }: SunArcProps) {
         {isNight ? (
           <>
             {/* moonlight corona — gently pulses, mirroring the web's animate-pulse */}
-            <AnimatedCircle cx={body.x} cy={body.y} r={26} fill="url(#moon-glow)" animatedProps={coronaProps} />
+            <AnimatedCircle cx={body.x} cy={body.y} r={MOON_CORONA} fill="url(#moon-glow)" animatedProps={coronaProps} />
             {/* blurred crescent under the crisp one → soft glowing edge */}
             <Circle
               cx={body.x}
               cy={body.y}
-              r={9}
+              r={MOON_DISC}
               fill={MOON}
               mask="url(#moon-crescent)"
               filter="url(#moon-bloom)"
@@ -197,7 +215,7 @@ export function SunArc({ dots, fraction, isNight = false }: SunArcProps) {
               testID="prayer-moon"
               cx={body.x}
               cy={body.y}
-              r={9}
+              r={MOON_DISC}
               fill={MOON}
               mask="url(#moon-crescent)"
             />
@@ -205,9 +223,9 @@ export function SunArc({ dots, fraction, isNight = false }: SunArcProps) {
         ) : (
           <>
             {/* breathing corona — large soft halo that gently pulses like real glow */}
-            <AnimatedCircle cx={body.x} cy={body.y} r={24} fill="url(#sun-glow)" animatedProps={coronaProps} />
+            <AnimatedCircle cx={body.x} cy={body.y} r={SUN_CORONA} fill="url(#sun-glow)" animatedProps={coronaProps} />
             {/* blurred hot core under the crisp disc for a bloomed light source */}
-            <Circle cx={body.x} cy={body.y} r={7} fill={SUN} filter="url(#sun-bloom)" />
+            <Circle cx={body.x} cy={body.y} r={SUN_CORE} fill={SUN} filter="url(#sun-bloom)" />
             {/* bloomed rays */}
             <G stroke={SUN} strokeWidth={2} strokeLinecap="round" filter="url(#sun-bloom)">
               {RAY_ANGLES.map((angle) => {
@@ -215,16 +233,16 @@ export function SunArc({ dots, fraction, isNight = false }: SunArcProps) {
                 return (
                   <Line
                     key={angle}
-                    x1={body.x + Math.cos(rad) * 9}
-                    y1={body.y + Math.sin(rad) * 9}
-                    x2={body.x + Math.cos(rad) * 13}
-                    y2={body.y + Math.sin(rad) * 13}
+                    x1={body.x + Math.cos(rad) * SUN_RAY_INNER}
+                    y1={body.y + Math.sin(rad) * SUN_RAY_INNER}
+                    x2={body.x + Math.cos(rad) * SUN_RAY_OUTER}
+                    y2={body.y + Math.sin(rad) * SUN_RAY_OUTER}
                   />
                 );
               })}
             </G>
             {/* crisp disc on top */}
-            <Circle testID="prayer-sun" cx={body.x} cy={body.y} r={5.5} fill={SUN} />
+            <Circle testID="prayer-sun" cx={body.x} cy={body.y} r={SUN_DISC} fill={SUN} />
           </>
         )}
       </Svg>

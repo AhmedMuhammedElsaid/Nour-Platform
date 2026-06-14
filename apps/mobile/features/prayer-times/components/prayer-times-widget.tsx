@@ -14,6 +14,7 @@ import { SunArc } from "@/features/prayer-times/components/sun-arc";
 import { buildArcDots } from "@/features/prayer-times/lib/arc-dots";
 import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-settings";
 import { initialLocale } from "@/lib/i18n";
+import { useTheme } from "@/lib/theme-context";
 import {
   computePrayerTimes,
   getArcPosition,
@@ -38,6 +39,7 @@ export function PrayerTimesWidget() {
   const { t } = useTranslation();
   const locale = initialLocale;
   const router = useRouter();
+  const { theme } = useTheme();
   const { location, prefs, hydrated } = usePrayerSettings();
   const [now, setNow] = useState(() => new Date());
 
@@ -90,7 +92,7 @@ export function PrayerTimesWidget() {
 
       {/* full-bleed arc */}
       <View className="mt-1">
-        <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} />
+        <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} theme={theme} />
       </View>
 
       {/* next-prayer countdown */}

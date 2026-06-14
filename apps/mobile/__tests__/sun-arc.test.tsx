@@ -30,4 +30,14 @@ describe("SunArc day/night marker", () => {
     render(<SunArc dots={dots} fraction={0.5} />);
     expect(screen.getByTestId("prayer-sun")).toBeTruthy();
   });
+
+  it("renders the body in light theme as well as dark", () => {
+    const { rerender } = render(
+      <SunArc dots={dots} fraction={0.3} isNight theme="light" />,
+    );
+    expect(screen.getByTestId("prayer-moon")).toBeTruthy();
+
+    rerender(<SunArc dots={dots} fraction={0.5} theme="light" />);
+    expect(screen.getByTestId("prayer-sun")).toBeTruthy();
+  });
 });
