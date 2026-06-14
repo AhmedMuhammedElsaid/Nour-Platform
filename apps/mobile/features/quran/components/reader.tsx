@@ -18,6 +18,7 @@ import {
   type AyahRef,
   type QuranPrefs,
 } from "@/lib/device-local";
+import { usePlayer } from "@/lib/player-context";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
 import { useAyahAudio } from "../hooks/use-ayah-audio";
 import { AyahRow } from "./ayah-row";
@@ -44,9 +45,24 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs 
   const [tafsirAyah, setTafsirAyah] = useState<{ numberGlobal: number; ref: string } | null>(null);
   const listRef = useRef<FlatList<ReaderAyah>>(null);
 
+  // The reader's ayah audio (expo-audio) and the site-wide RNTP player are
+  // independent — coordinate them so they never play at once (point 3).
+  const player = usePlayer();
   const audio = useAyahAudio(
     data.ayahs.map((a) => ({ numberGlobal: a.numberGlobal, audioUrl: a.audioUrl })),
+    {
+      onPlaybackStart: () => {
+        if (player.isPlaying) player.pause();
+      },
+    },
   );
+
+  // Reverse direction: starting the site-wide player stops the ayah audio.
+  const { isPlaying: ayahPlaying, stop: stopAyah } = audio;
+  const playerPlaying = player.isPlaying;
+  useEffect(() => {
+    if (playerPlaying && ayahPlaying) stopAyah();
+  }, [playerPlaying, ayahPlaying, stopAyah]);
 
   const surahNameEn = data.surah.name.en;
   const translationDir = data.translationEdition?.dir ?? (locale === "ar" ? "rtl" : "ltr");

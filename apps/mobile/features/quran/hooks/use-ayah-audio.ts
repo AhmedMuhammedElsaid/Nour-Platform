@@ -26,7 +26,16 @@ export interface UseAyahAudio {
   stop: () => void;
 }
 
-export function useAyahAudio(ayahs: PlayableAyah[]): UseAyahAudio {
+export interface UseAyahAudioOptions {
+  // Fired whenever a new ayah starts playing. The reader uses this to pause the
+  // site-wide RNTP player so the two audio engines never play at once (point 3).
+  onPlaybackStart?: () => void;
+}
+
+export function useAyahAudio(
+  ayahs: PlayableAyah[],
+  opts: UseAyahAudioOptions = {},
+): UseAyahAudio {
   // No initial source — we load each ayah on demand via player.replace().
   const player = useAudioPlayer();
   const status = useAudioPlayerStatus(player);
@@ -46,6 +55,12 @@ export function useAyahAudio(ayahs: PlayableAyah[]): UseAyahAudio {
     [ayahs],
   );
 
+  // Keep the latest onPlaybackStart in a ref so playAt's identity (and thus the
+  // finish/advance effect's deps) doesn't churn when the caller passes an inline
+  // callback each render.
+  const onPlaybackStartRef = useRef(opts.onPlaybackStart);
+  onPlaybackStartRef.current = opts.onPlaybackStart;
+
   const playAt = useCallback(
     (index: number) => {
       const ayah = ayahs[index];
@@ -53,6 +68,7 @@ export function useAyahAudio(ayahs: PlayableAyah[]): UseAyahAudio {
         setCurrentGlobal(null);
         return;
       }
+      onPlaybackStartRef.current?.();
       player.replace({ uri: ayah.audioUrl });
       player.play();
       setCurrentGlobal(ayah.numberGlobal);
