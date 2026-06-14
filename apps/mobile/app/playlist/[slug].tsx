@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams } from "expo-router";
@@ -26,7 +26,7 @@ function formatDuration(secs?: number): string | null {
 export default function PlaylistDetailScreen() {
   const { t } = useTranslation();
   const locale = initialLocale;
-  const { slug } = useLocalSearchParams<{ slug: string }>();
+  const { slug, trackId } = useLocalSearchParams<{ slug: string; trackId?: string }>();
   const dockSpacing = useDockSpacing();
   const { loadQueue, currentTrack, isPlaying } = usePlayer();
   const downloads = useDownloads();
@@ -66,6 +66,20 @@ export default function PlaylistDetailScreen() {
       locale,
     }));
   }, [detail.data, playableTracks, locale]);
+
+  // Continue-listening deep link (?trackId=…): auto-start the queue at that
+  // track once it resolves (mirrors the web's #trackId autoplay, point 17).
+  // Guarded by a ref so it fires once per requested id, not on every render.
+  const autoplayedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!trackId || queueTracks.length === 0) return;
+    if (autoplayedRef.current === trackId) return;
+    const idx = queueTracks.findIndex((q) => q.id === trackId);
+    if (idx >= 0) {
+      autoplayedRef.current = trackId;
+      loadQueue(queueTracks, idx);
+    }
+  }, [trackId, queueTracks, loadQueue]);
 
   const playAll = () => {
     if (queueTracks.length > 0) loadQueue(queueTracks, 0);

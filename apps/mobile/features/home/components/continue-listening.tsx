@@ -33,7 +33,9 @@ export function ContinueListening() {
             className="w-36"
             onPress={() =>
               item.playlistSlug != null &&
-              router.push(`/playlist/${encodeURIComponent(item.playlistSlug)}`)
+              router.push(
+                `/playlist/${encodeURIComponent(item.playlistSlug)}?trackId=${encodeURIComponent(item.trackId)}`,
+              )
             }
           >
             <Card>
