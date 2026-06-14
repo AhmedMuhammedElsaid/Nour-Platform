@@ -274,6 +274,35 @@ locally: **Android SDK + NDK** (set `ANDROID_HOME`), a **release keystore** (ver
 signingConfigs), then `cd android && ./gradlew assembleRelease` + `adb install -r`. Resume only if the user
 asks; otherwise keep using `eas build --profile preview --platform android` on `volunteering-apps/nour-platform`.
 
+## Post-build feedback fixes (Phase 1 of `mobile_app_feedback_bugs.md`, 2026-06-14)
+
+26 on-device bugs/UX issues were triaged into a 9-phase plan in
+`apps/mobile/mobile_app_feedback_bugs.md` (`d64bdcd`). Phase 1 (quick
+correctness fixes, no rebuild) is done, committed to `main`:
+
+- **i18n interpolation** (`702cc31`): `locales/{en,ar}.json` `prayer.*` strings used
+  single `{h}`/`{m}`/`{time}`/`{city}` placeholders — i18next needs `{{double}}`
+  braces, so countdown/location text rendered the literal placeholder. Added
+  `common.close`.
+- **`useDockSpacing()`** (`a4c4f42`, new `lib/use-dock-spacing.ts`): computes bottom
+  padding from `usePathname()` (tab bar shows on tab roots), `usePlayer().hasQueue`
+  (mini-player), and `useSafeAreaInsets()`. Applied to home, adhkar list/reader,
+  playlist detail, and Quran index/reader — replaces the old fixed `pb-12`/`pb-24`.
+  Home also now defaults `sort` to `"az"` instead of `"newest"` so the library isn't
+  empty-looking on first load. `jest.setup.js` gained a global
+  `react-native-safe-area-context` mock (zero insets); tests that render screens using
+  `useDockSpacing` now add `usePathname` to their `expo-router` mock and wrap in
+  `<PlayerProvider>`.
+- **Adhan toggle persistence** (`12d95d6`, new
+  `features/prayer-times/hooks/use-adhan-settings.ts`): mirrors the web's
+  `use-adhan-settings.ts` via AsyncStorage key `nour.prayer.adhan` +
+  `@repo/shared-core`'s `adhanSettingsSchema`/`DEFAULT_ADHAN_SETTINGS` — the toggle no
+  longer resets on navigation. Same commit gives the location-picker modal's close
+  button a `useSafeAreaInsets().top` offset so it clears the status bar.
+
+**Next**: Phase 2 (sun-arc size + theme-aware colors + theme-toggle icon) — tagged
+Opus in the plan (shared-component contract change).
+
 ## Verify before shipping
 
 ```bash
