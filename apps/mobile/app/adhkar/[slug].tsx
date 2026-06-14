@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { FlatList, Pressable, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { DhikrItem } from "@repo/shared-core/schemas/azkar";
 
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,8 @@ import {
 // apps/web/features/adhkar/components/adhkar-reader.tsx.
 export default function AdhkarReaderScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const locale = initialLocale;
   const dockSpacing = useDockSpacing();
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -118,10 +121,25 @@ export default function AdhkarReaderScreen() {
   const display = azkar[locale];
   const progressValue = total > 0 ? (done / total) * 100 : 0;
 
+  // Pinned header: back + title + live progress bar. Kept OUTSIDE the FlatList
+  // (not in ListHeaderComponent) so the progress bar stays visible as the user
+  // scrolls and taps through the set (point 21). The Stack header is hidden to
+  // avoid a duplicate/unthemed title bar (same pattern as the Quran reader).
   const header = (
-    <View className="gap-3 pb-4">
-      <View className="flex-row items-baseline justify-between gap-4">
-        <Text variant="display" className="text-2xl text-primary">
+    <View
+      className="gap-3 border-b border-border bg-bg px-4 pb-3"
+      style={{ paddingTop: insets.top + 8 }}
+    >
+      <View className="flex-row items-center gap-2">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("common.back")}
+          onPress={() => router.back()}
+          className="-ms-2 size-9 items-center justify-center"
+        >
+          <Text className="text-2xl text-text">‹</Text>
+        </Pressable>
+        <Text variant="display" className="flex-1 text-xl text-primary" numberOfLines={1}>
           {display.title}
         </Text>
         <Text variant="muted">
@@ -142,8 +160,9 @@ export default function AdhkarReaderScreen() {
   );
 
   return (
-    <>
-      <Stack.Screen options={{ headerShown: true, title: display.title }} />
+    <View className="flex-1 bg-bg">
+      <Stack.Screen options={{ headerShown: false }} />
+      {header}
       <FlatList<DhikrItem>
         ref={listRef}
         className="flex-1 bg-bg px-4 pt-4"
@@ -151,7 +170,6 @@ export default function AdhkarReaderScreen() {
         keyExtractor={(_, i) => String(i)}
         contentContainerClassName="gap-4"
         contentContainerStyle={{ paddingBottom: dockSpacing }}
-        ListHeaderComponent={header}
         onScrollToIndexFailed={() => undefined}
         renderItem={({ item, index }) => {
           const count = counts[index] ?? 0;
@@ -222,6 +240,6 @@ export default function AdhkarReaderScreen() {
           );
         }}
       />
-    </>
+    </View>
   );
 }
