@@ -1,5 +1,5 @@
 import "@/global.css";
-import "@/lib/i18n";
+import { hydrateLocale } from "@/lib/i18n";
 
 import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -25,11 +25,19 @@ export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient());
   // Animated brand splash overlays the app on cold start, then unmounts itself.
   const [splashDone, setSplashDone] = useState(false);
+  // Hold the app tree until the persisted locale is applied, so the first render
+  // (and the data queries keyed on `initialLocale`) use the user's language, not
+  // the device default. The splash overlay covers this sub-frame delay.
+  const [localeReady, setLocaleReady] = useState(false);
 
   // Load custom fonts. Falls back to system fonts if the .ttf assets are not
   // bundled (acceptable in development; add @expo-google-fonts packages for a
   // production EAS build or bundle the .ttf files under assets/fonts/).
   const [fontsLoaded] = useFonts({});
+
+  useEffect(() => {
+    void hydrateLocale().then(() => setLocaleReady(true));
+  }, []);
 
   useEffect(() => {
     // Hide splash once fonts are done (or immediately if none to load).
@@ -43,8 +51,12 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <PlayerProvider>
-            <Stack screenOptions={{ headerShown: false }} />
-            <BottomDock />
+            {localeReady && (
+              <>
+                <Stack screenOptions={{ headerShown: false }} />
+                <BottomDock />
+              </>
+            )}
           </PlayerProvider>
         </ThemeProvider>
         {!splashDone && <AnimatedSplash onFinish={() => setSplashDone(true)} />}

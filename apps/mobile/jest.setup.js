@@ -34,6 +34,13 @@ jest.mock("react-native-reanimated", () => {
   };
 });
 
+// expo-updates has no native module under Jest. reloadAsync rejects (as it does
+// in dev builds) so LocaleSwitcher exercises its live-swap fallback path.
+jest.mock("expo-updates", () => ({
+  isEnabled: false,
+  reloadAsync: jest.fn().mockRejectedValue(new Error("not supported in dev")),
+}));
+
 // expo-splash-screen has no native module under Jest.
 jest.mock("expo-splash-screen", () => ({
   preventAutoHideAsync: jest.fn().mockResolvedValue(undefined),

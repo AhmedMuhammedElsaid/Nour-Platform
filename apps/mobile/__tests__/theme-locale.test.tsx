@@ -1,8 +1,11 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Updates from "expo-updates";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LocaleSwitcher } from "@/components/locale-switcher";
+import i18n from "@/lib/i18n";
 import { ThemeProvider } from "@/lib/theme-context";
 
 jest.mock("expo-router", () => ({
@@ -35,9 +38,28 @@ describe("ThemeToggle", () => {
 });
 
 describe("LocaleSwitcher", () => {
+  afterEach(async () => {
+    // Pressing the switch flips i18n.language globally — restore for other suites.
+    await i18n.changeLanguage("en");
+  });
+
   it("renders the target locale label for the current language", async () => {
     renderWith(<LocaleSwitcher />);
     // Default i18n locale in test env is "en" → shows "ع" (press to switch to AR).
     await waitFor(() => expect(screen.getByText("ع")).toBeTruthy());
+  });
+
+  it("persists the new locale and attempts a reload on switch", async () => {
+    renderWith(<LocaleSwitcher />);
+    await waitFor(() => expect(screen.getByText("ع")).toBeTruthy());
+
+    fireEvent.press(screen.getByRole("button"));
+
+    // Choice is persisted under nour.locale and a reload is attempted (which the
+    // mock rejects, so the component falls back to a live language swap).
+    await waitFor(() =>
+      expect(AsyncStorage.setItem).toHaveBeenCalledWith("nour.locale", "ar"),
+    );
+    expect(Updates.reloadAsync).toHaveBeenCalled();
   });
 });
