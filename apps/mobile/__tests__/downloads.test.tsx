@@ -43,10 +43,14 @@ function mockApi() {
   });
 }
 
-function renderWith(node: React.ReactElement, withPlayer = false) {
+function renderWith(node: React.ReactElement) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const inner = withPlayer ? <PlayerProvider>{node}</PlayerProvider> : node;
-  return render(<QueryClientProvider client={client}>{inner}</QueryClientProvider>);
+  // Both the downloads list and the playlist detail now read the player context.
+  return render(
+    <QueryClientProvider client={client}>
+      <PlayerProvider>{node}</PlayerProvider>
+    </QueryClientProvider>,
+  );
 }
 
 beforeEach(async () => {
@@ -86,7 +90,7 @@ describe("DownloadsScreen", () => {
 describe("PlaylistDetailScreen — download buttons", () => {
   it("shows a download button for each playable track", async () => {
     mockApi();
-    renderWith(<PlaylistDetailScreen />, true);
+    renderWith(<PlaylistDetailScreen />);
     await waitFor(() => expect(screen.getByText("Track One")).toBeTruthy());
 
     // DownloadButton renders with aria-label "Download Track One"
@@ -96,7 +100,7 @@ describe("PlaylistDetailScreen — download buttons", () => {
 
   it("triggers downloadFileAsync when download button is pressed", async () => {
     mockApi();
-    renderWith(<PlaylistDetailScreen />, true);
+    renderWith(<PlaylistDetailScreen />);
     await waitFor(() => expect(screen.getByText("Track One")).toBeTruthy());
 
     const btn = screen.getByLabelText(/Download Track One/i);
