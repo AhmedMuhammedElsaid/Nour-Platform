@@ -75,11 +75,11 @@ apps/mobile/
     bottom-tab-bar.tsx       SoundCloud-style bottom nav (Home/Quran/Adhkar/Prayer/
                              Downloads). PRESENTATIONAL, not expo-router <Tabs>: driven
                              by usePathname + router.navigate, so existing nested stacks +
-                             deep links are untouched. Animated gold active pill; exports
-                             isTabRoot() (bar shows only on the 5 roots, hides on details)
-    bottom-dock.tsx          stacks <MiniPlayer> directly above <BottomTabBar> and owns
-                             the home-indicator safe-area inset (routes it to whichever is
-                             bottom-most). Rendered once in _layout
+                             deep links are untouched. Animated gold active pill; always
+                             rendered (Phase 5.1 — no more isTabRoot() gating)
+    bottom-dock.tsx          stacks <MiniPlayer> (bottomInset=0) directly above
+                             <BottomTabBar> (carries the safe-area inset) on every route
+                             except /player. Rendered once in _layout
     icons/tab-icons.tsx      5 RN-SVG stroke icons for the tab bar; take a `color` prop
                              (SVG can't read NativeWind classes) — NO new icon dep
   features/
@@ -375,7 +375,23 @@ Phase 4 (audio & player, points 3/12/17/10/19) is done, committed to `main`
   `export`). CI types routes loosely (file absent) so it passes — deleting the stale
   local file unblocks local typecheck.
 
-**Next**: rebuild-free phases 5–8 (nav chrome, playlist artwork, icons, splash revert),
+Phase 5 (navigation & Quran chrome, points 20/25) is done, committed to `main`
+(`3d5c13c`, `dd0cc1f`). No rebuild needed.
+
+- **Tab bar always visible** (`3d5c13c`): `bottom-tab-bar.tsx` no longer exports
+  `isTabRoot`/`TAB_ROOTS` — `<BottomTabBar>` renders on every route via
+  `bottom-dock.tsx`, which now always carries the safe-area inset on the bar
+  (`MiniPlayer` gets `bottomInset=0`). `useDockSpacing()` always reserves
+  `TAB_BAR_HEIGHT + insets.bottom` (+ the mini-player height when a queue is loaded),
+  so every screen's existing `dockSpacing` padding already clears the now-visible bar.
+- **Quran single themed header** (`dd0cc1f`): `app/quran/[surah].tsx` and
+  `app/quran/index.tsx` set `headerShown: false` (no more default white
+  Stack header). The reader's own header gained a `‹` back button
+  (`onBack` prop, new `common.back` string) next to the surah title; loading/error
+  states get a minimal `BackRow`. `quran/index.tsx`'s in-content title is now the
+  only title (its Stack header was the duplicate).
+
+**Next**: rebuild-free phases 6–8 (playlist artwork, icons, splash revert),
 then batch the rebuild-gated items (Phase 3 EAS-Update config + Phase 9 adhan
 sound/notifications) into one EAS build.
 
