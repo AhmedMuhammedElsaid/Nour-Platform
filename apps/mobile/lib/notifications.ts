@@ -6,6 +6,11 @@ import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
 export const AZAN_CHANNEL_ID = "azan";
+// Short (~24s) adhan clip bundled via the app.json expo-notifications plugin
+// (`sounds`). Registered as an Android res/raw resource + an iOS bundle sound;
+// the filename (underscores, no hyphens — Android resource-name rules) is what
+// both the channel and the scheduled notification reference.
+export const AZAN_SOUND = "adhan_notify.wav";
 const AZAN_PREFIX = "nour-azan-";
 
 // Decide how a notification presents while the app is foregrounded. Azan
@@ -25,13 +30,13 @@ Notifications.setNotificationHandler({
 });
 
 // Android needs an explicit high-importance channel for the azan to heads-up.
-// Sound is the system default for now; swap to the bundled short adhan clip
-// once that asset is registered via the app.json expo-notifications plugin.
+// The channel sound is fixed at creation (API 26+), so the bundled short adhan
+// clip is set here; changing the asset later requires recreating the channel.
 export async function ensureAzanChannel(): Promise<void> {
   if (Platform.OS !== "android") return;
   await Notifications.setNotificationChannelAsync(AZAN_CHANNEL_ID, {
     name: "Adhan",
     importance: Notifications.AndroidImportance.HIGH,
-    sound: "default",
+    sound: AZAN_SOUND,
   });
 }

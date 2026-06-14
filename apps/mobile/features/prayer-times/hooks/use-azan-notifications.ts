@@ -8,7 +8,7 @@ import type { PrayerLocation, PrayerPreferences } from "@repo/shared-core/schema
 import { computePrayerTimes, getNextPrayer } from "@repo/shared-core/prayer-times/compute";
 import type { PrayerKey } from "@repo/shared-core/prayer-times/compute";
 
-import { AZAN_CHANNEL_ID, ensureAzanChannel } from "@/lib/notifications";
+import { AZAN_CHANNEL_ID, AZAN_SOUND, ensureAzanChannel } from "@/lib/notifications";
 
 // Sunrise is a marker, not a prayer — skip notifications for it.
 const NOTIF_TAG_PREFIX = "nour-azan-";
@@ -56,7 +56,9 @@ async function scheduleAzanNotifications(
         content: {
           title: prayerNames[key],
           body: "حان وقت الصلاة · It's time for prayer.",
-          sound: true,
+          // iOS uses the per-notification sound; Android takes it from the
+          // channel (set in ensureAzanChannel). Bundled via app.json `sounds`.
+          sound: AZAN_SOUND,
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
