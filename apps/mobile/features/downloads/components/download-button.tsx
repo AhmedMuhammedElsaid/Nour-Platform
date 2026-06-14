@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, View } from "react-native";
 
-import { Text } from "@/components/ui/text";
+import { CheckIcon, DownloadIcon, RetryIcon } from "@/components/icons/player-icons";
+import { useTheme } from "@/lib/theme-context";
 import type { DownloadStatus } from "@/features/downloads/hooks/use-downloads";
 
 type Props = {
@@ -14,6 +15,10 @@ type Props = {
 
 export function DownloadButton({ trackId: _trackId, title, status, onDownload, onDelete }: Props) {
   const { t } = useTranslation();
+  const { theme } = useTheme();
+  const iconColor = theme === "dark" ? "#5a4a38" : "#6b7670";
+  const successColor = theme === "dark" ? "#86efac" : "#22c55e";
+  const dangerColor = theme === "dark" ? "#fca5a5" : "#ef4444";
 
   if (status === "downloading") {
     return (
@@ -35,7 +40,7 @@ export function DownloadButton({ trackId: _trackId, title, status, onDownload, o
         onPress={onDelete}
         className="px-2"
       >
-        <Text className="text-success text-base">✓</Text>
+        <CheckIcon color={successColor} size={20} />
       </Pressable>
     );
   }
@@ -48,7 +53,7 @@ export function DownloadButton({ trackId: _trackId, title, status, onDownload, o
         onPress={onDownload}
         className="px-2"
       >
-        <Text className="text-danger text-base">↻</Text>
+        <RetryIcon color={dangerColor} size={20} />
       </Pressable>
     );
   }
@@ -61,7 +66,7 @@ export function DownloadButton({ trackId: _trackId, title, status, onDownload, o
       onPress={onDownload}
       className="px-2"
     >
-      <Text className="text-muted text-base">⬇</Text>
+      <DownloadIcon color={iconColor} size={20} />
     </Pressable>
   );
 }

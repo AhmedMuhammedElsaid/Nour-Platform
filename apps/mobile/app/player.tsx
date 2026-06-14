@@ -10,11 +10,25 @@ import { Stack, useRouter } from "expo-router";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import {
+  ChevronDownIcon,
+  ShuffleIcon,
+  PrevIcon,
+  PlayIcon,
+  PauseIcon,
+  NextIcon,
+  RetryIcon,
+  RepeatIcon,
+  RepeatOneIcon,
+  VolumeIcon,
+  MuteIcon,
+} from "@/components/icons/player-icons";
 import { Cover } from "@/features/playlists/components/cover";
 import { Slider } from "@/components/ui/slider";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 import { PLAYBACK_RATES, usePlayer } from "@/lib/player-context";
+import { useTheme } from "@/lib/theme-context";
 
 function formatTime(secs: number): string {
   if (!Number.isFinite(secs) || secs < 0) return "0:00";
@@ -27,8 +41,12 @@ const SLEEP_OPTIONS = [15, 30, 45, 60] as const;
 
 export default function PlayerScreen() {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const primaryColor = theme === "dark" ? "#f0e6cc" : "#13201a";
+  const mutedColor = theme === "dark" ? "#5a4a38" : "#6b7670";
+  const textColor = theme === "dark" ? "#e4e2dd" : "#1a1814";
   const {
     hasQueue,
     currentTrack,
@@ -105,7 +123,7 @@ export default function PlayerScreen() {
           onPress={close}
           className="size-9 items-center justify-center"
         >
-          <Text className="text-2xl text-text">⌄</Text>
+          <ChevronDownIcon color={textColor} size={24} />
         </Pressable>
         <Text variant="muted" className="text-xs uppercase">
           {t("player.nowPlaying")}
@@ -150,7 +168,7 @@ export default function PlayerScreen() {
           onPress={toggleShuffle}
           className="size-11 items-center justify-center"
         >
-          <Text className={cn("text-xl", isShuffled ? "text-primary" : "text-text-2")}>🔀</Text>
+          <ShuffleIcon color={isShuffled ? primaryColor : mutedColor} size={24} />
         </Pressable>
 
         <Pressable
@@ -159,7 +177,7 @@ export default function PlayerScreen() {
           onPress={prev}
           className="size-12 items-center justify-center"
         >
-          <Text className="text-2xl text-text">⏮</Text>
+          <PrevIcon color={primaryColor} size={28} />
         </Pressable>
 
         {errorMessage != null ? (
@@ -169,7 +187,7 @@ export default function PlayerScreen() {
             onPress={retry}
             className="size-16 items-center justify-center rounded-full bg-primary"
           >
-            <Text className="text-2xl text-bg">↻</Text>
+            <RetryIcon color="#13201a" size={28} />
           </Pressable>
         ) : (
           <Pressable
@@ -181,7 +199,7 @@ export default function PlayerScreen() {
               isBuffering && "opacity-60",
             )}
           >
-            <Text className="text-2xl text-bg">{isPlaying ? "⏸" : "▶"}</Text>
+            {isPlaying ? <PauseIcon color="#13201a" size={28} /> : <PlayIcon color="#13201a" size={28} />}
           </Pressable>
         )}
 
@@ -191,7 +209,7 @@ export default function PlayerScreen() {
           onPress={next}
           className="size-12 items-center justify-center"
         >
-          <Text className="text-2xl text-text">⏭</Text>
+          <NextIcon color={primaryColor} size={28} />
         </Pressable>
 
         <Pressable
@@ -201,9 +219,11 @@ export default function PlayerScreen() {
           onPress={cycleRepeat}
           className="size-11 items-center justify-center"
         >
-          <Text className={cn("text-xl", repeatMode !== "off" ? "text-primary" : "text-text-2")}>
-            {repeatMode === "one" ? "🔂" : "🔁"}
-          </Text>
+          {repeatMode === "one" ? (
+            <RepeatOneIcon color={primaryColor} size={24} />
+          ) : (
+            <RepeatIcon color={repeatMode !== "off" ? primaryColor : mutedColor} size={24} />
+          )}
         </Pressable>
       </View>
 
@@ -215,7 +235,11 @@ export default function PlayerScreen() {
           onPress={() => setVolume(volume === 0 ? 1 : 0)}
           className="size-9 items-center justify-center"
         >
-          <Text className="text-lg text-text-2">{volume === 0 ? "🔇" : "🔊"}</Text>
+          {volume === 0 ? (
+            <MuteIcon color={mutedColor} size={20} />
+          ) : (
+            <VolumeIcon color={primaryColor} size={20} />
+          )}
         </Pressable>
         <View className="flex-1">
           <Slider value={volume} max={1} onValueChange={setVolume} accessibilityLabel={t("player.volume")} />

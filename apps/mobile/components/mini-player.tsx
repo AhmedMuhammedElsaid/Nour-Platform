@@ -5,13 +5,27 @@ import { Pressable, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 
+import {
+  PrevIcon,
+  PlayIcon,
+  PauseIcon,
+  NextIcon,
+  ShuffleIcon,
+  RepeatIcon,
+  RepeatOneIcon,
+  RetryIcon,
+} from "@/components/icons/player-icons";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 import { usePlayer } from "@/lib/player-context";
+import { useTheme } from "@/lib/theme-context";
 
 export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const router = useRouter();
+  const primaryColor = theme === "dark" ? "#f0e6cc" : "#13201a";
+  const mutedColor = theme === "dark" ? "#5a4a38" : "#6b7670";
   const {
     hasQueue,
     currentTrack,
@@ -79,7 +93,7 @@ export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
             onPress={toggleShuffle}
             className="size-9 items-center justify-center"
           >
-            <Text className={cn("text-sm", isShuffled ? "text-primary" : "text-text-2")}>🔀</Text>
+            <ShuffleIcon color={isShuffled ? primaryColor : mutedColor} size={18} />
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -88,9 +102,11 @@ export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
             onPress={cycleRepeat}
             className="size-9 items-center justify-center"
           >
-            <Text className={cn("text-sm", repeatMode !== "off" ? "text-primary" : "text-text-2")}>
-              {repeatMode === "one" ? "🔂" : "🔁"}
-            </Text>
+            {repeatMode === "one" ? (
+              <RepeatOneIcon color={primaryColor} size={18} />
+            ) : (
+              <RepeatIcon color={repeatMode !== "off" ? primaryColor : mutedColor} size={18} />
+            )}
           </Pressable>
         </View>
 
@@ -102,7 +118,7 @@ export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
             onPress={prev}
             className="size-9 items-center justify-center"
           >
-            <Text className="text-lg text-text">⏮</Text>
+            <PrevIcon color={primaryColor} size={18} />
           </Pressable>
 
           {errorMessage != null ? (
@@ -112,7 +128,7 @@ export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
               onPress={retry}
               className="size-11 items-center justify-center rounded-full bg-primary"
             >
-              <Text className="text-lg text-bg">↻</Text>
+              <RetryIcon color="#13201a" size={20} />
             </Pressable>
           ) : (
             <Pressable
@@ -126,9 +142,7 @@ export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
                 isBuffering && "opacity-60",
               )}
             >
-              <Text className="text-lg text-bg">
-                {isPlaying ? "⏸" : "▶"}
-              </Text>
+              {isPlaying ? <PauseIcon color="#13201a" size={20} /> : <PlayIcon color="#13201a" size={20} />}
             </Pressable>
           )}
 
@@ -138,7 +152,7 @@ export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
             onPress={next}
             className="size-9 items-center justify-center"
           >
-            <Text className="text-lg text-text">⏭</Text>
+            <NextIcon color={primaryColor} size={18} />
           </Pressable>
         </View>
       </View>
