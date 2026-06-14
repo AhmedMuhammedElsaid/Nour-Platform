@@ -317,8 +317,37 @@ Phase 2 (prayer-times arc + theming, points 2/9/26) is done, committed to `main`
   `theme-locale.test.tsx` toggle assertion now keys off `testID`
   (`theme-icon-sun`/`theme-icon-moon`), not the old emoji text.
 
-**Next**: Phase 3 (localization system — `expo-updates` + rebuild) — needs a new dep
-and a fresh EAS build; tagged Opus in the plan.
+Phase 3 (localization system, points 6/22) is done, committed to `main` (`76322cd`).
+**Adds the `expo-updates` ~56.0.19 dependency** — needs the batched EAS rebuild.
+
+- **Root cause**: `LocaleSwitcher` wrote `nour.locale` to AsyncStorage but `lib/i18n.ts`
+  never read it back, and `initialLocale` was always the device locale — so switching
+  language did nothing across restarts and adhkar titles / tafsir stayed in the boot
+  language.
+- **Fix**: `lib/i18n.ts` now exports `hydrateLocale()` (reads the persisted choice,
+  applies language + RTL before first render) and `initialLocale` is a **`let`**
+  upgraded by it. `app/_layout.tsx` gates the whole app tree on a `localeReady` state
+  (set after `hydrateLocale()`), so the queries keyed on `initialLocale` boot in the
+  chosen language. `LocaleSwitcher` persists + `applyTextDirection` + `Updates.reloadAsync()`,
+  falling back to a live `i18n.changeLanguage` + restart-prompt when reload throws
+  (dev build / Expo Go / updates disabled).
+- **⚠ Rebuild caveat**: `Updates.reloadAsync()` only actually reloads in a build where
+  **EAS Update is configured** (`runtimeVersion` + `updates.url` in `app.json`, via
+  `eas update:configure`). Without it, `reloadAsync` throws and the switcher degrades
+  to the live text swap (RTL needs a manual restart). Configure EAS Update as part of
+  the batched rebuild for a seamless flip. `app.json` is intentionally left untouched
+  here (batched with Phase 9).
+- **Tafsir "only first ayah / empty" (point 6 data-half)**: traced end-to-end — the
+  mobile client (`tafsir-sheet.tsx`) builds a fresh `{numberGlobal, ref}` per ayah and
+  refetches; the web route (`app/api/v1/quran/tafsir/route.ts`), `getTafsir` service,
+  and `findTafsir` repo all key strictly by `numberGlobal` and honor `locale`. **The
+  contract is correct** — the empty-for-non-first behaviour is a backend **data-seeding
+  gap** (the `QuranTafsir` collection is sparsely populated), not a client/route bug.
+  The language-half is fixed by the locale persistence above.
+
+**Next**: rebuild-free phases 4–8 (audio/player, nav chrome, playlist artwork, icons,
+splash revert), then batch the rebuild-gated items (this Phase 3 EAS-Update config +
+Phase 9 adhan sound/notifications) into one EAS build.
 
 ## Verify before shipping
 
