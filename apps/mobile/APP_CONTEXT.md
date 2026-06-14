@@ -274,11 +274,27 @@ locally: **Android SDK + NDK** (set `ANDROID_HOME`), a **release keystore** (ver
 signingConfigs), then `cd android && ./gradlew assembleRelease` + `adb install -r`. Resume only if the user
 asks; otherwise keep using `eas build --profile preview --platform android` on `volunteering-apps/nour-platform`.
 
-## Post-build feedback fixes (Phase 1 of `mobile_app_feedback_bugs.md`, 2026-06-14)
+## Post-build feedback fixes — ALL 9 PHASES DONE (`mobile_app_feedback_bugs.md`, 2026-06-14)
 
 26 on-device bugs/UX issues were triaged into a 9-phase plan in
-`apps/mobile/mobile_app_feedback_bugs.md` (`d64bdcd`). Phase 1 (quick
-correctness fixes, no rebuild) is done, committed to `main`:
+`apps/mobile/mobile_app_feedback_bugs.md` (`d64bdcd`). **All 9 phases / 26 points are
+implemented and on `main`** (head `c8761e6`); full monorepo gate green, `expo export
+--platform android` compiles, 17 jest suites / 55 tests pass. Phase details below.
+
+**Two honest caveats** before calling it 100%:
+1. **Point 6 tafsir "only first ayah / empty" is a BACKEND data-seeding gap, not a mobile
+   bug** — the client + web route + `getTafsir`/`findTafsir` all key correctly by
+   `numberGlobal`+`locale`; the `QuranTafsir` collection is sparsely populated. The
+   *language* half is fixed in mobile; the *data* half needs a backend seed + web redeploy.
+2. **Rebuild-gated items are code-complete but NOT device-proven** — they only take effect
+   after one `eas build --profile preview --platform android`: the adhan notification sound
+   (`adhan_notify.wav` + `app.json` + Android channel, Phase 9) and the language-switch
+   reload (`expo-updates` `reloadAsync`, Phase 3 — no-op in dev). Phase 4's seek/volume use a
+   **dependency-free PanResponder `Slider`**, so `@react-native-community/slider` was NOT
+   added (one fewer native dep in the batch). After the build, walk the §3 on-device
+   checklist in the plan. May also want to bump `android.versionCode` (still `1`).
+
+Phase 1 (quick correctness fixes, no rebuild) is done, committed to `main`:
 
 - **i18n interpolation** (`702cc31`): `locales/{en,ar}.json` `prayer.*` strings used
   single `{h}`/`{m}`/`{time}`/`{city}` placeholders — i18next needs `{{double}}`
