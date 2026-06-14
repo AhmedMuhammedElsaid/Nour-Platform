@@ -17,6 +17,10 @@ export function BottomDock() {
   const pathname = usePathname();
   const showTabBar = isTabRoot(pathname);
 
+  // The full-screen player already owns the transport — don't stack the dock
+  // (mini-player + tab bar) over it.
+  if (pathname === "/player") return null;
+
   return (
     <Fragment>
       {/* When the bar is visible it is bottom-most and carries the inset; the

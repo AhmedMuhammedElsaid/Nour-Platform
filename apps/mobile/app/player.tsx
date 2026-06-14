@@ -1,0 +1,292 @@
+// Full-screen "Now Playing" — a modal route mirroring the web's audio-player.tsx
+// (packages/ui/src/blocks/audio-player). All state already lives in the player
+// context; this is the missing UI: large artwork, seek slider, transport,
+// repeat/shuffle, volume, speed, and sleep timer (points 10 & 19). Glyphs stay
+// as text for now; Phase 7 swaps in SVG transport icons across every surface.
+
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Stack, useRouter } from "expo-router";
+import { Pressable, ScrollView, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { Cover } from "@/features/playlists/components/cover";
+import { Slider } from "@/components/ui/slider";
+import { Text } from "@/components/ui/text";
+import { cn } from "@/lib/cn";
+import { PLAYBACK_RATES, usePlayer } from "@/lib/player-context";
+
+function formatTime(secs: number): string {
+  if (!Number.isFinite(secs) || secs < 0) return "0:00";
+  const m = Math.floor(secs / 60);
+  const s = Math.floor(secs % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+const SLEEP_OPTIONS = [15, 30, 45, 60] as const;
+
+export default function PlayerScreen() {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const {
+    hasQueue,
+    currentTrack,
+    currentIndex,
+    queue,
+    isPlaying,
+    isBuffering,
+    errorMessage,
+    currentTime,
+    duration,
+    repeatMode,
+    isShuffled,
+    playbackRate,
+    volume,
+    toggle,
+    seek,
+    next,
+    prev,
+    retry,
+    cycleRepeat,
+    toggleShuffle,
+    setPlaybackRate,
+    setVolume,
+    sleepTimerEndsAt,
+    sleepAtTrackEnd,
+    setSleepTimer,
+  } = usePlayer();
+
+  // Live remaining-time readout while a timed sleep timer runs.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (sleepTimerEndsAt == null) return;
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [sleepTimerEndsAt]);
+  const sleepRemainingMs = sleepTimerEndsAt != null ? Math.max(0, sleepTimerEndsAt - now) : 0;
+
+  const close = () => router.back();
+
+  if (!hasQueue || !currentTrack) {
+    return (
+      <View className="flex-1 items-center justify-center gap-4 bg-bg px-6" style={{ paddingTop: insets.top }}>
+        <Stack.Screen options={{ presentation: "modal", headerShown: false }} />
+        <Text variant="muted">{t("player.nothingPlaying")}</Text>
+        <Pressable accessibilityRole="button" onPress={close} className="rounded-md border border-border px-4 py-2">
+          <Text>{t("common.close")}</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const sliderMax = duration > 0 ? duration : currentTrack.durationSecs ?? 0;
+  const repeatLabel =
+    repeatMode === "one"
+      ? t("player.repeatOne")
+      : repeatMode === "all"
+        ? t("player.repeatAll")
+        : t("player.repeatOff");
+
+  return (
+    <ScrollView
+      className="flex-1 bg-bg"
+      contentContainerClassName="px-6 gap-6"
+      contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 24 }}
+    >
+      <Stack.Screen options={{ presentation: "modal", headerShown: false }} />
+
+      {/* Header: collapse + context */}
+      <View className="flex-row items-center justify-between">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("common.close")}
+          onPress={close}
+          className="size-9 items-center justify-center"
+        >
+          <Text className="text-2xl text-text">⌄</Text>
+        </Pressable>
+        <Text variant="muted" className="text-xs uppercase">
+          {t("player.nowPlaying")}
+        </Text>
+        <View className="size-9" />
+      </View>
+
+      {/* Artwork */}
+      <Cover id={currentTrack.id} className="aspect-square w-full rounded-2xl" emojiClassName="text-8xl" />
+
+      {/* Title + context */}
+      <View className="gap-1">
+        <Text variant="display" className="text-2xl" numberOfLines={2}>
+          {currentTrack.title}
+        </Text>
+        <Text variant="muted" numberOfLines={1}>
+          {currentTrack.playlistTitle ?? `${currentIndex + 1} / ${queue.length}`}
+        </Text>
+        {errorMessage != null && <Text className="text-sm text-danger">{errorMessage}</Text>}
+      </View>
+
+      {/* Seek */}
+      <View className="gap-1">
+        <Slider
+          value={currentTime}
+          max={sliderMax > 0 ? sliderMax : 1}
+          onSlidingComplete={seek}
+          accessibilityLabel={t("player.nowPlaying")}
+        />
+        <View className="flex-row justify-between">
+          <Text variant="muted" className="text-xs tabular-nums">{formatTime(currentTime)}</Text>
+          <Text variant="muted" className="text-xs tabular-nums">{formatTime(sliderMax)}</Text>
+        </View>
+      </View>
+
+      {/* Transport */}
+      <View className="flex-row items-center justify-between">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: isShuffled }}
+          accessibilityLabel={t("player.shuffle")}
+          onPress={toggleShuffle}
+          className="size-11 items-center justify-center"
+        >
+          <Text className={cn("text-xl", isShuffled ? "text-primary" : "text-text-2")}>🔀</Text>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("player.prev")}
+          onPress={prev}
+          className="size-12 items-center justify-center"
+        >
+          <Text className="text-2xl text-text">⏮</Text>
+        </Pressable>
+
+        {errorMessage != null ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("player.retry")}
+            onPress={retry}
+            className="size-16 items-center justify-center rounded-full bg-primary"
+          >
+            <Text className="text-2xl text-bg">↻</Text>
+          </Pressable>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={isPlaying ? t("player.pause") : t("player.play")}
+            onPress={toggle}
+            className={cn(
+              "size-16 items-center justify-center rounded-full bg-primary",
+              isBuffering && "opacity-60",
+            )}
+          >
+            <Text className="text-2xl text-bg">{isPlaying ? "⏸" : "▶"}</Text>
+          </Pressable>
+        )}
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("player.next")}
+          onPress={next}
+          className="size-12 items-center justify-center"
+        >
+          <Text className="text-2xl text-text">⏭</Text>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: repeatMode !== "off" }}
+          accessibilityLabel={repeatLabel}
+          onPress={cycleRepeat}
+          className="size-11 items-center justify-center"
+        >
+          <Text className={cn("text-xl", repeatMode !== "off" ? "text-primary" : "text-text-2")}>
+            {repeatMode === "one" ? "🔂" : "🔁"}
+          </Text>
+        </Pressable>
+      </View>
+
+      {/* Volume */}
+      <View className="flex-row items-center gap-3">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={volume === 0 ? t("player.unmute") : t("player.mute")}
+          onPress={() => setVolume(volume === 0 ? 1 : 0)}
+          className="size-9 items-center justify-center"
+        >
+          <Text className="text-lg text-text-2">{volume === 0 ? "🔇" : "🔊"}</Text>
+        </Pressable>
+        <View className="flex-1">
+          <Slider value={volume} max={1} onValueChange={setVolume} accessibilityLabel={t("player.volume")} />
+        </View>
+      </View>
+
+      {/* Speed */}
+      <View className="gap-2">
+        <Text variant="label">{t("player.speed")}</Text>
+        <View className="flex-row flex-wrap gap-2">
+          {PLAYBACK_RATES.map((rate) => (
+            <Pressable
+              key={rate}
+              accessibilityRole="button"
+              accessibilityState={{ selected: rate === playbackRate }}
+              onPress={() => setPlaybackRate(rate)}
+              className={cn(
+                "rounded-md border px-3 py-1.5",
+                rate === playbackRate ? "border-primary bg-primary" : "border-border",
+              )}
+            >
+              <Text className={cn("text-sm", rate === playbackRate ? "text-bg font-medium" : "text-text-2")}>
+                {rate}×
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      {/* Sleep timer */}
+      <View className="gap-2">
+        <View className="flex-row items-center gap-2">
+          <Text variant="label">{t("player.sleepTimer")}</Text>
+          {sleepTimerEndsAt != null && (
+            <Text className="text-sm text-primary tabular-nums">{formatTime(sleepRemainingMs / 1000)}</Text>
+          )}
+        </View>
+        <View className="flex-row flex-wrap gap-2">
+          {SLEEP_OPTIONS.map((m) => (
+            <Pressable
+              key={m}
+              accessibilityRole="button"
+              onPress={() => setSleepTimer(m)}
+              className="rounded-md border border-border px-3 py-1.5"
+            >
+              <Text className="text-sm text-text-2">{m}m</Text>
+            </Pressable>
+          ))}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ selected: sleepAtTrackEnd }}
+            onPress={() => setSleepTimer("end-of-track")}
+            className={cn(
+              "rounded-md border px-3 py-1.5",
+              sleepAtTrackEnd ? "border-primary bg-primary" : "border-border",
+            )}
+          >
+            <Text className={cn("text-sm", sleepAtTrackEnd ? "text-bg font-medium" : "text-text-2")}>
+              {t("player.endOfTrack")}
+            </Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            disabled={sleepTimerEndsAt == null && !sleepAtTrackEnd}
+            onPress={() => setSleepTimer(null)}
+            className="rounded-md px-3 py-1.5"
+          >
+            <Text className="text-sm text-text-2">{t("player.off")}</Text>
+          </Pressable>
+        </View>
+      </View>
+    </ScrollView>
+  );
+}

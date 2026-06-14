@@ -3,19 +3,15 @@
 
 import { Pressable, View } from "react-native";
 import { useTranslation } from "react-i18next";
+import { useRouter } from "expo-router";
 
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 import { usePlayer } from "@/lib/player-context";
 
-function formatTime(secs: number): string {
-  const m = Math.floor(secs / 60);
-  const s = Math.floor(secs % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
 export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
   const { t } = useTranslation();
+  const router = useRouter();
   const {
     hasQueue,
     currentTrack,
@@ -24,10 +20,14 @@ export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
     errorMessage,
     currentTime,
     duration,
+    repeatMode,
+    isShuffled,
     toggle,
     next,
     prev,
     retry,
+    cycleRepeat,
+    toggleShuffle,
   } = usePlayer();
 
   if (!hasQueue || !currentTrack) return null;
@@ -50,8 +50,13 @@ export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
       </View>
 
       <View className="flex-row items-center gap-3">
-        {/* Track info */}
-        <View className="min-w-0 flex-1">
+        {/* Track info — tap to open the full Now Playing screen */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("player.openPlayer")}
+          onPress={() => router.push("/player")}
+          className="min-w-0 flex-1"
+        >
           <Text variant="body" numberOfLines={1} className="font-medium">
             {currentTrack.title}
           </Text>
@@ -63,13 +68,31 @@ export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
           {errorMessage != null && (
             <Text className="text-xs text-danger">{errorMessage}</Text>
           )}
-        </View>
+        </Pressable>
 
-        {/* Time */}
-        <Text variant="muted" className="text-xs tabular-nums">
-          {formatTime(currentTime)}
-          {duration > 0 ? ` / ${formatTime(duration)}` : ""}
-        </Text>
+        {/* Quick shuffle + repeat toggles */}
+        <View className="flex-row items-center gap-1">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ selected: isShuffled }}
+            accessibilityLabel={t("player.shuffle")}
+            onPress={toggleShuffle}
+            className="size-9 items-center justify-center"
+          >
+            <Text className={cn("text-sm", isShuffled ? "text-primary" : "text-text-2")}>🔀</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ selected: repeatMode !== "off" }}
+            accessibilityLabel={t("player.repeat")}
+            onPress={cycleRepeat}
+            className="size-9 items-center justify-center"
+          >
+            <Text className={cn("text-sm", repeatMode !== "off" ? "text-primary" : "text-text-2")}>
+              {repeatMode === "one" ? "🔂" : "🔁"}
+            </Text>
+          </Pressable>
+        </View>
 
         {/* Transport */}
         <View className="flex-row items-center gap-1">
