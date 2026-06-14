@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal, Pressable, ScrollView, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Notifications from "expo-notifications";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { buildArcDots } from "@/features/prayer-times/lib/arc-dots";
 import { PrayerTimetable } from "@/features/prayer-times/components/prayer-timetable";
 import { LocationPicker } from "@/features/prayer-times/components/location-picker";
 import { MethodSettings } from "@/features/prayer-times/components/method-settings";
+import { useAdhanSettings } from "@/features/prayer-times/hooks/use-adhan-settings";
 import {
   requestNotificationPermission,
   useAzanNotifications,
@@ -24,6 +26,7 @@ import {
 } from "@/features/prayer-times/hooks/use-azkar-reminders";
 import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-settings";
 import { initialLocale } from "@/lib/i18n";
+import { useDockSpacing } from "@/lib/use-dock-spacing";
 import {
   computePrayerTimes,
   getArcPosition,
@@ -36,14 +39,17 @@ import { formatClock, formatCountdown } from "@repo/shared-core/prayer-times/for
 export default function PrayerTimesScreen() {
   const { t } = useTranslation();
   const locale = initialLocale;
+  const dockSpacing = useDockSpacing();
+  const insets = useSafeAreaInsets();
   const { location, prefs, hydrated, setLocation, setMethod, setMadhab } =
     usePrayerSettings();
   const { settings: azkar, hydrated: azkarHydrated, setEnabled: setAzkarEnabled } =
     useAzkarReminderSettings();
+  const { settings: adhan, hydrated: adhanHydrated, setEnabled: setAdhanEnabled } =
+    useAdhanSettings();
 
   const [now, setNow] = useState(() => new Date());
   const [showLocationPicker, setShowLocationPicker] = useState(false);
-  const [notifEnabled, setNotifEnabled] = useState(false);
   const [notifGranted, setNotifGranted] = useState(false);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -107,11 +113,11 @@ export default function PrayerTimesScreen() {
   );
 
   useAzanNotifications(
-    notifEnabled && notifGranted,
+    adhan.enabled && notifGranted,
     location,
     prefs,
     prayerNames,
-    hydrated,
+    hydrated && adhanHydrated,
   );
 
   // Reminders are always delivered in Arabic regardless of UI language — the
@@ -145,8 +151,8 @@ export default function PrayerTimesScreen() {
   const requestNotifs = useCallback(async () => {
     const granted = await requestNotificationPermission();
     setNotifGranted(granted);
-    if (granted) setNotifEnabled(true);
-  }, []);
+    if (granted) setAdhanEnabled(true);
+  }, [setAdhanEnabled]);
 
   // Toggle the azkar reminder; request notification permission on first enable
   // (mirrors the web's requestAdhanPermission on enable).
@@ -173,7 +179,11 @@ export default function PrayerTimesScreen() {
 
   return (
     <>
-      <ScrollView className="flex-1 bg-bg px-4 pt-16" contentContainerClassName="gap-6 pb-24">
+      <ScrollView
+        className="flex-1 bg-bg px-4 pt-16"
+        contentContainerClassName="gap-6"
+        contentContainerStyle={{ paddingBottom: dockSpacing }}
+      >
         {/* Heading */}
         <View className="gap-1">
           <Text variant="display" className="text-2xl">
@@ -235,12 +245,12 @@ export default function PrayerTimesScreen() {
               <Text variant="body">{t("prayer.adhan.enable")}</Text>
               <Pressable
                 accessibilityRole="switch"
-                accessibilityState={{ checked: notifEnabled }}
-                onPress={() => setNotifEnabled((v) => !v)}
-                className={`h-7 w-12 rounded-full ${notifEnabled ? "bg-primary" : "bg-surface-2"}`}
+                accessibilityState={{ checked: adhan.enabled }}
+                onPress={() => setAdhanEnabled(!adhan.enabled)}
+                className={`h-7 w-12 rounded-full ${adhan.enabled ? "bg-primary" : "bg-surface-2"}`}
               >
                 <View
-                  className={`size-5 rounded-full bg-white shadow m-1 ${notifEnabled ? "ms-auto" : ""}`}
+                  className={`size-5 rounded-full bg-white shadow m-1 ${adhan.enabled ? "ms-auto" : ""}`}
                 />
               </Pressable>
             </View>
@@ -282,12 +292,17 @@ export default function PrayerTimesScreen() {
         onRequestClose={() => setShowLocationPicker(false)}
       >
         <View className="flex-1 bg-bg">
-          <View className="flex-row items-center justify-end px-4 pt-4">
+          <View
+            className="flex-row items-center justify-end px-4"
+            style={{ paddingTop: insets.top + 16 }}
+          >
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={t("common.close")}
               onPress={() => setShowLocationPicker(false)}
+              className="size-9 items-center justify-center"
             >
-              <Text variant="muted">✕</Text>
+              <Text variant="muted" className="text-lg">✕</Text>
             </Pressable>
           </View>
           <LocationPicker
