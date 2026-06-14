@@ -14,6 +14,7 @@ import { initialLocale } from "@/lib/i18n";
 import { usePlayer, type QueueTrack } from "@/lib/player-context";
 import { categoriesQuery, playlistDetailQuery } from "@/lib/queries";
 import type { CategoryChip, PlayableTrack } from "@/lib/types";
+import { useDockSpacing } from "@/lib/use-dock-spacing";
 
 function formatDuration(secs?: number): string | null {
   if (secs == null) return null;
@@ -26,6 +27,7 @@ export default function PlaylistDetailScreen() {
   const { t } = useTranslation();
   const locale = initialLocale;
   const { slug } = useLocalSearchParams<{ slug: string }>();
+  const dockSpacing = useDockSpacing();
   const { loadQueue, currentTrack, isPlaying } = usePlayer();
   const downloads = useDownloads();
 
@@ -161,7 +163,8 @@ export default function PlaylistDetailScreen() {
         data={tracks}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={header}
-        contentContainerClassName="gap-1 pb-24"
+        contentContainerClassName="gap-1"
+        contentContainerStyle={{ paddingBottom: dockSpacing }}
         ListEmptyComponent={<Text variant="muted">{t("playlist.noTracks")}</Text>}
         renderItem={({ item, index }) => {
           const dur = formatDuration(item.durationSecs);

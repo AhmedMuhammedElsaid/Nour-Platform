@@ -4,11 +4,13 @@ import { render, screen, waitFor, fireEvent } from "@testing-library/react-nativ
 import AdhkarListScreen from "@/app/adhkar/index";
 import AdhkarReaderScreen from "@/app/adhkar/[slug]";
 import { getJson } from "@/lib/api";
+import { PlayerProvider } from "@/lib/player-context";
 
 jest.mock("@/lib/api", () => ({ getJson: jest.fn() }));
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn() }),
   useLocalSearchParams: () => ({ slug: "morning" }),
+  usePathname: () => "/adhkar",
   Stack: { Screen: () => null },
 }));
 
@@ -29,7 +31,11 @@ const azkarSet = {
 
 function renderWith(node: React.ReactElement) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={client}>{node}</QueryClientProvider>);
+  return render(
+    <QueryClientProvider client={client}>
+      <PlayerProvider>{node}</PlayerProvider>
+    </QueryClientProvider>,
+  );
 }
 
 describe("AdhkarListScreen", () => {

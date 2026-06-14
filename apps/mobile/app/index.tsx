@@ -17,16 +17,18 @@ import { PrayerTimesWidget } from "@/features/prayer-times/components/prayer-tim
 import { initialLocale } from "@/lib/i18n";
 import { categoriesQuery, playlistsQuery } from "@/lib/queries";
 import type { CategoryChip } from "@/lib/types";
+import { useDockSpacing } from "@/lib/use-dock-spacing";
 
 export default function HomeScreen() {
   const { t } = useTranslation();
   const locale = initialLocale;
+  const dockSpacing = useDockSpacing();
 
   const playlists = useQuery(playlistsQuery(locale));
   const categories = useQuery(categoriesQuery());
 
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [sort, setSort] = useState<SortOption>("newest");
+  const [sort, setSort] = useState<SortOption>("az");
 
   const categoryById = useMemo(
     () =>
@@ -123,7 +125,8 @@ export default function HomeScreen() {
       keyExtractor={(item) => item.id}
       numColumns={2}
       columnWrapperClassName="gap-3"
-      contentContainerClassName="gap-3 pb-12"
+      contentContainerClassName="gap-3"
+      contentContainerStyle={{ paddingBottom: dockSpacing }}
       ListHeaderComponent={header}
       ListEmptyComponent={<Text variant="muted">{t("home.empty")}</Text>}
       renderItem={({ item }) => (

@@ -18,6 +18,7 @@ import {
   type AyahRef,
   type QuranPrefs,
 } from "@/lib/device-local";
+import { useDockSpacing } from "@/lib/use-dock-spacing";
 import { useAyahAudio } from "../hooks/use-ayah-audio";
 import { AyahRow } from "./ayah-row";
 import { ReaderSettingsSheet } from "./reader-settings-sheet";
@@ -37,6 +38,7 @@ export interface ReaderProps {
 // bookmarks, ayah audio, the settings + tafsir sheets, and current-ayah scroll.
 export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs }: ReaderProps) {
   const { t } = useTranslation();
+  const dockSpacing = useDockSpacing();
   const [bookmarks, setBookmarks] = useState<AyahRef[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tafsirAyah, setTafsirAyah] = useState<{ numberGlobal: number; ref: string } | null>(null);
@@ -147,7 +149,8 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs 
         data={data.ayahs}
         keyExtractor={(a) => String(a.numberGlobal)}
         ListHeaderComponent={header}
-        contentContainerClassName="pb-24 pt-4"
+        contentContainerClassName="pt-4"
+        contentContainerStyle={{ paddingBottom: dockSpacing }}
         onScrollToIndexFailed={() => undefined}
         renderItem={({ item }) => (
           <AyahRow

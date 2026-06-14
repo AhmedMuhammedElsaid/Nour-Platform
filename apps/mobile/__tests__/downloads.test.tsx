@@ -12,6 +12,7 @@ jest.mock("@/lib/api", () => ({ getJson: jest.fn() }));
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn() }),
   useLocalSearchParams: () => ({ slug: "test-playlist" }),
+  usePathname: () => "/playlist/test-playlist",
   Stack: { Screen: () => null },
 }));
 

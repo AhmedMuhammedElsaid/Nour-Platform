@@ -12,10 +12,12 @@ import { Text } from "@/components/ui/text";
 import { SurahRow } from "@/features/quran/components/surah-index";
 import { SurahJuzTabs, type ReaderTab } from "@/features/quran/components/surah-juz-tabs";
 import { quranSurahsQuery } from "@/lib/queries";
+import { useDockSpacing } from "@/lib/use-dock-spacing";
 
 export default function QuranIndexScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const dockSpacing = useDockSpacing();
   const [tab, setTab] = useState<ReaderTab>("surah");
   const surahs = useQuery(quranSurahsQuery());
 
@@ -59,7 +61,7 @@ export default function QuranIndexScreen() {
           className="flex-1 bg-bg px-4 pt-4"
           data={surahs.data}
           keyExtractor={(s) => String(s.number)}
-          contentContainerClassName="pb-12"
+          contentContainerStyle={{ paddingBottom: dockSpacing }}
           ListHeaderComponent={header}
           renderItem={({ item }) => <SurahRow surah={item} />}
         />

@@ -21,7 +21,7 @@ export function ContinueReading() {
   if (!data) return null;
 
   return (
-    <View className="mt-8 gap-3">
+    <View className="mt-8 mb-4 gap-3">
       <Text variant="label">{t("home.continueReading")}</Text>
       <Pressable
         accessibilityRole="button"

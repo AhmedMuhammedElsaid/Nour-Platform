@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { initialLocale } from "@/lib/i18n";
 import { adhkarListQuery } from "@/lib/queries";
+import { useDockSpacing } from "@/lib/use-dock-spacing";
 import {
   azkarCompletedCount,
   getAzkarProgress,
@@ -25,6 +26,7 @@ export default function AdhkarListScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const locale = initialLocale;
+  const dockSpacing = useDockSpacing();
 
   const azkar = useQuery(adhkarListQuery());
   const [progress, setProgress] = useState<AzkarProgress | null>(null);
@@ -74,7 +76,8 @@ export default function AdhkarListScreen() {
       className="flex-1 bg-bg px-4 pt-16"
       data={sets}
       keyExtractor={(item) => item.id}
-      contentContainerClassName="gap-3 pb-12"
+      contentContainerClassName="gap-3"
+      contentContainerStyle={{ paddingBottom: dockSpacing }}
       ListHeaderComponent={
         <Text variant="display" className="mb-2">
           {t("adhkar.heading")}

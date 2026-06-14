@@ -4,9 +4,13 @@ import type { Playlist } from "@repo/shared-core/schemas/playlist";
 
 import HomeScreen from "@/app/index";
 import { getJson } from "@/lib/api";
+import { PlayerProvider } from "@/lib/player-context";
 
 jest.mock("@/lib/api", () => ({ getJson: jest.fn() }));
-jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
+jest.mock("expo-router", () => ({
+  useRouter: () => ({ push: jest.fn() }),
+  usePathname: () => "/",
+}));
 
 const playlist = (over: Partial<Playlist> & Pick<Playlist, "id">): Playlist =>
   ({
@@ -31,7 +35,9 @@ function renderHome() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <HomeScreen />
+      <PlayerProvider>
+        <HomeScreen />
+      </PlayerProvider>
     </QueryClientProvider>,
   );
 }

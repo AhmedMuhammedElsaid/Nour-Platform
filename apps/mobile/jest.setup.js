@@ -1,3 +1,17 @@
+// react-native-safe-area-context has no native module under Jest — return
+// zero insets so lib/use-dock-spacing.ts and similar hooks work without a
+// <SafeAreaProvider> in the test tree.
+jest.mock("react-native-safe-area-context", () => {
+  const { View } = require("react-native");
+  const zeroInsets = { top: 0, bottom: 0, left: 0, right: 0 };
+  return {
+    SafeAreaProvider: ({ children }) => children,
+    SafeAreaView: View,
+    useSafeAreaInsets: () => zeroInsets,
+    useSafeAreaFrame: () => ({ x: 0, y: 0, width: 320, height: 640 }),
+  };
+});
+
 // react-native-reanimated has no worklet runtime under Jest — provide a
 // deterministic mock (animations resolve to their target value synchronously,
 // Animated.View is a plain View). Tests assert behaviour via timers, not motion.

@@ -4,11 +4,13 @@ import { render, screen, waitFor, fireEvent } from "@testing-library/react-nativ
 import QuranIndexScreen from "@/app/quran/index";
 import QuranReaderScreen from "@/app/quran/[surah]";
 import { getJson } from "@/lib/api";
+import { PlayerProvider } from "@/lib/player-context";
 
 jest.mock("@/lib/api", () => ({ getJson: jest.fn() }));
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn() }),
   useLocalSearchParams: () => ({ surah: "1" }),
+  usePathname: () => "/quran",
   Stack: { Screen: () => null },
 }));
 
@@ -55,7 +57,11 @@ function mockApi() {
 
 function renderWith(node: React.ReactElement) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={client}>{node}</QueryClientProvider>);
+  return render(
+    <QueryClientProvider client={client}>
+      <PlayerProvider>{node}</PlayerProvider>
+    </QueryClientProvider>,
+  );
 }
 
 describe("QuranIndexScreen", () => {

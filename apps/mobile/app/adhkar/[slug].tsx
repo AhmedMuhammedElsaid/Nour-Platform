@@ -12,6 +12,7 @@ import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 import { initialLocale } from "@/lib/i18n";
 import { adhkarDetailQuery } from "@/lib/queries";
+import { useDockSpacing } from "@/lib/use-dock-spacing";
 import {
   getAzkarProgress,
   recordDhikrCount,
@@ -26,6 +27,7 @@ import {
 export default function AdhkarReaderScreen() {
   const { t } = useTranslation();
   const locale = initialLocale;
+  const dockSpacing = useDockSpacing();
   const { slug } = useLocalSearchParams<{ slug: string }>();
 
   const detail = useQuery(adhkarDetailQuery(slug ?? "", locale));
@@ -147,7 +149,8 @@ export default function AdhkarReaderScreen() {
         className="flex-1 bg-bg px-4 pt-4"
         data={items}
         keyExtractor={(_, i) => String(i)}
-        contentContainerClassName="gap-4 pb-12"
+        contentContainerClassName="gap-4"
+        contentContainerStyle={{ paddingBottom: dockSpacing }}
         ListHeaderComponent={header}
         onScrollToIndexFailed={() => undefined}
         renderItem={({ item, index }) => {
