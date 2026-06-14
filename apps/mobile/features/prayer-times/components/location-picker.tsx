@@ -36,10 +36,11 @@ export function LocationPicker({ onSelect, onClose }: Props) {
     setLocating(true);
     setError(null);
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
+      const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        setError(t("prayer.locationDenied", { city: "Cairo" }));
-        setLocating(false);
+        // Distinguish a hard block (must enable in Settings) from a simple
+        // dismissal so the message tells the user how to recover.
+        setError(canAskAgain ? t("prayer.locationUnavailable") : t("prayer.locationDeniedPerm"));
         return;
       }
       const pos = await Location.getCurrentPositionAsync({
