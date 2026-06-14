@@ -404,8 +404,24 @@ needed.
   header) via `playlist.scholarImage`. `__tests__/cover.test.tsx` covers image-present
   (relative + absolute) and the emoji fallback.
 
-**Next**: rebuild-free phases 7–8 (icons, splash revert), then batch the rebuild-gated
-items (Phase 3 EAS-Update config + Phase 9 adhan sound/notifications) into one EAS build.
+Phase 7 (icons polish, point 18 + player glyphs) is done, committed to `main` (`c0d8a96`).
+No rebuild needed.
+
+- **New `components/icons/player-icons.tsx`**: stroke-based SVG icons (24x24 viewBox,
+  color prop, no fill) following the `tab-icons.tsx` pattern. Includes: `PlayIcon`,
+  `PauseIcon`, `PrevIcon`, `NextIcon`, `ShuffleIcon`, `RepeatIcon`, `RepeatOneIcon`,
+  `CheckIcon`, `RetryIcon`, `DownloadIcon`, `VolumeIcon`, `MuteIcon`, `ChevronDownIcon`.
+- **Download button** (`download-button.tsx`): replaced emoji (`⬇ ✓ ↻`) with
+  `DownloadIcon`, `CheckIcon`, `RetryIcon`; themed by status (muted idle, success
+  complete, danger failed).
+- **Mini-player** (`mini-player.tsx`): replaced all emoji (transport, shuffle, repeat)
+  with the new icons; theme-colored (primary when active/shuffled/repeating, muted
+  inactive).
+- **Now Playing** (`app/player.tsx`): replaced all emoji (header chevron, transport,
+  shuffle, repeat, volume) with SVG icons; kept same layout/sizing.
+
+**Next**: rebuild-free phase 8 (splash revert), then batch the rebuild-gated items
+(Phase 3 EAS-Update config + Phase 9 adhan sound/notifications) into one EAS build.
 
 ## Verify before shipping
 
