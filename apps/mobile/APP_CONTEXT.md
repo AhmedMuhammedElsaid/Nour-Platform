@@ -300,8 +300,25 @@ correctness fixes, no rebuild) is done, committed to `main`:
   longer resets on navigation. Same commit gives the location-picker modal's close
   button a `useSafeAreaInsets().top` offset so it clears the status bar.
 
-**Next**: Phase 2 (sun-arc size + theme-aware colors + theme-toggle icon) — tagged
-Opus in the plan (shared-component contract change).
+Phase 2 (prayer-times arc + theming, points 2/9/26) is done, committed to `main`:
+
+- **SunArc size + theme palette** (`636df2d`): the body was web-sized (sun disc r5.5,
+  moon r9) and read tiny on a phone — bumped to sun disc 9 / moon 12 with coronas and
+  rays scaled to match. `SunArc` hardcoded the dark palette, so the moon vanished in
+  light mode; it now takes a `theme?: ThemeMode` prop and resolves light/dark hexes
+  from the token palette (`PALETTES` const: gold/sun/moon/text-2). **Both callers must
+  pass `theme`** — `prayer-times-widget.tsx` (home) and `app/prayer-times/index.tsx`
+  (full screen), each via `useTheme()`. Sizes are named consts at the top of
+  `sun-arc.tsx` (`SUN_DISC`, `MOON_DISC`, `*_CORONA`, `SUN_RAY_*`).
+- **Theme-toggle SVG icons** (`71aee7d`): the ☀/☾ emoji were tiny/unthemed. New
+  `components/icons/theme-icons.tsx` (`SunIcon`/`MoonIcon`, tab-icon stroke style,
+  `color` + `testID` props). `theme-toggle.tsx` shows the sun in dark mode, moon in
+  light, themed stroke (`#f0e6cc` dark / `#13201a` light), no pill. The
+  `theme-locale.test.tsx` toggle assertion now keys off `testID`
+  (`theme-icon-sun`/`theme-icon-moon`), not the old emoji text.
+
+**Next**: Phase 3 (localization system — `expo-updates` + rebuild) — needs a new dep
+and a fresh EAS build; tagged Opus in the plan.
 
 ## Verify before shipping
 
