@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react";
 import { Modal, Pressable, ScrollView, Switch, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import type { QuranEdition, QuranReciter } from "@repo/shared-core/schemas/quran";
 
+import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 import type { QuranPrefs } from "@/lib/device-local";
@@ -44,9 +46,10 @@ function Selectable({
 }
 
 // RN port of apps/web/features/quran/components/reader-settings-sheet.tsx as a
-// bottom modal. Translation/word-by-word/font-size are pure client prefs;
-// changing the translation edition or reciter updates prefs too — the reader
-// re-fetches because those slugs are part of its query key.
+// bottom modal. Changes are staged in a local draft and only applied on Save
+// (point 16) — Cancel discards them. This matters because the translation/
+// reciter slugs are part of the reader's query key, so applying every keystroke
+// would refetch repeatedly; staging defers the refetch to one Save.
 export function ReaderSettingsSheet({
   open,
   onClose,
@@ -57,18 +60,29 @@ export function ReaderSettingsSheet({
 }: ReaderSettingsSheetProps) {
   const { t } = useTranslation();
 
-  const update = (patch: Partial<QuranPrefs>) => onChange({ ...prefs, ...patch });
+  // Draft seeded from the committed prefs each time the sheet opens.
+  const [draft, setDraft] = useState<QuranPrefs>(prefs);
+  useEffect(() => {
+    if (open) setDraft(prefs);
+  }, [open, prefs]);
+
+  const update = (patch: Partial<QuranPrefs>) => setDraft((d) => ({ ...d, ...patch }));
 
   const setFont = (delta: number) => {
-    const next = Math.min(FONT_MAX, Math.max(FONT_MIN, Math.round((prefs.fontScale + delta) * 10) / 10));
+    const next = Math.min(FONT_MAX, Math.max(FONT_MIN, Math.round((draft.fontScale + delta) * 10) / 10));
     update({ fontScale: next });
+  };
+
+  const save = () => {
+    onChange(draft);
+    onClose();
   };
 
   return (
     <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable className="flex-1 justify-end bg-black/50" onPress={onClose}>
         <Pressable className="max-h-[80%] rounded-t-xl border-t border-border bg-surface" onPress={() => undefined}>
-          <View className="border-b border-border px-4 py-3">
+          <View className="flex-row items-center justify-between border-b border-border px-4 py-3">
             <Text variant="title">{t("quran.settings")}</Text>
           </View>
           <ScrollView className="px-4" contentContainerClassName="gap-5 py-4">
@@ -76,7 +90,7 @@ export function ReaderSettingsSheet({
               <Text>{t("quran.showTranslation")}</Text>
               <Switch
                 accessibilityLabel={t("quran.showTranslation")}
-                value={prefs.showTranslation}
+                value={draft.showTranslation}
                 onValueChange={(v) => update({ showTranslation: v })}
               />
             </View>
@@ -85,7 +99,7 @@ export function ReaderSettingsSheet({
               <Text>{t("quran.wordByWord")}</Text>
               <Switch
                 accessibilityLabel={t("quran.wordByWord")}
-                value={prefs.showWordByWord}
+                value={draft.showWordByWord}
                 onValueChange={(v) => update({ showWordByWord: v })}
               />
             </View>
@@ -102,7 +116,7 @@ export function ReaderSettingsSheet({
                   <Text className="text-lg">−</Text>
                 </Pressable>
                 <Text variant="muted" className="w-10 text-center tabular-nums">
-                  {Math.round(prefs.fontScale * 100)}%
+                  {Math.round(draft.fontScale * 100)}%
                 </Text>
                 <Pressable
                   accessibilityRole="button"
@@ -123,7 +137,7 @@ export function ReaderSettingsSheet({
                     <Selectable
                       key={ed.slug}
                       label={ed.name}
-                      selected={prefs.translationSlug === ed.slug}
+                      selected={draft.translationSlug === ed.slug}
                       onPress={() => update({ translationSlug: ed.slug })}
                     />
                   ))}
@@ -139,7 +153,7 @@ export function ReaderSettingsSheet({
                     <Selectable
                       key={r.slug}
                       label={r.name}
-                      selected={prefs.reciterSlug === r.slug}
+                      selected={draft.reciterSlug === r.slug}
                       onPress={() => update({ reciterSlug: r.slug })}
                     />
                   ))}
@@ -147,6 +161,16 @@ export function ReaderSettingsSheet({
               </View>
             ) : null}
           </ScrollView>
+
+          {/* Save / Cancel — staged prefs apply only on Save (point 16). */}
+          <View className="flex-row gap-3 border-t border-border px-4 py-3">
+            <View className="flex-1">
+              <Button label={t("common.cancel")} variant="outline" onPress={onClose} />
+            </View>
+            <View className="flex-1">
+              <Button label={t("common.save")} onPress={save} />
+            </View>
+          </View>
         </Pressable>
       </Pressable>
     </Modal>

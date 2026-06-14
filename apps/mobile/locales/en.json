@@ -6,7 +6,9 @@
     "retry": "Retry",
     "ok": "OK",
     "close": "Close",
-    "back": "Back"
+    "back": "Back",
+    "save": "Save",
+    "cancel": "Cancel"
   },
   "settings": {
     "toggleTheme": "Toggle theme",
