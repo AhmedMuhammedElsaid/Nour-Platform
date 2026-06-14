@@ -124,7 +124,12 @@ export default function PlaylistDetailScreen() {
 
   const header = (
     <View className="gap-4 pb-2">
-      <Cover id={playlist.id} className="h-56 w-full rounded-xl" emojiClassName="text-7xl" />
+      <Cover
+        id={playlist.id}
+        imageUrl={playlist.scholarImage}
+        className="h-56 w-full rounded-xl"
+        emojiClassName="text-7xl"
+      />
 
       <View className="gap-2">
         <Text variant="display" className="text-3xl">

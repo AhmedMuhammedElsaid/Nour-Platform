@@ -1,7 +1,17 @@
 // Never import @repo/config/env here — that barrel validates MONGODB_URI/
 // AUTH_SECRET at module load and isn't meant for RN bundles. Expo inlines
 // EXPO_PUBLIC_* at build time; this is the mobile equivalent of NEXT_PUBLIC_*.
-const API_BASE_URL = `${process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:3000"}/api/v1`;
+const API_ORIGIN = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:3000";
+const API_BASE_URL = `${API_ORIGIN}/api/v1`;
+
+// Resolves an origin-relative asset path (e.g. playlist.scholarImage =
+// "/muhmd-bakr.png", served from apps/web/public) to an absolute URL RN
+// <Image> can load. Unlike API_BASE_URL this does NOT include "/api/v1" —
+// these files are static, not API routes. Already-absolute URLs pass through.
+export function assetUrl(path: string): string {
+  if (/^https?:\/\//.test(path)) return path;
+  return `${API_ORIGIN}${path}`;
+}
 
 export class ApiError extends Error {
   readonly status: number;

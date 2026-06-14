@@ -28,7 +28,12 @@ export function PlaylistCard({ playlist, locale, categories = [] }: PlaylistCard
       className="flex-1"
     >
       <Card>
-        <Cover id={playlist.id} className="aspect-square w-full" emojiClassName="text-5xl" />
+        <Cover
+          id={playlist.id}
+          imageUrl={playlist.scholarImage}
+          className="aspect-square w-full"
+          emojiClassName="text-5xl"
+        />
         <View className="gap-1 p-3">
           <Text variant="title" numberOfLines={2}>
             {display.title}
