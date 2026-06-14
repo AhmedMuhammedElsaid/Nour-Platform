@@ -391,9 +391,21 @@ Phase 5 (navigation & Quran chrome, points 20/25) is done, committed to `main`
   states get a minimal `BackRow`. `quran/index.tsx`'s in-content title is now the
   only title (its Stack header was the duplicate).
 
-**Next**: rebuild-free phases 6–8 (playlist artwork, icons, splash revert),
-then batch the rebuild-gated items (Phase 3 EAS-Update config + Phase 9 adhan
-sound/notifications) into one EAS build.
+Phase 6 (playlist artwork, point 8) is done, committed to `main` (`8eb35e8`). No rebuild
+needed.
+
+- **`Cover`** (`features/playlists/components/cover.tsx`) gained an `imageUrl?: string |
+  null` prop; when set it renders an `<Image>` instead of the emoji/gradient fallback.
+- New **`assetUrl(path)`** in `lib/api.ts` resolves an origin-relative static path (e.g.
+  `playlist.scholarImage = "/muhmd-bakr.png"`) against the bare `EXPO_PUBLIC_API_BASE_URL`
+  origin — **not** the `/api/v1`-suffixed `API_BASE_URL` used by `getJson`. Already-absolute
+  URLs pass through.
+- Wired into `playlist-card.tsx` (grid cards) and `app/playlist/[slug].tsx` (detail
+  header) via `playlist.scholarImage`. `__tests__/cover.test.tsx` covers image-present
+  (relative + absolute) and the emoji fallback.
+
+**Next**: rebuild-free phases 7–8 (icons, splash revert), then batch the rebuild-gated
+items (Phase 3 EAS-Update config + Phase 9 adhan sound/notifications) into one EAS build.
 
 ## Verify before shipping
 
