@@ -1,12 +1,11 @@
 // Computes the bottom padding a scrollable screen needs so its content never
 // hides behind the bottom dock (BottomTabBar + MiniPlayer, see
-// components/bottom-dock.tsx). Both elements stack above the safe-area inset,
-// so the padding must account for whichever combination is currently showing.
+// components/bottom-dock.tsx). The tab bar is always shown and carries the
+// safe-area inset; the mini-player stacks above it when a queue is loaded.
 
 import { usePathname } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { isTabRoot } from "@/components/bottom-tab-bar";
 import { usePlayer } from "@/lib/player-context";
 
 // Approximate rendered heights (icon/text rows + paddings) from
@@ -20,11 +19,12 @@ export function useDockSpacing(): number {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const { hasQueue } = usePlayer();
-  const showTabBar = isTabRoot(pathname);
 
-  let dock = 0;
-  if (showTabBar) dock += TAB_BAR_HEIGHT + insets.bottom;
-  if (hasQueue) dock += MINI_PLAYER_HEIGHT + (showTabBar ? 0 : insets.bottom);
+  // The full-screen player owns its own layout — no dock is rendered there.
+  if (pathname === "/player") return BASE_GAP;
+
+  let dock = TAB_BAR_HEIGHT + insets.bottom;
+  if (hasQueue) dock += MINI_PLAYER_HEIGHT;
 
   return dock + BASE_GAP;
 }

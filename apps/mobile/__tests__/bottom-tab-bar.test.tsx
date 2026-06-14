@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import "@/lib/i18n"; // initialise i18next so nav labels resolve (default: en)
-import { BottomTabBar, TAB_ROOTS, isTabRoot } from "@/components/bottom-tab-bar";
+import { BottomTabBar } from "@/components/bottom-tab-bar";
 
 // `mock`-prefixed names are allowed inside a hoisted jest.mock factory.
 let mockPathname = "/";
@@ -10,19 +10,6 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ navigate: mockNavigate }),
   usePathname: () => mockPathname,
 }));
-
-describe("isTabRoot", () => {
-  it("matches the five top-level destinations (incl. trailing slash)", () => {
-    for (const route of TAB_ROOTS) expect(isTabRoot(route)).toBe(true);
-    expect(isTabRoot("/quran/")).toBe(true);
-  });
-
-  it("hides on deeper detail routes", () => {
-    expect(isTabRoot("/quran/reader")).toBe(false);
-    expect(isTabRoot("/playlist/abc")).toBe(false);
-    expect(isTabRoot("/adhkar/morning")).toBe(false);
-  });
-});
 
 describe("BottomTabBar", () => {
   beforeEach(() => {
@@ -43,6 +30,13 @@ describe("BottomTabBar", () => {
     render(<BottomTabBar bottomInset={0} />);
     expect(screen.getByLabelText("Quran").props.accessibilityState.selected).toBe(true);
     expect(screen.getByLabelText("Home").props.accessibilityState.selected).toBe(false);
+  });
+
+  it("renders and keeps the right tab active on a nested detail route", () => {
+    mockPathname = "/quran/2";
+    render(<BottomTabBar bottomInset={0} />);
+    expect(screen.getAllByRole("tab")).toHaveLength(5);
+    expect(screen.getByLabelText("Quran").props.accessibilityState.selected).toBe(true);
   });
 
   it("navigates to a tab's route when an inactive tab is pressed", () => {

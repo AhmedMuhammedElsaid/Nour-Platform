@@ -39,17 +39,6 @@ const TABS: readonly TabDef[] = [
   { key: "downloads", href: "/downloads", Icon: DownloadsIcon, labelKey: "nav.downloads" },
 ];
 
-// The five top-level destinations where the tab bar is shown. On any deeper
-// route (e.g. /quran/reader, /playlist/[slug], /adhkar/[slug]) the bar hides so
-// detail screens get the full height. Exported for the dock + tests.
-export const TAB_ROOTS: readonly string[] = TABS.map((t) => t.href);
-
-export function isTabRoot(pathname: string): boolean {
-  // Normalise a possible trailing slash ("/quran/" -> "/quran"); keep "/" as-is.
-  const p = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
-  return TAB_ROOTS.includes(p);
-}
-
 function isActive(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
