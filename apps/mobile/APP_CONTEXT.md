@@ -345,9 +345,39 @@ Phase 3 (localization system, points 6/22) is done, committed to `main` (`76322c
   gap** (the `QuranTafsir` collection is sparsely populated), not a client/route bug.
   The language-half is fixed by the locale persistence above.
 
-**Next**: rebuild-free phases 4–8 (audio/player, nav chrome, playlist artwork, icons,
-splash revert), then batch the rebuild-gated items (this Phase 3 EAS-Update config +
-Phase 9 adhan sound/notifications) into one EAS build.
+Phase 4 (audio & player, points 3/12/17/10/19) is done, committed to `main`
+(`d312cc0`, `2387024`, `c2c15ab`, `fbaae95`). No rebuild needed.
+
+- **Double playback** (`d312cc0`): `useAyahAudio` gained an `onPlaybackStart` opt;
+  `features/quran/components/reader.tsx` now pauses the RNTP player when an ayah
+  starts and stops the ayah audio when RNTP starts (parity with the web reader).
+- **Continue-listening autoplay** (`2387024`): the home shelf deep-links
+  `/playlist/<slug>?trackId=<id>`; `app/playlist/[slug].tsx` reads `trackId` and
+  `loadQueue`s at that index once (ref-guarded).
+- **Offline playback** (`c2c15ab`): `downloads-list.tsx` is tap-to-play + Play-all,
+  building a queue from `DownloadRecord`s (mediaUrl = localPath; player still prefers
+  `getLocalPath`). New `downloads.playAll`/`play` strings.
+- **Full-screen Now Playing** (`fbaae95`): new **`app/player.tsx`** modal route (seek,
+  prev/play/next, repeat cycle, shuffle, volume, speed chips, sleep timer) mirroring
+  `packages/ui/.../audio-player.tsx`. Tapping the mini-player opens it; mini-player
+  also got quick shuffle/repeat. `components/bottom-dock.tsx` returns null on `/player`
+  so the dock doesn't stack over the modal. New dependency-free
+  **`components/ui/slider.tsx`** (PanResponder + measured width — no native slider dep,
+  so no rebuild). Transport glyphs are still text/emoji; **Phase 7 swaps SVG icons**
+  across mini-player + Now Playing + download button.
+
+⚠ **Gotchas for the next session**:
+- `app/player.tsx` does NOT transitively import `@/lib/i18n`, so any test rendering it
+  must `import "@/lib/i18n"` first or `t()` returns raw keys (see
+  `__tests__/now-playing.test.tsx`).
+- expo-router typed routes: `.expo/types/router.d.ts` is gitignored; after adding a
+  route, local `tsc` may fail on the new path until typegen reruns (`expo start`/
+  `export`). CI types routes loosely (file absent) so it passes — deleting the stale
+  local file unblocks local typecheck.
+
+**Next**: rebuild-free phases 5–8 (nav chrome, playlist artwork, icons, splash revert),
+then batch the rebuild-gated items (Phase 3 EAS-Update config + Phase 9 adhan
+sound/notifications) into one EAS build.
 
 ## Verify before shipping
 
