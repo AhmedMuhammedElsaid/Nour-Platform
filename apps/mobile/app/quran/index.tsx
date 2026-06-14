@@ -55,7 +55,7 @@ export default function QuranIndexScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: true, title: t("quran.title") }} />
+      <Stack.Screen options={{ headerShown: false }} />
       {tab === "surah" ? (
         <FlatList<QuranSurah>
           className="flex-1 bg-bg px-4 pt-4"

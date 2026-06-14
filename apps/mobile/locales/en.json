@@ -5,7 +5,8 @@
     "error": "Something went wrong.",
     "retry": "Retry",
     "ok": "OK",
-    "close": "Close"
+    "close": "Close",
+    "back": "Back"
   },
   "settings": {
     "toggleTheme": "Toggle theme",

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Stack, useLocalSearchParams } from "expo-router";
-import { View } from "react-native";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { Pressable, View } from "react-native";
 
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -23,6 +23,7 @@ import {
 
 export default function QuranReaderScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const locale = initialLocale;
   const { surah } = useLocalSearchParams<{ surah: string }>();
   const surahNumber = Number(surah);
@@ -53,9 +54,12 @@ export default function QuranReaderScreen() {
   if (!hydrated || reader.isPending) {
     return (
       <>
-        <Stack.Screen options={{ headerShown: true, title: t("quran.title") }} />
-        <View className="flex-1 items-center justify-center bg-bg">
-          <Spinner label={t("common.loading")} />
+        <Stack.Screen options={{ headerShown: false }} />
+        <View className="flex-1 bg-bg">
+          <BackRow onBack={() => router.back()} label={t("common.back")} />
+          <View className="flex-1 items-center justify-center">
+            <Spinner label={t("common.loading")} />
+          </View>
         </View>
       </>
     );
@@ -64,10 +68,13 @@ export default function QuranReaderScreen() {
   if (reader.isError || !reader.data) {
     return (
       <>
-        <Stack.Screen options={{ headerShown: true, title: t("quran.title") }} />
-        <View className="flex-1 items-center justify-center gap-3 bg-bg px-4">
-          <Text className="text-danger">{t("common.error")}</Text>
-          <Button label={t("common.retry")} variant="outline" onPress={() => void reader.refetch()} />
+        <Stack.Screen options={{ headerShown: false }} />
+        <View className="flex-1 bg-bg">
+          <BackRow onBack={() => router.back()} label={t("common.back")} />
+          <View className="flex-1 items-center justify-center gap-3 px-4">
+            <Text className="text-danger">{t("common.error")}</Text>
+            <Button label={t("common.retry")} variant="outline" onPress={() => void reader.refetch()} />
+          </View>
         </View>
       </>
     );
@@ -75,7 +82,7 @@ export default function QuranReaderScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: true, title: reader.data.surah.name.en }} />
+      <Stack.Screen options={{ headerShown: false }} />
       <Reader
         data={reader.data}
         editions={editions.data ?? []}
@@ -83,7 +90,25 @@ export default function QuranReaderScreen() {
         locale={locale}
         prefs={prefs}
         onChangePrefs={onChangePrefs}
+        onBack={() => router.back()}
       />
     </>
+  );
+}
+
+// Minimal themed back affordance for the loading/error states (the success
+// state's back button lives in the Reader's own header, next to the title).
+function BackRow({ onBack, label }: { onBack: () => void; label: string }) {
+  return (
+    <View className="flex-row items-center px-2 pt-2">
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        onPress={onBack}
+        className="size-9 items-center justify-center"
+      >
+        <Text className="text-2xl text-text">‹</Text>
+      </Pressable>
+    </View>
   );
 }

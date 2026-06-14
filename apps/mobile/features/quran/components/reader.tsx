@@ -32,12 +32,15 @@ export interface ReaderProps {
   locale: string;
   prefs: QuranPrefs;
   onChangePrefs: (next: QuranPrefs) => void;
+  onBack: () => void;
 }
 
 // RN port of apps/web/features/quran/components/reader.tsx. The screen owns
 // prefs (translation/reciter are part of its fetch key); this component owns
 // bookmarks, ayah audio, the settings + tafsir sheets, and current-ayah scroll.
-export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs }: ReaderProps) {
+// It also owns the single themed header (back + title + settings/repeat) —
+// the Stack header is hidden to avoid the duplicate-title white bar (point 25).
+export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs, onBack }: ReaderProps) {
   const { t } = useTranslation();
   const dockSpacing = useDockSpacing();
   const [bookmarks, setBookmarks] = useState<AyahRef[]>([]);
@@ -120,13 +123,23 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs 
 
   const header = (
     <View className="gap-3 pb-4">
-      <View className="flex-row items-baseline justify-between gap-4">
-        <Text variant="display" className="text-2xl text-primary">
-          {display.en}
-        </Text>
-        <Text className="font-quran text-2xl text-text" style={{ writingDirection: "rtl" }}>
-          {display.ar}
-        </Text>
+      <View className="flex-row items-center gap-2">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("common.back")}
+          onPress={onBack}
+          className="-ms-2 size-9 items-center justify-center"
+        >
+          <Text className="text-2xl text-text">‹</Text>
+        </Pressable>
+        <View className="flex-1 flex-row items-baseline justify-between gap-4">
+          <Text variant="display" className="text-2xl text-primary">
+            {display.en}
+          </Text>
+          <Text className="font-quran text-2xl text-text" style={{ writingDirection: "rtl" }}>
+            {display.ar}
+          </Text>
+        </View>
       </View>
       <Text variant="muted">
         {data.surah.meaning} · {data.surah.ayahCount} {t("quran.ayahs")}
