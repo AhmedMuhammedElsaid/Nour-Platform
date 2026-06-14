@@ -433,8 +433,46 @@ needed.
   absolute cap — never traps the user).
 - Kept **assets/icon.png** as the native launcher icon (no app.json change).
 
-**All rebuild-free phases (1–8) complete** ✓. Next: batch Phase 3 EAS-Update config +
-Phase 9 (adhan sound + location + settings + adhkar bar) into one EAS build.
+Phase 9 (adhan, location, Quran settings, adhkar progress) is **done**, committed to
+`main` (`2df93d9`, `c3bc85d`, `95f6831`, `56f2cb4`, + the adhan-sound asset commit). The
+short-adhan notification SOUND is **rebuild-gated** (new bundled asset + `app.json`); the
+rest needs no rebuild.
+
+- **9.1 "Both" adhan** (`56f2cb4` + asset commit):
+  - *Foreground (full adhan):* `useForegroundAdhan` (`features/prayer-times/hooks/
+    use-foreground-adhan.ts`), mounted once in `_layout` inside `PlayerProvider`, listens
+    for `nour-azan-*` notifications received while the app is open and streams the full
+    adhan (regular, or `adhan-fajr.mp3` for Fajr) from the web origin via expo-audio's
+    imperative `createAudioPlayer` — no bundled asset for this part. Ducks the RNTP queue
+    (pause; resume on `didJustFinish`). Respects `useAdhanSettings` enabled+perPrayer+volume.
+  - *Closed-app (short clip):* `assets/audio/adhan_notify.wav` — a 24s mono fade-out clip
+    trimmed from `apps/web/public/audio/adhan.mp3` with ffmpeg. Registered in `app.json`
+    `expo-notifications.sounds`; the Android "azan" channel uses it (`sound: AZAN_SOUND`)
+    and each scheduled notification sets `sound: AZAN_SOUND` (iOS). Filename uses
+    **underscores** (Android res/raw naming rules forbid hyphens). ≤30s for the iOS limit.
+  - **`lib/notifications.ts`**: foreground `setNotificationHandler` (azan →
+    `shouldPlaySound:false` so the in-app full adhan doesn't double with the notification
+    sound; other notifs play sound), `ensureAzanChannel()` (HIGH importance, created
+    before scheduling), `AZAN_CHANNEL_ID` + `AZAN_SOUND` exports. `use-azan-notifications`
+    passes `channelId`.
+- **9.2 location** (`95f6831`): permission-denied uses `canAskAgain` → `locationDeniedPerm`
+  (hard block → Settings) vs `locationUnavailable`.
+- **9.3 Quran settings Save/Cancel** (`2df93d9`): `reader-settings-sheet.tsx` stages a
+  local draft (seeded on open), applies+persists only on Save, discards on Cancel — so
+  changing translation/reciter refetches once, not on every keystroke. New
+  `common.save`/`common.cancel`.
+- **9.4 adhkar progress** (`c3bc85d`): pinned the progress bar as a static themed header
+  (back + title + count + Progress) above the list (was scrolling away inside the FlatList
+  header), and hid the duplicate Stack header (Quran-reader pattern).
+
+⚠ **Channel sound is fixed at creation (Android API 26+)** — if `adhan_notify.wav` ever
+changes, the "azan" channel must be recreated (uninstall/clear data, or bump the channel
+id) for the new sound to take effect.
+
+**All phases 1–9 implemented.** Remaining: **one EAS preview build** batches the
+rebuild-gated bits (Phase 3 expo-updates + this adhan sound/asset/`app.json`), then run the
+§3 on-device checklist in `mobile_app_feedback_bugs.md` (adhan fires closed + full adhan
+foreground; language reload; etc.).
 
 ## Verify before shipping
 
