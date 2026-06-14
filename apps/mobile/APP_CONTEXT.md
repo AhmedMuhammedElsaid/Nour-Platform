@@ -420,8 +420,21 @@ No rebuild needed.
 - **Now Playing** (`app/player.tsx`): replaced all emoji (header chevron, transport,
   shuffle, repeat, volume) with SVG icons; kept same layout/sizing.
 
-**Next**: rebuild-free phase 8 (splash revert), then batch the rebuild-gated items
-(Phase 3 EAS-Update config + Phase 9 adhan sound/notifications) into one EAS build.
+Phase 8 (splash revert, point 11) is done, committed to `main` (`ee02f00`). No rebuild
+needed.
+
+- **Restored `AnimatedSplash`**: replaced the simple icon overlay with the full
+  "Minimal Rise" sequence from commit 1457430 — radial gold bloom (SVG gradient)
+  expands behind the ن mark, which springs up with a gloss shimmer wipe, then
+  the wordmark (نور / Nour Platform) rises in. Timing: bloom 900ms, mark spring
+  + shimmer 420–1100ms, word 560–1040ms, total 1280ms + 280ms exit fade.
+- Preserves the current **reduce-motion support** (honors OS accessibility
+  setting; shows final frame static after 700ms) and **safety timeout** (2600ms
+  absolute cap — never traps the user).
+- Kept **assets/icon.png** as the native launcher icon (no app.json change).
+
+**All rebuild-free phases (1–8) complete** ✓. Next: batch Phase 3 EAS-Update config +
+Phase 9 (adhan sound + location + settings + adhkar bar) into one EAS build.
 
 ## Verify before shipping
 
