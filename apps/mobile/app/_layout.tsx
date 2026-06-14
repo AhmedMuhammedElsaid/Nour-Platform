@@ -1,4 +1,5 @@
 import "@/global.css";
+import "@/lib/notifications"; // installs the foreground notification handler
 import { hydrateLocale } from "@/lib/i18n";
 
 import { useState, useEffect } from "react";
@@ -11,6 +12,7 @@ import TrackPlayer from "react-native-track-player";
 
 import { AnimatedSplash } from "@/components/animated-splash";
 import { BottomDock } from "@/components/bottom-dock";
+import { useForegroundAdhan } from "@/features/prayer-times/hooks/use-foreground-adhan";
 import { ThemeProvider } from "@/lib/theme-context";
 import { PlayerProvider } from "@/lib/player-context";
 import { playbackService } from "@/lib/playback-service";
@@ -53,6 +55,7 @@ export default function RootLayout() {
           <PlayerProvider>
             {localeReady && (
               <>
+                <ForegroundAdhan />
                 <Stack screenOptions={{ headerShown: false }} />
                 <BottomDock />
               </>
@@ -63,4 +66,11 @@ export default function RootLayout() {
       </QueryClientProvider>
     </SafeAreaProvider>
   );
+}
+
+// Mounted inside PlayerProvider so the foreground adhan can duck the RNTP queue.
+// Renders nothing — it only wires the azan notification → full-adhan listener.
+function ForegroundAdhan() {
+  useForegroundAdhan();
+  return null;
 }

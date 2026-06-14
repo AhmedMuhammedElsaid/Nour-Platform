@@ -118,7 +118,11 @@ jest.mock("expo-notifications", () => ({
   getAllScheduledNotificationsAsync: jest.fn().mockResolvedValue([]),
   scheduleNotificationAsync: jest.fn().mockResolvedValue("notif-id"),
   cancelScheduledNotificationAsync: jest.fn().mockResolvedValue(undefined),
+  setNotificationHandler: jest.fn(),
+  setNotificationChannelAsync: jest.fn().mockResolvedValue(undefined),
+  addNotificationReceivedListener: jest.fn().mockReturnValue({ remove: jest.fn() }),
   SchedulableTriggerInputTypes: { DATE: "date" },
+  AndroidImportance: { HIGH: 4, DEFAULT: 3 },
 }));
 
 // expo-audio (Quran reciter playback) — stable player object so the reader's
@@ -140,6 +144,16 @@ jest.mock("expo-audio", () => {
       currentTime: 0,
       duration: 0,
     }),
+    // Imperative one-shot player (foreground adhan). Fresh object per call with
+    // a no-op listener subscription.
+    createAudioPlayer: jest.fn(() => ({
+      play: jest.fn(),
+      pause: jest.fn(),
+      replace: jest.fn(),
+      remove: jest.fn(),
+      addListener: jest.fn().mockReturnValue({ remove: jest.fn() }),
+      volume: 1,
+    })),
     setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
   };
 });

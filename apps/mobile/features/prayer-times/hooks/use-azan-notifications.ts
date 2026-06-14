@@ -8,6 +8,8 @@ import type { PrayerLocation, PrayerPreferences } from "@repo/shared-core/schema
 import { computePrayerTimes, getNextPrayer } from "@repo/shared-core/prayer-times/compute";
 import type { PrayerKey } from "@repo/shared-core/prayer-times/compute";
 
+import { AZAN_CHANNEL_ID, ensureAzanChannel } from "@/lib/notifications";
+
 // Sunrise is a marker, not a prayer — skip notifications for it.
 const NOTIF_TAG_PREFIX = "nour-azan-";
 
@@ -16,6 +18,9 @@ async function scheduleAzanNotifications(
   prefs: PrayerPreferences,
   prayerNames: Record<Exclude<PrayerKey, "sunrise">, string>,
 ): Promise<void> {
+  // The Android channel must exist before any azan notification is posted.
+  await ensureAzanChannel();
+
   // Cancel all previously scheduled azan notifications.
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
   for (const notif of scheduled) {
@@ -56,6 +61,7 @@ async function scheduleAzanNotifications(
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
           date: instant.time,
+          channelId: AZAN_CHANNEL_ID,
         },
       });
     }
