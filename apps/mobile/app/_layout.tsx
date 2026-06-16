@@ -11,7 +11,10 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import TrackPlayer from "react-native-track-player";
 
 import { AnimatedSplash } from "@/components/animated-splash";
+import { AzanScheduler } from "@/components/azan-scheduler";
 import { BottomDock } from "@/components/bottom-dock";
+import { OnboardingGate } from "@/features/onboarding/components/onboarding-gate";
+import { useOnboarding } from "@/features/onboarding/hooks/use-onboarding";
 import { useForegroundAdhan } from "@/features/prayer-times/hooks/use-foreground-adhan";
 import { ThemeProvider } from "@/lib/theme-context";
 import { PlayerProvider } from "@/lib/player-context";
@@ -31,6 +34,7 @@ export default function RootLayout() {
   // (and the data queries keyed on `initialLocale`) use the user's language, not
   // the device default. The splash overlay covers this sub-frame delay.
   const [localeReady, setLocaleReady] = useState(false);
+  const onboarding = useOnboarding();
 
   // Load custom fonts. Falls back to system fonts if the .ttf assets are not
   // bundled (acceptable in development; add @expo-google-fonts packages for a
@@ -56,8 +60,12 @@ export default function RootLayout() {
             {localeReady && (
               <>
                 <ForegroundAdhan />
+                <AzanScheduler />
                 <Stack screenOptions={{ headerShown: false }} />
                 <BottomDock />
+                {onboarding.hydrated && !onboarding.done && (
+                  <OnboardingGate onComplete={onboarding.complete} />
+                )}
               </>
             )}
           </PlayerProvider>

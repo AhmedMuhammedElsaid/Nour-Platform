@@ -16,6 +16,17 @@
     "localeChanged": "Language changed",
     "restartRequired": "Restart the app to apply the new text direction."
   },
+  "onboarding": {
+    "title": "Welcome to Nour",
+    "subtitle": "Two quick permissions so prayer times and the adhan work for you.",
+    "locationTitle": "Your location",
+    "locationBody": "Used on-device to compute accurate prayer times for your city. Never sent to a server.",
+    "notifTitle": "Notifications",
+    "notifBody": "So the adhan plays at prayer time and you get morning & evening adhkar reminders.",
+    "enable": "Enable & continue",
+    "working": "Setting up…",
+    "skip": "Maybe later"
+  },
   "nav": {
     "home": "Home",
     "quran": "Quran",
