@@ -5,6 +5,8 @@
 import { useCallback, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { emitSettingsChanged, onSettingsChanged } from "@/lib/settings-bus";
+
 import {
   type AzkarReminderSettings,
   DEFAULT_AZKAR_REMINDER_SETTINGS,
@@ -38,15 +40,20 @@ export function useAzkarReminderSettings(): AzkarReminderSettingsApi {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    void readSettings().then((s) => {
-      setSettings(s);
-      setHydrated(true);
-    });
+    const hydrate = () =>
+      readSettings().then((s) => {
+        setSettings(s);
+        setHydrated(true);
+      });
+    void hydrate();
+    return onSettingsChanged(() => void hydrate());
   }, []);
 
   const persist = useCallback((next: AzkarReminderSettings) => {
     setSettings(next);
-    void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+    void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      .then(emitSettingsChanged)
+      .catch(() => {});
   }, []);
 
   // Re-read before each mutation so concurrent writers don't clobber each other

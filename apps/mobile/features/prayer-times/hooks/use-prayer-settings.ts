@@ -4,6 +4,8 @@
 import { useCallback, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { emitSettingsChanged, onSettingsChanged } from "@/lib/settings-bus";
+
 import {
   type CalculationMethodId,
   type MadhabId,
@@ -65,21 +67,29 @@ export function usePrayerSettings(): PrayerSettings {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    void Promise.all([readLocation(), readPrefs()]).then(([loc, p]) => {
-      setLocationState(loc);
-      setPrefsState(p);
-      setHydrated(true);
-    });
+    const hydrate = () =>
+      Promise.all([readLocation(), readPrefs()]).then(([loc, p]) => {
+        setLocationState(loc);
+        setPrefsState(p);
+        setHydrated(true);
+      });
+    void hydrate();
+    // Re-read when another instance (onboarding gate, prayer screen) writes.
+    return onSettingsChanged(() => void hydrate());
   }, []);
 
   const setLocation = useCallback((loc: PrayerLocation) => {
     setLocationState(loc);
-    void AsyncStorage.setItem(LOCATION_KEY, JSON.stringify(loc)).catch(() => {});
+    void AsyncStorage.setItem(LOCATION_KEY, JSON.stringify(loc))
+      .then(emitSettingsChanged)
+      .catch(() => {});
   }, []);
 
   const persistPrefs = useCallback((next: PrayerPreferences) => {
     setPrefsState(next);
-    void AsyncStorage.setItem(PREFS_KEY, JSON.stringify(next)).catch(() => {});
+    void AsyncStorage.setItem(PREFS_KEY, JSON.stringify(next))
+      .then(emitSettingsChanged)
+      .catch(() => {});
   }, []);
 
   const setMethod = useCallback(

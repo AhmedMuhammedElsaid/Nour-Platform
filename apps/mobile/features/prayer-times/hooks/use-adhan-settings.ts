@@ -6,6 +6,8 @@
 import { useCallback, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { emitSettingsChanged, onSettingsChanged } from "@/lib/settings-bus";
+
 import {
   type AdhanPrayerKey,
   type AdhanSettings,
@@ -39,15 +41,20 @@ export function useAdhanSettings(): AdhanSettingsApi {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    void readSettings().then((s) => {
-      setSettings(s);
-      setHydrated(true);
-    });
+    const hydrate = () =>
+      readSettings().then((s) => {
+        setSettings(s);
+        setHydrated(true);
+      });
+    void hydrate();
+    return onSettingsChanged(() => void hydrate());
   }, []);
 
   const persist = useCallback((next: AdhanSettings) => {
     setSettings(next);
-    void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+    void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      .then(emitSettingsChanged)
+      .catch(() => {});
   }, []);
 
   // Re-read before each mutation so concurrent writers don't clobber each other

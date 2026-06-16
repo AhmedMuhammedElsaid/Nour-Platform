@@ -15,15 +15,8 @@ import { PrayerTimetable } from "@/features/prayer-times/components/prayer-timet
 import { LocationPicker } from "@/features/prayer-times/components/location-picker";
 import { MethodSettings } from "@/features/prayer-times/components/method-settings";
 import { useAdhanSettings } from "@/features/prayer-times/hooks/use-adhan-settings";
-import {
-  requestNotificationPermission,
-  useAzanNotifications,
-} from "@/features/prayer-times/hooks/use-azan-notifications";
+import { requestNotificationPermission } from "@/features/prayer-times/hooks/use-azan-notifications";
 import { useAzkarReminderSettings } from "@/features/prayer-times/hooks/use-azkar-reminder-settings";
-import {
-  type AzkarReminderContent,
-  useAzkarReminders,
-} from "@/features/prayer-times/hooks/use-azkar-reminders";
 import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-settings";
 import { initialLocale } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme-context";
@@ -45,10 +38,9 @@ export default function PrayerTimesScreen() {
   const { theme } = useTheme();
   const { location, prefs, hydrated, setLocation, setMethod, setMadhab } =
     usePrayerSettings();
-  const { settings: azkar, hydrated: azkarHydrated, setEnabled: setAzkarEnabled } =
+  const { settings: azkar, setEnabled: setAzkarEnabled } =
     useAzkarReminderSettings();
-  const { settings: adhan, hydrated: adhanHydrated, setEnabled: setAdhanEnabled } =
-    useAdhanSettings();
+  const { settings: adhan, setEnabled: setAdhanEnabled } = useAdhanSettings();
 
   const [now, setNow] = useState(() => new Date());
   const [showLocationPicker, setShowLocationPicker] = useState(false);
@@ -114,41 +106,10 @@ export default function PrayerTimesScreen() {
     [t],
   );
 
-  useAzanNotifications(
-    adhan.enabled && notifGranted,
-    location,
-    prefs,
-    prayerNames,
-    hydrated && adhanHydrated,
-  );
-
-  // Reminders are always delivered in Arabic regardless of UI language — the
-  // content is Arabic dhikr, so the title/body and the reader slug are the
-  // Arabic ones (matches the web's makeAzkarReminderBuilder).
-  const azkarContent = useMemo<AzkarReminderContent>(
-    () => ({
-      sabah: {
-        title: t("prayer.azkar.sabah.title", { lng: "ar" }),
-        body: t("prayer.azkar.sabah.body", { lng: "ar" }),
-        slug: azkar.sabah.ar,
-      },
-      masaa: {
-        title: t("prayer.azkar.masaa.title", { lng: "ar" }),
-        body: t("prayer.azkar.masaa.body", { lng: "ar" }),
-        slug: azkar.masaa.ar,
-      },
-    }),
-    [t, azkar.sabah, azkar.masaa],
-  );
-
-  useAzkarReminders(
-    azkar.enabled && notifGranted,
-    location,
-    prefs,
-    azkar,
-    azkarContent,
-    hydrated && azkarHydrated,
-  );
+  // Scheduling of azan + adhkar notifications is centralized in the root
+  // <AzanScheduler> (components/azan-scheduler.tsx) so it runs regardless of
+  // which screen is open. This screen only reads/toggles the persisted settings;
+  // writes emit the settings bus, which makes the scheduler reschedule.
 
   const requestNotifs = useCallback(async () => {
     const granted = await requestNotificationPermission();
