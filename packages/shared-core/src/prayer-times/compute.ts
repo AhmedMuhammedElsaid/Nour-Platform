@@ -160,12 +160,13 @@ function clamp01(n: number): number {
 
 // Position of the currently-visible celestial body along the arc, and whether
 // it's the moon. The arc's dots run Fajr (far left) → Isha (far right). The SUN
-// is shown during the day (Fajr → Isha) and rides the arc left→right, landing on
-// each prayer dot. The MOON is shown at night (Isha → next Fajr) and rides the
-// arc the other way — entering at the Isha point (right), peaking at the apex
-// around solar midnight, and setting at the Fajr point (left) — so it always
-// sits *between* the Isha and Fajr dots. The handoffs are seamless: at Isha both
-// bodies are at the right edge, at Fajr both at the left edge.
+// is shown while it is literally up — Shrouq (sunrise) → Maghrib (sunset) — and
+// rides the Fajr→Isha dot track (getDayProgress), so it still lands on the
+// Dhuhr/Asr dots, entering near the Sunrise dot and leaving at the Maghrib dot.
+// The MOON is shown at night (Maghrib → next Shrouq) and rides the arc the other
+// way — entering at the right (fraction 1) near Maghrib, peaking around solar
+// midnight, and setting at the left (fraction 0) at Sunrise. The handoffs land
+// at Maghrib (both bodies at the right) and at Sunrise (both at the left).
 //
 // `fraction` is the left→right arc position (0 = Fajr/left, 1 = Isha/right). The
 // night window straddles the calendar boundary, so this needs the location +
@@ -180,44 +181,44 @@ export function getArcPosition(
   now: Date,
 ): { isNight: boolean; fraction: number } {
   const today = computePrayerTimes({ ...input, date: now });
-  const fajr = today.instants.find((i) => i.key === "fajr")?.time ?? null;
-  const isha = today.instants.find((i) => i.key === "isha")?.time ?? null;
+  const sunrise = today.instants.find((i) => i.key === "sunrise")?.time ?? null;
+  const maghrib = today.instants.find((i) => i.key === "maghrib")?.time ?? null;
 
-  // Daytime: Fajr ≤ now < Isha — sun rides Fajr(left) → Isha(right).
+  // Daytime: Sunrise ≤ now < Maghrib — the sun is up.
   if (
-    fajr != null &&
-    isha != null &&
-    now.getTime() >= fajr.getTime() &&
-    now.getTime() < isha.getTime()
+    sunrise != null &&
+    maghrib != null &&
+    now.getTime() >= sunrise.getTime() &&
+    now.getTime() < maghrib.getTime()
   ) {
     return { isNight: false, fraction: getDayProgress(today, now) };
   }
 
-  // After Isha: night runs until *tomorrow's* Fajr. The moon descends from the
-  // Isha point (fraction 1) back toward Fajr (fraction 0), so fraction = 1 − p.
-  if (isha != null && now.getTime() >= isha.getTime()) {
+  // After Maghrib: night runs until *tomorrow's* Sunrise. The moon descends from
+  // the right (fraction 1) back toward the left (fraction 0), so fraction = 1 − p.
+  if (maghrib != null && now.getTime() >= maghrib.getTime()) {
     const tom = computePrayerTimes({
       ...input,
       date: new Date(now.getTime() + DAY_MS),
     });
-    const end = tom.instants.find((i) => i.key === "fajr")?.time ?? fajr;
+    const end = tom.instants.find((i) => i.key === "sunrise")?.time ?? sunrise;
     if (end == null) return { isNight: true, fraction: 1 };
     const p = clamp01(
-      (now.getTime() - isha.getTime()) / (end.getTime() - isha.getTime()),
+      (now.getTime() - maghrib.getTime()) / (end.getTime() - maghrib.getTime()),
     );
     return { isNight: true, fraction: 1 - p };
   }
 
-  // Pre-dawn: still the night that began at *yesterday's* Isha.
-  if (fajr != null && now.getTime() < fajr.getTime()) {
+  // Pre-dawn (before Shrouq): still the night that began at *yesterday's* Maghrib.
+  if (sunrise != null && now.getTime() < sunrise.getTime()) {
     const yest = computePrayerTimes({
       ...input,
       date: new Date(now.getTime() - DAY_MS),
     });
-    const start = yest.instants.find((i) => i.key === "isha")?.time ?? isha;
+    const start = yest.instants.find((i) => i.key === "maghrib")?.time ?? maghrib;
     if (start == null) return { isNight: true, fraction: 0 };
     const p = clamp01(
-      (now.getTime() - start.getTime()) / (fajr.getTime() - start.getTime()),
+      (now.getTime() - start.getTime()) / (sunrise.getTime() - start.getTime()),
     );
     return { isNight: true, fraction: 1 - p };
   }
