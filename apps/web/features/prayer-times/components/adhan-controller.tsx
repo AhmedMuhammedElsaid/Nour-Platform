@@ -70,16 +70,28 @@ export function AdhanController() {
   });
 
   // Layer B — (re)schedule background notifications on settings/location change.
+  // Schedule the next ~48h (today + tomorrow) so closed-tab delivery survives
+  // past the last prayer of today, where supported (Chromium); iOS/Firefox fall
+  // back to the foreground-only Layer A above.
   useEffect(() => {
     if (!ready || !settings.enabled) return;
-    const day = computePrayerTimes({
+    const now = new Date();
+    const params = {
       lat: location.lat,
       lng: location.lng,
-      date: new Date(),
       method: prefs.method,
       madhab: prefs.madhab,
+    };
+    const today = computePrayerTimes({ ...params, date: now });
+    const tomorrow = computePrayerTimes({
+      ...params,
+      date: new Date(now.getTime() + 24 * 60 * 60 * 1000),
     });
-    void scheduleAdhanNotifications(day.instants, settings, (k) => t(k));
+    void scheduleAdhanNotifications(
+      [...today.instants, ...tomorrow.instants],
+      settings,
+      (k) => t(k),
+    );
   }, [ready, settings, location.lat, location.lng, prefs.method, prefs.madhab, t]);
 
   // Test hook (?test=1 button): play immediately. The click is a user gesture

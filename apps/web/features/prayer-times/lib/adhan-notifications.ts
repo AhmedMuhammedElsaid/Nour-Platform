@@ -38,9 +38,13 @@ export async function requestAdhanPermission(): Promise<boolean> {
   return result === "granted";
 }
 
-// Schedule today's remaining enabled adhans as triggered notifications.
-// Clears previously scheduled Nour adhan notifications first (idempotent).
-// No-op (resolves) where triggers are unsupported or permission missing.
+// Schedule the next ~48h of enabled adhans as triggered notifications. Passing
+// today + tomorrow's instants (see AdhanController) means closed-tab delivery
+// keeps working past the last prayer of today, instead of stopping until the
+// user next opens the tab. Clears previously scheduled Nour adhan notifications
+// first (idempotent). No-op (resolves) where triggers are unsupported or
+// permission missing — those browsers (iOS Safari / Firefox) fall back to the
+// foreground-only Layer A scheduler.
 export async function scheduleAdhanNotifications(
   instants: PrayerInstant[],
   settings: AdhanSettings,
@@ -59,17 +63,19 @@ export async function scheduleAdhanNotifications(
     if (n.tag?.startsWith(TAG_PREFIX)) n.close();
   }
 
-  // Walk forward through today's enabled events, scheduling each.
-  const now = new Date();
-  let cursor = now;
-  // Cap to remaining prayers in the day (max 5).
-  for (let i = 0; i < 5; i++) {
+  // Walk forward through the enabled events, scheduling each. Cap at 10 (≤5
+  // adhan prayers × 2 days).
+  let cursor = new Date();
+  for (let i = 0; i < 10; i++) {
     const event = nextAdhanEvent(instants, settings, cursor);
     if (!event) break;
     const TimestampTrigger = window.TimestampTrigger;
     if (!TimestampTrigger) break;
+    // Date-suffix the tag so today's and tomorrow's same-named prayers don't
+    // collide (showNotification replaces a notification sharing a tag).
+    const day = event.time.toISOString().slice(0, 10);
     await reg.showNotification(labelFor(event.key), {
-      tag: `${TAG_PREFIX}${event.key}`,
+      tag: `${TAG_PREFIX}${event.key}-${day}`,
       body: labelFor("adhan.adhanBody"),
       icon: "/android-chrome-192x192.png",
       badge: "/favicon-32x32.png",
