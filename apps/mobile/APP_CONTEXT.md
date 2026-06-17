@@ -490,6 +490,49 @@ rebuild-gated bits (Phase 3 expo-updates + this adhan sound/asset/`app.json`), t
 §3 on-device checklist in `mobile_app_feedback_bugs.md` (adhan fires closed + full adhan
 foreground; language reload; etc.).
 
+## Prayer/azan accuracy + UI-theme pass (2026-06-17)
+
+User-reported follow-ups, all implemented + verified (mobile typecheck/lint + 17 jest suites /
+56 tests green, `expo export` bundle compiles). `android.versionCode` bumped 2→3. Git: the 5
+prayer/azan commits are **pushed** (`origin/main` = `d74f9a6`); the A-Z fix + 3 UI commits are
+**committed locally, push pending** (`db66f43`/`e2f68f0`/`113c0d6` + `159c0f9`). Needs the same
+**one EAS build** as the rebuild-gated bits above (EAS Free cap resets 2026-07-01).
+
+- **Wrong prayer times → first-open onboarding (NEW `features/onboarding/`).** Root cause: the
+  app defaulted to Cairo (`DEFAULT_LOCATION`) and never auto-detected GPS. New `use-onboarding`
+  (flag `nour.onboarding.done`) + `onboarding-gate.tsx` primer requests location → stores the
+  nearest curated city (real fix) → requests notifications → enables adhan + adhkar. Mounted in
+  `_layout`. AR/EN `onboarding.*` strings added.
+- **Azan only scheduled on the prayer screen → root `components/azan-scheduler.tsx`.** Mounted
+  once in `_layout` (mirrors web `AdhanController`), drives `useAzanNotifications` +
+  `useAzkarReminders`; the duplicate calls were removed from `app/prayer-times/index.tsx`. NEW
+  `lib/settings-bus.ts` (`emitSettingsChanged`/`onSettingsChanged`) keeps the independent
+  settings-hook instances in sync (each emits on write, re-reads on event) so an onboarding/
+  toggle write reaches the scheduler without a restart; scheduler also re-checks notif
+  permission on the bus event + AppState 'active'.
+- **Sun/moon boundary → Shrouq→Maghrib.** `getArcPosition` (shared-core) day window changed
+  from Fajr→Isha to **sunrise→maghrib**; moon shows Maghrib→next-sunrise. One change covers
+  web + mobile. See [[feedback-prayer-times-gotchas]] for the timing-precision facts (instants
+  are `HH:MM:00`; exact-on-:00 only in foreground; Android Doze caveat for closed-app).
+- **Web closed-tab adhan** (Layer-B Notification Triggers, Chromium-only) now schedules the
+  next ~48h, not just today (date-suffixed tags). True cross-browser Web Push (Tier 2) was NOT
+  built — large server effort, conflicts with the device-local design.
+- **Home A-Z grid blanked** — the A-Z `useMemo` read `a[locale].title` for every row, so one
+  row missing its active-locale object threw and blanked the whole grid (newest survived via
+  FlatList virtualization). Fixed with a null-safe `titleOf()` in `app/index.tsx` + a `display`
+  fallback in `playlist-card.tsx`. (Live prod data is currently clean, so an empty A-Z on
+  device ⇒ stale APK or non-prod backend.)
+- **UI/theme parity:**
+  - **Playlist card** rebuilt to web parity — **circular** scholar avatar (`rounded-full`, 78%
+    width) + centered title/scholar-name/track-pill (`playlist-card.tsx`).
+  - **NEW `components/screen-header.tsx`** (themed, honors top safe area, optional back chevron)
+    replaces React Navigation's **default white header** on `downloads`, `playlist/[slug]`,
+    `quran/bookmarks` (all now `headerShown:false`). **Pattern for future screens: prefer
+    `headerShown:false` + `<ScreenHeader>` over the native header.** Downloads empty state got
+    `bg-bg`.
+  - **Quran index** `pt-4`→`pt-16` (title was under the status-bar icons). **Reader-settings
+    modal** Save/Cancel row got `paddingBottom: insets.bottom + 12` (was under the Android nav).
+
 ## Verify before shipping
 
 ```bash
