@@ -14,6 +14,7 @@ import { ContinueReading } from "@/features/home/components/continue-reading";
 import { SortSelect, type SortOption } from "@/features/home/components/sort-select";
 import { PlaylistCard } from "@/features/playlists/components/playlist-card";
 import { PrayerTimesWidget } from "@/features/prayer-times/components/prayer-times-widget";
+import type { Playlist } from "@repo/shared-core/schemas/playlist";
 import { initialLocale } from "@/lib/i18n";
 import { categoriesQuery, playlistsQuery } from "@/lib/queries";
 import type { CategoryChip } from "@/lib/types";
@@ -44,11 +45,19 @@ export default function HomeScreen() {
   );
 
   const visible = useMemo(() => {
+    // Resolve a sortable title that tolerates a row missing the active-locale
+    // object (falls back to the other locale, then ""). Without this, one such
+    // row makes the A–Z comparator throw inside this memo and blanks the WHOLE
+    // grid — "newest" only escaped because it doesn't read [locale] here and the
+    // FlatList virtualizes the offending card off-screen. (Matching fallback in
+    // PlaylistCard so the card itself can't crash either.)
+    const titleOf = (p: Playlist): string =>
+      p[locale]?.title ?? p.ar?.title ?? p.en?.title ?? "";
     let list = playlists.data ?? [];
     if (activeCategory != null) list = list.filter((p) => p.categoryIds.includes(activeCategory));
     const sorted = [...list];
     if (sort === "az") {
-      sorted.sort((a, b) => a[locale].title.localeCompare(b[locale].title, locale));
+      sorted.sort((a, b) => titleOf(a).localeCompare(titleOf(b), locale));
     } else if (sort === "tracks") {
       sorted.sort((a, b) => (b.trackCount ?? 0) - (a.trackCount ?? 0));
     }

@@ -19,7 +19,11 @@ export type PlaylistCardProps = {
 export function PlaylistCard({ playlist, locale, categories = [] }: PlaylistCardProps) {
   const router = useRouter();
   const { t } = useTranslation();
-  const display = playlist[locale];
+  // Tolerate a row missing the active-locale object (embedded-locale data can
+  // lack one side) — fall back to the other locale so the card renders instead
+  // of crashing the list. Mirrors the titleOf fallback on the home grid.
+  const display = playlist[locale] ?? playlist.ar ?? playlist.en;
+  if (display == null) return null;
 
   return (
     <Pressable

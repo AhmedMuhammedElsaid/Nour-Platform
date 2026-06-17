@@ -64,6 +64,25 @@ describe("HomeScreen", () => {
     expect(screen.getByText(/Apple|أب/)).toBeTruthy();
   });
 
+  it("keeps the A–Z grid rendered when a row is missing the active locale", async () => {
+    // A row whose active-locale object is absent (embedded-locale data can lack
+    // one side) used to make the A–Z comparator throw and blank the whole grid.
+    mockApi([
+      playlist({
+        id: "1",
+        en: undefined as unknown as Playlist["en"],
+        ar: { title: "ز", slug: "z" },
+      }),
+      playlist({ id: "2", en: { title: "Apple", slug: "ap" }, ar: { title: "أب", slug: "ap" } }),
+    ]);
+    renderHome();
+    await waitFor(() => expect(screen.getByText(/Apple|أب/)).toBeTruthy());
+
+    fireEvent.press(screen.getByText(/A–Z|أ–ي/));
+    // The valid row still renders — the bad row no longer crashes the grid.
+    expect(screen.getByText(/Apple|أب/)).toBeTruthy();
+  });
+
   it("shows an error state with retry on failure", async () => {
     jest.mocked(getJson).mockRejectedValue(new Error("network"));
     renderHome();
