@@ -40,7 +40,7 @@ export function DownloadsList({ downloads }: Props) {
 
   if (records.length === 0) {
     return (
-      <View className="flex-1 items-center justify-center px-4">
+      <View className="flex-1 items-center justify-center bg-bg px-4">
         <Text variant="muted">{t("downloads.empty")}</Text>
       </View>
     );

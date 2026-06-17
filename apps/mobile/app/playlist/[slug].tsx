@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ActivityIndicator, FlatList, Pressable, View } from "react-native";
 
+import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Text } from "@/components/ui/text";
@@ -25,6 +26,7 @@ function formatDuration(secs?: number): string | null {
 
 export default function PlaylistDetailScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const locale = initialLocale;
   const { slug, trackId } = useLocalSearchParams<{ slug: string; trackId?: string }>();
   const dockSpacing = useDockSpacing();
@@ -104,18 +106,30 @@ export default function PlaylistDetailScreen() {
 
   if (detail.isPending) {
     return (
-      <View className="flex-1 items-center justify-center bg-bg">
-        <ActivityIndicator color="#c8a050" />
-      </View>
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View className="flex-1 bg-bg">
+          <ScreenHeader onBack={() => router.back()} backLabel={t("common.back")} />
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator color="#c8a050" />
+          </View>
+        </View>
+      </>
     );
   }
 
   if (detail.isError || !detail.data) {
     return (
-      <View className="flex-1 items-center justify-center gap-3 bg-bg px-4">
-        <Text className="text-danger">{t("common.error")}</Text>
-        <Button label={t("common.retry")} variant="outline" onPress={() => void detail.refetch()} />
-      </View>
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View className="flex-1 bg-bg">
+          <ScreenHeader onBack={() => router.back()} backLabel={t("common.back")} />
+          <View className="flex-1 items-center justify-center gap-3 px-4">
+            <Text className="text-danger">{t("common.error")}</Text>
+            <Button label={t("common.retry")} variant="outline" onPress={() => void detail.refetch()} />
+          </View>
+        </View>
+      </>
     );
   }
 
@@ -176,9 +190,11 @@ export default function PlaylistDetailScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: true, title: display.title }} />
-      <FlatList<PlayableTrack>
-        className="flex-1 bg-bg px-4 pt-4"
+      <Stack.Screen options={{ headerShown: false }} />
+      <View className="flex-1 bg-bg">
+        <ScreenHeader onBack={() => router.back()} backLabel={t("common.back")} />
+        <FlatList<PlayableTrack>
+        className="flex-1 bg-bg px-4 pt-2"
         data={tracks}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={header}
@@ -238,7 +254,8 @@ export default function PlaylistDetailScreen() {
             </Pressable>
           );
         }}
-      />
+        />
+      </View>
     </>
   );
 }
