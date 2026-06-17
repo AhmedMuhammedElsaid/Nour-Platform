@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Modal, Pressable, ScrollView, Switch, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import type { QuranEdition, QuranReciter } from "@repo/shared-core/schemas/quran";
 
@@ -59,6 +60,7 @@ export function ReaderSettingsSheet({
   reciters,
 }: ReaderSettingsSheetProps) {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
 
   // Draft seeded from the committed prefs each time the sheet opens.
   const [draft, setDraft] = useState<QuranPrefs>(prefs);
@@ -162,8 +164,13 @@ export function ReaderSettingsSheet({
             ) : null}
           </ScrollView>
 
-          {/* Save / Cancel — staged prefs apply only on Save (point 16). */}
-          <View className="flex-row gap-3 border-t border-border px-4 py-3">
+          {/* Save / Cancel — staged prefs apply only on Save (point 16). Pad the
+              bottom past the Android nav bar / home indicator so the buttons
+              aren't hidden under the system buttons. */}
+          <View
+            className="flex-row gap-3 border-t border-border px-4 pt-3"
+            style={{ paddingBottom: insets.bottom + 12 }}
+          >
             <View className="flex-1">
               <Button label={t("common.cancel")} variant="outline" onPress={onClose} />
             </View>

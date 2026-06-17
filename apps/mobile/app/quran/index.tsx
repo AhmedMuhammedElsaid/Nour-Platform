@@ -58,7 +58,7 @@ export default function QuranIndexScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       {tab === "surah" ? (
         <FlatList<QuranSurah>
-          className="flex-1 bg-bg px-4 pt-4"
+          className="flex-1 bg-bg px-4 pt-16"
           data={surahs.data}
           keyExtractor={(s) => String(s.number)}
           contentContainerStyle={{ paddingBottom: dockSpacing }}
@@ -66,7 +66,7 @@ export default function QuranIndexScreen() {
           renderItem={({ item }) => <SurahRow surah={item} />}
         />
       ) : (
-        <View className="flex-1 bg-bg px-4 pt-4">
+        <View className="flex-1 bg-bg px-4 pt-16">
           {header}
           <Text variant="muted" className="py-8 text-center">
             {t("quran.juzPlaceholder")}
