@@ -4,7 +4,6 @@ import { Pressable, View } from "react-native";
 import type { Playlist } from "@repo/shared-core/schemas/playlist";
 import type { Locale } from "@repo/shared-core/schemas/locale";
 
-import { Card } from "@/components/ui/card";
 import { Chip } from "@/components/ui/chip";
 import { Text } from "@/components/ui/text";
 import { Cover } from "@/features/playlists/components/cover";
@@ -16,6 +15,9 @@ export type PlaylistCardProps = {
   categories?: CategoryChip[];
 };
 
+// Mirrors the web playlist card (apps/web/features/playlists/components/
+// playlist-card.tsx): a centered column with a CIRCULAR scholar avatar, title,
+// scholar name, a track-count pill, and category chips.
 export function PlaylistCard({ playlist, locale, categories = [] }: PlaylistCardProps) {
   const router = useRouter();
   const { t } = useTranslation();
@@ -29,31 +31,44 @@ export function PlaylistCard({ playlist, locale, categories = [] }: PlaylistCard
     <Pressable
       accessibilityRole="button"
       onPress={() => router.push(`/playlist/${encodeURIComponent(display.slug)}`)}
-      className="flex-1"
+      className="flex-1 items-center gap-2 rounded-2xl border border-border bg-surface p-3"
     >
-      <Card>
+      {/* Circular scholar avatar (web parity). The round mask also clips the
+          gradient+emoji fallback when no photo is set. */}
+      <View className="aspect-square w-[78%] overflow-hidden rounded-full">
         <Cover
           id={playlist.id}
           imageUrl={playlist.scholarImage}
-          className="aspect-square w-full"
+          className="size-full"
           emojiClassName="text-5xl"
         />
-        <View className="gap-1 p-3">
-          <Text variant="title" numberOfLines={2}>
-            {display.title}
+      </View>
+
+      <Text variant="title" numberOfLines={2} className="text-center">
+        {display.title}
+      </Text>
+
+      {display.scholarName != null && (
+        <Text variant="muted" numberOfLines={1} className="text-center">
+          {display.scholarName}
+        </Text>
+      )}
+
+      {playlist.trackCount != null && playlist.trackCount > 0 && (
+        <View className="rounded-full border border-primary px-2.5 py-0.5">
+          <Text className="text-primary text-xs font-semibold">
+            {t("home.trackCount", { count: playlist.trackCount })}
           </Text>
-          {playlist.trackCount != null && (
-            <Text variant="muted">{t("home.trackCount", { count: playlist.trackCount })}</Text>
-          )}
-          {categories.length > 0 && (
-            <View className="mt-1 flex-row flex-wrap gap-1">
-              {categories.slice(0, 2).map((cat) => (
-                <Chip key={cat.slug} label={cat.name} />
-              ))}
-            </View>
-          )}
         </View>
-      </Card>
+      )}
+
+      {categories.length > 0 && (
+        <View className="flex-row flex-wrap justify-center gap-1">
+          {categories.slice(0, 2).map((cat) => (
+            <Chip key={cat.slug} label={cat.name} />
+          ))}
+        </View>
+      )}
     </Pressable>
   );
 }
