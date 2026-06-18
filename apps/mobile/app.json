@@ -83,6 +83,12 @@
         "projectId": "aa9ab236-a124-4566-9848-4e0144554018"
       }
     },
-    "owner": "volunteering-apps"
+    "owner": "volunteering-apps",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/aa9ab236-a124-4566-9848-4e0144554018"
+    }
   }
 }
