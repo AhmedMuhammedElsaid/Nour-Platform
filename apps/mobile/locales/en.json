@@ -64,6 +64,7 @@
     "surah": "Surah",
     "ayah": "Ayah {{number}}",
     "sort": {
+      "all": "All",
       "newest": "Newest",
       "az": "A–Z",
       "tracks": "Most tracks"

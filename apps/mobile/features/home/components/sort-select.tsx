@@ -3,8 +3,10 @@ import { View } from "react-native";
 
 import { Chip } from "@/components/ui/chip";
 
-export type SortOption = "newest" | "az" | "tracks";
-export const SORT_OPTIONS: readonly SortOption[] = ["newest", "az", "tracks"];
+export type SortOption = "all" | "newest" | "az" | "tracks";
+// "all" is the default: no reordering, every playlist in the data's original
+// order. The others sort the same full list — none of them filter rows out.
+export const SORT_OPTIONS: readonly SortOption[] = ["all", "newest", "az", "tracks"];
 
 export type SortSelectProps = {
   value: SortOption;

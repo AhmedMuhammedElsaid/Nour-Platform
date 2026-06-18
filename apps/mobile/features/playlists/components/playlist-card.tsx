@@ -31,18 +31,18 @@ export function PlaylistCard({ playlist, locale, categories = [] }: PlaylistCard
     <Pressable
       accessibilityRole="button"
       onPress={() => router.push(`/playlist/${encodeURIComponent(display.slug)}`)}
-      className="flex-1 items-center gap-2 rounded-2xl border border-border bg-surface p-3"
+      className="flex-1 items-center gap-2 rounded-2xl border border-border bg-surface-2 p-3"
     >
-      {/* Circular scholar avatar (web parity). The round mask also clips the
-          gradient+emoji fallback when no photo is set. */}
-      <View className="aspect-square w-[78%] overflow-hidden rounded-full">
-        <Cover
-          id={playlist.id}
-          imageUrl={playlist.scholarImage}
-          className="size-full"
-          emojiClassName="text-5xl"
-        />
-      </View>
+      {/* Circular scholar avatar (web parity). The radius is applied DIRECTLY to
+          the image/fallback (not a wrapping overflow-hidden View) — Android does
+          not reliably clip a child <Image> to a parent's borderRadius, which made
+          the avatar bleed out of the card and overlap the section below. */}
+      <Cover
+        id={playlist.id}
+        imageUrl={playlist.scholarImage}
+        className="aspect-square w-[78%] rounded-full"
+        emojiClassName="text-5xl"
+      />
 
       <Text variant="title" numberOfLines={2} className="text-center">
         {display.title}

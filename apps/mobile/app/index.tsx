@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { FlatList, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,12 +25,15 @@ export default function HomeScreen() {
   const { t } = useTranslation();
   const locale = initialLocale;
   const dockSpacing = useDockSpacing();
+  const insets = useSafeAreaInsets();
+  const topPad = insets.top + 12;
 
   const playlists = useQuery(playlistsQuery(locale));
   const categories = useQuery(categoriesQuery());
 
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [sort, setSort] = useState<SortOption>("az");
+  // Default to "all": render every playlist in its original order on first load.
+  const [sort, setSort] = useState<SortOption>("all");
 
   const categoryById = useMemo(
     () =>
@@ -104,7 +108,7 @@ export default function HomeScreen() {
 
   if (playlists.isPending) {
     return (
-      <View className="flex-1 bg-bg px-4 pt-16">
+      <View className="flex-1 bg-bg px-4" style={{ paddingTop: topPad }}>
         {header}
         <View className="flex-row flex-wrap gap-3">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -128,33 +132,43 @@ export default function HomeScreen() {
   }
 
   return (
-    <FlatList
-      className="flex-1 bg-bg px-4 pt-16"
-      data={visible}
-      keyExtractor={(item) => item.id}
-      numColumns={2}
-      columnWrapperClassName="gap-3"
-      contentContainerClassName="gap-3"
-      contentContainerStyle={{ paddingBottom: dockSpacing }}
-      ListHeaderComponent={header}
-      ListEmptyComponent={<Text variant="muted">{t("home.empty")}</Text>}
-      renderItem={({ item }) => (
-        <View className="flex-1">
-          <PlaylistCard
-            playlist={item}
-            locale={locale}
-            categories={item.categoryIds
-              .map((id) => categoryById.get(id))
-              .filter((c): c is CategoryChip => c != null)}
-          />
-        </View>
-      )}
-      ListFooterComponent={
-        <View>
-          <ContinueListening />
-          <ContinueReading />
-        </View>
-      }
-    />
+    <View className="flex-1 bg-bg">
+      <FlatList
+        className="flex-1 px-4"
+        data={visible}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
+        columnWrapperClassName="gap-3"
+        contentContainerClassName="gap-3"
+        contentContainerStyle={{ paddingTop: topPad, paddingBottom: dockSpacing }}
+        ListHeaderComponent={header}
+        ListEmptyComponent={<Text variant="muted">{t("home.empty")}</Text>}
+        renderItem={({ item }) => (
+          <View className="flex-1">
+            <PlaylistCard
+              playlist={item}
+              locale={locale}
+              categories={item.categoryIds
+                .map((id) => categoryById.get(id))
+                .filter((c): c is CategoryChip => c != null)}
+            />
+          </View>
+        )}
+        ListFooterComponent={
+          <View>
+            <ContinueListening />
+            <ContinueReading />
+          </View>
+        }
+      />
+      {/* Opaque scrim filling the status-bar area so content scrolled up the
+          screen is hidden behind it instead of bleeding under the transparent
+          status bar (the clipped hero subtitle in the report). */}
+      <View
+        pointerEvents="none"
+        className="absolute left-0 right-0 top-0 bg-bg"
+        style={{ height: insets.top }}
+      />
+    </View>
   );
 }
