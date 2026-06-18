@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Modal, Pressable, ScrollView, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Notifications from "expo-notifications";
 
@@ -15,7 +15,10 @@ import { PrayerTimetable } from "@/features/prayer-times/components/prayer-timet
 import { LocationPicker } from "@/features/prayer-times/components/location-picker";
 import { MethodSettings } from "@/features/prayer-times/components/method-settings";
 import { useAdhanSettings } from "@/features/prayer-times/hooks/use-adhan-settings";
-import { requestNotificationPermission } from "@/features/prayer-times/hooks/use-azan-notifications";
+import {
+  requestNotificationPermission,
+  scheduleTestAzan,
+} from "@/features/prayer-times/hooks/use-azan-notifications";
 import { useAzkarReminderSettings } from "@/features/prayer-times/hooks/use-azkar-reminder-settings";
 import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-settings";
 import { initialLocale } from "@/lib/i18n";
@@ -129,6 +132,17 @@ export default function PrayerTimesScreen() {
     [setAzkarEnabled, notifGranted],
   );
 
+  // Verify the closed-app adhan without waiting for a real prayer: schedules a
+  // one-off azan ~60s out, then tells the user to lock the phone. Exercises the
+  // exact-alarm path the permission fix enables.
+  const runTestAdhan = useCallback(async () => {
+    const fireAt = await scheduleTestAzan(t("prayer.adhan.testTitle"));
+    Alert.alert(
+      t("prayer.adhan.testTitle"),
+      t("prayer.adhan.testScheduled", { time: formatClock(fireAt, locale) }),
+    );
+  }, [t, locale]);
+
   const countdown = formatCountdown(upcoming.msUntil);
   const upcomingTime = formatClock(upcoming.time, locale);
 
@@ -218,6 +232,13 @@ export default function PrayerTimesScreen() {
               </Pressable>
             </View>
           )}
+          {notifGranted && adhan.enabled ? (
+            <Button
+              label={t("prayer.adhan.test")}
+              variant="ghost"
+              onPress={() => void runTestAdhan()}
+            />
+          ) : null}
         </View>
 
         {/* Adhkar reminder toggle — sabah after Fajr, masaa after Asr */}

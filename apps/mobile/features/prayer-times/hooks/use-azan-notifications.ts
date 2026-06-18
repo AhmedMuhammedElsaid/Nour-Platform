@@ -94,6 +94,31 @@ export function useAzanNotifications(
   }, [enabled, location, prefs, prayerNames, hydrated]);
 }
 
+// Dev/verify helper: schedule a single azan notification ~60s out so the user
+// can lock the phone and confirm the adhan fires on time. It goes through the
+// exact same DATE-trigger + channel + bundled-sound path as the real schedule,
+// so it proves the exact-alarm fix end-to-end without waiting for a real prayer.
+// Uses a high dayOffset (9) so the identifier never collides with a real
+// scheduled prayer; the `dhuhr` key makes the foreground adhan play too.
+export async function scheduleTestAzan(title: string): Promise<Date> {
+  await ensureAzanChannel();
+  const fireAt = new Date(Date.now() + 60 * 1000);
+  await Notifications.scheduleNotificationAsync({
+    identifier: `${NOTIF_TAG_PREFIX}9-dhuhr`,
+    content: {
+      title,
+      body: "حان وقت الصلاة · It's time for prayer.",
+      sound: AZAN_SOUND,
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: fireAt,
+      channelId: AZAN_CHANNEL_ID,
+    },
+  });
+  return fireAt;
+}
+
 // Utility: request notification permissions. Returns true if granted.
 export async function requestNotificationPermission(): Promise<boolean> {
   const { status } = await Notifications.requestPermissionsAsync({
