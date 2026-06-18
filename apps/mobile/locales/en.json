@@ -25,7 +25,11 @@
     "notifBody": "So the adhan plays at prayer time and you get morning & evening adhkar reminders.",
     "enable": "Enable & continue",
     "working": "Setting up…",
-    "skip": "Maybe later"
+    "skip": "Maybe later",
+    "batteryTitle": "Keep the adhan reliable",
+    "batteryBody": "Some phones (Samsung, Xiaomi, Huawei) put apps to sleep, which stops the adhan when Nour is closed. Open settings and set Nour to Unrestricted / not optimized.",
+    "batteryOpen": "Open settings",
+    "batterySkip": "Skip"
   },
   "nav": {
     "home": "Home",

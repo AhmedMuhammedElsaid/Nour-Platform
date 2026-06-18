@@ -104,6 +104,15 @@ jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 );
 
+// expo-intent-launcher has no native module under Jest (battery-optimization.ts).
+jest.mock("expo-intent-launcher", () => ({
+  startActivityAsync: jest.fn().mockResolvedValue({ resultCode: 0 }),
+  ActivityAction: {
+    IGNORE_BATTERY_OPTIMIZATION_SETTINGS:
+      "android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS",
+  },
+}));
+
 // expo-location mock.
 jest.mock("expo-location", () => ({
   requestForegroundPermissionsAsync: jest.fn().mockResolvedValue({ status: "granted" }),

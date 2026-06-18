@@ -11,7 +11,7 @@
 // fresh settings so it schedules immediately, without an app restart.
 
 import { useState } from "react";
-import { ScrollView, View } from "react-native";
+import { Alert, Platform, ScrollView, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Location from "expo-location";
@@ -23,6 +23,7 @@ import { useAdhanSettings } from "@/features/prayer-times/hooks/use-adhan-settin
 import { useAzkarReminderSettings } from "@/features/prayer-times/hooks/use-azkar-reminder-settings";
 import { requestNotificationPermission } from "@/features/prayer-times/hooks/use-azan-notifications";
 import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-settings";
+import { openBatteryOptimizationSettings } from "@/lib/battery-optimization";
 import { emitSettingsChanged } from "@/lib/settings-bus";
 
 type Props = { onComplete: () => void };
@@ -37,6 +38,7 @@ export function OnboardingGate({ onComplete }: Props) {
 
   const enable = async () => {
     setBusy(true);
+    let notifGranted = false;
     try {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
@@ -55,8 +57,8 @@ export function OnboardingGate({ onComplete }: Props) {
         // Keep the default location; the user can pick a city later.
       }
 
-      const granted = await requestNotificationPermission();
-      if (granted) {
+      notifGranted = await requestNotificationPermission();
+      if (notifGranted) {
         setAdhanEnabled(true);
         setAzkarEnabled(true);
       }
@@ -64,6 +66,24 @@ export function OnboardingGate({ onComplete }: Props) {
       emitSettingsChanged();
     } finally {
       setBusy(false);
+    }
+
+    // Final nudge: aggressive OEM battery managers (Samsung "Sleeping apps")
+    // kill scheduled exact alarms while the app is closed, which stops the
+    // adhan. Point the user to the battery-optimization screen. Complete the
+    // onboarding either way (it must only ever show once).
+    if (notifGranted && Platform.OS === "android") {
+      Alert.alert(t("onboarding.batteryTitle"), t("onboarding.batteryBody"), [
+        { text: t("onboarding.batterySkip"), style: "cancel", onPress: onComplete },
+        {
+          text: t("onboarding.batteryOpen"),
+          onPress: () => {
+            void openBatteryOptimizationSettings();
+            onComplete();
+          },
+        },
+      ]);
+    } else {
       onComplete();
     }
   };
