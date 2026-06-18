@@ -589,6 +589,31 @@ JS-only (no rebuild needed beyond the adhan one above). From an on-device screen
   the same full list — none filter rows out. The category "All" pill already existed but only
   renders when categories are seeded. Strings: `home.sort.all` in both locales.
 
+## Card overflow (real fix) + battery one-tap dialog (2026-06-18, second pass)
+
+On-device follow-up: the f706248 card fix shipped (the "All" sort it added was visible on
+device) but the home cards were **still** broken, and the battery-opt screen didn't list Nour.
+
+- **Playlist-card avatar STILL overflowed** despite f706248. f706248 fixed avatar *clipping*
+  (radius moved onto the `<Image>`) but not *sizing*: an `<Image>` with a **percentage width**
+  (`w-[78%]`) + `aspect-square` does NOT reliably contribute its derived height to the parent
+  flex pass inside the `numColumns=2` row, so the `bg-surface-2` card measured short and — RN
+  default `overflow:visible` — the avatar painted past the box into the shelf below. Real fix
+  (`playlist-card.tsx`): a plain **sizing wrapper `View`** carries the definite `w-[78%]
+  aspect-square`; the image fills it (`h-full w-full`) and clips itself (`rounded-full`). No
+  parent `overflow-hidden`. **Pattern: for a responsive square image in RN flex, put
+  width%+aspectRatio on a wrapper View (reliable), not on the Image (intrinsic-size interferes).**
+  JS-only → can ride the next rebuild OR ship via `eas update` (EAS Update is configured).
+- **Battery-opt screen didn't show Nour.** `IGNORE_BATTERY_OPTIMIZATION_SETTINGS` opens the
+  system list that by default lists only apps ALREADY exempted, so a fresh install can't find
+  Nour to enable it. `lib/battery-optimization.ts` now PREFERS the package-targeted one-tap
+  `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` dialog (`{ data: "package:com.nour.mobile" }`), falling
+  back to the list screen then app settings. Needs the `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`
+  permission (added to `app.json` `android.permissions`; Play-restricted but fine for the
+  sideloaded preview APK — same "revisit at publish" caveat as `USE_EXACT_ALARM`). Verified the
+  action string + `data` param + native `intent.data` wiring against expo-intent-launcher 56.0.4.
+  **Rebuild-gated** (new permission). `versionCode` 4 → 5.
+
 ## Verify before shipping
 
 ```bash
