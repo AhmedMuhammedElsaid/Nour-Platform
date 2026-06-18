@@ -533,6 +533,62 @@ prayer/azan commits are **pushed** (`origin/main` = `d74f9a6`); the A-Z fix + 3 
   - **Quran index** `pt-4`→`pt-16` (title was under the status-bar icons). **Reader-settings
     modal** Save/Cancel row got `paddingBottom: insets.bottom + 12` (was under the Android nav).
 
+## Closed-app adhan exact-alarm fix (2026-06-18)
+
+**Symptom:** adhan never fired at the prayer time when the app was closed; opening the
+app fired it immediately (Fajr 4:08 → silence → opened at 4:35 → adhan played).
+
+**Root cause (NOT a scheduling-logic bug):** the notification *was* scheduled and *did*
+fire — ~27 min late. expo-notifications' Android scheduler
+(`ExpoSchedulingDelegate.kt`) only uses an **exact** alarm
+(`setExactAndAllowWhileIdle`) when `alarmManager.canScheduleExactAlarms()` is true,
+which requires the `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM` permission. The app
+declared **neither**, so it fell back to **inexact** `setAndAllowWhileIdle`, which Doze
+batches/defers until the device next wakes. The 4:35 fire was the foreground adhan
+(`use-foreground-adhan.ts`, live-delivery listener only — no replay-on-open) catching the
+deferred notification on unlock.
+
+**Fix (rebuild-gated — needs one EAS build):**
+- `app.json` `android.permissions` += `SCHEDULE_EXACT_ALARM` + `USE_EXACT_ALARM`
+  (USE_EXACT_ALARM auto-grants on Android 13+, no prompt; legit for an adhan/alarm).
+  `versionCode` 3 → 4. **This is the actual fix** — flips the scheduler to exact.
+- **Battery optimization** (compounding factor — OEMs kill alarms even when exact): new
+  `lib/battery-optimization.ts` (`expo-intent-launcher ~56.0.4`, ADR 0007) opens the
+  battery-opt settings; offered once in the onboarding gate after notif permission. We use
+  the no-permission `IGNORE_BATTERY_OPTIMIZATION_SETTINGS` list screen (not the
+  Play-restricted one-tap REQUEST dialog).
+- **Verify helper:** `scheduleTestAzan()` in `use-azan-notifications.ts` + a "Test adhan
+  (1 min)" ghost button on the prayer-times screen (shown when notifs granted + adhan on).
+  Schedules a one-off azan 60s out via the identical exact-alarm path; lock the phone to
+  confirm it fires on time. Uses identifier `nour-azan-9-dhuhr` (offset 9 never collides
+  with the real 0/1 schedule; `dhuhr` key plays the foreground adhan too).
+- ⚠️ **Re-verify the exact-vs-inexact branch on any expo-notifications bump.** Play Store:
+  `USE_EXACT_ALARM` is review-scrutinized but allowed for prayer/alarm apps — fine while
+  sideloading the preview APK; revisit at publish.
+- **Test device is now a Samsung Galaxy A72 (Android 13)**, not the old Huawei CMA-LX2.
+  Samsung "Sleeping apps" / "Deep sleeping apps" is the relevant battery killer.
+
+## Home UI fixes + "All" sort default (2026-06-18)
+
+JS-only (no rebuild needed beyond the adhan one above). From an on-device screenshot:
+- **Playlist-card avatar overlapped the next section.** Root cause: Android does NOT
+  reliably clip a child `<Image>` to a parent View's `overflow-hidden` + `borderRadius`,
+  so the circular avatar bled out of the card into the `mt-8` "Continue listening" shelf.
+  Fix: apply `aspect-square w-[78%] rounded-full` **directly to the `Cover` image/fallback**
+  (`playlist-card.tsx`) — no wrapping overflow-hidden View. RN Image clips its own radius.
+  **Pattern: never rely on a parent View's overflow-hidden to round a child Image on Android.**
+- **Cards were near-invisible** — `bg-surface` (#1c1915) barely lifts off `bg-bg` (#0f0d0a).
+  Bumped the card to `bg-surface-2` (#252018).
+- **Hero text clipped under the status bar on scroll** — screens render edge-to-edge under a
+  transparent status bar (no global `<StatusBar>`/top SafeAreaView; per-screen `pt-16`).
+  Home now uses `useSafeAreaInsets()` top padding + an **opaque `bg-bg` scrim** (absolute,
+  `height: insets.top`, `pointerEvents="none"`) so scrolled content hides behind the status
+  bar. Other screens still use `pt-16` — promote the scrim pattern if they report the same.
+- **Sort row gained "All" (الكل) as the new DEFAULT** (`sort-select.tsx` SORT_OPTIONS, home
+  `useState<SortOption>("all")`). "all" = no reordering (original API order); the others sort
+  the same full list — none filter rows out. The category "All" pill already existed but only
+  renders when categories are seeded. Strings: `home.sort.all` in both locales.
+
 ## Verify before shipping
 
 ```bash
