@@ -27,8 +27,12 @@ import {
   hijriDate,
 } from "@repo/shared-core/prayer-times/format";
 
-const ROW_KEYS: Exclude<PrayerKey, "sunrise">[] = [
+// Shrouq (sunrise) is shown for reference but is NOT a prayer — getUpcomingPrayer
+// never returns it (COUNTDOWN_ORDER excludes it), so it is never the "next"
+// highlight, and the azan scheduler skips it (no adhan).
+const ROW_KEYS: PrayerKey[] = [
   "fajr",
+  "sunrise",
   "dhuhr",
   "asr",
   "maghrib",
