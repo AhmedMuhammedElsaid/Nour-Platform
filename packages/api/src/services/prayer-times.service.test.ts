@@ -118,8 +118,8 @@ describe("getArcPosition", () => {
     const sunrise = day.instants.find((i) => i.key === "sunrise")!.time as Date;
     const maghrib = day.instants.find((i) => i.key === "maghrib")!.time as Date;
 
-    // Just after Sunrise — sun visible, sitting near the Sunrise dot (small but
-    // non-zero fraction since Sunrise is after Fajr on the Fajr→Isha track).
+    // Just after Sunrise — sun visible, sitting at the Sunrise dot (fraction ~0,
+    // since the day track now spans Sunrise(0)→Maghrib(1)).
     const dawn = getArcPosition(PARAMS, new Date(sunrise.getTime() + 60_000));
     expect(dawn.isNight).toBe(false);
     expect(dawn.fraction).toBeGreaterThanOrEqual(0);

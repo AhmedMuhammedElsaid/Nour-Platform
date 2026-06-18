@@ -184,14 +184,21 @@ export function getArcPosition(
   const sunrise = today.instants.find((i) => i.key === "sunrise")?.time ?? null;
   const maghrib = today.instants.find((i) => i.key === "maghrib")?.time ?? null;
 
-  // Daytime: Sunrise ≤ now < Maghrib — the sun is up.
+  // Daytime: Sunrise ≤ now < Maghrib — the sun is up. The fraction spans the
+  // visible day Sunrise(0)→Maghrib(1) — NOT Fajr→Isha — so the sun sits at the
+  // far-right Maghrib dot exactly as it sets. The night branch then starts the
+  // moon at fraction 1 (same spot), so the moon rises *where the sun disappears*
+  // and travels back to the left, reaching Sunrise(0) at dawn — no jump.
   if (
     sunrise != null &&
     maghrib != null &&
     now.getTime() >= sunrise.getTime() &&
     now.getTime() < maghrib.getTime()
   ) {
-    return { isNight: false, fraction: getDayProgress(today, now) };
+    const p = clamp01(
+      (now.getTime() - sunrise.getTime()) / (maghrib.getTime() - sunrise.getTime()),
+    );
+    return { isNight: false, fraction: p };
   }
 
   // After Maghrib: night runs until *tomorrow's* Sunrise. The moon descends from
