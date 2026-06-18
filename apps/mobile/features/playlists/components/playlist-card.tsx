@@ -33,16 +33,22 @@ export function PlaylistCard({ playlist, locale, categories = [] }: PlaylistCard
       onPress={() => router.push(`/playlist/${encodeURIComponent(display.slug)}`)}
       className="flex-1 items-center gap-2 rounded-2xl border border-border bg-surface-2 p-3"
     >
-      {/* Circular scholar avatar (web parity). The radius is applied DIRECTLY to
-          the image/fallback (not a wrapping overflow-hidden View) — Android does
-          not reliably clip a child <Image> to a parent's borderRadius, which made
-          the avatar bleed out of the card and overlap the section below. */}
-      <Cover
-        id={playlist.id}
-        imageUrl={playlist.scholarImage}
-        className="aspect-square w-[78%] rounded-full"
-        emojiClassName="text-5xl"
-      />
+      {/* Circular scholar avatar (web parity). A plain sizing wrapper carries the
+          definite square dimensions (w-[78%] + aspect-square); an <Image> with a
+          PERCENTAGE width + aspectRatio does not reliably report its derived
+          height to the parent flex pass inside the numColumns=2 row, so the card
+          measured short and the avatar bled past the (RN-default visible)
+          bg-surface-2 box into the shelf below. The wrapper has NO borderRadius/
+          overflow — the radius lives on the image, which clips ITSELF reliably on
+          Android (the earlier parent-clip approach is what failed). */}
+      <View className="aspect-square w-[78%]">
+        <Cover
+          id={playlist.id}
+          imageUrl={playlist.scholarImage}
+          className="h-full w-full rounded-full"
+          emojiClassName="text-5xl"
+        />
+      </View>
 
       <Text variant="title" numberOfLines={2} className="text-center">
         {display.title}
