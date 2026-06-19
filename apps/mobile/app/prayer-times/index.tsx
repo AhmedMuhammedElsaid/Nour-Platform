@@ -1,10 +1,11 @@
 // Prayer times screen — sun arc + countdown + timetable + settings.
 // Mirrors apps/web/features/prayer-times/components/prayer-page.tsx.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Modal, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "expo-router";
 import * as Notifications from "expo-notifications";
 
 import { Button } from "@/components/ui/button";
@@ -48,15 +49,17 @@ export default function PrayerTimesScreen() {
   const [now, setNow] = useState(() => new Date());
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [notifGranted, setNotifGranted] = useState(false);
-  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // 1s tick for countdown.
-  useEffect(() => {
-    tickRef.current = setInterval(() => setNow(new Date()), 1000);
-    return () => {
-      if (tickRef.current) clearInterval(tickRef.current);
-    };
-  }, []);
+  // 1s tick for the countdown — only while this screen is focused. It stays
+  // mounted in the stack after you leave it, so an unconditional interval would
+  // keep ticking (and recomputing) in the background and add to app-wide lag.
+  useFocusEffect(
+    useCallback(() => {
+      setNow(new Date());
+      const id = setInterval(() => setNow(new Date()), 1000);
+      return () => clearInterval(id);
+    }, []),
+  );
 
   // Check notification permissions on mount.
   useEffect(() => {

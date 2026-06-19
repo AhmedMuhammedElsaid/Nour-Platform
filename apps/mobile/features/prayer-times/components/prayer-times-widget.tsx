@@ -4,10 +4,10 @@
 // device settings, ticks every second, and computes the arc via the same
 // isomorphic getArcPosition the web widget uses.
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 
 import { Text } from "@/components/ui/text";
 import { SunArc } from "@/features/prayer-times/components/sun-arc";
@@ -47,12 +47,18 @@ export function PrayerTimesWidget() {
   const { location, prefs, hydrated } = usePrayerSettings();
   const [now, setNow] = useState(() => new Date());
 
-  // Tick every second so the body visibly glides along the arc and the
-  // countdown updates.
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
+  // Tick every second so the body glides along the arc and the countdown updates
+  // — but ONLY while Home is focused. The screen stays mounted in the stack when
+  // you navigate away, so an unconditional interval would keep recomputing prayer
+  // times every second on every other screen, making the whole app feel laggy.
+  // useFocusEffect starts the interval on focus and clears it on blur.
+  useFocusEffect(
+    useCallback(() => {
+      setNow(new Date());
+      const id = setInterval(() => setNow(new Date()), 1000);
+      return () => clearInterval(id);
+    }, []),
+  );
 
   const arcInput = {
     lat: location.lat,
@@ -67,14 +73,18 @@ export function PrayerTimesWidget() {
     // eslint deps intentionally omit arcInput object identity; primitives below.
     [location.lat, location.lng, prefs.method, prefs.madhab, now.toDateString()],
   );
+  // getUpcomingPrayer runs computePrayerTimes (today + maybe tomorrow); it only
+  // needs per-minute granularity, so memoize on the minute instead of recomputing
+  // every second. The live countdown below is derived from its target time.
+  const minute = Math.floor(now.getTime() / 60_000);
   const upcoming = useMemo(
-    () => getUpcomingPrayer(arcInput, now),
-    [location.lat, location.lng, prefs.method, prefs.madhab, now],
+    () => getUpcomingPrayer(arcInput, new Date(minute * 60_000)),
+    [location.lat, location.lng, prefs.method, prefs.madhab, minute],
   );
 
   const arc = getArcPosition(arcInput, now);
   const dots = buildArcDots(day, upcoming.key);
-  const countdown = formatCountdown(upcoming.msUntil);
+  const countdown = formatCountdown(Math.max(0, upcoming.time.getTime() - now.getTime()));
 
   if (!hydrated) return null;
 

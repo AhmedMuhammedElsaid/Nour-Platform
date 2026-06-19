@@ -10,6 +10,10 @@ jest.mock("@/lib/api", () => ({ getJson: jest.fn() }));
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn() }),
   usePathname: () => "/",
+  // Mirror useFocusEffect with a mount-once effect so its interval cleanup runs.
+  useFocusEffect: (cb: () => void | (() => void)) => {
+    require("react").useEffect(cb, []);
+  },
 }));
 
 const playlist = (over: Partial<Playlist> & Pick<Playlist, "id">): Playlist =>

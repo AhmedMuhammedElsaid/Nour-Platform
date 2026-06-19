@@ -7,6 +7,10 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn() }),
   usePathname: () => "/prayer-times",
   Stack: { Screen: () => null },
+  // Mirror useFocusEffect with a mount-once effect so its interval cleanup runs.
+  useFocusEffect: (cb: () => void | (() => void)) => {
+    require("react").useEffect(cb, []);
+  },
 }));
 
 function renderWith(node: React.ReactElement) {
