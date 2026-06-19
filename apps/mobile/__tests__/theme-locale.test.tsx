@@ -38,6 +38,12 @@ describe("ThemeToggle", () => {
 });
 
 describe("LocaleSwitcher", () => {
+  beforeEach(async () => {
+    // The app default is now Arabic; pin these switcher tests to "en" so they
+    // deterministically exercise the en→ar switch regardless of the app default.
+    await i18n.changeLanguage("en");
+  });
+
   afterEach(async () => {
     // Pressing the switch flips i18n.language globally — restore for other suites.
     await i18n.changeLanguage("en");
@@ -45,7 +51,7 @@ describe("LocaleSwitcher", () => {
 
   it("renders the target locale label for the current language", async () => {
     renderWith(<LocaleSwitcher />);
-    // Default i18n locale in test env is "en" → shows "ع" (press to switch to AR).
+    // Pinned to "en" above → shows "ع" (press to switch to AR).
     await waitFor(() => expect(screen.getByText("ع")).toBeTruthy());
   });
 

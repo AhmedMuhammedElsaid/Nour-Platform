@@ -1,4 +1,3 @@
-import { getLocales } from "expo-localization";
 import i18n from "i18next";
 import { I18nManager } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -12,18 +11,13 @@ import en from "@/locales/en.json";
 // Storage key for the user's explicit language choice (set by LocaleSwitcher).
 export const LOCALE_KEY = "nour.locale";
 
-// AR is the product default; fall back to it for any unsupported device locale.
-const deviceLocale = getLocales()[0]?.languageCode ?? DEFAULT_LOCALE;
-const deviceResolved: Locale = isLocale(deviceLocale) ? deviceLocale : DEFAULT_LOCALE;
-
-// The active app locale. It starts from the device locale synchronously (so the
-// very first modules to import it have a sane value) and is upgraded to the
-// user's persisted choice by hydrateLocale() before the app's first render
-// (see app/_layout.tsx). The persisted choice always wins because changing it
-// requires a full reload (Updates.reloadAsync), so it stays stable per session.
+// Arabic is the product default for EVERY fresh install — we deliberately do NOT
+// follow the device locale (an English-phone user still gets the Arabic-first
+// experience until they switch). The user's explicit choice (LocaleSwitcher,
+// persisted to LOCALE_KEY) overrides this in hydrateLocale() before first render.
 // Exported as `let` deliberately — consumers read it at render time, after
 // hydration, via the module's live binding.
-export let initialLocale: Locale = deviceResolved;
+export let initialLocale: Locale = DEFAULT_LOCALE;
 
 // RTL must be set before the first render — expo-router calls this module at
 // app boot. Changing locale after launch requires `Updates.reloadAsync()`

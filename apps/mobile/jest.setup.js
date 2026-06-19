@@ -1,3 +1,18 @@
+// The app now defaults to Arabic (lib/i18n: initialLocale = DEFAULT_LOCALE).
+// Existing tests were written against the previous English default (both UI
+// strings via t() and content via initialLocale). Pin the TEST environment to
+// English so those assertions stay valid; the Arabic-default behaviour itself is
+// a one-line value in lib/i18n. Override `initialLocale` (content locale) and
+// switch the shared i18n instance (UI strings) to "en".
+jest.mock("@/lib/i18n", () => {
+  const actual = jest.requireActual("@/lib/i18n");
+  // Keep __esModule + the real i18n instance as `default` so `import i18n from
+  // "@/lib/i18n"` still resolves to the instance (with changeLanguage); only the
+  // `initialLocale` content-locale value is overridden to "en".
+  return { __esModule: true, ...actual, default: actual.default, initialLocale: "en" };
+});
+require("@/lib/i18n").default.changeLanguage("en");
+
 // react-native-safe-area-context has no native module under Jest — return
 // zero insets so lib/use-dock-spacing.ts and similar hooks work without a
 // <SafeAreaProvider> in the test tree.

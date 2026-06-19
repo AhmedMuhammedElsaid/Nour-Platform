@@ -50,7 +50,10 @@ describe("AdhkarListScreen", () => {
   it("shows an error state on failure", async () => {
     jest.mocked(getJson).mockRejectedValue(new Error("network"));
     renderWith(<AdhkarListScreen />);
-    await waitFor(() => expect(screen.getByText("Something went wrong.")).toBeTruthy());
+    // Locale-agnostic: app default is Arabic, but accept either language's string.
+    await waitFor(() =>
+      expect(screen.getByText(/Something went wrong\.|حدث خطأ ما\./)).toBeTruthy(),
+    );
   });
 });
 
