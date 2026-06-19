@@ -158,15 +158,29 @@ function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
 }
 
+// The arc's dots are placed on the Fajr(0)→Isha(1) track (see buildArcDots), so a
+// body's `fraction` must use the SAME anchoring to land *on* a dot. This returns
+// the Fajr→Isha fraction of an arbitrary instant for an arbitrary day — the moon
+// uses it to start exactly on the Maghrib dot and finish on the Sunrise dot.
+function dayTrackFraction(day: PrayerDay, t: Date): number {
+  const fajr = day.instants.find((i) => i.key === "fajr")?.time ?? null;
+  const isha = day.instants.find((i) => i.key === "isha")?.time ?? null;
+  if (fajr == null || isha == null || isha.getTime() <= fajr.getTime()) return 0.5;
+  return clamp01((t.getTime() - fajr.getTime()) / (isha.getTime() - fajr.getTime()));
+}
+
 // Position of the currently-visible celestial body along the arc, and whether
-// it's the moon. The arc's dots run Fajr (far left) → Isha (far right). The SUN
-// is shown while it is literally up — Shrouq (sunrise) → Maghrib (sunset) — and
-// rides the Fajr→Isha dot track (getDayProgress), so it still lands on the
-// Dhuhr/Asr dots, entering near the Sunrise dot and leaving at the Maghrib dot.
-// The MOON is shown at night (Maghrib → next Shrouq) and rides the arc the other
-// way — entering at the right (fraction 1) near Maghrib, peaking around solar
-// midnight, and setting at the left (fraction 0) at Sunrise. The handoffs land
-// at Maghrib (both bodies at the right) and at Sunrise (both at the left).
+// it's the moon. The arc's dots run Fajr (far left) → Isha (far right).
+//
+// SUN — shown while it is literally up (Shrouq→Maghrib), riding the Fajr→Isha dot
+// track (getDayProgress) so it lands on the Dhuhr/Asr dots and *sets exactly on
+// the Maghrib dot*.
+//
+// MOON — shown at night (Maghrib → next Shrouq). It RISES on the Maghrib dot
+// (where the sun just set — not at the far-right Isha horizon) and glides along
+// the arc toward the opposite side, *setting on the next Sunrise/Shrouq dot* at
+// dawn. So both handoffs are seamless: sun→moon on the Maghrib dot at dusk, and
+// moon→sun on the Sunrise dot at dawn.
 //
 // `fraction` is the left→right arc position (0 = Fajr/left, 1 = Isha/right). The
 // night window straddles the calendar boundary, so this needs the location +
@@ -184,36 +198,32 @@ export function getArcPosition(
   const sunrise = today.instants.find((i) => i.key === "sunrise")?.time ?? null;
   const maghrib = today.instants.find((i) => i.key === "maghrib")?.time ?? null;
 
-  // Daytime: Sunrise ≤ now < Maghrib — the sun is up. The fraction spans the
-  // visible day Sunrise(0)→Maghrib(1) — NOT Fajr→Isha — so the sun sits at the
-  // far-right Maghrib dot exactly as it sets. The night branch then starts the
-  // moon at fraction 1 (same spot), so the moon rises *where the sun disappears*
-  // and travels back to the left, reaching Sunrise(0) at dawn — no jump.
+  // Daytime: Sunrise ≤ now < Maghrib — the sun is up, riding the Fajr→Isha dot
+  // track so it sits on each prayer dot and leaves exactly on the Maghrib dot.
   if (
     sunrise != null &&
     maghrib != null &&
     now.getTime() >= sunrise.getTime() &&
     now.getTime() < maghrib.getTime()
   ) {
-    const p = clamp01(
-      (now.getTime() - sunrise.getTime()) / (maghrib.getTime() - sunrise.getTime()),
-    );
-    return { isNight: false, fraction: p };
+    return { isNight: false, fraction: getDayProgress(today, now) };
   }
 
-  // After Maghrib: night runs until *tomorrow's* Sunrise. The moon descends from
-  // the right (fraction 1) back toward the left (fraction 0), so fraction = 1 − p.
+  // After Maghrib: night runs until *tomorrow's* Sunrise. The moon glides from
+  // the Maghrib dot (where the sun set) to tomorrow's Sunrise dot.
   if (maghrib != null && now.getTime() >= maghrib.getTime()) {
     const tom = computePrayerTimes({
       ...input,
       date: new Date(now.getTime() + DAY_MS),
     });
     const end = tom.instants.find((i) => i.key === "sunrise")?.time ?? sunrise;
-    if (end == null) return { isNight: true, fraction: 1 };
+    const from = dayTrackFraction(today, maghrib);
+    if (end == null) return { isNight: true, fraction: from };
+    const to = dayTrackFraction(tom, end);
     const p = clamp01(
       (now.getTime() - maghrib.getTime()) / (end.getTime() - maghrib.getTime()),
     );
-    return { isNight: true, fraction: 1 - p };
+    return { isNight: true, fraction: from + p * (to - from) };
   }
 
   // Pre-dawn (before Shrouq): still the night that began at *yesterday's* Maghrib.
@@ -223,11 +233,13 @@ export function getArcPosition(
       date: new Date(now.getTime() - DAY_MS),
     });
     const start = yest.instants.find((i) => i.key === "maghrib")?.time ?? maghrib;
-    if (start == null) return { isNight: true, fraction: 0 };
+    const to = dayTrackFraction(today, sunrise);
+    if (start == null) return { isNight: true, fraction: to };
+    const from = dayTrackFraction(yest, start);
     const p = clamp01(
       (now.getTime() - start.getTime()) / (sunrise.getTime() - start.getTime()),
     );
-    return { isNight: true, fraction: 1 - p };
+    return { isNight: true, fraction: from + p * (to - from) };
   }
 
   return { isNight: true, fraction: 0.5 };

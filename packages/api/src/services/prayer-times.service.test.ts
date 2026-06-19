@@ -7,6 +7,7 @@ import {
   getDayProgress,
   getArcPosition,
   type PrayerDay,
+  type PrayerKey,
 } from "./prayer-times.service";
 
 // Cairo, fixed civil date. Egyptian method, standard madhab.
@@ -118,8 +119,8 @@ describe("getArcPosition", () => {
     const sunrise = day.instants.find((i) => i.key === "sunrise")!.time as Date;
     const maghrib = day.instants.find((i) => i.key === "maghrib")!.time as Date;
 
-    // Just after Sunrise — sun visible, sitting at the Sunrise dot (fraction ~0,
-    // since the day track now spans Sunrise(0)→Maghrib(1)).
+    // Just after Sunrise — sun visible, near the Sunrise dot (small but non-zero
+    // fraction since Sunrise sits after Fajr on the Fajr→Isha dot track).
     const dawn = getArcPosition(PARAMS, new Date(sunrise.getTime() + 60_000));
     expect(dawn.isNight).toBe(false);
     expect(dawn.fraction).toBeGreaterThanOrEqual(0);
@@ -132,22 +133,32 @@ describe("getArcPosition", () => {
     expect(dusk.fraction).toBeLessThanOrEqual(1);
   });
 
-  it("shows the moon just after Maghrib, near the right (fraction ~1)", () => {
+  // The day track fraction of an instant (Fajr→Isha), matching buildArcDots.
+  const dotFraction = (key: PrayerKey): number => {
+    const day = cairoDay();
+    const fajr = day.instants.find((i) => i.key === "fajr")!.time as Date;
+    const isha = day.instants.find((i) => i.key === "isha")!.time as Date;
+    const t = day.instants.find((i) => i.key === key)!.time as Date;
+    return (t.getTime() - fajr.getTime()) / (isha.getTime() - fajr.getTime());
+  };
+
+  it("rises the moon ON the Maghrib dot just after Maghrib (not the far-right Isha horizon)", () => {
     const day = cairoDay();
     const maghrib = day.instants.find((i) => i.key === "maghrib")!.time as Date;
     const info = getArcPosition(PARAMS, new Date(maghrib.getTime() + 60_000));
     expect(info.isNight).toBe(true);
-    expect(info.fraction).toBeGreaterThan(0.9);
-    expect(info.fraction).toBeLessThanOrEqual(1);
+    // Sits on the Maghrib dot (~0.85), NOT pinned to the Isha horizon (1.0).
+    expect(info.fraction).toBeCloseTo(dotFraction("maghrib"), 2);
+    expect(info.fraction).toBeLessThan(1);
   });
 
-  it("shows the moon just before Sunrise, near the left (fraction ~0)", () => {
+  it("sets the moon ON the Sunrise dot just before Sunrise (Shrouq)", () => {
     const day = cairoDay();
     const sunrise = day.instants.find((i) => i.key === "sunrise")!.time as Date;
     const info = getArcPosition(PARAMS, new Date(sunrise.getTime() - 60_000));
     expect(info.isNight).toBe(true);
-    expect(info.fraction).toBeGreaterThanOrEqual(0);
-    expect(info.fraction).toBeLessThan(0.1);
+    // Lands on the Sunrise/Shrouq dot, where the sun is about to rise.
+    expect(info.fraction).toBeCloseTo(dotFraction("sunrise"), 2);
   });
 
   it("is night (moon) before Sunrise (pre-dawn) and after Maghrib", () => {
@@ -167,7 +178,7 @@ describe("getArcPosition", () => {
     const maghrib = day.instants.find((i) => i.key === "maghrib")!.time as Date;
     const early = getArcPosition(PARAMS, new Date(maghrib.getTime() + 60 * 60_000)).fraction;
     const late = getArcPosition(PARAMS, new Date(maghrib.getTime() + 4 * 60 * 60_000)).fraction;
-    // Travelling right(1)→left(0), so the fraction decreases over the night.
+    // Travelling Maghrib dot → Sunrise dot, so the fraction decreases over the night.
     expect(late).toBeLessThan(early);
   });
 });
