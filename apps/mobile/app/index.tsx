@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { FlatList, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/ui/button";
@@ -133,34 +133,42 @@ export default function HomeScreen() {
 
   return (
     <View className="flex-1 bg-bg">
-      <FlatList
+      {/* A ScrollView + flex-wrap grid (the same deterministic layout the loading
+          skeleton uses), NOT a numColumns FlatList. FlatList computed its
+          multi-column cell positions once on mount while the header was still
+          growing (the PrayerTimesWidget returns null until usePrayerSettings
+          hydrates from AsyncStorage), so the cards overlapped on first paint and
+          on every remount, only correcting when a filter change forced a full
+          re-layout. flex-wrap lays each row out naturally, so there is nothing to
+          mis-measure. The home list is small, so dropping virtualization is fine. */}
+      <ScrollView
         className="flex-1 px-4"
-        data={visible}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        columnWrapperClassName="gap-3"
-        contentContainerClassName="gap-3"
         contentContainerStyle={{ paddingTop: topPad, paddingBottom: dockSpacing }}
-        ListHeaderComponent={header}
-        ListEmptyComponent={<Text variant="muted">{t("home.empty")}</Text>}
-        renderItem={({ item }) => (
-          <View className="flex-1">
-            <PlaylistCard
-              playlist={item}
-              locale={locale}
-              categories={item.categoryIds
-                .map((id) => categoryById.get(id))
-                .filter((c): c is CategoryChip => c != null)}
-            />
+        showsVerticalScrollIndicator={false}
+      >
+        {header}
+        {visible.length === 0 ? (
+          <Text variant="muted">{t("home.empty")}</Text>
+        ) : (
+          <View className="flex-row flex-wrap gap-3">
+            {visible.map((item) => (
+              <View key={item.id} className="w-[48%]">
+                <PlaylistCard
+                  playlist={item}
+                  locale={locale}
+                  categories={item.categoryIds
+                    .map((id) => categoryById.get(id))
+                    .filter((c): c is CategoryChip => c != null)}
+                />
+              </View>
+            ))}
           </View>
         )}
-        ListFooterComponent={
-          <View>
-            <ContinueListening />
-            <ContinueReading />
-          </View>
-        }
-      />
+        <View className="mt-3">
+          <ContinueListening />
+          <ContinueReading />
+        </View>
+      </ScrollView>
       {/* Opaque scrim filling the status-bar area so content scrolled up the
           screen is hidden behind it instead of bleeding under the transparent
           status bar (the clipped hero subtitle in the report). */}
