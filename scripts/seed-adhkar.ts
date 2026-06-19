@@ -4,11 +4,20 @@ import { disconnectDb, getDb } from "@repo/api/db/client";
 import { AzkarModel } from "@repo/api/db/models/azkar.model";
 import { slugify } from "@repo/api/utils/slug";
 
-import { EVENING_ITEMS, MORNING_ITEMS } from "./data/adhkar-data";
+import {
+  EVENING_ITEMS,
+  MASJID_ITEMS,
+  MORNING_ITEMS,
+  PRAYER_ITEMS,
+  SLEEP_ITEMS,
+  WAKE_ITEMS,
+} from "./data/adhkar-data";
 
-// Canonical morning/evening sets. The seed UPSERTS: re-running re-applies this
-// content, overwriting any manual CMS edits to these two sets (intended for a
-// content seed). Other sets created in the admin are untouched.
+// Canonical adhkar sets. The seed UPSERTS by Arabic slug: re-running re-applies
+// this content, overwriting any manual CMS edits to these sets (intended for a
+// content seed). Other sets created in the admin are untouched. The four "other"
+// sets are localized (ar + en titles); each item carries Arabic (required) plus
+// an English translation where applicable.
 const SETS = [
   {
     kind: "morning" as const,
@@ -21,6 +30,30 @@ const SETS = [
     ar: { title: "أذكار المساء" },
     en: { title: "Evening Adhkar" },
     items: EVENING_ITEMS,
+  },
+  {
+    kind: "other" as const,
+    ar: { title: "أذكار النوم" },
+    en: { title: "Sleep Adhkar" },
+    items: SLEEP_ITEMS,
+  },
+  {
+    kind: "other" as const,
+    ar: { title: "أذكار الإستيقاظ" },
+    en: { title: "Waking Adhkar" },
+    items: WAKE_ITEMS,
+  },
+  {
+    kind: "other" as const,
+    ar: { title: "اذكار المسجد" },
+    en: { title: "Mosque Adhkar" },
+    items: MASJID_ITEMS,
+  },
+  {
+    kind: "other" as const,
+    ar: { title: "أذكار الصلاة" },
+    en: { title: "Prayer Adhkar" },
+    items: PRAYER_ITEMS,
   },
 ];
 

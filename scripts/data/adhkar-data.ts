@@ -332,3 +332,180 @@ export const EVENING_ITEMS: DhikrItem[] = [
     source: { ar: "مسلم" },
   },
 ];
+
+// Reuse the verbatim, vetted Qur'anic strings already in the morning set so the
+// Qur'an text in the collections below is byte-identical (zero transcription
+// risk). Index map: 0 = Ayat al-Kursi, 1 = Al-Ikhlas, 2 = Al-Falaq, 3 = An-Nas.
+function quranFromMorning(index: number): string {
+  const item = MORNING_ITEMS[index];
+  if (item == null) throw new Error(`MORNING_ITEMS[${index}] is missing`);
+  return item.ar;
+}
+
+// أذكار النوم — Sleep adhkar.
+export const SLEEP_ITEMS: DhikrItem[] = [
+  {
+    ar: quranFromMorning(0),
+    repeat: 1,
+    virtue: { ar: "من قرأها إذا أوى إلى فراشه لم يزل عليه من الله حافظ، ولا يقربه شيطان حتى يصبح." },
+    source: { ar: "آية الكرسي - سورة البقرة 255", en: "Ayat al-Kursi — Al-Baqarah 255" },
+  },
+  {
+    ar: quranFromMorning(1),
+    repeat: 3,
+    virtue: { ar: "يقرأ الإخلاص والمعوذتين، ينفث في كفيه ثم يمسح بهما ما استطاع من جسده يبدأ بهما على رأسه ووجهه." },
+    source: { ar: "سورة الإخلاص - البخاري", en: "Al-Ikhlas — Al-Bukhari" },
+  },
+  {
+    ar: quranFromMorning(2),
+    repeat: 3,
+    source: { ar: "سورة الفلق - البخاري", en: "Al-Falaq — Al-Bukhari" },
+  },
+  {
+    ar: quranFromMorning(3),
+    repeat: 3,
+    source: { ar: "سورة الناس - البخاري", en: "An-Nas — Al-Bukhari" },
+  },
+  {
+    ar: "بِاسْمِكَ اللَّهُمَّ أَمُوتُ وَأَحْيَا.",
+    en: "In Your name, O Allah, I die and I live.",
+    repeat: 1,
+    source: { ar: "البخاري", en: "Al-Bukhari" },
+  },
+  {
+    ar: "اللَّهُمَّ قِنِي عَذَابَكَ يَوْمَ تَبْعَثُ عِبَادَكَ.",
+    en: "O Allah, protect me from Your punishment on the Day You resurrect Your servants.",
+    repeat: 3,
+    source: { ar: "أبو داود", en: "Abu Dawud" },
+  },
+  {
+    ar: "سُبْحَانَ اللَّهِ.",
+    en: "Glory be to Allah.",
+    repeat: 33,
+    virtue: { ar: "التسبيح والتحميد والتكبير عند النوم خير من خادم." },
+    source: { ar: "البخاري ومسلم", en: "Al-Bukhari & Muslim" },
+  },
+  {
+    ar: "الْحَمْدُ لِلَّهِ.",
+    en: "All praise is for Allah.",
+    repeat: 33,
+    source: { ar: "البخاري ومسلم", en: "Al-Bukhari & Muslim" },
+  },
+  {
+    ar: "اللَّهُ أَكْبَرُ.",
+    en: "Allah is the Greatest.",
+    repeat: 34,
+    source: { ar: "البخاري ومسلم", en: "Al-Bukhari & Muslim" },
+  },
+  {
+    ar: "اللَّهُمَّ أَسْلَمْتُ نَفْسِي إِلَيْكَ، وَفَوَّضْتُ أَمْرِي إِلَيْكَ، وَوَجَّهْتُ وَجْهِي إِلَيْكَ، وَأَلْجَأْتُ ظَهْرِي إِلَيْكَ، رَغْبَةً وَرَهْبَةً إِلَيْكَ، لَا مَلْجَأَ وَلَا مَنْجَا مِنْكَ إِلَّا إِلَيْكَ، آمَنْتُ بِكِتَابِكَ الَّذِي أَنْزَلْتَ، وَبِنَبِيِّكَ الَّذِي أَرْسَلْتَ.",
+    en: "O Allah, I submit myself to You, entrust my affairs to You, turn my face to You, and lay myself down depending upon You, hoping in You and fearing You. There is no refuge and no escape from You except to You. I believe in Your Book which You revealed and in Your Prophet whom You sent.",
+    repeat: 1,
+    virtue: { ar: "من قالها ثم مات من ليلته مات على الفطرة." },
+    source: { ar: "البخاري ومسلم", en: "Al-Bukhari & Muslim" },
+  },
+];
+
+// أذكار الاستيقاظ — Waking adhkar.
+export const WAKE_ITEMS: DhikrItem[] = [
+  {
+    ar: "الْحَمْدُ لِلَّهِ الَّذِي أَحْيَانَا بَعْدَ مَا أَمَاتَنَا وَإِلَيْهِ النُّشُورُ.",
+    en: "All praise is for Allah who gave us life after causing us to die, and to Him is the resurrection.",
+    repeat: 1,
+    source: { ar: "البخاري ومسلم", en: "Al-Bukhari & Muslim" },
+  },
+  {
+    ar: "لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، سُبْحَانَ اللَّهِ، وَالْحَمْدُ لِلَّهِ، وَلَا إِلَهَ إِلَّا اللَّهُ، وَاللَّهُ أَكْبَرُ، وَلَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ الْعَلِيِّ الْعَظِيمِ، رَبِّ اغْفِرْ لِي.",
+    en: "There is none worthy of worship but Allah alone, with no partner; His is the dominion and His is the praise, and He is able to do all things. Glory is to Allah, praise is to Allah, there is none worthy of worship but Allah, Allah is the Greatest, and there is no might nor power except with Allah, the Most High, the Supreme. My Lord, forgive me.",
+    repeat: 1,
+    virtue: { ar: "من قالها حين يستيقظ من الليل ثم دعا غُفر له، فإن توضأ وصلى قُبلت صلاته." },
+    source: { ar: "البخاري", en: "Al-Bukhari" },
+  },
+];
+
+// أذكار المسجد — Mosque adhkar (entering and leaving).
+export const MASJID_ITEMS: DhikrItem[] = [
+  {
+    ar: "أَعُوذُ بِاللَّهِ الْعَظِيمِ، وَبِوَجْهِهِ الْكَرِيمِ، وَسُلْطَانِهِ الْقَدِيمِ، مِنَ الشَّيْطَانِ الرَّجِيمِ، بِسْمِ اللَّهِ، وَالصَّلَاةُ وَالسَّلَامُ عَلَى رَسُولِ اللَّهِ، اللَّهُمَّ افْتَحْ لِي أَبْوَابَ رَحْمَتِكَ.",
+    en: "When entering: I seek refuge in Allah the Magnificent, in His noble Face, and in His eternal authority, from the accursed devil. In the name of Allah, and prayers and peace be upon the Messenger of Allah. O Allah, open for me the gates of Your mercy.",
+    repeat: 1,
+    virtue: { ar: "يُقال عند دخول المسجد." },
+    source: { ar: "أبو داود ومسلم", en: "Abu Dawud & Muslim" },
+  },
+  {
+    ar: "بِسْمِ اللَّهِ، وَالصَّلَاةُ وَالسَّلَامُ عَلَى رَسُولِ اللَّهِ، اللَّهُمَّ إِنِّي أَسْأَلُكَ مِنْ فَضْلِكَ، اللَّهُمَّ اعْصِمْنِي مِنَ الشَّيْطَانِ الرَّجِيمِ.",
+    en: "When leaving: In the name of Allah, and prayers and peace be upon the Messenger of Allah. O Allah, I ask You of Your bounty. O Allah, protect me from the accursed devil.",
+    repeat: 1,
+    virtue: { ar: "يُقال عند الخروج من المسجد." },
+    source: { ar: "مسلم وابن ماجه", en: "Muslim & Ibn Majah" },
+  },
+];
+
+// أذكار الصلاة — After-prayer adhkar (said following the closing salam).
+export const PRAYER_ITEMS: DhikrItem[] = [
+  {
+    ar: "أَسْتَغْفِرُ اللَّهَ.",
+    en: "I seek the forgiveness of Allah.",
+    repeat: 3,
+    source: { ar: "مسلم", en: "Muslim" },
+  },
+  {
+    ar: "اللَّهُمَّ أَنْتَ السَّلَامُ، وَمِنْكَ السَّلَامُ، تَبَارَكْتَ يَا ذَا الْجَلَالِ وَالْإِكْرَامِ.",
+    en: "O Allah, You are Peace and from You comes peace. Blessed are You, O Owner of majesty and honour.",
+    repeat: 1,
+    source: { ar: "مسلم", en: "Muslim" },
+  },
+  {
+    ar: "لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، اللَّهُمَّ لَا مَانِعَ لِمَا أَعْطَيْتَ، وَلَا مُعْطِيَ لِمَا مَنَعْتَ، وَلَا يَنْفَعُ ذَا الْجَدِّ مِنْكَ الْجَدُّ.",
+    en: "There is none worthy of worship but Allah alone, with no partner. His is the dominion and His is the praise, and He is able to do all things. O Allah, none can withhold what You give, and none can give what You withhold, and no wealth or majesty can benefit anyone against You.",
+    repeat: 1,
+    source: { ar: "البخاري ومسلم", en: "Al-Bukhari & Muslim" },
+  },
+  {
+    ar: "سُبْحَانَ اللَّهِ.",
+    en: "Glory be to Allah.",
+    repeat: 33,
+    source: { ar: "مسلم", en: "Muslim" },
+  },
+  {
+    ar: "الْحَمْدُ لِلَّهِ.",
+    en: "All praise is for Allah.",
+    repeat: 33,
+    source: { ar: "مسلم", en: "Muslim" },
+  },
+  {
+    ar: "اللَّهُ أَكْبَرُ.",
+    en: "Allah is the Greatest.",
+    repeat: 33,
+    source: { ar: "مسلم", en: "Muslim" },
+  },
+  {
+    ar: "لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ.",
+    en: "There is none worthy of worship but Allah alone, with no partner. His is the dominion and His is the praise, and He is able to do all things. (Completing the hundred.)",
+    repeat: 1,
+    virtue: { ar: "من قالها دبر كل صلاة (تمام المئة مع التسبيح) غُفرت خطاياه وإن كانت مثل زبد البحر." },
+    source: { ar: "مسلم", en: "Muslim" },
+  },
+  {
+    ar: quranFromMorning(0),
+    repeat: 1,
+    virtue: { ar: "من قرأها دبر كل صلاة مكتوبة لم يمنعه من دخول الجنة إلا أن يموت." },
+    source: { ar: "آية الكرسي - النسائي", en: "Ayat al-Kursi — An-Nasa'i" },
+  },
+  {
+    ar: quranFromMorning(1),
+    repeat: 1,
+    virtue: { ar: "يقرأ المعوذات (الإخلاص والفلق والناس) دبر كل صلاة." },
+    source: { ar: "سورة الإخلاص - أبو داود والترمذي", en: "Al-Ikhlas — Abu Dawud & at-Tirmidhi" },
+  },
+  {
+    ar: quranFromMorning(2),
+    repeat: 1,
+    source: { ar: "سورة الفلق - أبو داود والترمذي", en: "Al-Falaq — Abu Dawud & at-Tirmidhi" },
+  },
+  {
+    ar: quranFromMorning(3),
+    repeat: 1,
+    source: { ar: "سورة الناس - أبو داود والترمذي", en: "An-Nas — Abu Dawud & at-Tirmidhi" },
+  },
+];
