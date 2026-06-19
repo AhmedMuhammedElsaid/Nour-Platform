@@ -15,6 +15,17 @@ type Props = {
 
 const PRAYER_KEYS: PrayerKey[] = ["fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha"];
 
+// Per-prayer emoji, mirroring the web timetable (apps/web/features/prayer-times/
+// components/prayer-timetable.tsx).
+const ICON: Record<PrayerKey, string> = {
+  fajr: "🌅",
+  sunrise: "☀️",
+  dhuhr: "🌞",
+  asr: "🌇",
+  maghrib: "🌆",
+  isha: "🌙",
+};
+
 export function PrayerTimetable({ day, nextPrayerKey }: Props) {
   const { t } = useTranslation();
   const locale = initialLocale;
@@ -27,13 +38,20 @@ export function PrayerTimetable({ day, nextPrayerKey }: Props) {
         return (
           <View
             key={key}
-            className={`flex-row items-center justify-between rounded-lg px-4 py-3 ${
+            className={`flex-row items-center gap-3 rounded-lg px-4 py-3 ${
               isNext ? "bg-surface border border-primary" : "bg-surface"
             }`}
           >
+            <View
+              className={`h-8 w-8 items-center justify-center rounded-md ${
+                isNext ? "bg-primary" : "bg-surface-2"
+              }`}
+            >
+              <Text>{ICON[key]}</Text>
+            </View>
             <Text
               variant={isNext ? "title" : "body"}
-              className={isNext ? "text-primary" : ""}
+              className={`flex-1 ${isNext ? "text-primary" : ""}`}
             >
               {t(`prayer.${key}`)}
             </Text>

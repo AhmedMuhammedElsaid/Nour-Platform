@@ -1,3 +1,4 @@
+import { useEffect as mockUseEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import type { Playlist } from "@repo/shared-core/schemas/playlist";
@@ -11,9 +12,7 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn() }),
   usePathname: () => "/",
   // Mirror useFocusEffect with a mount-once effect so its interval cleanup runs.
-  useFocusEffect: (cb: () => void | (() => void)) => {
-    require("react").useEffect(cb, []);
-  },
+  useFocusEffect: (cb: () => void | (() => void)) => mockUseEffect(cb, []),
 }));
 
 const playlist = (over: Partial<Playlist> & Pick<Playlist, "id">): Playlist =>

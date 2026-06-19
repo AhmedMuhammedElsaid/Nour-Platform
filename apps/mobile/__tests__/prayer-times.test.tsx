@@ -1,3 +1,4 @@
+import { useEffect as mockUseEffect } from "react";
 import { render, screen, waitFor } from "@testing-library/react-native";
 
 import PrayerTimesScreen from "@/app/prayer-times/index";
@@ -8,9 +9,7 @@ jest.mock("expo-router", () => ({
   usePathname: () => "/prayer-times",
   Stack: { Screen: () => null },
   // Mirror useFocusEffect with a mount-once effect so its interval cleanup runs.
-  useFocusEffect: (cb: () => void | (() => void)) => {
-    require("react").useEffect(cb, []);
-  },
+  useFocusEffect: (cb: () => void | (() => void)) => mockUseEffect(cb, []),
 }));
 
 function renderWith(node: React.ReactElement) {
