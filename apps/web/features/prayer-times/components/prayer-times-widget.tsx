@@ -78,7 +78,9 @@ export function PrayerTimesWidget({ locale }: { locale: "ar" | "en" }) {
   const isNight = arc.isNight;
   const sunFraction = arc.fraction;
 
-  const rowKeys: PrayerKey[] = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
+  // Shrouq (sunrise) is shown for reference; it is not a prayer, so getNextPrayer
+  // never marks it "next" and no adhan is scheduled for it.
+  const rowKeys: PrayerKey[] = ["fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha"];
 
   return (
     <section
