@@ -8,12 +8,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { usePlayer } from "@/lib/player-context";
 
-// Approximate rendered heights (icon/text rows + paddings) from
-// bottom-tab-bar.tsx and mini-player.tsx.
-const TAB_BAR_HEIGHT = 64;
-const MINI_PLAYER_HEIGHT = 72;
-// Extra breathing room below the last item, independent of the dock.
-const BASE_GAP = 16;
+// Rendered heights (icon/text rows + paddings) from bottom-tab-bar.tsx and
+// mini-player.tsx — trimmed to the actual content height (the dock is an opaque
+// overlay, so content only needs to clear it, not float well above it).
+const TAB_BAR_HEIGHT = 52;
+const MINI_PLAYER_HEIGHT = 60;
+// Small breathing room below the last item, independent of the dock.
+const BASE_GAP = 8;
 
 export function useDockSpacing(): number {
   const insets = useSafeAreaInsets();
