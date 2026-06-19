@@ -614,6 +614,66 @@ device) but the home cards were **still** broken, and the battery-opt screen did
   action string + `data` param + native `intent.data` wiring against expo-intent-launcher 56.0.4.
   **Rebuild-gated** (new permission). `versionCode` 4 → 5.
 
+## 2026-06-19 session (on-device follow-ups + Arabic default + new adhkar)
+
+All JS/shared-core/data — ship via the same OTA/seed (no native rebuild beyond the
+still-pending adhan one). Commits on local `main`, NOT pushed.
+
+- **OTA env/cache trap (READ FIRST if `eas update` breaks the app).** `eas update`
+  inlines `EXPO_PUBLIC_*` at bundle time but does NOT auto-load the EAS `preview`
+  environment, AND Metro caches the inlined value. Two failures this session both
+  showed "something went wrong" on every screen (localhost baked in). Fix: created
+  `apps/mobile/.env.local` (gitignored) with `EXPO_PUBLIC_API_BASE_URL=https://nour-platform-web.vercel.app`,
+  and ALWAYS publish with `eas update --branch preview --clear-cache`. Apply on device:
+  open → wait ~20s (bg download) → hard-close → reopen (applies on the NEXT launch).
+  Verify a bundle's baked URL: `npx expo export --platform android --clear` then
+  `grep -ao "vercel.app\|localhost:3000" dist/_expo/static/js/android/*.hbc`.
+- **Home grid card overlap (real fix).** The avatar-overflow fix (`5b09bd3`, wrapper
+  View sizing) was necessary but the cards STILL overlapped on first paint / after
+  re-navigation, fixing only on a filter change — the classic **`numColumns` FlatList
+  re-layout bug** (cell positions computed once while the `ListHeaderComponent` is
+  still growing, because `PrayerTimesWidget` returns null until `usePrayerSettings`
+  hydrates). `app/index.tsx` now uses a **`ScrollView` + `flex-row flex-wrap gap-3`
+  (`w-[48%]`) grid** (same layout the skeleton uses). **Pattern: don't pair numColumns
+  FlatList with a dynamic-height header; use ScrollView+flex-wrap for small home grids.**
+- **App-wide lag fix.** The home `PrayerTimesWidget` AND `app/prayer-times/index.tsx`
+  each ran an unconditional `setInterval(1000)` recomputing `computePrayerTimes`; both
+  screens stay MOUNTED in the expo-router stack after navigation, so the ticks fired on
+  every screen. Both now `useFocusEffect`-gated; the widget's `getUpcomingPrayer` dropped
+  to per-minute (countdown stays live via target time). **Pattern: any interval/expensive
+  recompute in a screen MUST be `useFocusEffect`-gated.** Tests' `expo-router` mocks need a
+  `useFocusEffect` shim (`(cb) => mockUseEffect(cb, [])`, with `import { useEffect as
+  mockUseEffect } from "react"` — NOT `require()`, which the lint rule forbids in `.tsx`).
+- **Dock spacing trimmed** (`use-dock-spacing.ts`): tab 64→52, mini 60, base gap 16→8
+  (dock is an opaque overlay; content only needs to clear it). Smaller end-of-page margin.
+- **Battery-opt one-tap dialog** (`lib/battery-optimization.ts`): prefers the
+  package-targeted `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` dialog (the list screen only
+  shows already-exempted apps, so Nour wasn't findable). Added the
+  `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission to `app.json`; **versionCode 4→5**
+  (rebuild-gated).
+- **Sun-arc moon** now rises ON the Maghrib dot and sets ON the Sunrise/Shrouq dot
+  (shared-core `getArcPosition` — daytime back to `getDayProgress`; night interpolates
+  Maghrib-dot→Sunrise-dot via `dayTrackFraction`). Covers web + mobile. The arc dots sit
+  on the **Fajr(0)→Isha(1)** track, so a body's `fraction` MUST use that anchoring to land
+  on a dot. Regression tests in `packages/api/.../prayer-times.service.test.ts`.
+- **Shrouq (sunrise) in the home prayer row** on BOTH apps (mobile `ROW_KEYS`, web
+  `rowKeys`); informational only — `getUpcomingPrayer`/`COUNTDOWN_ORDER`/`getNextPrayer`
+  exclude it and the azan scheduler skips it (no adhan). Full-screen timetable already had it.
+- **Prayer-timetable emoji badges** mirror the web (`🌅☀️🌞🌇🌆🌙` in a rounded badge).
+- **Arabic = default app language** (`lib/i18n.ts`): `initialLocale` now starts from
+  `DEFAULT_LOCALE` ("ar"), not the device locale (removed the expo-localization lookup);
+  the persisted LocaleSwitcher choice still overrides via `hydrateLocale()`. ⚠️ **`jest.setup.js`
+  now PINS the test env to English** (`jest.mock("@/lib/i18n", () => ({ __esModule:true,
+  ...actual, default: actual.default, initialLocale:"en" }))` + `changeLanguage("en")`) — the
+  `__esModule:true` + explicit `default` are REQUIRED or `import i18n from "@/lib/i18n"` loses
+  its methods (`changeLanguage is not a function`). New screen tests assert UI/content in English.
+- **4 new adhkar collections** (`kind:"other"`): أذكار النوم / الإستيقاظ / المسجد / الصلاة,
+  authored in `scripts/data/adhkar-data.ts` (ar+en+source; Qur'anic items reused verbatim from
+  `MORNING_ITEMS` via `quranFromMorning()`) + wired into `scripts/seed-adhkar.ts` SETS with
+  ar/en titles. ⚠️ **Adhkar are HTTP-served from MongoDB — content only appears after running
+  `pnpm seed:adhkar` against the DB** (isolated upsert by ar-slug; not OTA/app-code). Review the
+  Arabic before the prod seed.
+
 ## Verify before shipping
 
 ```bash
