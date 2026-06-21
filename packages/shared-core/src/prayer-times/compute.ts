@@ -193,10 +193,11 @@ export function getArcPosition(
     madhab: MadhabId;
   },
   now: Date,
-): { isNight: boolean; fraction: number } {
+): { isNight: boolean; onNightBand: boolean; fraction: number } {
   const today = computePrayerTimes({ ...input, date: now });
   const sunrise = today.instants.find((i) => i.key === "sunrise")?.time ?? null;
   const maghrib = today.instants.find((i) => i.key === "maghrib")?.time ?? null;
+  const isha = today.instants.find((i) => i.key === "isha")?.time ?? null;
 
   // Daytime: Sunrise ≤ now < Maghrib — the sun is up, riding the Fajr→Isha dot
   // track so it sits on each prayer dot and leaves exactly on the Maghrib dot.
@@ -206,43 +207,62 @@ export function getArcPosition(
     now.getTime() >= sunrise.getTime() &&
     now.getTime() < maghrib.getTime()
   ) {
-    return { isNight: false, fraction: getDayProgress(today, now) };
+    return { isNight: false, onNightBand: false, fraction: getDayProgress(today, now) };
   }
 
-  // After Maghrib: night runs until *tomorrow's* Sunrise. The moon glides from
-  // the Maghrib dot (where the sun set) to tomorrow's Sunrise dot.
-  if (maghrib != null && now.getTime() >= maghrib.getTime()) {
+  // Dusk leg — Maghrib ≤ now < Isha: the moon rises on the SAME day arc the sun
+  // just left (no axis jump), gliding from the Maghrib dot rightward to the Isha
+  // dot. Only after Isha does it drop to the lower night band.
+  if (
+    maghrib != null &&
+    isha != null &&
+    now.getTime() >= maghrib.getTime() &&
+    now.getTime() < isha.getTime()
+  ) {
+    const from = dayTrackFraction(today, maghrib);
+    const to = dayTrackFraction(today, isha);
+    const p = clamp01(
+      (now.getTime() - maghrib.getTime()) / (isha.getTime() - maghrib.getTime()),
+    );
+    return { isNight: true, onNightBand: false, fraction: from + p * (to - from) };
+  }
+
+  // Night leg — after Isha: the moon sweeps the lower night band from the Isha
+  // dot back toward dawn (*tomorrow's* Sunrise), the return journey on the
+  // second axis.
+  if (isha != null && now.getTime() >= isha.getTime()) {
     const tom = computePrayerTimes({
       ...input,
       date: new Date(now.getTime() + DAY_MS),
     });
     const end = tom.instants.find((i) => i.key === "sunrise")?.time ?? sunrise;
-    const from = dayTrackFraction(today, maghrib);
-    if (end == null) return { isNight: true, fraction: from };
+    const from = dayTrackFraction(today, isha);
+    if (end == null) return { isNight: true, onNightBand: true, fraction: from };
     const to = dayTrackFraction(tom, end);
     const p = clamp01(
-      (now.getTime() - maghrib.getTime()) / (end.getTime() - maghrib.getTime()),
+      (now.getTime() - isha.getTime()) / (end.getTime() - isha.getTime()),
     );
-    return { isNight: true, fraction: from + p * (to - from) };
+    return { isNight: true, onNightBand: true, fraction: from + p * (to - from) };
   }
 
-  // Pre-dawn (before Shrouq): still the night that began at *yesterday's* Maghrib.
+  // Pre-dawn (before Sunrise): still the night band that began at *yesterday's*
+  // Isha; the moon finishes its sweep onto the dawn Sunrise dot.
   if (sunrise != null && now.getTime() < sunrise.getTime()) {
     const yest = computePrayerTimes({
       ...input,
       date: new Date(now.getTime() - DAY_MS),
     });
-    const start = yest.instants.find((i) => i.key === "maghrib")?.time ?? maghrib;
+    const start = yest.instants.find((i) => i.key === "isha")?.time ?? isha;
     const to = dayTrackFraction(today, sunrise);
-    if (start == null) return { isNight: true, fraction: to };
+    if (start == null) return { isNight: true, onNightBand: true, fraction: to };
     const from = dayTrackFraction(yest, start);
     const p = clamp01(
       (now.getTime() - start.getTime()) / (sunrise.getTime() - start.getTime()),
     );
-    return { isNight: true, fraction: from + p * (to - from) };
+    return { isNight: true, onNightBand: true, fraction: from + p * (to - from) };
   }
 
-  return { isNight: true, fraction: 0.5 };
+  return { isNight: true, onNightBand: true, fraction: 0.5 };
 }
 
 // Position of the sun along the day, anchored Fajr(0) → Isha(1), clamped.

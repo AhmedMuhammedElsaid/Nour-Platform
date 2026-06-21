@@ -81,15 +81,26 @@ type SunArcProps = {
   // True before Fajr / at-or-after Isha — render a glowing crescent moon on the
   // night band instead of the sun on the day arc.
   isNight?: boolean;
+  // True only on the night band (Isha→dawn). Between Maghrib and Isha the moon
+  // is up (`isNight`) but still rides the day arc, so the body sits on the same
+  // axis the sun just left — no vertical jump at sunset. Defaults to `isNight`.
+  onNightBand?: boolean;
   // Active theme — selects the light/dark hex palette (SVG can't read NativeWind).
   theme?: ThemeMode;
 };
 
-export function SunArc({ dots, fraction, isNight = false, theme = "dark" }: SunArcProps) {
+export function SunArc({
+  dots,
+  fraction,
+  isNight = false,
+  onNightBand = isNight,
+  theme = "dark",
+}: SunArcProps) {
   const { gold: GOLD, sun: SUN, moon: MOON, muted: MUTED } = PALETTES[theme];
   const point = arcPoint(tForFraction(fraction));
-  // The moon rides the lowered night band; the sun rides the day arc as-is.
-  const body = isNight ? { x: point.x, y: lowerToBand(point.y) } : point;
+  // On the night band the body drops to the lowered track; otherwise (sun, or
+  // the moon's dusk leg) it rides the day arc as-is.
+  const body = onNightBand ? { x: point.x, y: lowerToBand(point.y) } : point;
   // Same quadratic as arcPath() with its control point lowered — yields the band.
   const nightBandPath = `M${ARC.p0.x} ${ARC.p0.y} Q${ARC.p1.x} ${lowerToBand(
     ARC.p1.y,

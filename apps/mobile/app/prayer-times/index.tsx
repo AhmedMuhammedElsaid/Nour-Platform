@@ -181,7 +181,7 @@ export default function PrayerTimesScreen() {
 
         {/* Sun/moon arc */}
         {hydrated && (
-          <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} theme={theme} />
+          <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} onNightBand={arc.onNightBand} theme={theme} />
         )}
 
         {/* Countdown */}

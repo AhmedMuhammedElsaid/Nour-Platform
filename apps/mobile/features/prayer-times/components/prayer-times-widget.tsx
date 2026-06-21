@@ -106,7 +106,7 @@ export function PrayerTimesWidget() {
 
       {/* full-bleed arc */}
       <View className="mt-1">
-        <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} theme={theme} />
+        <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} onNightBand={arc.onNightBand} theme={theme} />
       </View>
 
       {/* next-prayer countdown */}
