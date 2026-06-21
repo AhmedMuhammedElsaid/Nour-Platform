@@ -100,7 +100,18 @@ export function useAzanNotifications(
       });
       return;
     }
-    void scheduleAzanNotifications(location, prefs, prayerNames);
+    // Debounce scheduling: onboarding fires 4 rapid settingsChanged events in
+    // quick succession (location write, explicit emit, adhan write, azkar write),
+    // each producing a new location/prefs object from hydrate(). Without this,
+    // multiple concurrent scheduleAzanNotifications calls race — one run's
+    // cancel step can wipe notifications the concurrent run just scheduled,
+    // leaving no adhan after a fresh install. The cleanup clears the timer on
+    // every re-run, so only the final event in a burst actually schedules.
+    const timer = setTimeout(
+      () => void scheduleAzanNotifications(location, prefs, prayerNames),
+      350,
+    );
+    return () => clearTimeout(timer);
   }, [enabled, location, prefs, prayerNames, hydrated]);
 }
 
