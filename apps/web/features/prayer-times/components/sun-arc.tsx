@@ -13,12 +13,17 @@ export function SunArc({
   sunFraction,
   nextLabel,
   isNight = false,
+  onNightBand = isNight,
 }: {
   dots: ArcDot[];
   sunFraction: number; // 0..1 current-time progress
   nextLabel: string;
   // True before Fajr / after Isha — swap the sun for a glowing moon.
   isNight?: boolean;
+  // True only on the night band (Isha→dawn). Between Maghrib and Isha the moon
+  // is up (`isNight`) but still rides the day arc — same axis the sun just left,
+  // so there's no vertical jump at sunset. Defaults to `isNight`.
+  onNightBand?: boolean;
 }) {
   // `sunFraction` is the day's Fajr→Isha progress for the sun, or the night's
   // Isha→Fajr progress for the moon (computed by the caller). Both ride the same
@@ -28,7 +33,7 @@ export function SunArc({
   const NIGHT_BAND = 0.34;
   const lowerToBand = (y: number) => ARC.p0.y - (ARC.p0.y - y) * NIGHT_BAND;
   const point = arcPoint(tForFraction(sunFraction));
-  const sun = isNight ? { x: point.x, y: lowerToBand(point.y) } : point;
+  const sun = onNightBand ? { x: point.x, y: lowerToBand(point.y) } : point;
   // The night band is the day arc scaled toward the horizon by NIGHT_BAND —
   // lowering the quadratic's control point yields the same lowered curve.
   const nightBandPath = `M${ARC.p0.x} ${ARC.p0.y} Q${ARC.p1.x} ${lowerToBand(

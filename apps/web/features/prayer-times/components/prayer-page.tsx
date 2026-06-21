@@ -63,7 +63,7 @@ export function PrayerPage({ locale }: { locale: "ar" | "en" }) {
       <p className="mt-1 text-sm text-text-2">🕌 {location.label}</p>
 
       <div className="mt-6 overflow-hidden rounded-xl border border-border bg-surface pt-2">
-        <SunArc dots={dots} sunFraction={sunFraction} nextLabel={t("next")} isNight={isNight} />
+        <SunArc dots={dots} sunFraction={sunFraction} nextLabel={t("next")} isNight={isNight} onNightBand={arc.onNightBand} />
         {next ? (
           <div className="pb-6">
             <PrayerCountdown nextKey={next.key} target={next.time} />

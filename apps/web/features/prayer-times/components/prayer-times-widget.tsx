@@ -105,7 +105,7 @@ export function PrayerTimesWidget({ locale }: { locale: "ar" | "en" }) {
 
       {/* full-bleed arc */}
       <div className="mt-1">
-        <SunArc dots={dots} sunFraction={sunFraction} nextLabel={t("next")} isNight={isNight} />
+        <SunArc dots={dots} sunFraction={sunFraction} nextLabel={t("next")} isNight={isNight} onNightBand={arc.onNightBand} />
       </div>
 
       {next ? (
