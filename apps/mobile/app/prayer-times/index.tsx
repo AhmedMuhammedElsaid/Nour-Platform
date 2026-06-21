@@ -29,10 +29,11 @@ import { useDockSpacing } from "@/lib/use-dock-spacing";
 import {
   computePrayerTimes,
   getArcPosition,
-  getUpcomingPrayer,
-  type PrayerDay,
+  getNextPrayer,
+  type NextPrayer,
   type PrayerKey,
 } from "@repo/shared-core/prayer-times/compute";
+import { usePrayerDay } from "@/features/prayer-times/hooks/use-prayer-day";
 import { formatClock, formatCountdown } from "@repo/shared-core/prayer-times/format";
 
 export default function PrayerTimesScreen() {
@@ -69,38 +70,28 @@ export default function PrayerTimesScreen() {
     });
   }, []);
 
-  const day: PrayerDay = useMemo(
-    () =>
-      computePrayerTimes({
-        lat: location.lat,
-        lng: location.lng,
-        date: now,
-        method: prefs.method,
-        madhab: prefs.madhab,
-      }),
-    // Re-compute only when date changes (day boundary) or settings change.
-    [
-      location.lat,
-      location.lng,
-      prefs.method,
-      prefs.madhab,
-      now.toDateString(),
-    ],
-  );
+  // Aladhan-sourced day; falls back to local adhan-js when offline.
+  const day = usePrayerDay(location.lat, location.lng, prefs.method, prefs.madhab, now);
 
-  const upcoming = useMemo(
-    () =>
-      getUpcomingPrayer(
-        {
-          lat: location.lat,
-          lng: location.lng,
-          method: prefs.method,
-          madhab: prefs.madhab,
-        },
-        now,
-      ),
-    [location.lat, location.lng, prefs.method, prefs.madhab, now],
-  );
+  const DAY_MS = 86_400_000;
+  const upcoming = useMemo((): NextPrayer => {
+    const next = getNextPrayer(day, now);
+    if (next) return next;
+    // Past Isha — count down to tomorrow's Fajr (local fallback for display only;
+    // the notification scheduler fetches tomorrow from Aladhan separately).
+    const tom = computePrayerTimes({
+      lat: location.lat,
+      lng: location.lng,
+      date: new Date(now.getTime() + DAY_MS),
+      method: prefs.method,
+      madhab: prefs.madhab,
+    });
+    const fajr = tom.instants.find((i) => i.key === "fajr")?.time;
+    const fallback = new Date(now.getTime() + DAY_MS);
+    const t = fajr ?? fallback;
+    return { key: "fajr", time: t, msUntil: t.getTime() - now.getTime() };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [day, now.toDateString()]);
 
   const prayerNames = useMemo<Record<Exclude<PrayerKey, "sunrise">, string>>(
     () => ({

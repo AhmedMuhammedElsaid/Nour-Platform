@@ -19,9 +19,11 @@ import { useTheme } from "@/lib/theme-context";
 import {
   computePrayerTimes,
   getArcPosition,
-  getUpcomingPrayer,
+  getNextPrayer,
+  type NextPrayer,
   type PrayerKey,
 } from "@repo/shared-core/prayer-times/compute";
+import { usePrayerDay } from "@/features/prayer-times/hooks/use-prayer-day";
 import {
   formatClock,
   formatCountdown,
@@ -68,20 +70,27 @@ export function PrayerTimesWidget() {
     madhab: prefs.madhab,
   };
 
-  // Prayer instants only change at the day boundary; recompute per calendar day.
-  const day = useMemo(
-    () => computePrayerTimes({ ...arcInput, date: now }),
-    // eslint deps intentionally omit arcInput object identity; primitives below.
-    [location.lat, location.lng, prefs.method, prefs.madhab, now.toDateString()],
-  );
-  // getUpcomingPrayer runs computePrayerTimes (today + maybe tomorrow); it only
-  // needs per-minute granularity, so memoize on the minute instead of recomputing
-  // every second. The live countdown below is derived from its target time.
-  const minute = Math.floor(now.getTime() / 60_000);
-  const upcoming = useMemo(
-    () => getUpcomingPrayer(arcInput, new Date(minute * 60_000)),
-    [location.lat, location.lng, prefs.method, prefs.madhab, minute],
-  );
+  // Aladhan-sourced day (cached per month, falls back to local adhan-js).
+  const day = usePrayerDay(location.lat, location.lng, prefs.method, prefs.madhab, now);
+
+  // Derive the upcoming prayer from the Aladhan day so the displayed time and
+  // the notification fire at the same authoritative minute. After Isha we fall
+  // back to local computation for tomorrow's Fajr (display only; the scheduler
+  // fetches tomorrow from Aladhan separately).
+  const DAY_MS = 86_400_000;
+  const upcoming = useMemo((): NextPrayer => {
+    const next = getNextPrayer(day, now);
+    if (next) return next;
+    const tom = computePrayerTimes({
+      ...arcInput,
+      date: new Date(now.getTime() + DAY_MS),
+    });
+    const fajr = tom.instants.find((i) => i.key === "fajr")?.time;
+    const fallback = new Date(now.getTime() + DAY_MS);
+    const t = fajr ?? fallback;
+    return { key: "fajr", time: t, msUntil: t.getTime() - now.getTime() };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [day, now.toDateString(), Math.floor(now.getTime() / 60_000)]);
 
   const arc = getArcPosition(arcInput, now);
   const dots = buildArcDots(day, upcoming.key);

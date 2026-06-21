@@ -5,8 +5,9 @@
 import { useEffect } from "react";
 import * as Notifications from "expo-notifications";
 import type { PrayerLocation, PrayerPreferences } from "@repo/shared-core/schemas/prayer-times";
-import { computePrayerTimes, getNextPrayer } from "@repo/shared-core/prayer-times/compute";
+import { getNextPrayer } from "@repo/shared-core/prayer-times/compute";
 import type { PrayerKey } from "@repo/shared-core/prayer-times/compute";
+import { getPrayerDay } from "@/features/prayer-times/lib/aladhan";
 
 import { AZAN_PIECES, ensureAzanChannel } from "@/lib/notifications";
 
@@ -58,15 +59,17 @@ async function scheduleAzanNotifications(
 
   // Schedule for today + tomorrow (covers the next ~48h so the user always has
   // upcoming notifications even if the app isn't opened daily).
+  // getPrayerDay returns Aladhan's pre-computed times (cached per month) so
+  // notifications fire at the authoritative time, not the adhan-js approximation.
   for (let dayOffset = 0; dayOffset <= 1; dayOffset++) {
     const date = new Date(now.getTime() + dayOffset * DAY_MS);
-    const day = computePrayerTimes({
-      lat: location.lat,
-      lng: location.lng,
+    const day = await getPrayerDay(
+      location.lat,
+      location.lng,
+      prefs.method,
+      prefs.madhab,
       date,
-      method: prefs.method,
-      madhab: prefs.madhab,
-    });
+    );
 
     for (const instant of day.instants) {
       if (instant.key === "sunrise") continue;
