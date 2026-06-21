@@ -8,7 +8,31 @@ import type { PrayerLocation, PrayerPreferences } from "@repo/shared-core/schema
 import { computePrayerTimes, getNextPrayer } from "@repo/shared-core/prayer-times/compute";
 import type { PrayerKey } from "@repo/shared-core/prayer-times/compute";
 
-import { AZAN_CHANNEL_ID, AZAN_SOUND, ensureAzanChannel } from "@/lib/notifications";
+import { AZAN_PIECES, ensureAzanChannel } from "@/lib/notifications";
+
+// Schedule the chained piece-notifications that make up one full adhan at
+// `fireAt`. Piece 0 keeps the bare `nour-azan-{off}-{key}` id (the foreground
+// listener matches only that, and plays the full streamed adhan once); later
+// pieces get a `-p{n}` suffix so they don't double-trigger the foreground audio
+// but still sound their clip closed-app.
+async function scheduleAdhanPieces(baseId: string, title: string, fireAt: Date): Promise<void> {
+  for (const piece of AZAN_PIECES) {
+    const id = piece.offsetSec === 0 ? baseId : `${baseId}-p${piece.offsetSec}`;
+    await Notifications.scheduleNotificationAsync({
+      identifier: id,
+      content: {
+        title,
+        body: "حان وقت الصلاة · It's time for prayer.",
+        sound: piece.sound,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: new Date(fireAt.getTime() + piece.offsetSec * 1000),
+        channelId: piece.channelId,
+      },
+    });
+  }
+}
 
 // Sunrise is a marker, not a prayer — skip notifications for it.
 const NOTIF_TAG_PREFIX = "nour-azan-";
@@ -51,21 +75,7 @@ async function scheduleAzanNotifications(
 
       const key = instant.key as Exclude<PrayerKey, "sunrise">;
       const id = `${NOTIF_TAG_PREFIX}${dayOffset}-${key}`;
-      await Notifications.scheduleNotificationAsync({
-        identifier: id,
-        content: {
-          title: prayerNames[key],
-          body: "حان وقت الصلاة · It's time for prayer.",
-          // iOS uses the per-notification sound; Android takes it from the
-          // channel (set in ensureAzanChannel). Bundled via app.json `sounds`.
-          sound: AZAN_SOUND,
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: instant.time,
-          channelId: AZAN_CHANNEL_ID,
-        },
-      });
+      await scheduleAdhanPieces(id, prayerNames[key], instant.time);
     }
   }
 }
@@ -103,19 +113,7 @@ export function useAzanNotifications(
 export async function scheduleTestAzan(title: string): Promise<Date> {
   await ensureAzanChannel();
   const fireAt = new Date(Date.now() + 60 * 1000);
-  await Notifications.scheduleNotificationAsync({
-    identifier: `${NOTIF_TAG_PREFIX}9-dhuhr`,
-    content: {
-      title,
-      body: "حان وقت الصلاة · It's time for prayer.",
-      sound: AZAN_SOUND,
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DATE,
-      date: fireAt,
-      channelId: AZAN_CHANNEL_ID,
-    },
-  });
+  await scheduleAdhanPieces(`${NOTIF_TAG_PREFIX}9-dhuhr`, title, fireAt);
   return fireAt;
 }
 
