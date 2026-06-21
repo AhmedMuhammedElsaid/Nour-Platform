@@ -13,6 +13,7 @@ import { Text } from "@/components/ui/text";
 import { SunArc } from "@/features/prayer-times/components/sun-arc";
 import { buildArcDots } from "@/features/prayer-times/lib/arc-dots";
 import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-settings";
+import { cityLabel } from "@/features/prayer-times/data/cities";
 import { initialLocale } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme-context";
 import {
@@ -97,7 +98,7 @@ export function PrayerTimesWidget() {
       {/* location + hijri date */}
       <View className="flex-row items-center justify-between px-4 pt-3">
         <Text variant="body" className="text-sm">
-          🕌 {location.label}
+          🕌 {cityLabel(location, initialLocale)}
         </Text>
         <Text variant="muted" className="text-xs text-sun">
           {hijriDate(now, locale)}

@@ -36,6 +36,16 @@ export const CITIES: City[] = [
   { id: "new-york", en: "New York", ar: "نيويورك", country: "US", lat: 40.7128, lng: -74.006 },
 ];
 
+// Resolves the display name for a location in the active locale.
+// Falls back to the stored `label` for non-curated GPS coordinates.
+export function cityLabel(
+  location: { cityId?: string; label: string },
+  locale: "ar" | "en",
+): string {
+  const city = location.cityId ? CITIES.find((c) => c.id === location.cityId) : undefined;
+  return city ? city[locale] : location.label;
+}
+
 // Nearest curated city to an arbitrary coordinate (for labelling geolocation).
 export function nearestCity(lat: number, lng: number): City {
   let best = CITIES[0]!;

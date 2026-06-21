@@ -31,6 +31,9 @@ export const prayerLocationSchema = z.object({
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
   label: z.string().min(1),
+  // Curated city id (from cities.ts) for locale-aware display. Optional so
+  // arbitrary GPS coordinates (not in the curated list) still persist cleanly.
+  cityId: z.string().optional(),
 });
 export type PrayerLocation = z.infer<typeof prayerLocationSchema>;
 
@@ -45,6 +48,7 @@ export const DEFAULT_LOCATION: PrayerLocation = {
   lat: 30.0444,
   lng: 31.2357,
   label: "Cairo",
+  cityId: "cairo",
 };
 
 // Prayers that have an adhan (sunrise is a marker, not a prayer).

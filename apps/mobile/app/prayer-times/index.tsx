@@ -22,6 +22,7 @@ import {
 } from "@/features/prayer-times/hooks/use-azan-notifications";
 import { useAzkarReminderSettings } from "@/features/prayer-times/hooks/use-azkar-reminder-settings";
 import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-settings";
+import { cityLabel } from "@/features/prayer-times/data/cities";
 import { initialLocale } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme-context";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
@@ -174,7 +175,7 @@ export default function PrayerTimesScreen() {
             onPress={() => setShowLocationPicker(true)}
           >
             <Text variant="muted" className="text-primary underline">
-              {location.label} · {t("prayer.changeCity")}
+              {cityLabel(location, initialLocale)} · {t("prayer.changeCity")}
             </Text>
           </Pressable>
         </View>

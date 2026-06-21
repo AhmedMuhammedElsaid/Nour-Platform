@@ -28,7 +28,7 @@ export function LocationPicker({ onSelect, onClose }: Props) {
   });
 
   const pick = (city: City) => {
-    onSelect({ lat: city.lat, lng: city.lng, label: city.en });
+    onSelect({ lat: city.lat, lng: city.lng, label: city.en, cityId: city.id });
     onClose();
   };
 
@@ -47,7 +47,7 @@ export function LocationPicker({ onSelect, onClose }: Props) {
         accuracy: Location.Accuracy.Balanced,
       });
       const city = nearestCity(pos.coords.latitude, pos.coords.longitude);
-      onSelect({ lat: pos.coords.latitude, lng: pos.coords.longitude, label: city.en });
+      onSelect({ lat: pos.coords.latitude, lng: pos.coords.longitude, label: city.en, cityId: city.id });
       onClose();
     } catch {
       setError(t("prayer.locationUnavailable"));

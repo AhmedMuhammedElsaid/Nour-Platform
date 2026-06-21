@@ -51,6 +51,7 @@ export function OnboardingGate({ onComplete }: Props) {
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
             label: city.en,
+            cityId: city.id,
           });
         }
       } catch {
