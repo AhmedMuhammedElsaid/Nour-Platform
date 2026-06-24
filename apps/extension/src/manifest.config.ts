@@ -11,6 +11,13 @@ export default defineManifest({
   description:
     "Reliable desktop azan, prayer times, and Islamic audio from the Nour platform.",
   version: pkg.version,
+  // Packaged brand icons: shown in chrome://extensions, the toolbar, and as the
+  // notification iconUrl (via chrome.runtime.getURL).
+  icons: {
+    "32": "icons/icon-32.png",
+    "192": "icons/icon-192.png",
+    "512": "icons/icon-512.png",
+  },
   permissions: ["alarms", "notifications", "storage", "offscreen"],
   host_permissions: ["https://nour-platform-web.vercel.app/*"],
   background: {
