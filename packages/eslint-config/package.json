@@ -5,7 +5,8 @@
   "type": "module",
   "files": [
     "base.mjs",
-    "next.mjs"
+    "next.mjs",
+    "react.mjs"
   ],
   "devDependencies": {
     "eslint": "^9.15.0",
