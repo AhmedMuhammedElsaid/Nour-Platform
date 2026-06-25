@@ -16,4 +16,11 @@ export default defineConfig({
   define: {
     __API_BASE_URL__: JSON.stringify(API_BASE_URL),
   },
+  build: {
+    rollupOptions: {
+      // The offscreen audio page is loaded by the worker (chrome.offscreen),
+      // not declared in the manifest, so CRXJS needs it as an explicit input.
+      input: { offscreen: "src/offscreen/index.html" },
+    },
+  },
 });
