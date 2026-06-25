@@ -1,6 +1,7 @@
 import type { AdhanPrayerKey } from "@repo/shared-core/schemas/prayer-times";
 
 import { OFFSCREEN_URL, type ToOffscreen } from "../offscreen/protocol";
+import type { PlayerCommand } from "./player-state";
 
 const SITE = __API_BASE_URL__;
 
@@ -14,11 +15,11 @@ export function adhanUrl(key: AdhanPrayerKey): string {
 
 // Only one offscreen document may exist per extension. createDocument throws if
 // one is already open or if two calls race, so guard with hasDocument() and a
-// single in-flight promise. This is the single seam between the scheduler and
+// single in-flight promise. This is the single seam between the background and
 // the playback mechanism; the Firefox player-tab branch hooks in here (§7.4).
 let creating: Promise<void> | null = null;
 
-async function ensureOffscreen(): Promise<void> {
+export async function ensureOffscreen(): Promise<void> {
   if (await chrome.offscreen.hasDocument()) return;
   if (creating) {
     await creating;
@@ -27,7 +28,7 @@ async function ensureOffscreen(): Promise<void> {
   creating = chrome.offscreen.createDocument({
     url: OFFSCREEN_URL,
     reasons: [chrome.offscreen.Reason.AUDIO_PLAYBACK],
-    justification: "Play the adhan (call to prayer) at the scheduled prayer time.",
+    justification: "Play the adhan and Nour audio with no visible window.",
   });
   try {
     await creating;
@@ -41,14 +42,22 @@ async function post(message: ToOffscreen): Promise<void> {
 }
 
 // Plays the adhan with no visible UI. The offscreen document reports back when
-// playback ends so the background worker can close it (see background/index.ts).
+// playback ends so the background worker can close it if no music is playing
+// (see background/index.ts).
 export async function playAdhan(key: AdhanPrayerKey, volume: number): Promise<void> {
   await ensureOffscreen();
-  await post({ target: "offscreen", type: "play", url: adhanUrl(key), volume });
+  await post({ target: "offscreen", type: "adhan-play", url: adhanUrl(key), volume });
 }
 
 export async function stop(): Promise<void> {
   if (await chrome.offscreen.hasDocument()) {
-    await post({ target: "offscreen", type: "stop" });
+    await post({ target: "offscreen", type: "adhan-stop" });
   }
+}
+
+// Routes a player command from the UI to the offscreen document, creating the
+// document on demand for the initial `load`.
+export async function routePlayerCommand(command: PlayerCommand): Promise<void> {
+  await ensureOffscreen();
+  await post({ target: "offscreen", type: "player", command });
 }

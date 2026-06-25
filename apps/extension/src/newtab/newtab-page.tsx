@@ -19,6 +19,14 @@ import { usePrayerTimes } from "../lib/use-prayer-times";
 import { useAdhanSettings } from "../options/use-settings";
 import { get } from "../lib/storage";
 import type { RecentItem } from "../lib/storage";
+import { usePlayer } from "../lib/use-player";
+import {
+  buildPlaylistQueue,
+  fetchPlaylists,
+  recordRecent,
+  type PlaylistSummary,
+} from "../lib/content";
+import { PlayerBar } from "../components/player-bar";
 
 // ── Arabic labels ──────────────────────────────────────────────────────────
 
@@ -144,7 +152,7 @@ function DhikrWidget({ now }: { now: Date }) {
 
 // ── Continue listening ─────────────────────────────────────────────────────
 
-function ContinueListeningShelf() {
+function ContinueListeningShelf({ onPlay }: { onPlay: (slug: string) => void }) {
   const [recent, setRecent] = useState<RecentItem[]>([]);
 
   useEffect(() => {
@@ -161,14 +169,60 @@ function ContinueListeningShelf() {
       <ul className="flex gap-3 overflow-x-auto pb-1">
         {recent.slice(0, 5).map((item) => (
           <li key={item.slug} className="shrink-0">
-            <a
-              href={`${__API_BASE_URL__}/${item.type === "quran" ? "quran" : "playlists"}/${item.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-16 w-36 items-end rounded-md border border-border bg-surface p-2 text-xs text-text hover:bg-surface-2"
+            <button
+              type="button"
+              onClick={() => onPlay(item.slug)}
+              className="flex h-16 w-36 items-end rounded-md border border-border bg-surface p-2 text-start text-xs text-text hover:bg-surface-2"
             >
               <span className="line-clamp-2">{item.title}</span>
-            </a>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function LibrarySection({ onPlay }: { onPlay: (slug: string) => void }) {
+  const [playlists, setPlaylists] = useState<PlaylistSummary[]>([]);
+
+  useEffect(() => {
+    void fetchPlaylists()
+      .then((list) => setPlaylists(list.slice(0, 8)))
+      .catch(() => {/* offline — section stays empty */});
+  }, []);
+
+  if (playlists.length === 0) return null;
+
+  return (
+    <section className="space-y-2">
+      <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-text-2">
+        المكتبة
+      </h2>
+      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {playlists.map((p) => (
+          <li key={p.slug}>
+            <button
+              type="button"
+              onClick={() => onPlay(p.slug)}
+              className="flex w-full items-center gap-3 rounded-md border border-border bg-surface p-2 text-start hover:bg-surface-2"
+            >
+              {p.cover ? (
+                <img
+                  src={p.cover}
+                  alt=""
+                  className="size-12 shrink-0 rounded object-cover"
+                />
+              ) : (
+                <span className="flex size-12 shrink-0 items-center justify-center rounded bg-surface-2 text-lg">
+                  ▶
+                </span>
+              )}
+              <span className="min-w-0">
+                <span className="block truncate text-sm text-text">{p.title}</span>
+                <span className="block text-xs text-text-2">{p.trackCount} مقطع</span>
+              </span>
+            </button>
           </li>
         ))}
       </ul>
@@ -181,6 +235,15 @@ function ContinueListeningShelf() {
 export function NewtabPage() {
   const pt = usePrayerTimes();
   const { adhan } = useAdhanSettings();
+  const { state: playerState, send } = usePlayer();
+
+  // Fetch a playlist's tracks, start playback, and record it as recently played.
+  async function playBySlug(slug: string): Promise<void> {
+    const { queue, recent } = await buildPlaylistQueue(slug);
+    if (queue.length === 0) return;
+    send({ type: "load", queue, index: 0 });
+    await recordRecent(recent);
+  }
 
   if (!pt) {
     return (
@@ -278,9 +341,17 @@ export function NewtabPage() {
         <DhikrWidget now={now} />
 
         {/* ── Continue listening ──────────────────────────────────────── */}
-        <ContinueListeningShelf />
+        <ContinueListeningShelf onPlay={(slug) => void playBySlug(slug)} />
+
+        {/* ── Library ─────────────────────────────────────────────────── */}
+        <LibrarySection onPlay={(slug) => void playBySlug(slug)} />
+
+        {/* Spacer so the fixed player bar never overlaps the last section. */}
+        <div className="h-24" aria-hidden="true" />
 
       </div>
+
+      <PlayerBar state={playerState} send={send} />
     </main>
   );
 }

@@ -1,7 +1,8 @@
+import { routePlayerCommand } from "../lib/audio-router";
 import { warmAdhanCache } from "../lib/cache-manager";
 import { handleNotificationClick } from "../lib/notify";
 import { seedDefaults } from "../lib/storage";
-import { isFromOffscreen } from "../offscreen/protocol";
+import { isAdhanEnded, isPlayerCommandMessage } from "../offscreen/protocol";
 import { ALARM_ADHAN, ALARM_AZKAR, ALARM_TICK, tick } from "./scheduler";
 
 // Keys whose change must re-arm the scheduler (options-page writes). The
@@ -47,10 +48,18 @@ chrome.notifications.onClicked.addListener((id) => {
   void handleNotificationClick(id);
 });
 
-// The offscreen audio document signals when the adhan finishes so we can close
-// it — an idle offscreen document should not linger. (Phase 3 keeps it open.)
 chrome.runtime.onMessage.addListener((message) => {
-  if (isFromOffscreen(message)) {
+  // Player commands from the popup / new-tab — route to the offscreen document,
+  // creating it on demand for the initial load.
+  if (isPlayerCommandMessage(message)) {
+    void routePlayerCommand(message.command);
+    return;
+  }
+
+  // The adhan finished. Close the offscreen document only if it didn't resume
+  // music — an idle document shouldn't linger, but an active player keeps it
+  // alive so audio survives across navigation.
+  if (isAdhanEnded(message) && !message.resumedPlayer) {
     void chrome.offscreen.closeDocument().catch(() => {
       // Already closed / never opened — nothing to tear down.
     });

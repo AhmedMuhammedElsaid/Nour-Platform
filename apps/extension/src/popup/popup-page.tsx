@@ -1,6 +1,8 @@
 import { formatClock, formatCountdown } from "@repo/shared-core/prayer-times/format";
 import type { PrayerKey } from "@repo/shared-core/prayer-times/compute";
 
+import { PlayerBar } from "../components/player-bar";
+import { usePlayer } from "../lib/use-player";
 import { usePrayerTimes } from "../lib/use-prayer-times";
 
 const PRAYER_AR: Record<PrayerKey, string> = {
@@ -14,6 +16,7 @@ const PRAYER_AR: Record<PrayerKey, string> = {
 
 export function PopupPage() {
   const pt = usePrayerTimes();
+  const { state: playerState, send } = usePlayer();
 
   if (!pt) {
     return (
@@ -100,6 +103,12 @@ export function PopupPage() {
             </li>
           ))}
       </ul>
+
+      {/* Spacer + now-playing bar (renders nothing when idle). */}
+      {playerState && playerState.status !== "stopped" ? (
+        <div className="h-24" aria-hidden="true" />
+      ) : null}
+      <PlayerBar state={playerState} send={send} />
     </div>
   );
 }
