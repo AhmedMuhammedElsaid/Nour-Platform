@@ -3,7 +3,7 @@
   "compilerOptions": {
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
-    "types": ["chrome", "vite/client", "node"],
+    "types": ["chrome", "vite/client", "node", "webextension-polyfill"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]

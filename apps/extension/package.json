@@ -4,8 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "vite --mode chrome",
+    "build": "vite build --mode chrome && vite build --mode firefox",
+    "build:chrome": "vite build --mode chrome",
+    "build:firefox": "vite build --mode firefox",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
@@ -16,6 +18,7 @@
     "@repo/shared-core": "workspace:*",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "webextension-polyfill": "^0.11.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -27,6 +30,7 @@
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/webextension-polyfill": "^0.10.0",
     "@vitejs/plugin-react": "^4.3.4",
     "eslint": "^9.15.0",
     "tailwindcss": "^4.0.0",

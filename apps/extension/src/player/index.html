@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Nour Audio Player</title>
+    <style>
+      body { margin: 0; background: #111; color: #888; font-family: sans-serif;
+             display: flex; align-items: center; justify-content: center;
+             min-height: 100vh; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <!-- Firefox audio player tab — opened in the background (active:false) by
+         the extension background page. Receives the same ToOffscreen messages
+         as the Chrome offscreen document and plays adhan + playlist audio. -->
+    <p>Nour Audio Player</p>
+    <script type="module" src="./player.ts"></script>
+  </body>
+</html>

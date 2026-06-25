@@ -1,6 +1,8 @@
 // Cross-context "fire once" claim for scheduled events — port of the web's
-// fired-event-store.ts from localStorage to chrome.storage.local so it survives
+// fired-event-store.ts from localStorage to browser.storage.local so it survives
 // service-worker restarts and works even with no open tab.
+
+import browser from "webextension-polyfill";
 
 // Per-worker-session identity; resets on each SW restart (intentional — a
 // restarted worker should be able to claim a new event for the same prayer).
@@ -14,7 +16,7 @@ type FiredRecord = { iso: string; owner: string };
 
 async function readRecord(storageKey: string): Promise<FiredRecord | null> {
   try {
-    const result = await chrome.storage.local.get(storageKey);
+    const result = await browser.storage.local.get(storageKey);
     const raw = result[storageKey] as Partial<FiredRecord> | undefined;
     if (!raw || typeof raw.iso !== "string" || typeof raw.owner !== "string") return null;
     return { iso: raw.iso, owner: raw.owner };
@@ -33,7 +35,7 @@ export async function claimFiredEvent(
   try {
     const existing = await readRecord(storageKey);
     if (existing?.iso === iso) return false;
-    await chrome.storage.local.set({ [storageKey]: { iso, owner: CONTEXT_ID } });
+    await browser.storage.local.set({ [storageKey]: { iso, owner: CONTEXT_ID } });
   } catch {
     return true;
   }

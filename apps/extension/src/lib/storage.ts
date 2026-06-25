@@ -1,3 +1,4 @@
+import browser from "webextension-polyfill";
 import {
   adhanSettingsSchema,
   azkarReminderSettingsSchema,
@@ -68,7 +69,7 @@ type StorageValue<K extends StorageKey> =
 
 export async function get<K extends StorageKey>(key: K): Promise<StorageValue<K>> {
   try {
-    const result = await chrome.storage.local.get(key);
+    const result = await browser.storage.local.get(key);
     const raw: unknown = result[key];
     if (raw === undefined) return SCHEMA_MAP[key].fallback as StorageValue<K>;
     const parsed = SCHEMA_MAP[key].schema.safeParse(raw);
@@ -82,18 +83,18 @@ export async function set<K extends StorageKey>(
   key: K,
   value: StorageValue<K>,
 ): Promise<void> {
-  await chrome.storage.local.set({ [key]: value });
+  await browser.storage.local.set({ [key]: value });
 }
 
 // Writes defaults only for keys absent from storage — called on first install.
 export async function seedDefaults(): Promise<void> {
   const keys = Object.keys(SCHEMA_MAP) as StorageKey[];
-  const existing = await chrome.storage.local.get(keys);
+  const existing = await browser.storage.local.get(keys);
   const toSet: Record<string, unknown> = {};
   for (const key of keys) {
     if (existing[key] === undefined) toSet[key] = SCHEMA_MAP[key].fallback;
   }
-  if (Object.keys(toSet).length > 0) await chrome.storage.local.set(toSet);
+  if (Object.keys(toSet).length > 0) await browser.storage.local.set(toSet);
 }
 
 // Subscribe to changes for a single key; returns unsubscribe fn.
@@ -102,7 +103,7 @@ export function watch<K extends StorageKey>(
   callback: (value: StorageValue<K>) => void,
 ): () => void {
   const listener = (
-    changes: Record<string, chrome.storage.StorageChange>,
+    changes: Record<string, browser.Storage.StorageChange>,
     areaName: string,
   ) => {
     if (areaName !== "local" || !(key in changes)) return;
@@ -116,6 +117,6 @@ export function watch<K extends StorageKey>(
       (parsed.success ? parsed.data : SCHEMA_MAP[key].fallback) as StorageValue<K>,
     );
   };
-  chrome.storage.onChanged.addListener(listener);
-  return () => chrome.storage.onChanged.removeListener(listener);
+  browser.storage.onChanged.addListener(listener);
+  return () => browser.storage.onChanged.removeListener(listener);
 }

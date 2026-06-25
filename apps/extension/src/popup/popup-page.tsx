@@ -1,3 +1,5 @@
+import browser from "webextension-polyfill";
+
 import { formatClock, formatCountdown } from "@repo/shared-core/prayer-times/format";
 import type { PrayerKey } from "@repo/shared-core/prayer-times/compute";
 
@@ -58,7 +60,7 @@ export function PopupPage() {
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-bold text-primary">نور</span>
         <a
-          href={chrome.runtime.getURL("src/options/index.html")}
+          href={browser.runtime.getURL("src/options/index.html")}
           target="_blank"
           rel="noopener noreferrer"
           className="text-xs text-text-2 hover:text-text"
