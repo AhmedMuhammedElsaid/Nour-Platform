@@ -1,1 +1,67 @@
 @import "tailwindcss";
+
+/* Design tokens — mirrors packages/ui/src/styles/tokens.css.
+   Extension is always dark (the product's default theme). */
+:root {
+  --color-bg: #0f0d0a;
+  --color-surface: #1c1915;
+  --color-surface-2: #252018;
+  --color-border: rgb(200 160 80 / 15%);
+  --color-text: #f0e6cc;
+  --color-text-2: #8a7a62;
+  --color-muted: #5a4a38;
+  --color-primary: #c8a050;
+  --color-primary-fg: #0f0d0a;
+  --color-sun: #e4c57e;
+  --color-focus: #c8a050;
+  --color-danger: #e26a63;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+}
+
+/* Bridge CSS variables → Tailwind v4 utility names. */
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-surface-2: var(--color-surface-2);
+  --color-border: var(--color-border);
+  --color-text: var(--color-text);
+  --color-text-2: var(--color-text-2);
+  --color-muted: var(--color-muted);
+  --color-primary: var(--color-primary);
+  --color-primary-fg: var(--color-primary-fg);
+  --color-sun: var(--color-sun);
+  --color-focus: var(--color-focus);
+  --color-danger: var(--color-danger);
+  --color-ring: var(--color-focus);
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-text);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+}
+
+@layer base {
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-size: 1rem;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+}
