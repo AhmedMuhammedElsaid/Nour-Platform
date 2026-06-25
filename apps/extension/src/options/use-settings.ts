@@ -1,5 +1,3 @@
-"use client";
-
 import { useCallback, useEffect, useState } from "react";
 
 import type { AdhanSettings, AzkarReminderSettings, PrayerLocation, PrayerPreferences } from "@repo/shared-core/schemas/prayer-times";

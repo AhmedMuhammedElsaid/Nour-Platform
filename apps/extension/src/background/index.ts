@@ -1,3 +1,4 @@
+import { warmAdhanCache } from "../lib/cache-manager";
 import { handleNotificationClick } from "../lib/notify";
 import { seedDefaults } from "../lib/storage";
 import { isFromOffscreen } from "../offscreen/protocol";
@@ -16,6 +17,9 @@ const REARM_KEYS = [
 chrome.runtime.onInstalled.addListener((details) => {
   console.warn(`[nour] extension ${details.reason}`);
   void seedDefaults().then(() => tick());
+  // Warm the audio cache immediately — adhan is enabled by default, so this
+  // covers the common case. Non-fatal if the device is offline at install time.
+  void warmAdhanCache();
 });
 
 // Browser launch — the periodic alarm persists across restarts, but tick here
