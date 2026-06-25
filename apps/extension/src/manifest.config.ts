@@ -25,4 +25,14 @@ export default defineManifest({
     type: "module",
   },
   options_page: "src/options/index.html",
+  chrome_url_overrides: {
+    newtab: "src/newtab/index.html",
+  },
+  action: {
+    default_title: "نور",
+    default_popup: "src/popup/index.html",
+    default_icon: {
+      "32": "icons/icon-32.png",
+    },
+  },
 });
