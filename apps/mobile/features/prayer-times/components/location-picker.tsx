@@ -32,7 +32,7 @@ export function LocationPicker({ onSelect, onClose }: Props) {
     onClose();
   };
 
-  const useMyLocation = async () => {
+  const requestMyLocation = async () => {
     setLocating(true);
     setError(null);
     try {
@@ -66,7 +66,7 @@ export function LocationPicker({ onSelect, onClose }: Props) {
         label={locating ? t("prayer.locating") : t("prayer.useMyLocation")}
         variant="outline"
         disabled={locating}
-        onPress={() => void useMyLocation()}
+        onPress={() => void requestMyLocation()}
       />
 
       {error != null && <Text className="text-danger text-sm">{error}</Text>}

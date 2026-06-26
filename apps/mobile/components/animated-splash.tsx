@@ -119,7 +119,7 @@ export function AnimatedSplash({ onFinish }: AnimatedSplashProps) {
       timers.forEach(clearTimeout);
     };
     // Shared values are stable refs; finishOnce is the only reactive dep.
-    // (react-hooks/exhaustive-deps is not configured in this app.)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finishOnce]);
 
   const overlayStyle = useAnimatedStyle(() => ({ opacity: overlay.value }));
