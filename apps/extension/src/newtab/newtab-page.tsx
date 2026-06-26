@@ -28,6 +28,7 @@ import type { SortMode } from "../components/category-filter";
 import { CategoryFilter } from "../components/category-filter";
 import { PlaylistCard } from "../components/playlist-card";
 import { AdhkarLanding } from "../components/adhkar-landing";
+import { PrayerPage } from "../components/prayer-page";
 import { AdhkarReader } from "../components/adhkar-reader";
 import { BookmarksList } from "../components/bookmarks-list";
 import { QuranLanding } from "../components/quran-landing";
@@ -269,15 +270,6 @@ function LibrarySection({
   );
 }
 
-// ── Stub views for routes not yet implemented ────────────────────────────────
-
-function StubView({ label }: { label: string }) {
-  return (
-    <main className="flex min-h-[60vh] items-center justify-center">
-      <p className="text-sm text-text-2">{label} — قريباً</p>
-    </main>
-  );
-}
 
 // ── Main page ────────────────────────────────────────────────────────────────
 
@@ -352,7 +344,13 @@ export function NewtabPage() {
     );
   }
   if (view === "prayer-times") {
-    return <div className="min-h-screen bg-bg text-text" dir="rtl">{headerEl}<StubView label="مواقيت الصلاة" /></div>;
+    return (
+      <div className="min-h-screen bg-bg text-text" dir="rtl">
+        {headerEl}
+        <PrayerPage />
+        <PlayerBar state={playerState} send={send} />
+      </div>
+    );
   }
   if (view === "search") {
     return (
