@@ -159,6 +159,52 @@ export function X({ className }: IconProps) {
   );
 }
 
+export function Search({ className }: IconProps) {
+  return (
+    <Stroke className={className}>
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
+    </Stroke>
+  );
+}
+
+export function Globe({ className }: IconProps) {
+  return (
+    <Stroke className={className}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+      <path d="M2 12h20" />
+    </Stroke>
+  );
+}
+
+export function Home({ className }: IconProps) {
+  return (
+    <Stroke className={className}>
+      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </Stroke>
+  );
+}
+
+export function BookOpen({ className }: IconProps) {
+  return (
+    <Stroke className={className}>
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+    </Stroke>
+  );
+}
+
+export function Clock({ className }: IconProps) {
+  return (
+    <Stroke className={className}>
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </Stroke>
+  );
+}
+
 export function Moon({ className }: IconProps) {
   return (
     <Stroke className={className}>

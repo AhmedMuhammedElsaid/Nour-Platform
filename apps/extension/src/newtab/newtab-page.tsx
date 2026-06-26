@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { PrayerDay, PrayerKey } from "@repo/shared-core/prayer-times/compute";
 import {
   formatClock,
   formatCountdown,
-  gregorianDate,
   hijriDate,
 } from "@repo/shared-core/prayer-times/format";
 
@@ -16,16 +15,23 @@ import type { RecentItem } from "../lib/storage";
 import { usePlayer } from "../lib/use-player";
 import {
   buildPlaylistQueue,
+  fetchCategories,
   fetchPlaylists,
   recordRecent,
+  type CategorySummary,
   type PlaylistSummary,
 } from "../lib/content";
-import { PlayerBar } from "../components/player-bar";
-import { SunArc, type ArcDot } from "../components/sun-arc";
-import { ThemeToggle } from "../components/theme-toggle";
+import { getCoverEmoji, getCoverGradient } from "../lib/cover-art";
 import { useI18n } from "../lib/i18n";
+import { useRoute } from "../lib/router";
+import type { SortMode } from "../components/category-filter";
+import { CategoryFilter } from "../components/category-filter";
+import { PlaylistCard } from "../components/playlist-card";
+import { PlayerBar } from "../components/player-bar";
+import { SiteHeader } from "../components/site-header";
+import { SunArc, type ArcDot } from "../components/sun-arc";
 
-// ── Arabic labels ──────────────────────────────────────────────────────────
+// ── Arabic prayer labels ────────────────────────────────────────────────────
 
 const PRAYER_AR: Record<PrayerKey, string> = {
   fajr: "الفجر",
@@ -36,15 +42,8 @@ const PRAYER_AR: Record<PrayerKey, string> = {
   isha: "العشاء",
 };
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// ── Helpers ─────────────────────────────────────────────────────────────────
 
-type DhikrItem = { ar: string; repeat: number };
-type AzkarResponse = { items: DhikrItem[] };
-
-// ── Sun arc dots ─────────────────────────────────────────────────────────────
-
-// Day fraction (Fajr→Isha) for each instant — used to place arc dots. Mirrors
-// the web `buildArcDots`; adds `isNext`/`label` for the rich SunArc.
 function buildArcDots(day: PrayerDay, nextKey: PrayerKey | null): ArcDot[] {
   const fajr = day.instants.find((i) => i.key === "fajr")?.time ?? null;
   const isha = day.instants.find((i) => i.key === "isha")?.time ?? null;
@@ -64,119 +63,185 @@ function buildArcDots(day: PrayerDay, nextKey: PrayerKey | null): ArcDot[] {
     }));
 }
 
-// ── Daily dhikr ────────────────────────────────────────────────────────────
-
-// Picks a dhikr by day-of-year so it rotates daily without repeating.
 function dayOfYear(d: Date): number {
   const start = new Date(d.getFullYear(), 0, 0);
   return Math.floor((d.getTime() - start.getTime()) / 86_400_000);
 }
 
+function applySort(playlists: PlaylistSummary[], sort: SortMode): PlaylistSummary[] {
+  const copy = [...playlists];
+  if (sort === "az") copy.sort((a, b) => a.title.localeCompare(b.title, "ar"));
+  else if (sort === "tracks") copy.sort((a, b) => b.trackCount - a.trackCount);
+  // "newest" preserves server order (already by `order` field).
+  return copy;
+}
+
+// ── Sub-widgets ──────────────────────────────────────────────────────────────
+
+type DhikrItem = { ar: string; repeat: number };
+type AzkarResponse = { items: DhikrItem[] };
+
 function DhikrWidget({ now }: { now: Date }) {
   const [dhikr, setDhikr] = useState<DhikrItem | null>(null);
-
   useEffect(() => {
     void getJson<AzkarResponse>("/adhkar/أذكار-الصباح", { locale: "ar" })
       .then((res) => {
         const items = res.items;
-        if (items.length > 0) {
-          const idx = dayOfYear(now) % items.length;
-          setDhikr(items[idx] ?? null);
-        }
+        if (items.length > 0) setDhikr(items[dayOfYear(now) % items.length] ?? null);
       })
-      .catch(() => {/* offline — widget stays empty */});
-  // Only fetch on mount — the day's dhikr doesn't change during a session.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   if (!dhikr) return null;
-
   return (
     <section className="space-y-2">
-      <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-text-2">
-        ذكر اليوم
-      </h2>
-      <div className="rounded-md border border-border bg-surface p-4">
+      <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-text-2">ذكر اليوم</h2>
+      <div className="rounded-xl border border-border bg-surface p-4">
         <p className="text-right text-base leading-relaxed text-text">{dhikr.ar}</p>
-        <p className="mt-2 text-xs text-text-2 text-right">× {dhikr.repeat}</p>
+        <p className="mt-2 text-end text-xs text-text-2">× {dhikr.repeat}</p>
       </div>
     </section>
   );
 }
 
-// ── Continue listening ─────────────────────────────────────────────────────
-
 function ContinueListeningShelf({ onPlay }: { onPlay: (slug: string) => void }) {
   const [recent, setRecent] = useState<RecentItem[]>([]);
+  const [positions, setPositions] = useState<Record<string, { t: number }>>({});
 
   useEffect(() => {
     void get("nour.player.recent").then(setRecent);
+    void get("nour.player.positions").then(setPositions);
   }, []);
 
-  if (recent.length === 0) return null;
+  const linkable = recent.filter((r) => r.type === "playlist").slice(0, 6);
+  if (linkable.length === 0) return null;
 
   return (
-    <section className="space-y-2">
-      <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-text-2">
-        استمر في الاستماع
-      </h2>
-      <ul className="flex gap-3 overflow-x-auto pb-1">
-        {recent.slice(0, 5).map((item) => (
-          <li key={item.slug} className="shrink-0">
-            <button
-              type="button"
-              onClick={() => onPlay(item.slug)}
-              className="flex h-16 w-36 items-end rounded-md border border-border bg-surface p-2 text-start text-xs text-text hover:bg-surface-2"
-            >
-              <span className="line-clamp-2">{item.title}</span>
-            </button>
-          </li>
-        ))}
+    <section className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-text-2">
+          استمر في الاستماع
+        </h2>
+        <button
+          type="button"
+          onClick={() => setRecent([])}
+          className="text-xs text-text-2 hover:text-primary"
+        >
+          مسح
+        </button>
+      </div>
+      <ul className="flex gap-3 overflow-x-auto pb-2 pt-1">
+        {linkable.map((item) => {
+          const savedT = item.trackId ? (positions[item.trackId]?.t ?? 0) : 0;
+          const pct =
+            item.durationSecs && item.durationSecs > 0 && savedT > 0
+              ? Math.min(1, savedT / item.durationSecs)
+              : null;
+          const [gradFrom, gradTo] = getCoverGradient(item.trackId ?? item.slug);
+          const emoji = getCoverEmoji(item.trackId ?? item.slug);
+
+          return (
+            <li key={item.slug} className="shrink-0 w-36">
+              <button
+                type="button"
+                onClick={() => onPlay(item.slug)}
+                className="group relative flex w-full flex-col items-center gap-2 rounded-2xl border border-border bg-surface p-3 text-center transition-all duration-200 hover:-translate-y-1 hover:border-primary/30"
+              >
+                {/* Circle cover */}
+                <div className="relative w-[78%] aspect-square rounded-full overflow-hidden">
+                  {item.cover ? (
+                    <img
+                      src={item.cover}
+                      alt=""
+                      loading="lazy"
+                      className="size-full object-cover transition-transform group-hover:scale-105"
+                    />
+                  ) : (
+                    <div
+                      className="size-full flex items-center justify-center"
+                      style={{ background: `linear-gradient(to bottom, ${gradFrom}, ${gradTo})` }}
+                    >
+                      <span className="text-3xl select-none" aria-hidden="true">{emoji}</span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="size-7 rounded-full bg-primary/90 flex items-center justify-center">
+                      <svg className="size-3 text-primary-fg ms-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Resume bar */}
+                {pct !== null && (
+                  <div className="w-[78%] h-0.5 rounded-full bg-primary/20">
+                    <div
+                      className="h-full rounded-full bg-primary"
+                      style={{ width: `${Math.round(pct * 100)}%` }}
+                    />
+                  </div>
+                )}
+
+                <p className="w-full truncate text-xs font-medium text-text group-hover:text-primary">
+                  {item.title}
+                </p>
+                {item.playlistTitle ? (
+                  <p className="w-full truncate text-2xs text-text-2">{item.playlistTitle}</p>
+                ) : null}
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
 }
 
-function LibrarySection({ onPlay }: { onPlay: (slug: string) => void }) {
+function LibrarySection({
+  onPlay,
+  categories,
+}: {
+  onPlay: (slug: string) => void;
+  categories: CategorySummary[];
+}) {
   const [playlists, setPlaylists] = useState<PlaylistSummary[]>([]);
+  const [activeCat, setActiveCat] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortMode>("newest");
 
   useEffect(() => {
     void fetchPlaylists()
-      .then((list) => setPlaylists(list.slice(0, 8)))
-      .catch(() => {/* offline — section stays empty */});
+      .then(setPlaylists)
+      .catch(() => {});
   }, []);
+
+  const visible = useMemo(() => {
+    const filtered = activeCat
+      ? playlists.filter((p) => p.categoryIds.includes(activeCat))
+      : playlists;
+    return applySort(filtered, sort);
+  }, [playlists, activeCat, sort]);
 
   if (playlists.length === 0) return null;
 
   return (
-    <section className="space-y-2">
-      <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-text-2">
-        المكتبة
-      </h2>
-      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {playlists.map((p) => (
+    <section className="space-y-4">
+      <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-text-2">المكتبة</h2>
+      <CategoryFilter
+        categories={categories}
+        activeId={activeCat}
+        sort={sort}
+        onCategory={setActiveCat}
+        onSort={setSort}
+      />
+      <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+        {visible.map((p) => (
           <li key={p.slug}>
-            <button
-              type="button"
-              onClick={() => onPlay(p.slug)}
-              className="flex w-full items-center gap-3 rounded-md border border-border bg-surface p-2 text-start hover:bg-surface-2"
-            >
-              {p.cover ? (
-                <img
-                  src={p.cover}
-                  alt=""
-                  className="size-12 shrink-0 rounded object-cover"
-                />
-              ) : (
-                <span className="flex size-12 shrink-0 items-center justify-center rounded bg-surface-2 text-lg">
-                  ▶
-                </span>
-              )}
-              <span className="min-w-0">
-                <span className="block truncate text-sm text-text">{p.title}</span>
-                <span className="block text-xs text-text-2">{p.trackCount} مقطع</span>
-              </span>
-            </button>
+            <PlaylistCard
+              playlist={p}
+              categories={categories}
+              onPlay={onPlay}
+            />
           </li>
         ))}
       </ul>
@@ -184,15 +249,32 @@ function LibrarySection({ onPlay }: { onPlay: (slug: string) => void }) {
   );
 }
 
-// ── Main page ──────────────────────────────────────────────────────────────
+// ── Stub views for routes not yet implemented ────────────────────────────────
+
+function StubView({ label }: { label: string }) {
+  return (
+    <main className="flex min-h-[60vh] items-center justify-center">
+      <p className="text-sm text-text-2">{label} — قريباً</p>
+    </main>
+  );
+}
+
+// ── Main page ────────────────────────────────────────────────────────────────
 
 export function NewtabPage() {
+  const route = useRoute();
   const pt = usePrayerTimes();
   const { location } = useLocation();
   const { state: playerState, send } = usePlayer();
   const { t } = useI18n();
+  const [categories, setCategories] = useState<CategorySummary[]>([]);
 
-  // Fetch a playlist's tracks, start playback, and record it as recently played.
+  useEffect(() => {
+    void fetchCategories()
+      .then(setCategories)
+      .catch(() => {});
+  }, []);
+
   async function playBySlug(slug: string): Promise<void> {
     const { queue, recent } = await buildPlaylistQueue(slug);
     if (queue.length === 0) return;
@@ -200,113 +282,118 @@ export function NewtabPage() {
     await recordRecent(recent);
   }
 
-  if (!pt) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-bg">
-        <p className="text-sm text-text-2">جاري التحميل…</p>
-      </main>
-    );
+  // Dispatch non-home views (stubs until their phases land).
+  const view = route.view;
+  const headerEl = <SiteHeader activeView={view} />;
+
+  if (view === "quran" || view === "quran-read") {
+    return <div className="min-h-screen bg-bg text-text" dir="rtl">{headerEl}<StubView label="القرآن الكريم" /></div>;
+  }
+  if (view === "adhkar" || view === "adhkar-read") {
+    return <div className="min-h-screen bg-bg text-text" dir="rtl">{headerEl}<StubView label="الأذكار" /></div>;
+  }
+  if (view === "prayer-times") {
+    return <div className="min-h-screen bg-bg text-text" dir="rtl">{headerEl}<StubView label="مواقيت الصلاة" /></div>;
+  }
+  if (view === "search") {
+    return <div className="min-h-screen bg-bg text-text" dir="rtl">{headerEl}<StubView label="البحث" /></div>;
+  }
+  if (view === "bookmarks") {
+    return <div className="min-h-screen bg-bg text-text" dir="rtl">{headerEl}<StubView label="الإشارات المرجعية" /></div>;
+  }
+  if (view === "playlist") {
+    return <div className="min-h-screen bg-bg text-text" dir="rtl">{headerEl}<StubView label={`قائمة: ${route.slug}`} /></div>;
   }
 
-  const { today, upcoming, arcPos, now } = pt;
+  // ── Home view ──────────────────────────────────────────────────────────────
 
-  // Countdown display (h:mm) — mirrors the web widget format.
-  const { h, m } = formatCountdown(upcoming.msUntil);
-  const countdownStr = `${String(h)}:${String(m).padStart(2, "0")}`;
-
-  const arcDots = buildArcDots(today, upcoming.key);
+  const loading = !pt;
   const rowKeys: PrayerKey[] = ["fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha"];
 
   return (
-    <main className="min-h-screen bg-bg px-6 py-8 text-text" dir="rtl">
-      <div className="mx-auto max-w-2xl space-y-8">
+    <div className="min-h-screen bg-bg text-text" dir="rtl">
+      {headerEl}
 
-        {/* ── Header ──────────────────────────────────────────────────── */}
-        <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-primary">{t("common.appName")}</h1>
-          <div className="flex items-center gap-3">
-            <div className="text-end text-sm text-text-2">
-              <p>{gregorianDate(now, "ar")}</p>
-              <p className="text-xs">{hijriDate(now, "ar")}</p>
-            </div>
-            <ThemeToggle label={t} />
+      <main className="mx-auto max-w-5xl space-y-10 px-4 py-8">
+        {/* ── Prayer widget ────────────────────────────────────────────── */}
+        {loading ? (
+          <div className="flex h-48 items-center justify-center">
+            <p className="text-sm text-text-2">{t("common.loading")}</p>
           </div>
-        </header>
+        ) : (() => {
+          const { today, upcoming, arcPos, now } = pt;
+          const { h, m } = formatCountdown(upcoming.msUntil);
+          const countdownStr = `${String(h)}:${String(m).padStart(2, "0")}`;
+          const arcDots = buildArcDots(today, upcoming.key);
 
-        {/* ── Prayer widget (mirrors the web home card) ──────────────── */}
-        <section
-          aria-label="مواقيت الصلاة"
-          className="overflow-hidden rounded-xl border border-border bg-surface"
-        >
-          {/* header: location + Hijri date */}
-          <div className="px-6 pt-5">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-sm text-text">
-                🕌 {location?.label ?? "موقعك"}
-              </span>
-              <span className="text-xs text-sun">{hijriDate(now, "ar")}</span>
-            </div>
-          </div>
-
-          {/* full-bleed arc */}
-          <div className="mt-1">
-            <SunArc
-              dots={arcDots}
-              sunFraction={arcPos.fraction}
-              nextLabel={PRAYER_AR[upcoming.key]}
-              isNight={arcPos.isNight}
-              onNightBand={arcPos.onNightBand}
-            />
-          </div>
-
-          {/* countdown */}
-          <div className="mb-3 flex items-baseline justify-center gap-2.5">
-            <span className="text-xs uppercase tracking-widest text-text-2">القادمة</span>
-            <span className="font-display text-xl font-semibold text-text sm:text-2xl">
-              {PRAYER_AR[upcoming.key]}
-            </span>
-            <span className="font-display text-lg font-semibold text-sun">
-              {countdownStr}
-            </span>
-          </div>
-
-          {/* times row */}
-          <div className="flex gap-1.5 border-t border-border px-6 py-4">
-            {rowKeys.map((key) => {
-              const inst = today.instants.find((i) => i.key === key)!;
-              const isNext = upcoming.key === key;
-              return (
-                <div
-                  key={key}
-                  className={`flex-1 rounded-md px-0.5 py-1 text-center ${isNext ? "bg-primary/10" : ""}`}
-                >
-                  <div className={`text-2xs uppercase tracking-[0.05em] ${isNext ? "text-primary" : "text-text-2"}`}>
-                    {PRAYER_AR[key]}
-                  </div>
-                  <div className={`mt-1 text-sm tabular-nums ${isNext ? "font-semibold text-sun" : "text-text"}`}>
-                    {formatClock(inst.time, "ar")}
-                  </div>
+          return (
+            <section
+              aria-label="مواقيت الصلاة"
+              className="overflow-hidden rounded-2xl border border-border bg-surface"
+            >
+              <div className="px-6 pt-5">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-sm text-text">
+                    🕌 {location?.label ?? "موقعك"}
+                  </span>
+                  <span className="text-xs text-sun">{hijriDate(now, "ar")}</span>
                 </div>
-              );
-            })}
-          </div>
-        </section>
+              </div>
+              <div className="mt-1">
+                <SunArc
+                  dots={arcDots}
+                  sunFraction={arcPos.fraction}
+                  nextLabel={PRAYER_AR[upcoming.key]}
+                  isNight={arcPos.isNight}
+                  onNightBand={arcPos.onNightBand}
+                />
+              </div>
+              <div className="mb-3 flex items-baseline justify-center gap-2.5">
+                <span className="text-xs uppercase tracking-widest text-text-2">القادمة</span>
+                <span className="font-display text-xl font-semibold text-text">
+                  {PRAYER_AR[upcoming.key]}
+                </span>
+                <span className="font-display text-lg font-semibold text-sun">{countdownStr}</span>
+              </div>
+              <div className="flex gap-1.5 border-t border-border px-6 py-4">
+                {rowKeys.map((key) => {
+                  const inst = today.instants.find((i) => i.key === key)!;
+                  const isNext = upcoming.key === key;
+                  return (
+                    <div
+                      key={key}
+                      className={`flex-1 rounded-md px-0.5 py-1 text-center ${isNext ? "bg-primary/10" : ""}`}
+                    >
+                      <div className={`text-2xs uppercase tracking-[0.05em] ${isNext ? "text-primary" : "text-text-2"}`}>
+                        {PRAYER_AR[key]}
+                      </div>
+                      <div className={`mt-1 text-sm tabular-nums ${isNext ? "font-semibold text-sun" : "text-text"}`}>
+                        {formatClock(inst.time, "ar")}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })()}
 
-        {/* ── Daily dhikr ─────────────────────────────────────────────── */}
-        <DhikrWidget now={now} />
+        {/* ── Daily dhikr ──────────────────────────────────────────────── */}
+        {pt ? <DhikrWidget now={pt.now} /> : null}
 
-        {/* ── Continue listening ──────────────────────────────────────── */}
+        {/* ── Continue listening ────────────────────────────────────────── */}
         <ContinueListeningShelf onPlay={(slug) => void playBySlug(slug)} />
 
-        {/* ── Library ─────────────────────────────────────────────────── */}
-        <LibrarySection onPlay={(slug) => void playBySlug(slug)} />
+        {/* ── Library ──────────────────────────────────────────────────── */}
+        <LibrarySection
+          onPlay={(slug) => void playBySlug(slug)}
+          categories={categories}
+        />
 
-        {/* Spacer so the fixed player bar never overlaps the last section. */}
-        <div className="h-24" aria-hidden="true" />
-
-      </div>
+        <div className="h-28" aria-hidden="true" />
+      </main>
 
       <PlayerBar state={playerState} send={send} />
-    </main>
+    </div>
   );
 }
