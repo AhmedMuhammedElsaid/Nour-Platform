@@ -14,8 +14,35 @@ import {
 } from "@repo/shared-core/schemas/prayer-times";
 import { z } from "zod";
 
-export type RecentItem = { slug: string; title: string; type: "playlist" | "quran" };
+// Continue-listening entry. `slug`/`title`/`type` are the original (playlist-level)
+// fields; the optional fields enrich a per-track recent (web parity) so the shelf
+// can show a cover, the playlist name, and a resume bar (savedPos / durationSecs).
+export type RecentItem = {
+  slug: string;
+  title: string;
+  type: "playlist" | "quran";
+  trackId?: string;
+  cover?: string;
+  playlistTitle?: string;
+  durationSecs?: number;
+};
 export type PlayerPositions = Record<string, { t: number }>;
+
+// Persisted player preferences (mirrors web `nour.player.prefs`): survive across
+// sessions and re-hydrate the offscreen engine on startup.
+export type PlayerPrefs = {
+  shuffle: boolean;
+  repeat: "off" | "all" | "one";
+  playbackRate: number;
+  volume: number;
+};
+
+export const DEFAULT_PLAYER_PREFS: PlayerPrefs = {
+  shuffle: false,
+  repeat: "off",
+  playbackRate: 1,
+  volume: 1,
+};
 
 // ZodType<T, ZodTypeDef, unknown>: the Input param must be `unknown` (not T) to
 // accept ZodDefault/ZodObject schemas whose _input fields are optional-unioned.
@@ -28,6 +55,7 @@ const SCHEMA_MAP: {
   "nour.azkar.reminder": SchemaEntry<AzkarReminderSettings>;
   "nour.player.recent": SchemaEntry<RecentItem[]>;
   "nour.player.positions": SchemaEntry<PlayerPositions>;
+  "nour.player.prefs": SchemaEntry<PlayerPrefs>;
 } = {
   "nour.prayer.location": {
     schema: prayerLocationSchema,
@@ -51,6 +79,10 @@ const SCHEMA_MAP: {
         slug: z.string(),
         title: z.string(),
         type: z.enum(["playlist", "quran"]),
+        trackId: z.string().optional(),
+        cover: z.string().optional(),
+        playlistTitle: z.string().optional(),
+        durationSecs: z.number().optional(),
       }),
     ).max(20),
     fallback: [],
@@ -58,6 +90,15 @@ const SCHEMA_MAP: {
   "nour.player.positions": {
     schema: z.record(z.object({ t: z.number() })),
     fallback: {},
+  },
+  "nour.player.prefs": {
+    schema: z.object({
+      shuffle: z.boolean(),
+      repeat: z.enum(["off", "all", "one"]),
+      playbackRate: z.number().positive(),
+      volume: z.number().min(0).max(1),
+    }),
+    fallback: DEFAULT_PLAYER_PREFS,
   },
 };
 

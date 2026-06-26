@@ -51,6 +51,40 @@ let pendingSeekSec: number | null = null;
 let lastPersistAt = 0;
 let resumeAfterAdhan = false;
 
+// Engine-owned live values (not part of the structural core) — broadcast to the
+// UI and (rate/volume) persisted to nour.player.prefs.
+let playbackRate = 1;
+let volume = 1;
+let sleepTimerEndsAt: number | null = null;
+let sleepAtTrackEnd = false;
+let sleepTimeoutId: ReturnType<typeof setTimeout> | null = null;
+let sleepFadeId: ReturnType<typeof setInterval> | null = null;
+let isBuffering = false;
+let errorMessage: string | null = null;
+
+// Restore persisted prefs on startup so the first queue load honours the user's
+// shuffle/repeat and the audio element starts at the saved rate/volume.
+async function hydratePrefs(): Promise<void> {
+  const prefs = await get("nour.player.prefs");
+  playbackRate = prefs.playbackRate;
+  volume = prefs.volume;
+  playerAudio.playbackRate = playbackRate;
+  playerAudio.volume = volume;
+  core = { ...core, shuffle: prefs.shuffle, repeat: prefs.repeat };
+  broadcast();
+}
+
+async function persistPrefs(): Promise<void> {
+  await set("nour.player.prefs", {
+    shuffle: core.shuffle,
+    repeat: core.repeat,
+    playbackRate,
+    volume,
+  });
+}
+
+void hydratePrefs();
+
 // ── Message handling ────────────────────────────────────────────────────────
 
 browser.runtime.onMessage.addListener((message: unknown) => {
@@ -111,17 +145,52 @@ function finishAdhan(): void {
 // ── Player command application ──────────────────────────────────────────────
 
 async function applyCommand(command: PlayerCommand): Promise<void> {
-  if (command.type === "seek") {
-    if (Number.isFinite(playerAudio.duration)) {
-      playerAudio.currentTime = command.positionSec;
-      await persistPosition();
+  // Engine-only commands — no structural change; act on the audio element directly.
+  switch (command.type) {
+    case "seek": {
+      if (Number.isFinite(playerAudio.duration)) {
+        playerAudio.currentTime = command.positionSec;
+        await persistPosition();
+      }
+      broadcast();
+      return;
     }
-    broadcast();
-    return;
+    case "setRate": {
+      playbackRate = command.rate > 0 ? command.rate : 1;
+      playerAudio.playbackRate = playbackRate;
+      await persistPrefs();
+      broadcast();
+      return;
+    }
+    case "setVolume": {
+      volume = Math.min(1, Math.max(0, command.volume));
+      playerAudio.volume = volume;
+      await persistPrefs();
+      broadcast();
+      return;
+    }
+    case "setSleepTimer": {
+      applySleepTimer(command.option);
+      broadcast();
+      return;
+    }
+    case "retry": {
+      retryCurrent();
+      return;
+    }
   }
 
   const prev = core;
   core = reducePlayer(core, command);
+
+  // `prev` at the first track restarts it (the reducer keeps the same index).
+  if (command.type === "prev" && prev.index === core.index && Number.isFinite(playerAudio.duration)) {
+    playerAudio.currentTime = 0;
+  }
+  if (command.type === "toggleShuffle" || command.type === "cycleRepeat") {
+    await persistPrefs();
+  }
+
   await syncAudio(prev, core);
   broadcast();
 }
@@ -143,8 +212,14 @@ async function syncAudio(prev: PlayerCore, next: PlayerCore): Promise<void> {
   if (trackChanged) {
     if (prevItem) await persistPosition(prevItem.id);
     playerAudio.src = nextItem.url;
+    // volume persists across src changes; playbackRate can reset on a new source,
+    // so re-apply both after swapping the src.
+    playerAudio.volume = volume;
+    playerAudio.playbackRate = playbackRate;
+    errorMessage = null;
     pendingSeekSec = await loadSavedPosition(nextItem.id);
     setMediaSession(nextItem, next.status === "playing" ? "playing" : "paused");
+    await recordTrackRecent(nextItem);
   }
 
   if (next.status === "playing") {
@@ -157,6 +232,8 @@ async function syncAudio(prev: PlayerCore, next: PlayerCore): Promise<void> {
 }
 
 playerAudio.addEventListener("loadedmetadata", () => {
+  // Some browsers reset playbackRate when a new source loads — re-assert it.
+  playerAudio.playbackRate = playbackRate;
   if (pendingSeekSec != null && pendingSeekSec > 0 && pendingSeekSec < playerAudio.duration) {
     playerAudio.currentTime = pendingSeekSec;
   }
@@ -165,8 +242,128 @@ playerAudio.addEventListener("loadedmetadata", () => {
 });
 
 playerAudio.addEventListener("ended", () => {
+  // Priority: end-of-track sleep timer → repeat-one replay → advance.
+  if (sleepAtTrackEnd) {
+    clearSleep();
+    const prev = core;
+    core = { ...core, status: "stopped" };
+    void syncAudio(prev, core);
+    broadcast();
+    return;
+  }
+  if (core.repeat === "one" && currentItem(core)) {
+    playerAudio.currentTime = 0;
+    void playerAudio.play().catch(() => {});
+    return;
+  }
   void applyCommand({ type: "next" });
 });
+
+// ── Buffering / error state ─────────────────────────────────────────────────
+
+playerAudio.addEventListener("waiting", () => {
+  isBuffering = true;
+  broadcast();
+});
+playerAudio.addEventListener("playing", () => {
+  isBuffering = false;
+  errorMessage = null;
+  broadcast();
+});
+playerAudio.addEventListener("canplay", () => {
+  isBuffering = false;
+  broadcast();
+});
+playerAudio.addEventListener("error", () => {
+  isBuffering = false;
+  errorMessage = "تعذّر تشغيل هذا المقطع.";
+  broadcast();
+});
+
+function retryCurrent(): void {
+  const item = currentItem(core);
+  if (!item) return;
+  errorMessage = null;
+  isBuffering = true;
+  playerAudio.src = item.url;
+  playerAudio.volume = volume;
+  playerAudio.playbackRate = playbackRate;
+  playerAudio.load();
+  void playerAudio.play().catch(() => {});
+  broadcast();
+}
+
+// ── Sleep timer ─────────────────────────────────────────────────────────────
+
+function clearSleep(): void {
+  if (sleepTimeoutId != null) {
+    clearTimeout(sleepTimeoutId);
+    sleepTimeoutId = null;
+  }
+  if (sleepFadeId != null) {
+    clearInterval(sleepFadeId);
+    sleepFadeId = null;
+  }
+  sleepTimerEndsAt = null;
+  sleepAtTrackEnd = false;
+}
+
+function applySleepTimer(option: number | "end-of-track" | null): void {
+  clearSleep();
+  if (option === null) return;
+  if (option === "end-of-track") {
+    sleepAtTrackEnd = true;
+    return;
+  }
+  const ms = option * 60_000;
+  sleepTimerEndsAt = Date.now() + ms;
+  sleepTimeoutId = setTimeout(fadeOutAndPause, ms);
+}
+
+// 3s linear fade to silence, pause, then restore the user's volume so the next
+// manual play isn't muted.
+function fadeOutAndPause(): void {
+  if (sleepFadeId != null) clearInterval(sleepFadeId);
+  const startVol = playerAudio.volume;
+  const steps = 30;
+  let i = 0;
+  sleepFadeId = setInterval(() => {
+    i++;
+    playerAudio.volume = Math.max(0, startVol * (1 - i / steps));
+    if (i >= steps) {
+      if (sleepFadeId != null) clearInterval(sleepFadeId);
+      sleepFadeId = null;
+      playerAudio.pause();
+      playerAudio.volume = volume;
+      if (core.status === "playing") core = { ...core, status: "paused" };
+      setPlaybackState("paused");
+      clearSleep();
+      broadcast();
+    }
+  }, 100);
+}
+
+// ── Per-track recents (continue-listening source) ───────────────────────────
+
+// Writes an MRU per-track recent (deduped by playlist slug, ≤20) so the
+// continue-listening shelf can show a cover + resume bar. Guarded on `slug`:
+// queue items without one (current code path) are skipped until later phases
+// populate it.
+async function recordTrackRecent(item: QueueItem): Promise<void> {
+  if (!item.slug) return;
+  const entry = {
+    slug: item.slug,
+    title: item.artist ?? item.title,
+    type: "playlist" as const,
+    trackId: item.id,
+    cover: item.artwork,
+    playlistTitle: item.artist,
+    durationSecs: item.durationSecs,
+  };
+  const list = await get("nour.player.recent");
+  const next = [entry, ...list.filter((r) => r.slug !== entry.slug)].slice(0, 20);
+  await set("nour.player.recent", next);
+}
 
 playerAudio.addEventListener("timeupdate", () => {
   const now = Date.now();
@@ -232,6 +429,12 @@ function broadcast(): void {
     ...core,
     positionSec: Number.isFinite(playerAudio.currentTime) ? playerAudio.currentTime : 0,
     durationSec: Number.isFinite(playerAudio.duration) ? playerAudio.duration : 0,
+    playbackRate,
+    volume,
+    sleepTimerEndsAt,
+    sleepAtTrackEnd,
+    isBuffering,
+    errorMessage,
   };
   void browser.storage.session.set({ [PLAYER_LIVE_KEY]: state }).catch(() => {});
   const now = Date.now();
