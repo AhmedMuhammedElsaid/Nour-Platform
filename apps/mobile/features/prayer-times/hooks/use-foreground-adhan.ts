@@ -6,6 +6,7 @@
 // rather than clobbering its queue.
 
 import { useEffect, useRef } from "react";
+import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from "expo-audio";
 import type { AdhanPrayerKey } from "@repo/shared-core/schemas/prayer-times";
@@ -52,6 +53,11 @@ export function useForegroundAdhan(): void {
   const duckedRef = useRef(false);
 
   useEffect(() => {
+    // Android adhan (foreground AND closed-app) is handled natively by the
+    // nour-adhan foreground service (it requests audio focus, which ducks the
+    // music queue), so this expo-audio path is iOS-only to avoid double playback.
+    if (Platform.OS !== "ios") return;
+
     // Play even when the ringer is on silent (an azan is expected to sound).
     void setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
 

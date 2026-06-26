@@ -1,85 +1,121 @@
-// Schedules local azan notifications with expo-notifications. Called whenever
-// prayer settings change (reschedules the next 5 prayers on every change).
+// Schedules azan for the next ~48h whenever prayer/adhan settings change.
 // Device-local only — no server/auth.
+//
+// Android: delegates to the native `nour-adhan` module — ONE exact alarm per prayer
+// that starts a foreground service playing the FULL adhan. This replaced the old
+// 22-chained-notification scheme that exhausted Android's per-app allow-while-idle
+// alarm quota (so Fajr silently never fired). See lib/adhan-native + modules/nour-adhan.
+//
+// iOS: a single expo-notification per prayer with a ≤30s bundled clip (Apple's
+// closed-app local-notification sound ceiling). Same path is the fallback if the
+// native module is somehow absent on Android (e.g. Expo Go / stale build).
 
 import { useEffect } from "react";
+import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
-import type { PrayerLocation, PrayerPreferences } from "@repo/shared-core/schemas/prayer-times";
+import type {
+  AdhanPrayerKey,
+  PrayerLocation,
+  PrayerPreferences,
+} from "@repo/shared-core/schemas/prayer-times";
 import { getNextPrayer } from "@repo/shared-core/prayer-times/compute";
-import type { PrayerKey } from "@repo/shared-core/prayer-times/compute";
 import { getPrayerDay } from "@/features/prayer-times/lib/aladhan";
+import { IOS_AZAN_SOUND, AZAN_PREFIX } from "@/lib/notifications";
+import * as AdhanNative from "@/lib/adhan-native";
 
-import { AZAN_PIECES, ensureAzanChannel } from "@/lib/notifications";
+type PrayerNames = Record<AdhanPrayerKey, string>;
+type PerPrayer = Record<AdhanPrayerKey, boolean>;
 
-// Schedule the chained piece-notifications that make up one full adhan at
-// `fireAt`. Piece 0 keeps the bare `nour-azan-{off}-{key}` id (the foreground
-// listener matches only that, and plays the full streamed adhan once); later
-// pieces get a `-p{n}` suffix so they don't double-trigger the foreground audio
-// but still sound their clip closed-app.
-async function scheduleAdhanPieces(baseId: string, title: string, fireAt: Date): Promise<void> {
-  for (const piece of AZAN_PIECES) {
-    const id = piece.offsetSec === 0 ? baseId : `${baseId}-p${piece.offsetSec}`;
-    await Notifications.scheduleNotificationAsync({
-      identifier: id,
-      content: {
-        title,
-        body: "حان وقت الصلاة · It's time for prayer.",
-        sound: piece.sound,
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: new Date(fireAt.getTime() + piece.offsetSec * 1000),
-        channelId: piece.channelId,
-      },
-    });
+type AdhanInstant = {
+  id: string;
+  key: AdhanPrayerKey;
+  fireAtMillis: number;
+  fajr: boolean;
+};
+
+// Build the next ~48h of adhan instants (today + tomorrow), dropping sunrise, past
+// times, and per-prayer-disabled prayers. getPrayerDay returns Aladhan's
+// authoritative times (cached per month) with an offline local-compute fallback.
+// Exported for unit testing the filtering logic.
+export async function buildAdhanInstants(
+  location: PrayerLocation,
+  prefs: PrayerPreferences,
+  perPrayer: PerPrayer,
+): Promise<AdhanInstant[]> {
+  const now = Date.now();
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const out: AdhanInstant[] = [];
+
+  for (let dayOffset = 0; dayOffset <= 1; dayOffset++) {
+    const date = new Date(now + dayOffset * DAY_MS);
+    const day = await getPrayerDay(location.lat, location.lng, prefs.method, prefs.madhab, date);
+
+    for (const instant of day.instants) {
+      if (instant.key === "sunrise" || instant.time == null) continue;
+      const fireAtMillis = instant.time.getTime();
+      if (fireAtMillis <= now) continue; // skip past times
+      const key = instant.key as AdhanPrayerKey;
+      if (!perPrayer[key]) continue; // honour per-prayer toggles
+      out.push({ id: `${AZAN_PREFIX}${dayOffset}-${key}`, key, fireAtMillis, fajr: key === "fajr" });
+    }
   }
+  return out;
 }
 
-// Sunrise is a marker, not a prayer — skip notifications for it.
-const NOTIF_TAG_PREFIX = "nour-azan-";
+// Whether to drive the native Android foreground-service adhan (vs the iOS
+// notification fallback). Not a React hook — just a capability check.
+function nativeAdhanActive(): boolean {
+  return Platform.OS === "android" && AdhanNative.isNativeAdhanAvailable();
+}
+
+async function cancelIosAzan(): Promise<void> {
+  const all = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.all(
+    all
+      .filter((n) => n.identifier.startsWith(AZAN_PREFIX))
+      .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
+  );
+}
+
+async function cancelAllAzan(): Promise<void> {
+  if (nativeAdhanActive()) {
+    await AdhanNative.cancelAll();
+    return;
+  }
+  await cancelIosAzan();
+}
 
 async function scheduleAzanNotifications(
   location: PrayerLocation,
   prefs: PrayerPreferences,
-  prayerNames: Record<Exclude<PrayerKey, "sunrise">, string>,
+  prayerNames: PrayerNames,
+  perPrayer: PerPrayer,
+  volume: number,
 ): Promise<void> {
-  // The Android channel must exist before any azan notification is posted.
-  await ensureAzanChannel();
+  const instants = await buildAdhanInstants(location, prefs, perPrayer);
 
-  // Cancel all previously scheduled azan notifications.
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  for (const notif of scheduled) {
-    if (notif.identifier.startsWith(NOTIF_TAG_PREFIX)) {
-      await Notifications.cancelScheduledNotificationAsync(notif.identifier);
-    }
+  if (nativeAdhanActive()) {
+    await AdhanNative.scheduleAll(
+      instants.map((i) => ({ key: i.key, fireAtMillis: i.fireAtMillis, fajr: i.fajr, volume })),
+    );
+    return;
   }
 
-  const now = new Date();
-  const DAY_MS = 24 * 60 * 60 * 1000;
-
-  // Schedule for today + tomorrow (covers the next ~48h so the user always has
-  // upcoming notifications even if the app isn't opened daily).
-  // getPrayerDay returns Aladhan's pre-computed times (cached per month) so
-  // notifications fire at the authoritative time, not the adhan-js approximation.
-  for (let dayOffset = 0; dayOffset <= 1; dayOffset++) {
-    const date = new Date(now.getTime() + dayOffset * DAY_MS);
-    const day = await getPrayerDay(
-      location.lat,
-      location.lng,
-      prefs.method,
-      prefs.madhab,
-      date,
-    );
-
-    for (const instant of day.instants) {
-      if (instant.key === "sunrise") continue;
-      if (instant.time == null) continue;
-      if (instant.time.getTime() <= now.getTime()) continue; // skip past times
-
-      const key = instant.key as Exclude<PrayerKey, "sunrise">;
-      const id = `${NOTIF_TAG_PREFIX}${dayOffset}-${key}`;
-      await scheduleAdhanPieces(id, prayerNames[key], instant.time);
-    }
+  // iOS (and Android fallback): one notification per prayer, single ≤30s clip.
+  await cancelIosAzan();
+  for (const instant of instants) {
+    await Notifications.scheduleNotificationAsync({
+      identifier: instant.id,
+      content: {
+        title: prayerNames[instant.key],
+        body: "حان وقت الصلاة · It's time for prayer.",
+        sound: IOS_AZAN_SOUND,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: new Date(instant.fireAtMillis),
+      },
+    });
   }
 }
 
@@ -87,47 +123,42 @@ export function useAzanNotifications(
   enabled: boolean,
   location: PrayerLocation,
   prefs: PrayerPreferences,
-  prayerNames: Record<Exclude<PrayerKey, "sunrise">, string>,
+  prayerNames: PrayerNames,
+  perPrayer: PerPrayer,
+  volume: number,
   hydrated: boolean,
 ): void {
   useEffect(() => {
     if (!hydrated) return;
     if (!enabled) {
-      // Cancel all azan notifications.
-      void Notifications.getAllScheduledNotificationsAsync().then((all) => {
-        return Promise.all(
-          all
-            .filter((n) => n.identifier.startsWith(NOTIF_TAG_PREFIX))
-            .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
-        );
-      });
+      void cancelAllAzan();
       return;
     }
-    // Debounce scheduling: onboarding fires 4 rapid settingsChanged events in
-    // quick succession (location write, explicit emit, adhan write, azkar write),
-    // each producing a new location/prefs object from hydrate(). Without this,
-    // multiple concurrent scheduleAzanNotifications calls race — one run's
-    // cancel step can wipe notifications the concurrent run just scheduled,
-    // leaving no adhan after a fresh install. The cleanup clears the timer on
-    // every re-run, so only the final event in a burst actually schedules.
+    // Debounce scheduling: onboarding fires several rapid settingsChanged events
+    // (location/adhan/azkar writes), each producing new location/prefs/perPrayer
+    // objects. The cleanup clears the timer on every re-run, so only the final
+    // event in a burst actually schedules.
     const timer = setTimeout(
-      () => void scheduleAzanNotifications(location, prefs, prayerNames),
+      () => void scheduleAzanNotifications(location, prefs, prayerNames, perPrayer, volume),
       350,
     );
     return () => clearTimeout(timer);
-  }, [enabled, location, prefs, prayerNames, hydrated]);
+  }, [enabled, location, prefs, prayerNames, perPrayer, volume, hydrated]);
 }
 
-// Dev/verify helper: schedule a single azan notification ~60s out so the user
-// can lock the phone and confirm the adhan fires on time. It goes through the
-// exact same DATE-trigger + channel + bundled-sound path as the real schedule,
-// so it proves the exact-alarm fix end-to-end without waiting for a real prayer.
-// Uses a high dayOffset (9) so the identifier never collides with a real
-// scheduled prayer; the `dhuhr` key makes the foreground adhan play too.
+// Dev/verify helper: fire one adhan ~60s out via the exact same path as the real
+// schedule, so the user can lock the phone and confirm it sounds on time.
 export async function scheduleTestAzan(title: string): Promise<Date> {
-  await ensureAzanChannel();
   const fireAt = new Date(Date.now() + 60 * 1000);
-  await scheduleAdhanPieces(`${NOTIF_TAG_PREFIX}9-dhuhr`, title, fireAt);
+  if (nativeAdhanActive()) {
+    await AdhanNative.playTest(60 * 1000);
+    return fireAt;
+  }
+  await Notifications.scheduleNotificationAsync({
+    identifier: `${AZAN_PREFIX}9-dhuhr`,
+    content: { title, body: "حان وقت الصلاة · It's time for prayer.", sound: IOS_AZAN_SOUND },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: fireAt },
+  });
   return fireAt;
 }
 
@@ -139,6 +170,5 @@ export async function requestNotificationPermission(): Promise<boolean> {
   return status === "granted";
 }
 
-// Keep the getNextPrayer re-export here so screens can use it without a
-// separate import.
+// Keep the getNextPrayer re-export here so screens can use it without a separate import.
 export { getNextPrayer };

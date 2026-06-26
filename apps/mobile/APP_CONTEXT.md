@@ -674,6 +674,151 @@ still-pending adhan one). Commits on local `main`, NOT pushed.
   `pnpm seed:adhkar` against the DB** (isolated upsert by ar-slug; not OTA/app-code). Review the
   Arabic before the prod seed.
 
+## 2026-06-21 session (moon arc / adhan pieces / city i18n / Aladhan API)
+
+7 commits unpushed to origin (`e01d337`→`f322421`). Mix of JS-only (OTA) and rebuild-gated.
+
+### Moon two-axis fix — shared-core `compute.ts` + both sun-arc components (`e01d337`, `a92eb8b`)
+`getArcPosition` returns `{ isNight, onNightBand, fraction }`. Night split into 3 legs:
+- **Dusk (Maghrib→Isha):** moon on the DAY arc (`onNightBand:false`), fraction interpolates
+  between the Maghrib dot and the Isha dot — seamless handoff where the sun set.
+- **Night (Isha→tomorrow Sunrise):** moon drops to the lower night band (`onNightBand:true`).
+- **Pre-dawn (yesterday Isha→Sunrise):** same night band, finishing on the Sunrise dot.
+`SunArc` now lowers to the band on `onNightBand` (new prop, default = `isNight`). Both the
+home widget and the prayer-times screen pass `onNightBand={arc.onNightBand}`. Tests in
+`packages/shared-core/src/prayer-times/compute.test.ts`. **JS-only → OTA-able.**
+
+### Full adhan via 22 chained notifications (`b4c2f08`) — **REBUILD-GATED**
+Samsung/OEM battery managers truncate notification sounds to ~7s. Fix: split the full
+127s adhan (`apps/web/public/audio/adhan.mp3`) into 22 × 6s WAV parts
+(`assets/audio/adhan_part_{1..22}.wav`, ffmpeg `-ar 22050 -ac 1 -c:a pcm_s16le`), each on
+its OWN Android channel (`azan_part_1..22` — channel sound is fixed at creation).
+`scheduleAzanNotifications` fires 22 DATE notifications 6s apart per prayer. Part 1 keeps
+the bare `nour-azan-{off}-{key}` id (foreground hook matches it → plays full streamed mp3);
+parts 2–22 get a `-p{offsetSec}` suffix so they don't re-trigger foreground audio. Part 1
+channel `HIGH` importance (heads-up), parts 2–22 `DEFAULT` (sound only, no banner).
+⚠️ 22×5×2 = 220 scheduled notifications — watch for Samsung alarm-limit quotas on device.
+`app.json` `expo-notifications.sounds` lists all 22 wavs. **Rebuild-gated** (new bundled
+wavs + new Android channels — channels can't hot-swap via OTA).
+
+### Web Arabic default (`cb78f97`) — web-only (Vercel redeploy)
+`apps/web/i18n/routing.ts`: `localeDetection: false` — root `/` always redirects to `/ar`
+regardless of the browser's `Accept-Language` header, mirroring mobile's Arabic-first default.
+
+### City name localization — `prayerLocationSchema` + `cityLabel` (`0ff8176`) — JS-only / OTA
+- `packages/shared-core/src/schemas/prayer-times.ts`: added `cityId: z.string().optional()` to
+  `prayerLocationSchema`; `DEFAULT_LOCATION` gains `cityId: "cairo"`.
+- `apps/mobile/features/prayer-times/data/cities.ts`: new `cityLabel(location, locale)` resolver
+  — looks up `cityId` in `CITIES` → returns `city[locale]`, falls back to `location.label` for
+  non-curated GPS coordinates.
+- 3 setter sites now store `cityId: city.id`: `onboarding-gate.tsx:50`, `location-picker.tsx:31`
+  (manual pick), `location-picker.tsx:50` (GPS detect).
+- 2 render sites use `cityLabel(location, initialLocale)`: `prayer-times-widget.tsx:101`,
+  `app/prayer-times/index.tsx:178`.
+- Test: `__tests__/city-label.test.ts` (4 cases: ar/en/missing-id/unknown-id).
+
+### Azan scheduling debounce — first-install race fix (`001c3eb`) — JS-only / OTA
+Root cause: onboarding fires 4 rapid `settingsChanged` events (location write, explicit emit,
+adhan write, azkar write). Each creates a new `location`/`prefs` object from `hydrate()`,
+triggering `useAzanNotifications` effect multiple times. Concurrent `scheduleAzanNotifications`
+calls race — one call's cancel-then-schedule loop wipes what the other just scheduled → no adhan
+after first install. Fixed by a 350ms `setTimeout` debounce in `useAzanNotifications`: React's
+cleanup clears the timer on every re-run so only the final event in a burst schedules.
+
+### Aladhan API integration — accurate prayer times (`f322421`) — JS-only / OTA
+`adhan-js` local computation can land ±1 min from official Egyptian Ministry times due to
+floating-point. Fix: fetch from `api.aladhan.com/v1/calendar/{year}/{month}` (one request
+per month), cache in AsyncStorage keyed `nour.prayer.calendar.{lat.2dp}-{lng.2dp}-{method}-{madhab}-{year}-{month}`.
+
+New files:
+- `features/prayer-times/lib/aladhan.ts`: `METHOD_MAP` (Egyptian→5, MWL→3, Karachi→1,
+  UmmAlQura→4, Dubai→16, NorthAmerica→2, Kuwait→9, Qatar→10, Singapore→11, Turkey→13,
+  Tehran→7), `SCHOOL_MAP` (standard→0, hanafi→1), `fetchMonth`, `loadCached`/`persistMonth`,
+  `getPrayerDay(lat, lng, method, madhab, date) → PrayerDay`.
+- `features/prayer-times/hooks/use-prayer-day.ts`: `usePrayerDay(lat, lng, method, madhab, date)`
+  — returns instant local result, upgrades to Aladhan when cache/network resolves.
+
+Updated consumers:
+- `use-azan-notifications.ts`: `scheduleAzanNotifications` now `await getPrayerDay(...)` for
+  both today and tomorrow → notifications fire at the authoritative minute.
+- `prayer-times-widget.tsx`: `day = usePrayerDay(...)`, `upcoming` derived via
+  `getNextPrayer(day, now)` with local-computation fallback for after-Isha → tomorrow's Fajr.
+- `app/prayer-times/index.tsx`: same pattern.
+
+Offline fallback: `getPrayerDay` catches all network/parse errors and returns
+`computePrayerTimes(...)` so the app works without internet. 8s `AbortController` timeout.
+Cache TTL is implicit: year+month in the cache key means January data is never served in February.
+First open each month: one network request; all subsequent opens: AsyncStorage hit (<1ms).
+
+### Build status as of 2026-06-21
+- **7 commits unpushed** (`e01d337` → `f322421`). Push first, then:
+- **OTA** (`eas update --branch preview --clear-cache`): moon fix, city localization, azan
+  debounce fix, Aladhan API integration, web Arabic default (via Vercel on push).
+- **Rebuild-gated** (`eas build --profile preview --platform android`, awaiting EAS Free
+  quota reset **2026-07-01**): 22 adhan WAV parts, 22 Android channels, exact-alarm permissions,
+  battery-optimization permission, EAS Update config, `versionCode 5`.
+- Mobile test suite: **18 suites / 60 tests** green.
+
+## Closed-app adhan REWRITE — native foreground service (2026-06-26)
+
+**Root cause of "adhan sometimes/never fires (esp. Fajr)" — confirmed live on the Samsung
+A72 via `adb`:** the 22-chained-notification full-adhan design (`b4c2f08`) scheduled **22
+`setExactAndAllowWhileIdle` notifications per prayer × ~9 instants ≈ 200 wakeup alarms**.
+Android meters allow-while-idle wakeups per app (the `requester=+Xm` line in `dumpsys alarm`);
+with ~200 alarms the OS defers them — the 04:24 Fajr alarm was **still pending undelivered at
+midday**. Ruled out: missing assets (APK was freshly rebuilt via a new Expo org), the
+frozen-channel trap (reinstall recreated all 22 `azan_part_*` channels correctly,
+`mSoundMissingReason=0`), exact-alarm permission (granted: `exactAllowReason=policy_permission`),
+and battery-whitelisting (adb whitelist + bucket-exempt did NOT clear the quota — it's driven
+by alarm *count*). Notification *sounds* also can't carry a full closed-app adhan (Samsung ~7s
+truncation — the very reason for the 22-part split). adb lives at
+`C:\Users\Ahmed Elsaid\adb-tools\platform-tools\adb.exe` (Wireless debugging).
+
+**Fix shipped this session (Android full, iOS best-effort):** ONE exact alarm per prayer
+(~10 total, not ~200) that starts a NATIVE foreground service playing the FULL adhan — runs
+entirely in native at fire time (no JS/React), reliable in Doze, works for all users without
+hand-whitelisting.
+
+- **NEW local Expo module (the repo's FIRST) `modules/nour-adhan/`** — Kotlin, Android-only.
+  `expo-module.config.json` registers `com.nour.adhan.NourAdhanModule` (verify discovery with
+  `npx expo-modules-autolinking search -p android`). **build.gradle MUST mirror
+  expo-intent-launcher: plugins `com.android.library` + `expo-module-gradle-plugin` ONLY** —
+  the expo plugin applies Kotlin and androidx.core is transitive; adding an explicit kotlin
+  plugin or pinned `androidx.core` dep causes plugin/version conflicts. Pieces:
+  - `AdhanScheduler.kt` — `AlarmManager.setExactAndAllowWhileIdle` per prayer; persists the
+    schedule to SharedPreferences (base req code 7100, test 7099, MAX_ALARMS 64) so it can
+    re-arm after reboot; falls back to inexact only if exact-alarm perm is missing.
+  - `AdhanAlarmReceiver.kt` → `startForegroundService` (the alarm grants a ~10s temp
+    allowlist, so FGS-start-from-background is permitted).
+  - `AdhanPlayerService.kt` — FGS type `mediaPlayback`; `MediaPlayer` on `USAGE_ALARM`
+    (sounds on silent/DND), requests audio focus (ducks the RNTP queue), ongoing **Stop**
+    notification, `stopSelf` on completion. Fajr uses `adhan_fajr`.
+  - `BootReceiver.kt` — re-arms persisted alarms on `BOOT_COMPLETED`.
+  - Full `adhan.mp3` + `adhan_fajr.mp3` bundled in
+    `modules/nour-adhan/android/src/main/res/raw/` (copied from `apps/web/public/audio`;
+    res/raw names MUST be lowercase_underscore). Module manifest declares the service +
+    receivers + `FOREGROUND_SERVICE`/`FOREGROUND_SERVICE_MEDIA_PLAYBACK`/`RECEIVE_BOOT_COMPLETED`.
+- **JS:** `lib/adhan-native.ts` (`requireOptionalNativeModule("NourAdhan")`, no-op on iOS).
+  `use-azan-notifications.ts` rewired — `buildAdhanInstants` (exported for tests; reuses
+  `getPrayerDay`, drops sunrise/past/**per-prayer-disabled** — also fixes the old bug where
+  `perPrayer` was ignored) → Android `AdhanNative.scheduleAll`; iOS = one expo-notification per
+  prayer with the ≤30s `adhan_notify.wav` (Apple's ceiling). `scheduleTestAzan` → `playTest(60s)`
+  on Android. `useAzanNotifications` now takes `perPrayer`+`volume` (`azan-scheduler.tsx`
+  updated). `lib/notifications.ts` reduced to the foreground handler + `IOS_AZAN_SOUND`/
+  `AZAN_PREFIX` (removed `AZAN_PIECES`/`ensureAzanChannel`/22 channels). `use-foreground-adhan.ts`
+  is now **iOS-only** (`Platform.OS!=="ios"` early-return; Android FG adhan is the native
+  service via audio focus). `app.json`: `sounds` → just `adhan_notify.wav`, **versionCode 5→6**.
+  Deleted the 22 `assets/audio/adhan_part_*.wav`. Added `apps/mobile/.easignore`
+  (excludes web audio / admin / docs from EAS uploads).
+- ⚠ **Gotcha:** a non-hook helper must NOT be named `use*` — `react-hooks/rules-of-hooks`
+  fired on a plain `useNativeAdhan()` helper (renamed `nativeAdhanActive`).
+- **Local gates GREEN:** typecheck, lint, jest **19 suites / 63 tests** (new
+  `__tests__/azan-scheduler.test.ts`), `expo export --platform android`, autolinking discovery.
+- **REMAINING (device-only, needs one EAS build on the new org):** Kotlin compile + on-device:
+  clean install → **"Test adhan (1 min)"** locked → full adhan plays; `dumpsys alarm | grep -c
+  nour` ≈10 not ~200; force Doze (`adb shell dumpsys deviceidle force-idle`) and confirm a
+  near-term prayer fires full-length; reboot re-arm; RNTP music ducks/resumes.
+
 ## Verify before shipping
 
 ```bash

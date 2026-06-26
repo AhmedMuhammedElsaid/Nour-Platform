@@ -63,6 +63,8 @@ export function AzanScheduler() {
     location,
     prefs,
     prayerNames,
+    adhan.perPrayer,
+    adhan.volume,
     hydrated && adhanHydrated,
   );
 
