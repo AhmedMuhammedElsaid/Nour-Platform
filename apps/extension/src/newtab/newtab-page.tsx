@@ -29,6 +29,9 @@ import { CategoryFilter } from "../components/category-filter";
 import { PlaylistCard } from "../components/playlist-card";
 import { AdhkarLanding } from "../components/adhkar-landing";
 import { AdhkarReader } from "../components/adhkar-reader";
+import { BookmarksList } from "../components/bookmarks-list";
+import { QuranLanding } from "../components/quran-landing";
+import { QuranReader } from "../components/quran-reader";
 import { PlayerBar } from "../components/player-bar";
 import { PlaylistDetail } from "../components/playlist-detail";
 import { SearchView } from "../components/search-view";
@@ -303,8 +306,32 @@ export function NewtabPage() {
   const view = route.view;
   const headerEl = <SiteHeader activeView={view} />;
 
-  if (view === "quran" || view === "quran-read") {
-    return <div className="min-h-screen bg-bg text-text" dir="rtl">{headerEl}<StubView label="القرآن الكريم" /></div>;
+  if (view === "quran") {
+    return (
+      <div className="min-h-screen bg-bg text-text" dir="rtl">
+        {headerEl}
+        <QuranLanding />
+        <PlayerBar state={playerState} send={send} />
+      </div>
+    );
+  }
+  if (view === "quran-read") {
+    return (
+      <div className="min-h-screen bg-bg text-text" dir="rtl">
+        {headerEl}
+        <QuranReader surah={route.surah} state={playerState} send={send} />
+        <PlayerBar state={playerState} send={send} />
+      </div>
+    );
+  }
+  if (view === "bookmarks") {
+    return (
+      <div className="min-h-screen bg-bg text-text" dir="rtl">
+        {headerEl}
+        <BookmarksList />
+        <PlayerBar state={playerState} send={send} />
+      </div>
+    );
   }
   if (view === "adhkar") {
     return (
@@ -335,9 +362,6 @@ export function NewtabPage() {
         <PlayerBar state={playerState} send={send} />
       </div>
     );
-  }
-  if (view === "bookmarks") {
-    return <div className="min-h-screen bg-bg text-text" dir="rtl">{headerEl}<StubView label="الإشارات المرجعية" /></div>;
   }
   if (view === "playlist") {
     return (

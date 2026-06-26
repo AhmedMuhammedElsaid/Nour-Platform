@@ -52,6 +52,31 @@ export type AzkarProgress = {
   sets: Record<string, Record<string, number>>;
 };
 
+// ── Quran device-local (identical keys to web nour.quran.*) ──────────────────
+
+export type QuranPrefs = {
+  translationSlug: string;
+  reciterSlug: string;
+  showTranslation: boolean;
+  showWordByWord: boolean;
+  fontScale: number; // clamped 0.8..1.6 by the settings UI
+};
+
+export const DEFAULT_QURAN_PREFS: QuranPrefs = {
+  translationSlug: "en.sahih",
+  reciterSlug: "qatami",
+  showTranslation: true,
+  showWordByWord: false,
+  fontScale: 1,
+};
+
+export type AyahRef = {
+  surah: number;
+  ayah: number;
+  numberGlobal?: number;
+  surahName?: string;
+};
+
 // ZodType<T, ZodTypeDef, unknown>: the Input param must be `unknown` (not T) to
 // accept ZodDefault/ZodObject schemas whose _input fields are optional-unioned.
 type SchemaEntry<T> = { schema: z.ZodType<T, z.ZodTypeDef, unknown>; fallback: T };
@@ -67,6 +92,9 @@ const SCHEMA_MAP: {
   "nour.theme": SchemaEntry<"dark" | "light">;
   "nour.locale": SchemaEntry<"ar" | "en">;
   "nour.adhkar.progress": SchemaEntry<AzkarProgress>;
+  "nour.quran.prefs": SchemaEntry<QuranPrefs>;
+  "nour.quran.lastread": SchemaEntry<AyahRef | null>;
+  "nour.quran.bookmarks": SchemaEntry<AyahRef[]>;
 } = {
   "nour.prayer.location": {
     schema: prayerLocationSchema,
@@ -119,6 +147,38 @@ const SCHEMA_MAP: {
       sets: z.record(z.record(z.number())),
     }),
     fallback: { date: "", sets: {} },
+  },
+  "nour.quran.prefs": {
+    schema: z.object({
+      translationSlug: z.string(),
+      reciterSlug: z.string(),
+      showTranslation: z.boolean(),
+      showWordByWord: z.boolean(),
+      fontScale: z.number(),
+    }),
+    fallback: DEFAULT_QURAN_PREFS,
+  },
+  "nour.quran.lastread": {
+    schema: z
+      .object({
+        surah: z.number(),
+        ayah: z.number(),
+        numberGlobal: z.number().optional(),
+        surahName: z.string().optional(),
+      })
+      .nullable(),
+    fallback: null,
+  },
+  "nour.quran.bookmarks": {
+    schema: z.array(
+      z.object({
+        surah: z.number(),
+        ayah: z.number(),
+        numberGlobal: z.number().optional(),
+        surahName: z.string().optional(),
+      }),
+    ),
+    fallback: [],
   },
 };
 

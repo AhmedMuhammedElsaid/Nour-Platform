@@ -56,6 +56,111 @@ type RawCategory = {
   updatedAt: string;
 };
 
+// ── Quran ────────────────────────────────────────────────────────────────────
+
+export type QuranSurahSummary = {
+  number: number;
+  nameAr: string;
+  nameEn: string;
+  meaning: string;
+  ayahCount: number;
+  revelationPlace: "meccan" | "medinan";
+};
+
+export type QuranWord = {
+  position: number;
+  arabic: string;
+  glossEn?: string;
+};
+
+export type ReaderAyah = {
+  surah: number;
+  ayahInSurah: number;
+  numberGlobal: number;
+  textUthmani: string;
+  words: QuranWord[];
+  translation: string | null;
+  audioUrl: string | null;
+};
+
+export type SurahReaderData = {
+  surahNumber: number;
+  nameAr: string;
+  nameEn: string;
+  ayahs: ReaderAyah[];
+  translationDir: "rtl" | "ltr";
+};
+
+export type QuranReciter = { slug: string; name: string };
+export type QuranEdition = { slug: string; name: string; dir: "rtl" | "ltr" };
+
+type RawSurah = {
+  number: number;
+  name: { ar: string; en: string };
+  meaning: string;
+  revelationPlace: "meccan" | "medinan";
+  ayahCount: number;
+};
+type RawSurahReader = {
+  surah: { number: number; name: { ar: string; en: string } };
+  ayahs: ReaderAyah[];
+  translationEdition: { dir: "rtl" | "ltr" } | null;
+};
+
+export async function fetchSurahs(): Promise<QuranSurahSummary[]> {
+  const list = await getJson<RawSurah[]>("/quran/surahs");
+  return list.map((s) => ({
+    number: s.number,
+    nameAr: s.name.ar,
+    nameEn: s.name.en,
+    meaning: s.meaning,
+    ayahCount: s.ayahCount,
+    revelationPlace: s.revelationPlace,
+  }));
+}
+
+export async function fetchSurahReader(
+  surahNumber: number,
+  opts: { translation?: string; reciter?: string } = {},
+): Promise<SurahReaderData> {
+  const r = await getJson<RawSurahReader>(`/quran/surah/${surahNumber}`, {
+    locale: LOCALE,
+    translation: opts.translation,
+    reciter: opts.reciter,
+  });
+  return {
+    surahNumber: r.surah.number,
+    nameAr: r.surah.name.ar,
+    nameEn: r.surah.name.en,
+    ayahs: r.ayahs,
+    translationDir: r.translationEdition?.dir ?? "ltr",
+  };
+}
+
+export async function fetchReciters(): Promise<QuranReciter[]> {
+  const list = await getJson<{ slug: string; name: string }[]>("/quran/reciters");
+  return list.map((r) => ({ slug: r.slug, name: r.name }));
+}
+
+export type TafsirData = { editionName: string; dir: "rtl" | "ltr"; html: string };
+
+export async function fetchTafsir(numberGlobal: number): Promise<TafsirData> {
+  const r = await getJson<{ edition: { name: string; dir: "rtl" | "ltr" }; html: string }>(
+    "/quran/tafsir",
+    { ayah: String(numberGlobal), locale: LOCALE },
+  );
+  return { editionName: r.edition.name, dir: r.edition.dir, html: r.html };
+}
+
+export async function fetchEditions(): Promise<QuranEdition[]> {
+  const list = await getJson<{ slug: string; name: string; type: string; dir: "rtl" | "ltr" }[]>(
+    "/quran/editions",
+  );
+  return list
+    .filter((e) => e.type === "translation")
+    .map((e) => ({ slug: e.slug, name: e.name, dir: e.dir }));
+}
+
 // ── Adhkar ───────────────────────────────────────────────────────────────────
 
 export type AdhkarKind = "morning" | "evening" | "other";

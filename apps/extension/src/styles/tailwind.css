@@ -29,6 +29,12 @@
   --color-danger: #e26a63;
 
   --font-display: "Fraunces", ui-serif, Georgia, serif;
+  /* Quran (Uthmani) text. No self-hosted Amiri woff2 in the repo and MV3 CSP
+     forbids a CDN font, so fall back through commonly-installed Quran/Naskh
+     faces to the system Arabic serif. */
+  --font-quran: "Amiri Quran", "Amiri", "Scheherazade New",
+    "KFGQPC Uthmanic Script HAFS", "Traditional Arabic", "Noto Naskh Arabic",
+    ui-serif, serif;
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -72,6 +78,7 @@
   --color-foreground: var(--color-text);
 
   --font-display: var(--font-display);
+  --font-quran: var(--font-quran);
 
   --text-2xs: 0.6875rem;
 
