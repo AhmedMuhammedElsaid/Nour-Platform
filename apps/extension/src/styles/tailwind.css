@@ -11,8 +11,8 @@
   src: url("../assets/fraunces.woff2") format("woff2");
 }
 
-/* Design tokens — mirrors packages/ui/src/styles/tokens.css.
-   Extension is always dark (the product's default theme). */
+/* Design tokens — mirrors packages/ui/src/styles/tokens.css. Dark is the default
+   (`:root`); light overrides ride `[data-theme="light"]` (set by useTheme). */
 :root {
   --color-bg: #0f0d0a;
   --color-surface: #1c1915;
@@ -33,6 +33,23 @@
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
+}
+
+/* Light theme (warm cream) — mirrors the web [data-theme="light"] palette. */
+[data-theme="light"] {
+  --color-bg: #fdfaf4;
+  --color-surface: #ffffff;
+  --color-surface-2: #f4f1e8;
+  --color-border: #e6e2d7;
+  --color-text: #13201a;
+  --color-text-2: #3f4a44;
+  --color-muted: #6b7670;
+  --color-primary: #9a7830;
+  --color-primary-fg: #ffffff;
+  --color-sun: #c8a050;
+  --color-moon: #4a6fb8;
+  --color-focus: #9a7830;
+  --color-danger: #b3261e;
 }
 
 /* Bridge CSS variables → Tailwind v4 utility names. */

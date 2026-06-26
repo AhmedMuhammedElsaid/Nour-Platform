@@ -22,6 +22,8 @@ import {
 } from "../lib/content";
 import { PlayerBar } from "../components/player-bar";
 import { SunArc, type ArcDot } from "../components/sun-arc";
+import { ThemeToggle } from "../components/theme-toggle";
+import { useI18n } from "../lib/i18n";
 
 // ── Arabic labels ──────────────────────────────────────────────────────────
 
@@ -188,6 +190,7 @@ export function NewtabPage() {
   const pt = usePrayerTimes();
   const { location } = useLocation();
   const { state: playerState, send } = usePlayer();
+  const { t } = useI18n();
 
   // Fetch a playlist's tracks, start playback, and record it as recently played.
   async function playBySlug(slug: string): Promise<void> {
@@ -220,10 +223,13 @@ export function NewtabPage() {
 
         {/* ── Header ──────────────────────────────────────────────────── */}
         <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-primary">نور</h1>
-          <div className="text-left text-sm text-text-2">
-            <p>{gregorianDate(now, "ar")}</p>
-            <p className="text-xs">{hijriDate(now, "ar")}</p>
+          <h1 className="text-2xl font-bold text-primary">{t("common.appName")}</h1>
+          <div className="flex items-center gap-3">
+            <div className="text-end text-sm text-text-2">
+              <p>{gregorianDate(now, "ar")}</p>
+              <p className="text-xs">{hijriDate(now, "ar")}</p>
+            </div>
+            <ThemeToggle label={t} />
           </div>
         </header>
 

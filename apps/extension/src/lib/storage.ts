@@ -56,6 +56,8 @@ const SCHEMA_MAP: {
   "nour.player.recent": SchemaEntry<RecentItem[]>;
   "nour.player.positions": SchemaEntry<PlayerPositions>;
   "nour.player.prefs": SchemaEntry<PlayerPrefs>;
+  "nour.theme": SchemaEntry<"dark" | "light">;
+  "nour.locale": SchemaEntry<"ar" | "en">;
 } = {
   "nour.prayer.location": {
     schema: prayerLocationSchema,
@@ -100,6 +102,8 @@ const SCHEMA_MAP: {
     }),
     fallback: DEFAULT_PLAYER_PREFS,
   },
+  "nour.theme": { schema: z.enum(["dark", "light"]), fallback: "dark" },
+  "nour.locale": { schema: z.enum(["ar", "en"]), fallback: "ar" },
 };
 
 type StorageKey = keyof typeof SCHEMA_MAP;
