@@ -6,6 +6,7 @@ import {
   type PlayerCommand,
   type PlayerState,
 } from "../lib/player-state";
+import { useI18n } from "../lib/i18n";
 import { Slider } from "./ui/slider";
 import { Sheet } from "./ui/sheet";
 import {
@@ -45,6 +46,7 @@ export function PlayerBar({
   state: PlayerState | null;
   send: (command: PlayerCommand) => void;
 }) {
+  const { t } = useI18n();
   const [scrub, setScrub] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [queueOpen, setQueueOpen] = useState(false);
@@ -130,7 +132,7 @@ export function PlayerBar({
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-text">{item.title}</p>
               <p className="truncate text-xs text-text-2">
-                {item.artist ?? `مقطع ${state.index + 1} / ${state.queue.length}`}
+                {item.artist ?? t("player.trackOf").replace("{index}", String(state.index + 1)).replace("{total}", String(state.queue.length))}
               </p>
             </div>
           </div>
@@ -140,7 +142,7 @@ export function PlayerBar({
             <button
               type="button"
               onClick={() => send({ type: "toggleShuffle" })}
-              aria-label="تشغيل عشوائي"
+              aria-label={t("player.shuffle")}
               aria-pressed={state.shuffle}
               className={`${ghost} ${state.shuffle ? "text-primary" : ""}`}
             >
@@ -149,7 +151,7 @@ export function PlayerBar({
             <button
               type="button"
               onClick={() => send({ type: "prev" })}
-              aria-label="السابق"
+              aria-label={t("player.prev")}
               className={ghost}
             >
               <SkipBack className="size-5 rtl:scale-x-[-1]" />
@@ -157,7 +159,7 @@ export function PlayerBar({
             <button
               type="button"
               onClick={() => send({ type: "toggle" })}
-              aria-label={playing ? "إيقاف مؤقت" : "تشغيل"}
+              aria-label={playing ? t("player.pause") : t("player.play")}
               className="inline-flex size-10 items-center justify-center rounded-full bg-primary text-primary-fg hover:scale-105 transition-transform"
             >
               {state.isBuffering ? (
@@ -171,7 +173,7 @@ export function PlayerBar({
             <button
               type="button"
               onClick={() => send({ type: "next" })}
-              aria-label="التالي"
+              aria-label={t("player.next")}
               className={ghost}
             >
               <SkipForward className="size-5 rtl:scale-x-[-1]" />
@@ -179,7 +181,7 @@ export function PlayerBar({
             <button
               type="button"
               onClick={() => send({ type: "cycleRepeat" })}
-              aria-label="تكرار"
+              aria-label={t("player.repeat")}
               aria-pressed={state.repeat !== "off"}
               className={`${ghost} ${state.repeat !== "off" ? "text-primary" : ""}`}
             >
@@ -193,13 +195,13 @@ export function PlayerBar({
               <button
                 type="button"
                 onClick={() => send({ type: "setVolume", volume: state.volume === 0 ? 1 : 0 })}
-                aria-label={state.volume === 0 ? "إلغاء الكتم" : "كتم الصوت"}
+                aria-label={state.volume === 0 ? t("player.unmute") : t("player.mute")}
                 className={ghost}
               >
                 {state.volume === 0 ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
               </button>
               <Slider
-                aria-label="مستوى الصوت"
+                aria-label={t("player.volume")}
                 aria-valuetext={`${Math.round(state.volume * 100)}%`}
                 className="w-20"
                 min={0}
@@ -217,14 +219,14 @@ export function PlayerBar({
                 className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-danger hover:bg-surface-2"
               >
                 <RotateCw className="size-3.5" />
-                إعادة المحاولة
+                {t("player.retry")}
               </button>
             ) : null}
 
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
-              aria-label="إعدادات التشغيل"
+              aria-label={t("player.settings")}
               className={ghost}
             >
               <Gauge className="size-4" />
@@ -232,7 +234,7 @@ export function PlayerBar({
             <button
               type="button"
               onClick={() => setQueueOpen(true)}
-              aria-label="قائمة التشغيل"
+              aria-label={t("player.queue")}
               className={ghost}
             >
               <ListMusic className="size-4" />
@@ -244,8 +246,8 @@ export function PlayerBar({
         <div className="mt-1 flex items-center gap-2 text-2xs text-text-2">
           <span className="w-10 text-end font-mono tabular-nums">{fmt(sliderValue)}</span>
           <Slider
-            aria-label="الموضع"
-            aria-valuetext={`${fmt(sliderValue)} من ${fmt(duration)}`}
+            aria-label={t("player.position")}
+            aria-valuetext={`${fmt(sliderValue)} / ${fmt(duration)}`}
             className="flex-1"
             min={0}
             max={duration > 0 ? duration : 1}
@@ -262,8 +264,8 @@ export function PlayerBar({
       </div>
 
       {/* Playback settings */}
-      <Sheet open={settingsOpen} onClose={() => setSettingsOpen(false)} title="إعدادات التشغيل">
-        <p className="mb-2 text-xs font-medium text-text-2">السرعة</p>
+      <Sheet open={settingsOpen} onClose={() => setSettingsOpen(false)} title={t("player.settings")}>
+        <p className="mb-2 text-xs font-medium text-text-2">{t("player.speed")}</p>
         <div className="flex flex-wrap gap-2">
           {PLAYBACK_RATES.map((rate) => {
             const active = rate === state.playbackRate;
@@ -282,7 +284,7 @@ export function PlayerBar({
         </div>
 
         <p className="mb-2 mt-6 text-xs font-medium text-text-2">
-          مؤقت النوم
+          {t("player.sleep")}
           {sleepRemaining != null ? (
             <span className="ms-2 font-mono tabular-nums text-primary">{fmt(sleepRemaining)}</span>
           ) : null}
@@ -295,7 +297,7 @@ export function PlayerBar({
               onClick={() => send({ type: "setSleepTimer", option: m })}
               className={`${pill} border-border text-text-2 hover:text-text`}
             >
-              {m} د
+              {m}m
             </button>
           ))}
           <button
@@ -304,7 +306,7 @@ export function PlayerBar({
             onClick={() => send({ type: "setSleepTimer", option: "end-of-track" })}
             className={`${pill} ${state.sleepAtTrackEnd ? "border-primary bg-primary/10 text-primary" : "border-border text-text-2 hover:text-text"}`}
           >
-            نهاية المقطع
+            {t("player.sleepAtEnd")}
           </button>
           <button
             type="button"
@@ -312,13 +314,13 @@ export function PlayerBar({
             onClick={() => send({ type: "setSleepTimer", option: null })}
             className={`${pill} border-border text-text-2 hover:text-text disabled:opacity-40`}
           >
-            إيقاف
+            {t("player.sleepOff")}
           </button>
         </div>
       </Sheet>
 
       {/* Queue */}
-      <Sheet open={queueOpen} onClose={() => setQueueOpen(false)} title="قائمة التشغيل">
+      <Sheet open={queueOpen} onClose={() => setQueueOpen(false)} title={t("player.queue")}>
         <ol className="-mx-2">
           {state.queue.map((track, index) => {
             const isCurrent = index === state.index;

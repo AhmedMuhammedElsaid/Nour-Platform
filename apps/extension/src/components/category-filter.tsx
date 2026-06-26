@@ -1,4 +1,5 @@
 import type { CategorySummary } from "../lib/content";
+import { useI18n } from "../lib/i18n";
 
 export type SortMode = "newest" | "az" | "tracks";
 
@@ -18,26 +19,27 @@ const inactive =
 const sortActive = "rounded-md border border-primary/40 bg-primary/15 px-2.5 py-1 text-xs font-semibold text-primary";
 const sortInactive = "rounded-md border border-border px-2.5 py-1 text-xs text-text-2 hover:text-text transition-colors";
 
-const SORTS: { key: SortMode; label: string }[] = [
-  { key: "newest", label: "الأحدث" },
-  { key: "az", label: "أ–ي" },
-  { key: "tracks", label: "المقاطع" },
-];
-
 export function CategoryFilter({ categories, activeId, sort, onCategory, onSort }: CategoryFilterProps) {
+  const { t, locale } = useI18n();
   if (categories.length === 0) return null;
+
+  const SORTS: { key: SortMode; label: string }[] = [
+    { key: "newest", label: locale === "en" ? "Newest" : "الأحدث" },
+    { key: "az", label: t("category.sortAZ") },
+    { key: "tracks", label: locale === "en" ? "Tracks" : "المقاطع" },
+  ];
 
   return (
     <div className="space-y-3">
       {/* Category pills */}
-      <nav aria-label="تصفية التصنيفات" className="flex flex-wrap gap-2">
+      <nav aria-label={t("category.filterLabel")} className="flex flex-wrap gap-2">
         <button
           type="button"
           aria-current={activeId === null ? "true" : undefined}
           onClick={() => onCategory(null)}
           className={activeId === null ? active : inactive}
         >
-          الكل
+          {t("category.all")}
         </button>
         {categories.map((c) => (
           <button
@@ -53,7 +55,7 @@ export function CategoryFilter({ categories, activeId, sort, onCategory, onSort 
       </nav>
 
       {/* Sort row */}
-      <div className="flex items-center gap-1.5" role="group" aria-label="الترتيب">
+      <div className="flex items-center gap-1.5" role="group" aria-label={t("category.sortLabel")}>
         {SORTS.map((s) => (
           <button
             key={s.key}

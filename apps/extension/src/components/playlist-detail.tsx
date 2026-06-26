@@ -9,6 +9,7 @@ import {
   type PlaylistDetailData,
 } from "../lib/content";
 import { navigate } from "../lib/router";
+import { useI18n } from "../lib/i18n";
 import { get } from "../lib/storage";
 import type { PlayerState } from "../lib/player-state";
 import type { PlayerCommand } from "../lib/player-state";
@@ -29,6 +30,7 @@ type Props = {
 };
 
 export function PlaylistDetail({ slug, startTrackId, state, send, categories }: Props) {
+  const { t } = useI18n();
   const [detail, setDetail] = useState<PlaylistDetailData | null>(null);
   const [positions, setPositions] = useState<Record<string, { t: number }>>({});
   const [error, setError] = useState(false);
@@ -92,13 +94,13 @@ export function PlaylistDetail({ slug, startTrackId, state, send, categories }: 
   if (error) {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3">
-        <p className="text-sm text-text-2">تعذّر تحميل القائمة.</p>
+        <p className="text-sm text-text-2">{t("playlist.error")}</p>
         <button
           type="button"
           onClick={() => navigate({ view: "home" })}
           className="text-xs text-primary hover:underline"
         >
-          العودة للرئيسية
+          {t("playlist.back")}
         </button>
       </div>
     );
@@ -107,7 +109,7 @@ export function PlaylistDetail({ slug, startTrackId, state, send, categories }: 
   if (!detail) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <p className="text-sm text-text-2">جارٍ التحميل…</p>
+        <p className="text-sm text-text-2">{t("common.loading")}</p>
       </div>
     );
   }
@@ -123,10 +125,10 @@ export function PlaylistDetail({ slug, startTrackId, state, send, categories }: 
         type="button"
         onClick={() => navigate({ view: "home" })}
         className="inline-flex items-center gap-1.5 text-xs text-text-2 hover:text-primary"
-        aria-label="رجوع"
+        aria-label={t("common.back")}
       >
         <SkipBack className="size-3.5 rtl:scale-x-[-1]" />
-        الرئيسية
+        {t("playlist.back")}
       </button>
 
       {/* Hero */}
@@ -176,7 +178,7 @@ export function PlaylistDetail({ slug, startTrackId, state, send, categories }: 
             className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-fg hover:opacity-90 transition-opacity"
           >
             <Play className="size-4" />
-            تشغيل الكل
+            {t("playlist.playAll")}
           </button>
         </div>
       </div>
@@ -201,7 +203,7 @@ export function PlaylistDetail({ slug, startTrackId, state, send, categories }: 
               {track.hasAudio ? (
                 <button
                   type="button"
-                  aria-label={isPlaying ? `إيقاف ${track.title}` : `تشغيل ${track.title}`}
+                  aria-label={isPlaying ? `${t("player.pause")} ${track.title}` : `${t("player.play")} ${track.title}`}
                   onClick={() => {
                     if (isCurrent) {
                       send({ type: "toggle" });

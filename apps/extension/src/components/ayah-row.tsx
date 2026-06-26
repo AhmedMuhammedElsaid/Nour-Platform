@@ -1,4 +1,5 @@
 import type { ReaderAyah } from "../lib/content";
+import { useI18n } from "../lib/i18n";
 import { Bookmark, FileText, Pause, Play } from "./ui/icons";
 
 type AyahRowProps = {
@@ -26,6 +27,7 @@ export function AyahRow({
   onToggleBookmark,
   onOpenTafsir,
 }: AyahRowProps) {
+  const { t } = useI18n();
   return (
     <article
       id={`ayah-${ayah.numberGlobal}`}
@@ -38,7 +40,7 @@ export function AyahRow({
         <div className="ms-auto flex items-center gap-1">
           <button
             type="button"
-            aria-label={isCurrent && isPlaying ? "إيقاف" : "تشغيل"}
+            aria-label={isCurrent && isPlaying ? t("ayah.pause") : t("ayah.play")}
             aria-pressed={isCurrent && isPlaying}
             onClick={() => onPlay(ayah.numberGlobal)}
             disabled={!ayah.audioUrl}
@@ -48,7 +50,7 @@ export function AyahRow({
           </button>
           <button
             type="button"
-            aria-label={isBookmarked ? "إزالة الإشارة" : "حفظ الآية"}
+            aria-label={isBookmarked ? t("ayah.unbookmark") : t("ayah.bookmark")}
             aria-pressed={isBookmarked}
             onClick={() => onToggleBookmark(ayah)}
             className={`rounded p-1.5 ${isBookmarked ? "text-primary" : "hover:text-primary"}`}
@@ -57,7 +59,7 @@ export function AyahRow({
           </button>
           <button
             type="button"
-            aria-label="التفسير"
+            aria-label={t("ayah.tafsir")}
             onClick={() => onOpenTafsir(ayah)}
             className="rounded p-1.5 hover:text-primary"
           >

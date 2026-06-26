@@ -1,6 +1,7 @@
 import { getCoverEmoji, getCoverGradient } from "../lib/cover-art";
 import type { PlaylistSummary } from "../lib/content";
 import type { CategorySummary } from "../lib/content";
+import { useI18n } from "../lib/i18n";
 import { Play } from "./ui/icons";
 
 type PlaylistCardProps = {
@@ -14,6 +15,7 @@ type PlaylistCardProps = {
 // font-display title, scholarName, trackCount badge, up-to-2 category chips.
 // Click plays immediately; long-press / separate open handler navigates to detail.
 export function PlaylistCard({ playlist, categories, onPlay, onOpen }: PlaylistCardProps) {
+  const { t } = useI18n();
   const [gradFrom, gradTo] = getCoverGradient(playlist.id);
   const emoji = getCoverEmoji(playlist.id);
 
@@ -29,7 +31,7 @@ export function PlaylistCard({ playlist, categories, onPlay, onOpen }: PlaylistC
       <button
         type="button"
         onClick={() => onPlay(playlist.slug)}
-        aria-label={`تشغيل ${playlist.title}`}
+        aria-label={`${t("player.play")} ${playlist.title}`}
         className="relative w-[78%] aspect-square rounded-full overflow-hidden focus-visible:outline-none"
       >
         {playlist.cover ? (
@@ -73,7 +75,7 @@ export function PlaylistCard({ playlist, categories, onPlay, onOpen }: PlaylistC
       {/* Track count badge */}
       {playlist.trackCount > 0 ? (
         <span className="rounded-full border border-primary/30 bg-primary/15 px-2.5 py-0.5 text-xs font-semibold text-primary">
-          {playlist.trackCount} مقطع
+          {playlist.trackCount} {t("playlist.tracks")}
         </span>
       ) : null}
 

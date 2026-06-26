@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 
+import { useI18n } from "../../lib/i18n";
 import { X } from "./icons";
 
 // Controlled slide-in panel (no Radix). Full-screen backdrop + a panel anchored
@@ -15,6 +16,7 @@ type SheetProps = {
 };
 
 export function Sheet({ open, onClose, title, side = "left", children }: SheetProps) {
+  const { t } = useI18n();
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -32,7 +34,7 @@ export function Sheet({ open, onClose, title, side = "left", children }: SheetPr
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={title}>
       <button
         type="button"
-        aria-label="إغلاق"
+        aria-label={t("ui.close")}
         onClick={onClose}
         className="absolute inset-0 bg-black/50"
       />
@@ -44,7 +46,7 @@ export function Sheet({ open, onClose, title, side = "left", children }: SheetPr
           <button
             type="button"
             onClick={onClose}
-            aria-label="إغلاق"
+            aria-label={t("ui.close")}
             className="rounded p-1 text-text-2 hover:bg-surface-2 hover:text-text"
           >
             <X className="size-4" />

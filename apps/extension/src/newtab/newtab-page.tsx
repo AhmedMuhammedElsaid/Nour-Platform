@@ -39,20 +39,9 @@ import { SearchView } from "../components/search-view";
 import { SiteHeader } from "../components/site-header";
 import { SunArc, type ArcDot } from "../components/sun-arc";
 
-// ── Arabic prayer labels ────────────────────────────────────────────────────
-
-const PRAYER_AR: Record<PrayerKey, string> = {
-  fajr: "الفجر",
-  sunrise: "الشروق",
-  dhuhr: "الظهر",
-  asr: "العصر",
-  maghrib: "المغرب",
-  isha: "العشاء",
-};
-
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-function buildArcDots(day: PrayerDay, nextKey: PrayerKey | null): ArcDot[] {
+function buildArcDots(day: PrayerDay, nextKey: PrayerKey | null, tFn: (k: string) => string): ArcDot[] {
   const fajr = day.instants.find((i) => i.key === "fajr")?.time ?? null;
   const isha = day.instants.find((i) => i.key === "isha")?.time ?? null;
   const span =
@@ -67,7 +56,7 @@ function buildArcDots(day: PrayerDay, nextKey: PrayerKey | null): ArcDot[] {
         ? Math.min(1, Math.max(0, (i.time!.getTime() - fajr.getTime()) / span))
         : 0.5,
       isNext: i.key === nextKey,
-      label: PRAYER_AR[i.key],
+      label: tFn(`prayer.${i.key}`),
     }));
 }
 
@@ -90,6 +79,7 @@ type DhikrItem = { ar: string; repeat: number };
 type AzkarResponse = { items: DhikrItem[] };
 
 function DhikrWidget({ now }: { now: Date }) {
+  const { t } = useI18n();
   const [dhikr, setDhikr] = useState<DhikrItem | null>(null);
   useEffect(() => {
     void getJson<AzkarResponse>("/adhkar/أذكار-الصباح", { locale: "ar" })
@@ -103,7 +93,7 @@ function DhikrWidget({ now }: { now: Date }) {
   if (!dhikr) return null;
   return (
     <section className="space-y-2">
-      <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-text-2">ذكر اليوم</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-text-2">{t("home.dhikrOfDay")}</h2>
       <div className="rounded-xl border border-border bg-surface p-4">
         <p className="text-right text-base leading-relaxed text-text">{dhikr.ar}</p>
         <p className="mt-2 text-end text-xs text-text-2">× {dhikr.repeat}</p>
@@ -119,6 +109,7 @@ function ContinueListeningShelf({
   onPlay: (slug: string) => void;
   onOpen: (slug: string, trackId?: string) => void;
 }) {
+  const { t } = useI18n();
   const [recent, setRecent] = useState<RecentItem[]>([]);
   const [positions, setPositions] = useState<Record<string, { t: number }>>({});
 
@@ -134,14 +125,14 @@ function ContinueListeningShelf({
     <section className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-text-2">
-          استمر في الاستماع
+          {t("home.continueListening")}
         </h2>
         <button
           type="button"
           onClick={() => setRecent([])}
           className="text-xs text-text-2 hover:text-primary"
         >
-          مسح
+          {t("home.clearListening")}
         </button>
       </div>
       <ul className="flex gap-3 overflow-x-auto pb-2 pt-1">
@@ -242,11 +233,12 @@ function LibrarySection({
     return applySort(filtered, sort);
   }, [playlists, activeCat, sort]);
 
+  const { t: tLib } = useI18n();
   if (playlists.length === 0) return null;
 
   return (
     <section className="space-y-4">
-      <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-text-2">المكتبة</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-text-2">{tLib("home.library")}</h2>
       <CategoryFilter
         categories={categories}
         activeId={activeCat}
@@ -396,17 +388,17 @@ export function NewtabPage() {
           const { today, upcoming, arcPos, now } = pt;
           const { h, m } = formatCountdown(upcoming.msUntil);
           const countdownStr = `${String(h)}:${String(m).padStart(2, "0")}`;
-          const arcDots = buildArcDots(today, upcoming.key);
+          const arcDots = buildArcDots(today, upcoming.key, t);
 
           return (
             <section
-              aria-label="مواقيت الصلاة"
+              aria-label={t("prayer.title")}
               className="overflow-hidden rounded-2xl border border-border bg-surface"
             >
               <div className="px-6 pt-5">
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-1.5 text-sm text-text">
-                    🕌 {location?.label ?? "موقعك"}
+                    🕌 {location?.label ?? t("home.location")}
                   </span>
                   <span className="text-xs text-sun">{hijriDate(now, "ar")}</span>
                 </div>
@@ -415,15 +407,15 @@ export function NewtabPage() {
                 <SunArc
                   dots={arcDots}
                   sunFraction={arcPos.fraction}
-                  nextLabel={PRAYER_AR[upcoming.key]}
+                  nextLabel={t(`prayer.${upcoming.key}`)}
                   isNight={arcPos.isNight}
                   onNightBand={arcPos.onNightBand}
                 />
               </div>
               <div className="mb-3 flex items-baseline justify-center gap-2.5">
-                <span className="text-xs uppercase tracking-widest text-text-2">القادمة</span>
+                <span className="text-xs uppercase tracking-widest text-text-2">{t("home.nextPrayer")}</span>
                 <span className="font-display text-xl font-semibold text-text">
-                  {PRAYER_AR[upcoming.key]}
+                  {t(`prayer.${upcoming.key}`)}
                 </span>
                 <span className="font-display text-lg font-semibold text-sun">{countdownStr}</span>
               </div>
@@ -437,7 +429,7 @@ export function NewtabPage() {
                       className={`flex-1 rounded-md px-0.5 py-1 text-center ${isNext ? "bg-primary/10" : ""}`}
                     >
                       <div className={`text-2xs uppercase tracking-[0.05em] ${isNext ? "text-primary" : "text-text-2"}`}>
-                        {PRAYER_AR[key]}
+                        {t(`prayer.${key}`)}
                       </div>
                       <div className={`mt-1 text-sm tabular-nums ${isNext ? "font-semibold text-sun" : "text-text"}`}>
                         {formatClock(inst.time, "ar")}
