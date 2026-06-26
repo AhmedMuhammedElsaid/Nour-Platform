@@ -10,7 +10,6 @@ import {
   type AzkarReminderEvent,
   isAzkarReminderEventStale,
   nextAzkarReminderEvent,
-  recentlyMissedAzkarReminder,
 } from "../lib/azkar-reminder-schedule";
 import {
   AZKAR_REMINDER_FIRED_KEY,
@@ -22,7 +21,11 @@ import {
 // the exact remaining ms so it lands on the second.
 const MAX_CHUNK = 5 * 60_000; // 5 min
 const FINAL_WINDOW = 30_000; // last 30s: arm the precise timeout
-const CATCH_UP_WINDOW = 2 * 60_000; // 2 min — recover a just-missed reminder
+// Drop a precise timer that resolved more than this late after sleep/throttling
+// so it can't fire a reminder well after its time. The reminder fires ONLY when
+// the live clock reaches its instant with the page open — opening or refocusing
+// the tab never replays a reminder that already passed.
+const STALE_GRACE = 2 * 60_000; // 2 min
 
 function clampChunk(ms: number): number {
   return Math.min(MAX_CHUNK, Math.max(1_000, ms));
@@ -57,17 +60,16 @@ export function useAzkarReminderScheduler(input: {
       const id = event.time.toISOString();
       if (lastFiredAt === id) return;
       // A precise timer paused during device sleep resumes on wake and resolves
-      // its captured event late — drop any reminder more than the catch-up
-      // grace late so a morning reminder can't fire hours later (mirrors the
-      // adhan scheduler). recentlyMissedAzkarReminder only passes fresh events.
-      if (isAzkarReminderEventStale(event, new Date(), CATCH_UP_WINDOW)) return;
+      // its captured event late — drop any reminder more than the grace late so
+      // a morning reminder can't fire hours later (mirrors the adhan scheduler).
+      if (isAzkarReminderEventStale(event, new Date(), STALE_GRACE)) return;
       lastFiredAt = id;
       void claimFiredEvent(AZKAR_REMINDER_FIRED_KEY, id).then((owned) => {
         if (owned && !cancelled) onFireRef.current(event);
       });
     };
 
-    const arm = (allowCatchUp = false) => {
+    const arm = () => {
       if (cancelled) return;
       if (timer) clearTimeout(timer);
       const now = new Date();
@@ -78,16 +80,6 @@ export function useAzkarReminderScheduler(input: {
         method: prefs.method,
         madhab: prefs.madhab,
       });
-
-      if (allowCatchUp) {
-        const missed = recentlyMissedAzkarReminder(
-          day.instants,
-          settings,
-          now,
-          CATCH_UP_WINDOW,
-        );
-        if (missed) fire(missed);
-      }
 
       const event = nextAzkarReminderEvent(day.instants, settings, now);
 
@@ -114,8 +106,10 @@ export function useAzkarReminderScheduler(input: {
       }, Math.max(0, remaining));
     };
 
+    // Re-arm against the live clock on wake/refocus so the next reminder is
+    // scheduled correctly after sleep — never replays one that already passed.
     const onWake = () => {
-      if (document.visibilityState === "visible") arm(true);
+      if (document.visibilityState === "visible") arm();
     };
 
     arm();

@@ -1,10 +1,19 @@
-import config from "@repo/eslint-config/base.mjs";
+import config from "@repo/eslint-config/react.mjs";
 import globals from "globals";
 
 export default [
   ...config,
   {
     ignores: [".expo/**"],
+  },
+  {
+    // React Native has no DOM — react-hooks rules-of-hooks (error) catches real
+    // bugs, but exhaustive-deps stays a warning so the existing
+    // `eslint-disable-next-line react-hooks/exhaustive-deps` directives resolve
+    // to a registered rule (they previously errored as "rule not found" because
+    // base.mjs never loaded eslint-plugin-react-hooks).
+    files: ["**/*.{ts,tsx}"],
+    rules: { "react-hooks/exhaustive-deps": "warn" },
   },
   {
     // Metro/NativeWind/Tailwind require CommonJS config files (no ESM loader

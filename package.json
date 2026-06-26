@@ -39,7 +39,8 @@
   "pnpm": {
     "overrides": {
       "react": "19.2.3",
-      "react-dom": "19.2.3"
+      "react-dom": "19.2.3",
+      "vite": "5.4.21"
     },
     "patchedDependencies": {
       "react-native-track-player@4.1.2": "patches/react-native-track-player@4.1.2.patch"

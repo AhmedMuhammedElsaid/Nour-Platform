@@ -117,7 +117,8 @@ export function SunArc({
       true,
     );
     return () => cancelAnimation(coronaOpacity);
-    // coronaOpacity is a stable shared-value ref (exhaustive-deps not configured).
+    // coronaOpacity is a stable shared-value ref; run the pulse once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const coronaProps = useAnimatedProps(() => ({ opacity: coronaOpacity.value }));
 

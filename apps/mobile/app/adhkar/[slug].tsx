@@ -56,6 +56,9 @@ export default function AdhkarReaderScreen() {
     return () => {
       cancelled = true;
     };
+    // Re-seed counts only when the loaded azkar changes; `azkar`/`repeats` are
+    // derived from the same id, so depending on id alone is intentional.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [azkar?.id]);
 
   const total = items.length;

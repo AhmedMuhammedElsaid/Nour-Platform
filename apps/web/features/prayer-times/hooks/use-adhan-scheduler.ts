@@ -10,7 +10,6 @@ import {
   type AdhanEvent,
   isAdhanEventStale,
   nextAdhanEvent,
-  recentlyMissedAdhan,
 } from "../lib/adhan-schedule";
 import { ADHAN_FIRED_KEY, claimFiredEvent } from "../lib/fired-event-store";
 
@@ -19,10 +18,12 @@ import { ADHAN_FIRED_KEY, claimFiredEvent } from "../lib/fired-event-store";
 // the exact remaining ms so it lands on the second.
 const MAX_CHUNK = 5 * 60_000; // 5 min
 const FINAL_WINDOW = 30_000; // last 30s: arm the precise timeout
-// When the tab regains focus (or wakes from sleep), play an adhan whose time
-// passed within this window but that we never got to fire — keeps it "on time"
-// to within ~2 min instead of silently skipping it.
-const CATCH_UP_WINDOW = 2 * 60_000; // 2 min
+// A precise timer paused during device sleep can resolve its captured event
+// minutes late; drop any fire more than this grace past the prayer instant so a
+// resumed timer can't play an adhan well after its time. The adhan plays ONLY
+// when the live clock reaches the prayer instant with the page open — opening
+// or refocusing the tab never replays a prayer that already passed.
+const STALE_GRACE = 2 * 60_000; // 2 min
 
 function clampChunk(ms: number): number {
   return Math.min(MAX_CHUNK, Math.max(1_000, ms));
@@ -60,17 +61,15 @@ export function useAdhanScheduler(input: {
       // A precise timer paused during device sleep resumes on wake and resolves
       // its captured event late — e.g. the pre-Fajr timer firing at Maghrib,
       // which would play the Fajr adhan hours after Fajr. Drop any event more
-      // than the catch-up grace late; the re-arm below picks the correct
-      // upcoming prayer. (recentlyMissedAdhan only ever passes fresh events, so
-      // this guard rejects only stale precise-timer fires.)
-      if (isAdhanEventStale(event, new Date(), CATCH_UP_WINDOW)) return;
+      // than the grace late; the re-arm below picks the correct upcoming prayer.
+      if (isAdhanEventStale(event, new Date(), STALE_GRACE)) return;
       lastFiredAt = id;
       void claimFiredEvent(ADHAN_FIRED_KEY, id).then((owned) => {
         if (owned && !cancelled) onFireRef.current(event);
       });
     };
 
-    const arm = (allowCatchUp = false) => {
+    const arm = () => {
       if (cancelled) return;
       if (timer) clearTimeout(timer);
       const now = new Date();
@@ -81,18 +80,6 @@ export function useAdhanScheduler(input: {
         method: prefs.method,
         madhab: prefs.madhab,
       });
-
-      // On wake/refocus, recover an adhan whose time just passed while we were
-      // throttled — but only if it's still close enough to count as "on time".
-      if (allowCatchUp) {
-        const missed = recentlyMissedAdhan(
-          day.instants,
-          settings,
-          now,
-          CATCH_UP_WINDOW,
-        );
-        if (missed) fire(missed);
-      }
 
       const event = nextAdhanEvent(day.instants, settings, now);
 
@@ -121,10 +108,12 @@ export function useAdhanScheduler(input: {
       }, Math.max(0, remaining));
     };
 
-    // Returning to the tab (or waking the device) re-arms immediately and
-    // catches up a just-missed adhan, instead of waiting out a throttled timer.
+    // Returning to the tab (or waking the device) re-arms against the live clock
+    // so the NEXT prayer is scheduled correctly after sleep/throttling. It never
+    // plays a prayer that already passed — the adhan only sounds when its instant
+    // arrives with the page open.
     const onWake = () => {
-      if (document.visibilityState === "visible") arm(true);
+      if (document.visibilityState === "visible") arm();
     };
 
     arm();
