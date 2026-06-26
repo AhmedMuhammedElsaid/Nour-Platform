@@ -4,8 +4,8 @@ import { useEffect, useRef } from "react";
 
 import type { AdhanSettings } from "@repo/api/schemas/prayer-times";
 import type { PrayerLocation, PrayerPreferences } from "@repo/api/schemas/prayer-times";
-import { computePrayerTimes } from "@repo/api/services/prayer-times";
 
+import { resolvePrayerDay } from "../lib/aladhan";
 import {
   type AdhanEvent,
   isAdhanEventStale,
@@ -73,7 +73,10 @@ export function useAdhanScheduler(input: {
       if (cancelled) return;
       if (timer) clearTimeout(timer);
       const now = new Date();
-      const day = computePrayerTimes({
+      // Official Aladhan times when the month cache is warm (the controller
+      // prefetches it), else the adhan-js fallback — so firing lands on the
+      // authoritative minute, matching the mobile app.
+      const day = resolvePrayerDay({
         lat: location.lat,
         lng: location.lng,
         date: now,

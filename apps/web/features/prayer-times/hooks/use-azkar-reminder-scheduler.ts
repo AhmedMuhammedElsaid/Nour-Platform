@@ -4,8 +4,8 @@ import { useEffect, useRef } from "react";
 
 import type { AzkarReminderSettings } from "@repo/api/schemas/prayer-times";
 import type { PrayerLocation, PrayerPreferences } from "@repo/api/schemas/prayer-times";
-import { computePrayerTimes } from "@repo/api/services/prayer-times";
 
+import { resolvePrayerDay } from "../lib/aladhan";
 import {
   type AzkarReminderEvent,
   isAzkarReminderEventStale,
@@ -73,7 +73,9 @@ export function useAzkarReminderScheduler(input: {
       if (cancelled) return;
       if (timer) clearTimeout(timer);
       const now = new Date();
-      const day = computePrayerTimes({
+      // Reminders trail Fajr/Asr — source those from the same official Aladhan
+      // times the AdhanController prefetches (adhan-js fallback when cold).
+      const day = resolvePrayerDay({
         lat: location.lat,
         lng: location.lng,
         date: now,

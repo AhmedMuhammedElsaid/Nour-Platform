@@ -8,8 +8,8 @@ import { PrayerCountdown } from "@/features/prayer-times/components/prayer-count
 import { SunArc, type ArcDot } from "@/features/prayer-times/components/sun-arc";
 import { formatClock, hijriDate } from "@/features/prayer-times/lib/format";
 import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-settings";
+import { ensurePrayerMonth, resolvePrayerDay } from "@/features/prayer-times/lib/aladhan";
 import {
-  computePrayerTimes,
   getArcPosition,
   getNextPrayer,
   type PrayerDay,
@@ -43,6 +43,7 @@ export function PrayerTimesWidget({ locale }: { locale: "ar" | "en" }) {
   const t = useTranslations("prayer");
   const { location, prefs } = usePrayerSettings();
   const [now, setNow] = useState<number>(() => Date.now());
+  const [warm, setWarm] = useState(0);
 
   // Tick every second so the sun visibly glides along the arc as time passes.
   useEffect(() => {
@@ -50,20 +51,42 @@ export function PrayerTimesWidget({ locale }: { locale: "ar" | "en" }) {
     return () => clearInterval(id);
   }, []);
 
+  // Warm the Aladhan month cache so the shown times match the authoritative
+  // minute the adhan fires on (parity with mobile); bump `warm` once resolved.
+  useEffect(() => {
+    let cancelled = false;
+    void ensurePrayerMonth({
+      lat: location.lat,
+      lng: location.lng,
+      method: prefs.method,
+      madhab: prefs.madhab,
+      date: new Date(),
+    }).then(() => {
+      if (!cancelled) setWarm((w) => w + 1);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [location.lat, location.lng, prefs.method, prefs.madhab]);
+
   // Prayer instants only change with the calendar day, so recompute the day
   // per-minute (cheap) rather than every second; the sun position below reads
-  // the live `now` so it still moves smoothly each second.
+  // the live `now` so it still moves smoothly each second. Official Aladhan
+  // times when cached, else the adhan-js fallback.
   const minute = Math.floor(now / 60_000);
   const day = useMemo(
     () =>
-      computePrayerTimes({
+      resolvePrayerDay({
         lat: location.lat,
         lng: location.lng,
         date: new Date(minute * 60_000),
         method: prefs.method,
         madhab: prefs.madhab,
       }),
-    [location.lat, location.lng, prefs.method, prefs.madhab, minute],
+    // `warm` is an intentional trigger: it forces a recompute once the Aladhan
+    // month cache resolves (it isn't read inside the memo, hence the disable).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [location.lat, location.lng, prefs.method, prefs.madhab, minute, warm],
   );
 
   const nowDate = new Date(now);

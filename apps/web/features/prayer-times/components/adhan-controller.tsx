@@ -7,8 +7,8 @@ import {
   ADHAN_PRAYER_KEYS,
   type AdhanPrayerKey,
 } from "@repo/api/schemas/prayer-times";
-import { computePrayerTimes } from "@repo/api/services/prayer-times";
 
+import { ensurePrayerMonth, resolvePrayerDay } from "../lib/aladhan";
 import { usePrayerSettings } from "../hooks/use-prayer-settings";
 import { useAdhanSettings } from "../hooks/use-adhan-settings";
 import { useAdhanScheduler } from "../hooks/use-adhan-scheduler";
@@ -75,6 +75,7 @@ export function AdhanController() {
   // back to the foreground-only Layer A above.
   useEffect(() => {
     if (!ready || !settings.enabled) return;
+    let cancelled = false;
     const now = new Date();
     const params = {
       lat: location.lat,
@@ -82,16 +83,27 @@ export function AdhanController() {
       method: prefs.method,
       madhab: prefs.madhab,
     };
-    const today = computePrayerTimes({ ...params, date: now });
-    const tomorrow = computePrayerTimes({
-      ...params,
-      date: new Date(now.getTime() + 24 * 60 * 60 * 1000),
-    });
-    void scheduleAdhanNotifications(
-      [...today.instants, ...tomorrow.instants],
-      settings,
-      (k) => t(k),
-    );
+    const tomorrowDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    void (async () => {
+      // Warm the Aladhan month cache so both this Layer-B schedule AND the
+      // Layer-A foreground scheduler fire on the authoritative minute. The
+      // ensure* calls no-op once cached and fall back to adhan-js offline.
+      await Promise.all([
+        ensurePrayerMonth({ ...params, date: now }),
+        ensurePrayerMonth({ ...params, date: tomorrowDate }),
+      ]);
+      if (cancelled) return;
+      const today = resolvePrayerDay({ ...params, date: now });
+      const tomorrow = resolvePrayerDay({ ...params, date: tomorrowDate });
+      await scheduleAdhanNotifications(
+        [...today.instants, ...tomorrow.instants],
+        settings,
+        (k) => t(k),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [ready, settings, location.lat, location.lng, prefs.method, prefs.madhab, t]);
 
   // Test hook (?test=1 button): play immediately. The click is a user gesture
@@ -115,7 +127,10 @@ export function AdhanController() {
       if (data?.type !== "adhan:play" || !isAdhanKey(data.adhanKey)) return;
       const key = data.adhanKey;
       const play = () => player.current?.play(key, settings.volume).catch(() => {});
-      const day = computePrayerTimes({
+      // Must use the same source as the scheduler so the fired-event claim key
+      // (the prayer instant's ISO) matches — otherwise a click could replay an
+      // adhan the scheduler already claimed.
+      const day = resolvePrayerDay({
         lat: location.lat,
         lng: location.lng,
         date: new Date(),
