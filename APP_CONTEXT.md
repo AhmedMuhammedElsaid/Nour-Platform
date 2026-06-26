@@ -87,15 +87,13 @@ Audio MVP (Waves 0–5) + pre-deploy fixups + hardening sprint + **P2-A Categori
 
 ## Next phase
 
-MVP is **deploy-ready** (Wave 5.4 stays ⚠️ Partial because Sentry SDK install is intentionally deferred — env var stubbed; optional per `.env.example`). To actually go live: open **`deploy.md`** and walk the 11 steps top-to-bottom.
+**Browser Extension status:** `feature/chrome-extension` — Phases 1–3 + F (Firefox port) complete, **not yet merged to main**. Deployment deferred (manual load-unpacked testing + store submission follow later).
 
-**i18n A+B + embedded-locale + SoundCloud-UX/offline-PWA/search + UI Redesign + SEO enhancement + Strengthen Categories are all complete** (see waves rows above). Postponed/manual items: Phase 6 E2E/Lighthouse (Playwright RTL + redirect; non-blocking); real-device Media Session + offline-replay (DevTools Offline) + Lighthouse PWA verification; R2 CORS for offline audio (deploy.md step 2.4) + migration `0006` on prod (deploy.md step 6).
+MVP web + mobile is **deploy-ready** (Wave 5.4 stays ⚠️ Partial because Sentry SDK install is intentionally deferred — env var stubbed; optional per `.env.example`). To actually go live: open **`deploy.md`** and walk the 11 steps top-to-bottom.
 
-**SEO manual verification (still pending):** view-source nonce on `ld+json` script (no CSP console error); `<link rel="canonical">` + all `hreflang` incl. `x-default`; `og:site_name` + `og:image` + `twitter:card` in `<head>`; `/robots.txt` + `/sitemap.xml` return absolute prod URLs; Google Rich Results Test (MusicPlaylist + BreadcrumbList valid); social card validator shows image + title.
+**i18n A+B + embedded-locale + SoundCloud-UX/offline-PWA/search + UI Redesign + SEO enhancement + Strengthen Categories + Prayer Times + Azan + Quran Reader + Adhkar all complete** (see waves rows above). Postponed/manual items: Phase 6 E2E/Lighthouse (Playwright RTL + redirect; non-blocking); real-device Media Session + offline-replay (DevTools Offline) + Lighthouse PWA verification; R2 CORS for offline audio (deploy.md step 2.4) + migration `0006` on prod (deploy.md step 6); extension load-test + Chrome Web Store submission.
 
-**Strengthen Categories manual verification:** homepage cards for categorised playlists show ≤2 neutral chips below the title; cards with no categories show none. Playlist detail page shows all category chips between description and track-count — clicking one lands on `/?category=<slug>` with the grid filtered and the matching filter-bar pill active. RTL (`/ar`) — chips align correctly, no directional spacing issues.
-
-**Next: P2-B Lectures** (PLAN.md §13). Tickets not yet written; brainstorm + write a wave plan before coding (use `superpowers:brainstorming` then `superpowers:writing-plans`).
+**Next web code work: P2-B Lectures** (PLAN.md §13). Tickets not yet written; brainstorm + write a wave plan **[Opus]** before coding.
 
 ---
 
