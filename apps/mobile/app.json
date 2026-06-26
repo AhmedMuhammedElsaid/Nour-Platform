@@ -40,28 +40,7 @@
           "icon": "./assets/android-icon-monochrome.png",
           "color": "#c8a050",
           "sounds": [
-            "./assets/audio/adhan_part_1.wav",
-            "./assets/audio/adhan_part_2.wav",
-            "./assets/audio/adhan_part_3.wav",
-            "./assets/audio/adhan_part_4.wav",
-            "./assets/audio/adhan_part_5.wav",
-            "./assets/audio/adhan_part_6.wav",
-            "./assets/audio/adhan_part_7.wav",
-            "./assets/audio/adhan_part_8.wav",
-            "./assets/audio/adhan_part_9.wav",
-            "./assets/audio/adhan_part_10.wav",
-            "./assets/audio/adhan_part_11.wav",
-            "./assets/audio/adhan_part_12.wav",
-            "./assets/audio/adhan_part_13.wav",
-            "./assets/audio/adhan_part_14.wav",
-            "./assets/audio/adhan_part_15.wav",
-            "./assets/audio/adhan_part_16.wav",
-            "./assets/audio/adhan_part_17.wav",
-            "./assets/audio/adhan_part_18.wav",
-            "./assets/audio/adhan_part_19.wav",
-            "./assets/audio/adhan_part_20.wav",
-            "./assets/audio/adhan_part_21.wav",
-            "./assets/audio/adhan_part_22.wav"
+            "./assets/audio/adhan_notify.wav"
           ]
         }
       ]
@@ -77,7 +56,7 @@
     },
     "android": {
       "package": "com.nour.mobile",
-      "versionCode": 5,
+      "versionCode": 6,
       "adaptiveIcon": {
         "backgroundColor": "#0E6E59",
         "foregroundImage": "./assets/adaptive-icon.png",

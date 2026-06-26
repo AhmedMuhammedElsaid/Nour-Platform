@@ -1,0 +1,6 @@
+# Shrink EAS uploads: the mobile app bundles its own adhan MP3s in
+# modules/nour-adhan/android/src/main/res/raw, so the web copies aren't needed,
+# and the admin app / docs are never part of a mobile build.
+apps/web/public/audio/
+apps/admin/
+docs/
