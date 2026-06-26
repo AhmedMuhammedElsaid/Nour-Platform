@@ -56,6 +56,78 @@ type RawCategory = {
   updatedAt: string;
 };
 
+// ── Adhkar ───────────────────────────────────────────────────────────────────
+
+export type AdhkarKind = "morning" | "evening" | "other";
+
+export type AdhkarSummary = {
+  id: string;
+  kind: AdhkarKind;
+  title: string;
+  slug: string;
+  itemCount: number;
+  repeats: number[];
+};
+
+export type DhikrItemView = {
+  ar: string;
+  en?: string;
+  transliteration?: string;
+  repeat: number;
+  virtue?: string;
+  source?: string;
+};
+
+export type AdhkarDetail = {
+  id: string;
+  title: string;
+  items: DhikrItemView[];
+};
+
+type RawDhikr = {
+  ar: string;
+  en?: string;
+  transliteration?: string;
+  repeat: number;
+  virtue?: { ar?: string; en?: string };
+  source?: { ar?: string; en?: string };
+};
+type RawAzkar = {
+  id: string;
+  kind: AdhkarKind;
+  ar: { title: string; slug: string };
+  en: { title: string; slug: string };
+  items: RawDhikr[];
+};
+
+export async function fetchAdhkarList(): Promise<AdhkarSummary[]> {
+  const list = await getJson<RawAzkar[]>("/adhkar");
+  return list.map((a) => ({
+    id: a.id,
+    kind: a.kind,
+    title: a[LOCALE].title,
+    slug: a[LOCALE].slug,
+    itemCount: a.items.length,
+    repeats: a.items.map((i) => i.repeat),
+  }));
+}
+
+export async function fetchAdhkarBySlug(slug: string): Promise<AdhkarDetail> {
+  const a = await getJson<RawAzkar>(`/adhkar/${encodeURIComponent(slug)}`, { locale: LOCALE });
+  return {
+    id: a.id,
+    title: a[LOCALE].title,
+    items: a.items.map((i) => ({
+      ar: i.ar,
+      en: i.en,
+      transliteration: i.transliteration,
+      repeat: i.repeat,
+      virtue: i.virtue?.ar ?? i.virtue?.en,
+      source: i.source?.ar ?? i.source?.en,
+    })),
+  };
+}
+
 export async function fetchCategories(): Promise<CategorySummary[]> {
   const list = await getJson<RawCategory[]>("/categories");
   return list.map((c) => ({

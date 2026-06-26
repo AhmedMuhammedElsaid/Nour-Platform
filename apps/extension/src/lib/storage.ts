@@ -44,6 +44,14 @@ export const DEFAULT_PLAYER_PREFS: PlayerPrefs = {
   volume: 1,
 };
 
+// Device-local adhkar progress (identical key/shape to web + mobile). Resets per
+// calendar day so morning/evening adhkar behave like a daily checklist.
+// sets: setId -> itemIndex(string) -> count.
+export type AzkarProgress = {
+  date: string;
+  sets: Record<string, Record<string, number>>;
+};
+
 // ZodType<T, ZodTypeDef, unknown>: the Input param must be `unknown` (not T) to
 // accept ZodDefault/ZodObject schemas whose _input fields are optional-unioned.
 type SchemaEntry<T> = { schema: z.ZodType<T, z.ZodTypeDef, unknown>; fallback: T };
@@ -58,6 +66,7 @@ const SCHEMA_MAP: {
   "nour.player.prefs": SchemaEntry<PlayerPrefs>;
   "nour.theme": SchemaEntry<"dark" | "light">;
   "nour.locale": SchemaEntry<"ar" | "en">;
+  "nour.adhkar.progress": SchemaEntry<AzkarProgress>;
 } = {
   "nour.prayer.location": {
     schema: prayerLocationSchema,
@@ -104,6 +113,13 @@ const SCHEMA_MAP: {
   },
   "nour.theme": { schema: z.enum(["dark", "light"]), fallback: "dark" },
   "nour.locale": { schema: z.enum(["ar", "en"]), fallback: "ar" },
+  "nour.adhkar.progress": {
+    schema: z.object({
+      date: z.string(),
+      sets: z.record(z.record(z.number())),
+    }),
+    fallback: { date: "", sets: {} },
+  },
 };
 
 type StorageKey = keyof typeof SCHEMA_MAP;

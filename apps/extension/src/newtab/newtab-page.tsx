@@ -27,6 +27,8 @@ import { navigate, useRoute } from "../lib/router";
 import type { SortMode } from "../components/category-filter";
 import { CategoryFilter } from "../components/category-filter";
 import { PlaylistCard } from "../components/playlist-card";
+import { AdhkarLanding } from "../components/adhkar-landing";
+import { AdhkarReader } from "../components/adhkar-reader";
 import { PlayerBar } from "../components/player-bar";
 import { PlaylistDetail } from "../components/playlist-detail";
 import { SearchView } from "../components/search-view";
@@ -304,8 +306,23 @@ export function NewtabPage() {
   if (view === "quran" || view === "quran-read") {
     return <div className="min-h-screen bg-bg text-text" dir="rtl">{headerEl}<StubView label="القرآن الكريم" /></div>;
   }
-  if (view === "adhkar" || view === "adhkar-read") {
-    return <div className="min-h-screen bg-bg text-text" dir="rtl">{headerEl}<StubView label="الأذكار" /></div>;
+  if (view === "adhkar") {
+    return (
+      <div className="min-h-screen bg-bg text-text" dir="rtl">
+        {headerEl}
+        <AdhkarLanding />
+        <PlayerBar state={playerState} send={send} />
+      </div>
+    );
+  }
+  if (view === "adhkar-read") {
+    return (
+      <div className="min-h-screen bg-bg text-text" dir="rtl">
+        {headerEl}
+        <AdhkarReader slug={route.slug} />
+        <PlayerBar state={playerState} send={send} />
+      </div>
+    );
   }
   if (view === "prayer-times") {
     return <div className="min-h-screen bg-bg text-text" dir="rtl">{headerEl}<StubView label="مواقيت الصلاة" /></div>;

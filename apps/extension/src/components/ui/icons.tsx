@@ -205,6 +205,23 @@ export function Clock({ className }: IconProps) {
   );
 }
 
+export function Check({ className }: IconProps) {
+  return (
+    <Stroke className={className}>
+      <path d="M20 6 9 17l-5-5" />
+    </Stroke>
+  );
+}
+
+export function ArrowUp({ className }: IconProps) {
+  return (
+    <Stroke className={className}>
+      <path d="M12 19V5" />
+      <path d="m5 12 7-7 7 7" />
+    </Stroke>
+  );
+}
+
 export function Moon({ className }: IconProps) {
   return (
     <Stroke className={className}>

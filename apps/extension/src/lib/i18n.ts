@@ -36,6 +36,14 @@ const ar: Catalog = {
   "search.tracks": "المقاطع",
   "search.noResults": "لا توجد نتائج",
   "search.error": "تعذّر البحث.",
+  "adhkar.title": "الأذكار",
+  "adhkar.subtitle": "أذكار الصباح والمساء وأدعية مأثورة",
+  "adhkar.items": "أذكار",
+  "adhkar.reset": "إعادة",
+  "adhkar.completed": "تمّ",
+  "adhkar.countLabel": "عدّ الذكر",
+  "adhkar.scrollTop": "العودة للأعلى",
+  "adhkar.error": "تعذّر تحميل الأذكار.",
 };
 
 const en: Catalog = {
@@ -64,6 +72,14 @@ const en: Catalog = {
   "search.tracks": "Tracks",
   "search.noResults": "No results",
   "search.error": "Search failed.",
+  "adhkar.title": "Adhkar",
+  "adhkar.subtitle": "Morning & evening remembrances and supplications",
+  "adhkar.items": "adhkar",
+  "adhkar.reset": "Reset",
+  "adhkar.completed": "Done",
+  "adhkar.countLabel": "Count dhikr",
+  "adhkar.scrollTop": "Back to top",
+  "adhkar.error": "Could not load adhkar.",
 };
 
 const MESSAGES: Record<Locale, Catalog> = { ar, en };
