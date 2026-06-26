@@ -29,6 +29,7 @@ import { CategoryFilter } from "../components/category-filter";
 import { PlaylistCard } from "../components/playlist-card";
 import { PlayerBar } from "../components/player-bar";
 import { PlaylistDetail } from "../components/playlist-detail";
+import { SearchView } from "../components/search-view";
 import { SiteHeader } from "../components/site-header";
 import { SunArc, type ArcDot } from "../components/sun-arc";
 
@@ -310,7 +311,13 @@ export function NewtabPage() {
     return <div className="min-h-screen bg-bg text-text" dir="rtl">{headerEl}<StubView label="مواقيت الصلاة" /></div>;
   }
   if (view === "search") {
-    return <div className="min-h-screen bg-bg text-text" dir="rtl">{headerEl}<StubView label="البحث" /></div>;
+    return (
+      <div className="min-h-screen bg-bg text-text" dir="rtl">
+        {headerEl}
+        <SearchView initialQ={route.q} state={playerState} send={send} />
+        <PlayerBar state={playerState} send={send} />
+      </div>
+    );
   }
   if (view === "bookmarks") {
     return <div className="min-h-screen bg-bg text-text" dir="rtl">{headerEl}<StubView label="الإشارات المرجعية" /></div>;

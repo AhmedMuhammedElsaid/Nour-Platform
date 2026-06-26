@@ -31,6 +31,11 @@ const ar: Catalog = {
   "home.sortTracks": "عدد المقاطع",
   "theme.toggleToLight": "الوضع الفاتح",
   "theme.toggleToDark": "الوضع الداكن",
+  "search.placeholder": "ابحث في المحاضرات والمقاطع…",
+  "search.playlists": "قوائم التشغيل",
+  "search.tracks": "المقاطع",
+  "search.noResults": "لا توجد نتائج",
+  "search.error": "تعذّر البحث.",
 };
 
 const en: Catalog = {
@@ -54,6 +59,11 @@ const en: Catalog = {
   "home.sortTracks": "Track count",
   "theme.toggleToLight": "Light mode",
   "theme.toggleToDark": "Dark mode",
+  "search.placeholder": "Search lectures and tracks…",
+  "search.playlists": "Playlists",
+  "search.tracks": "Tracks",
+  "search.noResults": "No results",
+  "search.error": "Search failed.",
 };
 
 const MESSAGES: Record<Locale, Catalog> = { ar, en };
