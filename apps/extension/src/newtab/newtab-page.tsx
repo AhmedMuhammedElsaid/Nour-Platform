@@ -23,11 +23,12 @@ import {
 } from "../lib/content";
 import { getCoverEmoji, getCoverGradient } from "../lib/cover-art";
 import { useI18n } from "../lib/i18n";
-import { useRoute } from "../lib/router";
+import { navigate, useRoute } from "../lib/router";
 import type { SortMode } from "../components/category-filter";
 import { CategoryFilter } from "../components/category-filter";
 import { PlaylistCard } from "../components/playlist-card";
 import { PlayerBar } from "../components/player-bar";
+import { PlaylistDetail } from "../components/playlist-detail";
 import { SiteHeader } from "../components/site-header";
 import { SunArc, type ArcDot } from "../components/sun-arc";
 
@@ -104,7 +105,13 @@ function DhikrWidget({ now }: { now: Date }) {
   );
 }
 
-function ContinueListeningShelf({ onPlay }: { onPlay: (slug: string) => void }) {
+function ContinueListeningShelf({
+  onPlay,
+  onOpen,
+}: {
+  onPlay: (slug: string) => void;
+  onOpen: (slug: string, trackId?: string) => void;
+}) {
   const [recent, setRecent] = useState<RecentItem[]>([]);
   const [positions, setPositions] = useState<Record<string, { t: number }>>({});
 
@@ -144,7 +151,11 @@ function ContinueListeningShelf({ onPlay }: { onPlay: (slug: string) => void }) 
             <li key={item.slug} className="shrink-0 w-36">
               <button
                 type="button"
-                onClick={() => onPlay(item.slug)}
+                onClick={() =>
+                  item.trackId
+                    ? onOpen(item.slug, item.trackId)
+                    : onPlay(item.slug)
+                }
                 className="group relative flex w-full flex-col items-center gap-2 rounded-2xl border border-border bg-surface p-3 text-center transition-all duration-200 hover:-translate-y-1 hover:border-primary/30"
               >
                 {/* Circle cover */}
@@ -200,9 +211,11 @@ function ContinueListeningShelf({ onPlay }: { onPlay: (slug: string) => void }) 
 
 function LibrarySection({
   onPlay,
+  onOpen,
   categories,
 }: {
   onPlay: (slug: string) => void;
+  onOpen: (slug: string) => void;
   categories: CategorySummary[];
 }) {
   const [playlists, setPlaylists] = useState<PlaylistSummary[]>([]);
@@ -241,6 +254,7 @@ function LibrarySection({
               playlist={p}
               categories={categories}
               onPlay={onPlay}
+              onOpen={onOpen}
             />
           </li>
         ))}
@@ -302,7 +316,19 @@ export function NewtabPage() {
     return <div className="min-h-screen bg-bg text-text" dir="rtl">{headerEl}<StubView label="الإشارات المرجعية" /></div>;
   }
   if (view === "playlist") {
-    return <div className="min-h-screen bg-bg text-text" dir="rtl">{headerEl}<StubView label={`قائمة: ${route.slug}`} /></div>;
+    return (
+      <div className="min-h-screen bg-bg text-text" dir="rtl">
+        {headerEl}
+        <PlaylistDetail
+          slug={route.slug}
+          startTrackId={route.trackId}
+          state={playerState}
+          send={send}
+          categories={categories}
+        />
+        <PlayerBar state={playerState} send={send} />
+      </div>
+    );
   }
 
   // ── Home view ──────────────────────────────────────────────────────────────
@@ -382,11 +408,15 @@ export function NewtabPage() {
         {pt ? <DhikrWidget now={pt.now} /> : null}
 
         {/* ── Continue listening ────────────────────────────────────────── */}
-        <ContinueListeningShelf onPlay={(slug) => void playBySlug(slug)} />
+        <ContinueListeningShelf
+          onPlay={(slug) => void playBySlug(slug)}
+          onOpen={(slug, trackId) => navigate({ view: "playlist", slug, trackId })}
+        />
 
         {/* ── Library ──────────────────────────────────────────────────── */}
         <LibrarySection
           onPlay={(slug) => void playBySlug(slug)}
+          onOpen={(slug) => navigate({ view: "playlist", slug })}
           categories={categories}
         />
 

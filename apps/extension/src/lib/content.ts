@@ -28,6 +28,24 @@ export type CategorySummary = {
   enName: string;
 };
 
+export type TrackRow = {
+  id: string;
+  title: string;
+  durationSecs: number | null;
+  hasAudio: boolean;
+};
+
+export type PlaylistDetailData = {
+  id: string;
+  slug: string;
+  title: string;
+  cover: string | null;
+  scholar: string | null;
+  description: string | null;
+  categoryIds: string[];
+  tracks: TrackRow[];
+};
+
 // Shape the server returns for categories (dates are strings after JSON.parse).
 type RawCategory = {
   id: string;
@@ -62,6 +80,30 @@ export async function fetchPlaylists(): Promise<PlaylistSummary[]> {
   }));
 }
 
+export async function fetchPlaylistDetail(slug: string): Promise<PlaylistDetailData> {
+  const detail = await getJson<PlaylistDetail>(`/playlists/${encodeURIComponent(slug)}`, {
+    locale: LOCALE,
+  });
+  const cover = detail.playlist.scholarImage
+    ? assetUrl(detail.playlist.scholarImage)
+    : null;
+  return {
+    id: detail.playlist.id,
+    slug: detail.playlist[LOCALE].slug,
+    title: detail.playlist[LOCALE].title,
+    cover,
+    scholar: detail.playlist[LOCALE].scholarName ?? null,
+    description: detail.playlist[LOCALE].description ?? null,
+    categoryIds: detail.playlist.categoryIds,
+    tracks: detail.tracks.map((t) => ({
+      id: t.id,
+      title: t[LOCALE].title,
+      durationSecs: t.durationSecs ?? null,
+      hasAudio: t.srcUrl != null,
+    })),
+  };
+}
+
 export async function buildPlaylistQueue(
   slug: string,
 ): Promise<{ queue: QueueItem[]; recent: RecentItem }> {
@@ -83,9 +125,7 @@ export async function buildPlaylistQueue(
             artist: detail.playlist[LOCALE].title,
             artwork: cover,
             slug: playlistSlug,
-            // `durationSecs` enriches the continue-listening resume bar.
-            // Cast: Track type may not have durationSec — safe optional access.
-            durationSecs: (t as { durationSec?: number }).durationSec ?? undefined,
+            durationSecs: t.durationSecs,
           },
         ]
       : [],
