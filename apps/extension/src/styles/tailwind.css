@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+/* Self-hosted display font (Fraunces) — bundled so the prayer widget's arc
+   labels + countdown match the web home exactly, offline, with no CDN request
+   (MV3 CSP + privacy). Variable font covers the 400–700 weights we use. */
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("../assets/fraunces.woff2") format("woff2");
+}
+
 /* Design tokens — mirrors packages/ui/src/styles/tokens.css.
    Extension is always dark (the product's default theme). */
 :root {
@@ -13,8 +24,11 @@
   --color-primary: #c8a050;
   --color-primary-fg: #0f0d0a;
   --color-sun: #e4c57e;
+  --color-moon: #d6e3ff;
   --color-focus: #c8a050;
   --color-danger: #e26a63;
+
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -33,11 +47,16 @@
   --color-primary: var(--color-primary);
   --color-primary-fg: var(--color-primary-fg);
   --color-sun: var(--color-sun);
+  --color-moon: var(--color-moon);
   --color-focus: var(--color-focus);
   --color-danger: var(--color-danger);
   --color-ring: var(--color-focus);
   --color-background: var(--color-bg);
   --color-foreground: var(--color-text);
+
+  --font-display: var(--font-display);
+
+  --text-2xs: 0.6875rem;
 
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);

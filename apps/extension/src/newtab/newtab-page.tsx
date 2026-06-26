@@ -1,12 +1,6 @@
 import { useEffect, useState } from "react";
 
-import {
-  ARC,
-  arcPath,
-  arcPoint,
-  tForFraction,
-} from "@repo/shared-core/prayer-times/sun-arc";
-import type { PrayerKey } from "@repo/shared-core/prayer-times/compute";
+import type { PrayerDay, PrayerKey } from "@repo/shared-core/prayer-times/compute";
 import {
   formatClock,
   formatCountdown,
@@ -16,7 +10,7 @@ import {
 
 import { getJson } from "../lib/api";
 import { usePrayerTimes } from "../lib/use-prayer-times";
-import { useAdhanSettings } from "../options/use-settings";
+import { useLocation } from "../options/use-settings";
 import { get } from "../lib/storage";
 import type { RecentItem } from "../lib/storage";
 import { usePlayer } from "../lib/use-player";
@@ -27,6 +21,7 @@ import {
   type PlaylistSummary,
 } from "../lib/content";
 import { PlayerBar } from "../components/player-bar";
+import { SunArc, type ArcDot } from "../components/sun-arc";
 
 // ── Arabic labels ──────────────────────────────────────────────────────────
 
@@ -44,70 +39,27 @@ const PRAYER_AR: Record<PrayerKey, string> = {
 type DhikrItem = { ar: string; repeat: number };
 type AzkarResponse = { items: DhikrItem[] };
 
-// ── Sun arc ────────────────────────────────────────────────────────────────
+// ── Sun arc dots ─────────────────────────────────────────────────────────────
 
-function SunArcWidget({
-  fraction,
-  isNight,
-  dots,
-}: {
-  fraction: number;
-  isNight: boolean;
-  dots: Array<{ key: PrayerKey; f: number }>;
-}) {
-  const t = tForFraction(fraction);
-  const pos = arcPoint(t);
-  const r = 9;
-
-  return (
-    <svg
-      viewBox={`0 0 ${ARC.w} ${ARC.h}`}
-      preserveAspectRatio="xMidYMid meet"
-      className="w-full"
-      aria-hidden="true"
-    >
-      {/* Horizon baseline */}
-      <line
-        x1={ARC.p0.x}
-        y1={ARC.p0.y}
-        x2={ARC.p2.x}
-        y2={ARC.p2.y}
-        stroke="var(--color-border)"
-        strokeWidth="1"
-      />
-
-      {/* Arc track */}
-      <path
-        d={arcPath()}
-        fill="none"
-        stroke="var(--color-border)"
-        strokeWidth="1.5"
-      />
-
-      {/* Prayer dots */}
-      {dots.map(({ key, f }) => {
-        const dp = arcPoint(tForFraction(f));
-        return (
-          <circle
-            key={key}
-            cx={dp.x}
-            cy={dp.y}
-            r={3}
-            fill={key === "sunrise" ? "var(--color-muted)" : "var(--color-text-2)"}
-          />
-        );
-      })}
-
-      {/* Celestial body — sun or moon */}
-      <circle
-        cx={pos.x}
-        cy={pos.y}
-        r={r}
-        fill={isNight ? "var(--color-moon, #d6e3ff)" : "var(--color-sun)"}
-        opacity={0.9}
-      />
-    </svg>
-  );
+// Day fraction (Fajr→Isha) for each instant — used to place arc dots. Mirrors
+// the web `buildArcDots`; adds `isNext`/`label` for the rich SunArc.
+function buildArcDots(day: PrayerDay, nextKey: PrayerKey | null): ArcDot[] {
+  const fajr = day.instants.find((i) => i.key === "fajr")?.time ?? null;
+  const isha = day.instants.find((i) => i.key === "isha")?.time ?? null;
+  const span =
+    fajr && isha && isha.getTime() > fajr.getTime()
+      ? isha.getTime() - fajr.getTime()
+      : 1;
+  return day.instants
+    .filter((i) => i.time != null)
+    .map((i) => ({
+      key: i.key,
+      fraction: fajr
+        ? Math.min(1, Math.max(0, (i.time!.getTime() - fajr.getTime()) / span))
+        : 0.5,
+      isNext: i.key === nextKey,
+      label: PRAYER_AR[i.key],
+    }));
 }
 
 // ── Daily dhikr ────────────────────────────────────────────────────────────
@@ -234,7 +186,7 @@ function LibrarySection({ onPlay }: { onPlay: (slug: string) => void }) {
 
 export function NewtabPage() {
   const pt = usePrayerTimes();
-  const { adhan } = useAdhanSettings();
+  const { location } = useLocation();
   const { state: playerState, send } = usePlayer();
 
   // Fetch a playlist's tracks, start playback, and record it as recently played.
@@ -255,25 +207,12 @@ export function NewtabPage() {
 
   const { today, upcoming, arcPos, now } = pt;
 
-  // Countdown display (h:mm or m:ss when under an hour)
+  // Countdown display (h:mm) — mirrors the web widget format.
   const { h, m } = formatCountdown(upcoming.msUntil);
-  const totalSeconds = Math.floor(upcoming.msUntil / 1000);
-  const s = totalSeconds % 60;
-  const countdownStr =
-    h > 0
-      ? `${String(h)}:${String(m).padStart(2, "0")}`
-      : `${String(m)}:${String(s).padStart(2, "0")}`;
+  const countdownStr = `${String(h)}:${String(m).padStart(2, "0")}`;
 
-  // Arc dots: fraction of each prayer along the Fajr→Isha track
-  const fajrTime = today.instants.find((i) => i.key === "fajr")?.time;
-  const ishaTime = today.instants.find((i) => i.key === "isha")?.time;
-  const arcDots = today.instants
-    .filter((i) => i.time != null && fajrTime != null && ishaTime != null)
-    .map(({ key, time }) => {
-      const range = ishaTime!.getTime() - fajrTime!.getTime();
-      const f = range > 0 ? (time!.getTime() - fajrTime!.getTime()) / range : 0;
-      return { key, f: Math.min(1, Math.max(0, f)) };
-    });
+  const arcDots = buildArcDots(today, upcoming.key);
+  const rowKeys: PrayerKey[] = ["fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha"];
 
   return (
     <main className="min-h-screen bg-bg px-6 py-8 text-text" dir="rtl">
@@ -288,53 +227,63 @@ export function NewtabPage() {
           </div>
         </header>
 
-        {/* ── Next prayer countdown ──────────────────────────────────── */}
-        <section className="rounded-lg border border-border bg-surface p-6 text-center">
-          <p className="mb-1 text-xs uppercase tracking-[0.08em] text-text-2">
-            الصلاة القادمة
-          </p>
-          <p className="text-3xl font-bold text-primary">
-            {PRAYER_AR[upcoming.key]}
-          </p>
-          <p className="mt-1 font-mono text-5xl font-light tracking-wide text-sun">
-            {countdownStr}
-          </p>
-          <p className="mt-2 text-sm text-text-2">
-            {formatClock(upcoming.time, "ar")}
-            {adhan?.enabled && adhan.perPrayer[upcoming.key as keyof typeof adhan.perPrayer] ? (
-              <span className="ms-2 text-xs text-primary">🔊</span>
-            ) : null}
-          </p>
-        </section>
-
-        {/* ── Sun arc ─────────────────────────────────────────────────── */}
-        <section>
-          <SunArcWidget
-            fraction={arcPos.fraction}
-            isNight={arcPos.isNight}
-            dots={arcDots}
-          />
-        </section>
-
-        {/* ── Prayer timetable ──────────────────────────────────────── */}
-        <section className="space-y-1">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-text-2">
-            مواقيت اليوم
-          </h2>
-          {today.instants.map(({ key, time }) => (
-            <div
-              key={key}
-              className={[
-                "flex items-center justify-between rounded-md px-3 py-2 text-sm",
-                key === upcoming.key
-                  ? "bg-surface border border-border text-text font-semibold"
-                  : "text-text-2",
-              ].join(" ")}
-            >
-              <span>{PRAYER_AR[key]}</span>
-              <span className="font-mono">{formatClock(time, "ar")}</span>
+        {/* ── Prayer widget (mirrors the web home card) ──────────────── */}
+        <section
+          aria-label="مواقيت الصلاة"
+          className="overflow-hidden rounded-xl border border-border bg-surface"
+        >
+          {/* header: location + Hijri date */}
+          <div className="px-6 pt-5">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-sm text-text">
+                🕌 {location?.label ?? "موقعك"}
+              </span>
+              <span className="text-xs text-sun">{hijriDate(now, "ar")}</span>
             </div>
-          ))}
+          </div>
+
+          {/* full-bleed arc */}
+          <div className="mt-1">
+            <SunArc
+              dots={arcDots}
+              sunFraction={arcPos.fraction}
+              nextLabel={PRAYER_AR[upcoming.key]}
+              isNight={arcPos.isNight}
+              onNightBand={arcPos.onNightBand}
+            />
+          </div>
+
+          {/* countdown */}
+          <div className="mb-3 flex items-baseline justify-center gap-2.5">
+            <span className="text-xs uppercase tracking-widest text-text-2">القادمة</span>
+            <span className="font-display text-xl font-semibold text-text sm:text-2xl">
+              {PRAYER_AR[upcoming.key]}
+            </span>
+            <span className="font-display text-lg font-semibold text-sun">
+              {countdownStr}
+            </span>
+          </div>
+
+          {/* times row */}
+          <div className="flex gap-1.5 border-t border-border px-6 py-4">
+            {rowKeys.map((key) => {
+              const inst = today.instants.find((i) => i.key === key)!;
+              const isNext = upcoming.key === key;
+              return (
+                <div
+                  key={key}
+                  className={`flex-1 rounded-md px-0.5 py-1 text-center ${isNext ? "bg-primary/10" : ""}`}
+                >
+                  <div className={`text-2xs uppercase tracking-[0.05em] ${isNext ? "text-primary" : "text-text-2"}`}>
+                    {PRAYER_AR[key]}
+                  </div>
+                  <div className={`mt-1 text-sm tabular-nums ${isNext ? "font-semibold text-sun" : "text-text"}`}>
+                    {formatClock(inst.time, "ar")}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </section>
 
         {/* ── Daily dhikr ─────────────────────────────────────────────── */}
