@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { useI18n } from "../../lib/i18n";
 import { X } from "./icons";
@@ -30,7 +31,10 @@ export function Sheet({ open, onClose, title, side = "left", children }: SheetPr
 
   const anchor = side === "left" ? "left-0 border-e" : "right-0 border-s";
 
-  return (
+  // Portal to <body> so the fixed-position overlay is sized against the viewport.
+  // Rendering inline would anchor it to the player bar, whose `backdrop-blur`
+  // creates a containing block for fixed descendants (clipping the sheet).
+  return createPortal(
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={title}>
       <button
         type="button"
@@ -54,6 +58,7 @@ export function Sheet({ open, onClose, title, side = "left", children }: SheetPr
         </div>
         <div className="flex-1 overflow-y-auto p-4">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
