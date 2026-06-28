@@ -1,5 +1,5 @@
 import { ARC, arcPath, arcPoint, tForFraction } from "@repo/shared-core/prayer-times/sun-arc";
-import type { PrayerKey } from "@repo/shared-core/prayer-times/compute";
+import type { PrayerDay, PrayerKey } from "@repo/shared-core/prayer-times/compute";
 
 export type ArcDot = {
   key: PrayerKey;
@@ -8,12 +8,37 @@ export type ArcDot = {
   label: string; // localized prayer name shown above the point
 };
 
+// Maps a day's prayer instants onto Fajr→Isha arc fractions for <SunArc>. Shared
+// by the new-tab prayer card and the toolbar popup. `label` resolves the display
+// name for each prayer (i18n key on the new tab, hardcoded Arabic in the popup).
+export function buildArcDots(
+  day: PrayerDay,
+  nextKey: PrayerKey | null,
+  label: (key: PrayerKey) => string,
+): ArcDot[] {
+  const fajr = day.instants.find((i) => i.key === "fajr")?.time ?? null;
+  const isha = day.instants.find((i) => i.key === "isha")?.time ?? null;
+  const span =
+    fajr && isha && isha.getTime() > fajr.getTime() ? isha.getTime() - fajr.getTime() : 1;
+  return day.instants
+    .filter((i) => i.time != null)
+    .map((i) => ({
+      key: i.key,
+      fraction: fajr
+        ? Math.min(1, Math.max(0, (i.time!.getTime() - fajr.getTime()) / span))
+        : 0.5,
+      isNext: i.key === nextKey,
+      label: label(i.key),
+    }));
+}
+
 export function SunArc({
   dots,
   sunFraction,
   nextLabel,
   isNight = false,
   onNightBand = isNight,
+  alwaysShowLabels = false,
 }: {
   dots: ArcDot[];
   sunFraction: number; // 0..1 current-time progress
@@ -24,6 +49,10 @@ export function SunArc({
   // is up (`isNight`) but still rides the day arc — same axis the sun just left,
   // so there's no vertical jump at sunset. Defaults to `isNight`.
   onNightBand?: boolean;
+  // In-arc prayer labels are hidden below `sm` by default (they shrink to ~7px
+  // and collide at phone width on the wide new-tab). The narrow popup wants them
+  // anyway — pass true to always render them.
+  alwaysShowLabels?: boolean;
 }) {
   // `sunFraction` is the day's Fajr→Isha progress for the sun, or the night's
   // Isha→Fajr progress for the moon (computed by the caller). Both ride the same
@@ -124,12 +153,12 @@ export function SunArc({
             ) : (
               <circle cx={p.x} cy={p.y} r="3.5" fill="var(--color-text-2)" />
             )}
-            {/* Hidden below `sm`: the viewBox scales labels to ~7px there
-                (unreadable, Maghrib/Isha collide). The countdown + time row
-                under the arc carry names/times on phones; the gold glowing
-                dot still marks the next prayer. */}
+            {/* Hidden below `sm` (unless alwaysShowLabels): the viewBox scales
+                labels to ~7px there (unreadable, Maghrib/Isha collide). The
+                countdown + time row under the arc carry names/times on phones;
+                the gold glowing dot still marks the next prayer. */}
             <text
-              className="max-sm:hidden"
+              className={alwaysShowLabels ? undefined : "max-sm:hidden"}
               x={p.x}
               y={labelY}
               textAnchor="middle"

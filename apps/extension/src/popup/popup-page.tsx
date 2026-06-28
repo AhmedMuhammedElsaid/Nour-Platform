@@ -4,6 +4,7 @@ import { formatClock, formatCountdown } from "@repo/shared-core/prayer-times/for
 import type { PrayerKey } from "@repo/shared-core/prayer-times/compute";
 
 import { PlayerBar } from "../components/player-bar";
+import { SunArc, buildArcDots } from "../components/sun-arc";
 import { usePlayer } from "../lib/use-player";
 import { usePrayerTimes } from "../lib/use-prayer-times";
 
@@ -22,13 +23,14 @@ export function PopupPage() {
 
   if (!pt) {
     return (
-      <div className="flex min-h-[160px] items-center justify-center bg-bg p-4" dir="rtl">
+      <div className="flex min-h-40 items-center justify-center bg-bg p-4" dir="rtl">
         <p className="text-sm text-text-2">جاري التحميل…</p>
       </div>
     );
   }
 
-  const { today, upcoming, now } = pt;
+  const { today, upcoming, arcPos, now } = pt;
+  const arcDots = buildArcDots(today, upcoming.key, (key) => PRAYER_AR[key]);
 
   const { h, m } = formatCountdown(upcoming.msUntil);
   const totalSeconds = Math.floor(upcoming.msUntil / 1000);
@@ -68,6 +70,20 @@ export function PopupPage() {
         >
           ⚙
         </a>
+      </div>
+
+      {/* Sun/moon arc — current time rides the Fajr→Isha track; the next prayer
+          glows. In-arc labels auto-hide at the popup's 360px width; the list
+          below carries the names. */}
+      <div className="mb-2 -mx-1">
+        <SunArc
+          dots={arcDots}
+          sunFraction={arcPos.fraction}
+          nextLabel={PRAYER_AR[upcoming.key]}
+          isNight={arcPos.isNight}
+          onNightBand={arcPos.onNightBand}
+          alwaysShowLabels
+        />
       </div>
 
       {/* Countdown */}

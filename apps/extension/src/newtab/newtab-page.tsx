@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import type { PrayerDay, PrayerKey } from "@repo/shared-core/prayer-times/compute";
+import type { PrayerKey } from "@repo/shared-core/prayer-times/compute";
 import {
   formatClock,
   formatCountdown,
@@ -37,28 +37,9 @@ import { PlayerBar } from "../components/player-bar";
 import { PlaylistDetail } from "../components/playlist-detail";
 import { SearchView } from "../components/search-view";
 import { SiteHeader } from "../components/site-header";
-import { SunArc, type ArcDot } from "../components/sun-arc";
+import { SunArc, buildArcDots } from "../components/sun-arc";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
-
-function buildArcDots(day: PrayerDay, nextKey: PrayerKey | null, tFn: (k: string) => string): ArcDot[] {
-  const fajr = day.instants.find((i) => i.key === "fajr")?.time ?? null;
-  const isha = day.instants.find((i) => i.key === "isha")?.time ?? null;
-  const span =
-    fajr && isha && isha.getTime() > fajr.getTime()
-      ? isha.getTime() - fajr.getTime()
-      : 1;
-  return day.instants
-    .filter((i) => i.time != null)
-    .map((i) => ({
-      key: i.key,
-      fraction: fajr
-        ? Math.min(1, Math.max(0, (i.time!.getTime() - fajr.getTime()) / span))
-        : 0.5,
-      isNext: i.key === nextKey,
-      label: tFn(`prayer.${i.key}`),
-    }));
-}
 
 function dayOfYear(d: Date): number {
   const start = new Date(d.getFullYear(), 0, 0);
@@ -388,7 +369,7 @@ export function NewtabPage() {
           const { today, upcoming, arcPos, now } = pt;
           const { h, m } = formatCountdown(upcoming.msUntil);
           const countdownStr = `${String(h)}:${String(m).padStart(2, "0")}`;
-          const arcDots = buildArcDots(today, upcoming.key, t);
+          const arcDots = buildArcDots(today, upcoming.key, (key) => t(`prayer.${key}`));
 
           return (
             <section
