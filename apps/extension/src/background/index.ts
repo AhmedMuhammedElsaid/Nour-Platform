@@ -3,8 +3,15 @@ import browser from "webextension-polyfill";
 import { closePlayerTab, routePlayerCommand } from "../lib/audio-router";
 import { warmAdhanCache } from "../lib/cache-manager";
 import { handleNotificationClick } from "../lib/notify";
-import { seedDefaults } from "../lib/storage";
-import { isAdhanEnded, isPlayerCommandMessage } from "../offscreen/protocol";
+import { get, seedDefaults, setRaw, type StorageKey } from "../lib/storage";
+import {
+  PLAYER_LIVE_KEY,
+  isAdhanEnded,
+  isPlayerCommandMessage,
+  isPlayerState,
+  isStorageGet,
+  isStorageSet,
+} from "../offscreen/protocol";
 import { ALARM_ADHAN, ALARM_AZKAR, ALARM_TICK, tick } from "./scheduler";
 
 const REARM_KEYS = [
@@ -45,7 +52,31 @@ browser.notifications.onClicked.addListener((id) => {
 
 browser.runtime.onMessage.addListener((message) => {
   if (isPlayerCommandMessage(message)) {
-    void routePlayerCommand(message.command);
+    // Return the promise so the MV3 service worker is kept alive until the
+    // offscreen document is created and the command is delivered. A bare
+    // fire-and-forget (`void routePlayerCommand(...)`) lets Chrome terminate
+    // the worker the moment this listener returns synchronously, which can
+    // kill the in-flight `createDocument()`/`post()` and silently drop the
+    // first play command.
+    return routePlayerCommand(message.command);
+  }
+
+  // Storage bridge for the offscreen audio engine (chrome.storage is unavailable
+  // there). Returning the promise sends the value/ack back to the engine.
+  if (isStorageGet(message)) {
+    // `key` crosses a runtime-message boundary as a plain string; it is always a
+    // valid StorageKey minted by the typed engine call site.
+    return get(message.key as StorageKey);
+  }
+  if (isStorageSet(message)) {
+    return setRaw(message.key, message.value);
+  }
+
+  // Mirror live player state into session storage so a freshly-opened popup or
+  // new-tab can render now-playing before the first live broadcast. The offscreen
+  // can't write storage itself, so the background does it on its behalf.
+  if (isPlayerState(message)) {
+    void browser.storage.session.set({ [PLAYER_LIVE_KEY]: message.state }).catch(() => {});
     return;
   }
 

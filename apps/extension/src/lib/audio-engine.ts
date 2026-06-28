@@ -14,8 +14,8 @@ import {
   type PlayerState,
   type QueueItem,
 } from "./player-state";
-import { get, set } from "./storage";
-import { PLAYER_LIVE_KEY, type FromOffscreen, isToOffscreen } from "../offscreen/protocol";
+import { get, set } from "./engine-storage";
+import { type FromOffscreen, isToOffscreen } from "../offscreen/protocol";
 
 // ── Adhan (priority) ────────────────────────────────────────────────────────
 
@@ -371,7 +371,9 @@ playerAudio.addEventListener("timeupdate", () => {
     lastPersistAt = now;
     void persistPosition();
   }
-  broadcast();
+  // High-frequency position tick — throttled. State-change broadcasts elsewhere
+  // are NOT throttled so play/pause/track changes reach the UI immediately.
+  broadcast(false);
 });
 
 // ── Resume positions ────────────────────────────────────────────────────────
@@ -424,7 +426,13 @@ if ("mediaSession" in navigator) {
 
 let lastBroadcastAt = 0;
 
-function broadcast(): void {
+// `force` (default) sends immediately — used for every state change (play/pause,
+// track switch, seek, rate/volume, errors) so the UI updates without delay. The
+// timeupdate position tick passes `force = false` to throttle to 250ms.
+function broadcast(force = true): void {
+  const now = Date.now();
+  if (!force && now - lastBroadcastAt < 250) return;
+  lastBroadcastAt = now;
   const state: PlayerState = {
     ...core,
     positionSec: Number.isFinite(playerAudio.currentTime) ? playerAudio.currentTime : 0,
@@ -436,10 +444,9 @@ function broadcast(): void {
     isBuffering,
     errorMessage,
   };
-  void browser.storage.session.set({ [PLAYER_LIVE_KEY]: state }).catch(() => {});
-  const now = Date.now();
-  if (now - lastBroadcastAt < 250) return;
-  lastBroadcastAt = now;
+  // The offscreen document cannot write chrome.storage; the background mirrors
+  // this player-state broadcast into session storage (PLAYER_LIVE_KEY) for
+  // cold-open rendering.
   const msg: FromOffscreen = { target: "ui", type: "player-state", state };
   void browser.runtime.sendMessage(msg).catch(() => {});
 }

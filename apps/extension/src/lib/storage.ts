@@ -182,10 +182,10 @@ const SCHEMA_MAP: {
   },
 };
 
-type StorageKey = keyof typeof SCHEMA_MAP;
+export type StorageKey = keyof typeof SCHEMA_MAP;
 // `as StorageValue<K>` below bridges the generic key-indexed union that TypeScript
 // cannot narrow through conditional types without an explicit cast.
-type StorageValue<K extends StorageKey> =
+export type StorageValue<K extends StorageKey> =
   (typeof SCHEMA_MAP)[K] extends SchemaEntry<infer T> ? T : never;
 
 export async function get<K extends StorageKey>(key: K): Promise<StorageValue<K>> {
@@ -204,6 +204,13 @@ export async function set<K extends StorageKey>(
   key: K,
   value: StorageValue<K>,
 ): Promise<void> {
+  await browser.storage.local.set({ [key]: value });
+}
+
+// Untyped write used by the background-side storage bridge: the value has already
+// been built and validated at the offscreen call site (which is typed), so it is
+// written directly. `key` arrives over a runtime message as a plain string.
+export async function setRaw(key: string, value: unknown): Promise<void> {
   await browser.storage.local.set({ [key]: value });
 }
 

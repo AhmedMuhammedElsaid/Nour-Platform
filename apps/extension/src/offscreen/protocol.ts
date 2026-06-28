@@ -28,6 +28,17 @@ export type ToBackground = {
   command: PlayerCommand;
 };
 
+// Offscreen → background storage bridge. chrome.storage is NOT exposed to
+// offscreen documents (only chrome.runtime), so the audio engine proxies every
+// read/write to the background service worker, which has full storage access.
+export type StorageGet = { target: "background"; type: "storage-get"; key: string };
+export type StorageSet = {
+  target: "background";
+  type: "storage-set";
+  key: string;
+  value: unknown;
+};
+
 // offscreen → background / UI
 export type FromOffscreen =
   | { target: "background"; type: "adhan-ended"; resumedPlayer: boolean }
@@ -43,6 +54,24 @@ export function isToOffscreen(msg: unknown): msg is ToOffscreen {
 
 export function isPlayerCommandMessage(msg: unknown): msg is ToBackground {
   return isObject(msg) && msg.target === "background" && msg.type === "player-command";
+}
+
+export function isStorageGet(msg: unknown): msg is StorageGet {
+  return (
+    isObject(msg) &&
+    msg.target === "background" &&
+    msg.type === "storage-get" &&
+    typeof msg.key === "string"
+  );
+}
+
+export function isStorageSet(msg: unknown): msg is StorageSet {
+  return (
+    isObject(msg) &&
+    msg.target === "background" &&
+    msg.type === "storage-set" &&
+    typeof msg.key === "string"
+  );
 }
 
 export function isAdhanEnded(
