@@ -1,6 +1,6 @@
 import browser from "webextension-polyfill";
 
-import { formatClock, formatCountdown } from "@repo/shared-core/prayer-times/format";
+import { formatClock, formatCountdownClock } from "@repo/shared-core/prayer-times/format";
 import type { PrayerKey } from "@repo/shared-core/prayer-times/compute";
 
 import { PlayerBar } from "../components/player-bar";
@@ -32,13 +32,7 @@ export function PopupPage() {
   const { today, upcoming, arcPos, now } = pt;
   const arcDots = buildArcDots(today, upcoming.key, (key) => PRAYER_AR[key]);
 
-  const { h, m } = formatCountdown(upcoming.msUntil);
-  const totalSeconds = Math.floor(upcoming.msUntil / 1000);
-  const s = totalSeconds % 60;
-  const countdownStr =
-    h > 0
-      ? `${String(h)}:${String(m).padStart(2, "0")}`
-      : `${String(m)}:${String(s).padStart(2, "0")}`;
+  const countdownStr = formatCountdownClock(upcoming.msUntil, "ar");
 
   // Progress within the day (Fajr → Isha elapsed fraction, 0–1)
   const fajrTime = today.instants.find((i) => i.key === "fajr")?.time;

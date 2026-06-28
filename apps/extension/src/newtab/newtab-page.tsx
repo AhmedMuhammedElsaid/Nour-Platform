@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { PrayerKey } from "@repo/shared-core/prayer-times/compute";
 import {
   formatClock,
-  formatCountdown,
+  formatCountdownClock,
   hijriDate,
 } from "@repo/shared-core/prayer-times/format";
 
@@ -251,7 +251,7 @@ export function NewtabPage() {
   const pt = usePrayerTimes();
   const { location } = useLocation();
   const { state: playerState, send } = usePlayer();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [categories, setCategories] = useState<CategorySummary[]>([]);
 
   useEffect(() => {
@@ -367,8 +367,7 @@ export function NewtabPage() {
           </div>
         ) : (() => {
           const { today, upcoming, arcPos, now } = pt;
-          const { h, m } = formatCountdown(upcoming.msUntil);
-          const countdownStr = `${String(h)}:${String(m).padStart(2, "0")}`;
+          const countdownStr = formatCountdownClock(upcoming.msUntil, locale);
           const arcDots = buildArcDots(today, upcoming.key, (key) => t(`prayer.${key}`));
 
           return (

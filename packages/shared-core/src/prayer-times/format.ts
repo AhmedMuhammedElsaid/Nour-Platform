@@ -1,10 +1,25 @@
 import type { Locale } from "../schemas/locale";
 
-// Split a positive ms duration into whole hours + minutes (clamped at 0).
-export function formatCountdown(ms: number): { h: number; m: number } {
-  const clamped = Math.max(0, ms);
-  const totalMinutes = Math.floor(clamped / 60_000);
-  return { h: Math.floor(totalMinutes / 60), m: totalMinutes % 60 };
+// Split a positive ms duration into whole hours + minutes + seconds (clamped at 0).
+export function formatCountdown(ms: number): { h: number; m: number; s: number } {
+  const totalSeconds = Math.floor(Math.max(0, ms) / 1000);
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  return {
+    h: Math.floor(totalMinutes / 60),
+    m: totalMinutes % 60,
+    s: totalSeconds % 60,
+  };
+}
+
+// Live countdown rendered as a zero-padded HH:MM:SS clock string. Digits are
+// localized (Arabic-Indic in `ar`) to match formatClock's prayer times.
+export function formatCountdownClock(ms: number, locale: Locale = "en"): string {
+  const { h, m, s } = formatCountdown(ms);
+  const nf = new Intl.NumberFormat(locale === "ar" ? "ar-EG" : "en-US", {
+    minimumIntegerDigits: 2,
+    useGrouping: false,
+  });
+  return [h, m, s].map((n) => nf.format(n)).join(":");
 }
 
 // Localized clock; `timeZone` optional (defaults to the viewer's device tz).

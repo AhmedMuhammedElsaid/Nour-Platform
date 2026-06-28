@@ -10,7 +10,7 @@ import {
 import type { PrayerDay, PrayerKey } from "@repo/shared-core/prayer-times/compute";
 import {
   formatClock,
-  formatCountdown,
+  formatCountdownClock,
   gregorianDate,
   hijriDate,
 } from "@repo/shared-core/prayer-times/format";
@@ -99,8 +99,8 @@ export function PrayerPage() {
 
   const { today, upcoming, arcPos, now } = times;
   const arcDots = buildArcDots(today, upcoming.key, t);
-  const { h, m } = formatCountdown(upcoming.msUntil);
   const displayLocale = locale === "en" ? "en" : "ar";
+  const countdownStr = formatCountdownClock(upcoming.msUntil, displayLocale);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
@@ -123,7 +123,7 @@ export function PrayerPage() {
             {t(`prayer.${upcoming.key}`)} · {t("prayer.next")}
           </p>
           <p className="font-display text-3xl tabular-nums text-sun">
-            {String(h).padStart(2, "0")}:{String(m).padStart(2, "0")}
+            {countdownStr}
           </p>
         </div>
       </div>
