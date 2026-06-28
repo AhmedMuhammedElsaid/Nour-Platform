@@ -30,7 +30,7 @@ export function PlaylistCard({ playlist, categories, onPlay, onOpen }: PlaylistC
       {/* Circular cover */}
       <button
         type="button"
-        onClick={() => onPlay(playlist.slug)}
+        onClick={() => (onOpen ?? onPlay)(playlist.slug)}
         aria-label={`${t("player.play")} ${playlist.title}`}
         className="relative w-[78%] aspect-square rounded-full overflow-hidden focus-visible:outline-none"
       >
