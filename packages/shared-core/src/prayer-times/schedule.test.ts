@@ -64,6 +64,27 @@ describe("nextAdhanEvent", () => {
     };
     expect(nextAdhanEvent(instants(), settings, now)).toBeNull();
   });
+
+  // An invalid Date has getTime() === NaN, and `NaN <= now` is false — so without
+  // an explicit finite guard a bad instant slips past the past-check AND can lock
+  // itself in as `best` (every `valid < NaN` comparison is false). It would then
+  // be armed with a NaN delay → fire immediately on open, far from any real
+  // prayer. Reject non-finite times at the source.
+  it("skips an instant with an invalid time and selects the next valid prayer", () => {
+    const now = new Date(2026, 5, 7, 5, 0, 0);
+    const withBadDhuhr: PrayerInstant[] = [
+      { key: "fajr", time: new Date(2026, 5, 7, 4, 0, 0) }, // past
+      { key: "dhuhr", time: new Date(NaN) }, // invalid
+      { key: "asr", time: new Date(2026, 5, 7, 15, 0, 0) },
+    ];
+    expect(nextAdhanEvent(withBadDhuhr, DEFAULT_ADHAN_SETTINGS, now)?.key).toBe("asr");
+  });
+
+  it("returns null when the only remaining instant is invalid (naps, never fires)", () => {
+    const now = new Date(2026, 5, 7, 16, 0, 0);
+    const onlyBad: PrayerInstant[] = [{ key: "isha", time: new Date(NaN) }];
+    expect(nextAdhanEvent(onlyBad, DEFAULT_ADHAN_SETTINGS, now)).toBeNull();
+  });
 });
 
 // ── recentlyMissedAdhan ───────────────────────────────────────────────────────

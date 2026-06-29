@@ -92,7 +92,11 @@ function entryToPrayerDay(e: AladhanEntry): { key: string; day: PrayerDay } {
       date: new Date(year, month - 1, day),
       instants: PRAYER_FIELD_MAP.map(([pkey, field]) => {
         const { h, m } = parseHM(e.timings[field]);
-        return { key: pkey, time: new Date(year, month - 1, day, h, m, 0, 0) };
+        const d = new Date(year, month - 1, day, h, m, 0, 0);
+        // Null out a malformed timing rather than emit an Invalid Date — a NaN
+        // time would otherwise show "Invalid Date" in the UI and (before the
+        // scheduler's finite guards) mis-fire the adhan. Mirrors computePrayerTimes.
+        return { key: pkey, time: Number.isFinite(d.getTime()) ? d : null };
       }),
     },
   };

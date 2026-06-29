@@ -6,11 +6,7 @@ import type { AdhanSettings } from "@repo/api/schemas/prayer-times";
 import type { PrayerLocation, PrayerPreferences } from "@repo/api/schemas/prayer-times";
 
 import { resolvePrayerDay } from "../lib/aladhan";
-import {
-  type AdhanEvent,
-  isAdhanEventStale,
-  nextAdhanEvent,
-} from "../lib/adhan-schedule";
+import { type AdhanEvent, nextAdhanEvent } from "../lib/adhan-schedule";
 import { ADHAN_FIRED_KEY, claimFiredEvent } from "../lib/fired-event-store";
 
 // Recompute at least this often so clock drift / sleep / background throttling
@@ -56,13 +52,16 @@ export function useAdhanScheduler(input: {
     let lastFiredAt: string | null = null;
 
     const fire = (event: AdhanEvent) => {
+      // Only ever play within STALE_GRACE of a real, VALID prayer instant. The
+      // scheduler arms to fire AT the instant, so a legitimate fire has
+      // |now - time| ≈ 0. This is the hard "is it actually a prayer time now?"
+      // guard: it blocks an invalid/wrong time (NaN) or a timer that resolved
+      // off-schedule (e.g. resumed late after sleep) from EVER playing the adhan
+      // far from a prayer — opening the tab can never trigger a spurious adhan.
+      const t = event.time.getTime();
+      if (!Number.isFinite(t) || Math.abs(Date.now() - t) > STALE_GRACE) return;
       const id = event.time.toISOString();
       if (lastFiredAt === id) return;
-      // A precise timer paused during device sleep resumes on wake and resolves
-      // its captured event late — e.g. the pre-Fajr timer firing at Maghrib,
-      // which would play the Fajr adhan hours after Fajr. Drop any event more
-      // than the grace late; the re-arm below picks the correct upcoming prayer.
-      if (isAdhanEventStale(event, new Date(), STALE_GRACE)) return;
       lastFiredAt = id;
       void claimFiredEvent(ADHAN_FIRED_KEY, id).then((owned) => {
         if (owned && !cancelled) onFireRef.current(event);

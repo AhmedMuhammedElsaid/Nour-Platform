@@ -8,7 +8,6 @@ import type { PrayerLocation, PrayerPreferences } from "@repo/api/schemas/prayer
 import { resolvePrayerDay } from "../lib/aladhan";
 import {
   type AzkarReminderEvent,
-  isAzkarReminderEventStale,
   nextAzkarReminderEvent,
 } from "../lib/azkar-reminder-schedule";
 import {
@@ -57,12 +56,13 @@ export function useAzkarReminderScheduler(input: {
     let lastFiredAt: string | null = null;
 
     const fire = (event: AzkarReminderEvent) => {
+      // Only fire within STALE_GRACE of a real, VALID reminder instant (mirrors
+      // the adhan scheduler): blocks an invalid/wrong time or a timer that
+      // resolved off-schedule from firing a reminder far from its time.
+      const t = event.time.getTime();
+      if (!Number.isFinite(t) || Math.abs(Date.now() - t) > STALE_GRACE) return;
       const id = event.time.toISOString();
       if (lastFiredAt === id) return;
-      // A precise timer paused during device sleep resumes on wake and resolves
-      // its captured event late — drop any reminder more than the grace late so
-      // a morning reminder can't fire hours later (mirrors the adhan scheduler).
-      if (isAzkarReminderEventStale(event, new Date(), STALE_GRACE)) return;
       lastFiredAt = id;
       void claimFiredEvent(AZKAR_REMINDER_FIRED_KEY, id).then((owned) => {
         if (owned && !cancelled) onFireRef.current(event);

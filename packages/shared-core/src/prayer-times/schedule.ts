@@ -28,6 +28,11 @@ export function nextAdhanEvent(
   for (const instant of instants) {
     const { key, time } = instant;
     if (time == null || !isAdhanKey(key)) continue;
+    // An invalid Date has getTime() === NaN; `NaN <= now` is false, so without
+    // this guard a bad instant slips past the past-check and locks itself in as
+    // `best` (every `valid < NaN` is false) → armed with a NaN delay → fires
+    // immediately on open, far from any real prayer. Reject non-finite times.
+    if (!Number.isFinite(time.getTime())) continue;
     if (!settings.perPrayer[key]) continue;
     if (time.getTime() <= now.getTime()) continue;
     if (best == null || time.getTime() < best.time.getTime()) {
@@ -70,6 +75,7 @@ export function recentlyMissedAdhan(
   for (const instant of instants) {
     const { key, time } = instant;
     if (time == null || !isAdhanKey(key)) continue;
+    if (!Number.isFinite(time.getTime())) continue; // reject invalid Dates
     if (!settings.perPrayer[key]) continue;
     const tt = time.getTime();
     if (tt > now.getTime() || tt <= lo) continue;
@@ -99,7 +105,7 @@ export function nextAzkarReminderEvent(
   let best: AzkarReminderEvent | null = null;
   for (const kind of ["sabah", "masaa"] as const) {
     const base = instants.find((i) => i.key === BASE_PRAYER[kind]);
-    if (!base?.time) continue;
+    if (!base?.time || !Number.isFinite(base.time.getTime())) continue;
     const time = new Date(base.time.getTime() + offsetMs);
     if (time.getTime() <= now.getTime()) continue;
     if (best == null || time.getTime() < best.time.getTime()) {
@@ -136,7 +142,7 @@ export function recentlyMissedAzkarReminder(
   let best: AzkarReminderEvent | null = null;
   for (const kind of ["sabah", "masaa"] as const) {
     const base = instants.find((i) => i.key === BASE_PRAYER[kind]);
-    if (!base?.time) continue;
+    if (!base?.time || !Number.isFinite(base.time.getTime())) continue;
     const tt = base.time.getTime() + offsetMs;
     if (tt > now.getTime() || tt <= lo) continue;
     if (best == null || tt > best.time.getTime()) {
