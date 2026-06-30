@@ -6,7 +6,12 @@ import type { AdhanSettings } from "@repo/api/schemas/prayer-times";
 import type { PrayerLocation, PrayerPreferences } from "@repo/api/schemas/prayer-times";
 
 import { resolvePrayerDay } from "../lib/aladhan";
-import { type AdhanEvent, nextAdhanEvent } from "../lib/adhan-schedule";
+import {
+  ADHAN_PLAY_GRACE_MS,
+  type AdhanEvent,
+  isWithinAdhanWindow,
+  nextAdhanEvent,
+} from "../lib/adhan-schedule";
 import { ADHAN_FIRED_KEY, claimFiredEvent } from "../lib/fired-event-store";
 
 // Recompute at least this often so clock drift / sleep / background throttling
@@ -15,11 +20,11 @@ import { ADHAN_FIRED_KEY, claimFiredEvent } from "../lib/fired-event-store";
 const MAX_CHUNK = 5 * 60_000; // 5 min
 const FINAL_WINDOW = 30_000; // last 30s: arm the precise timeout
 // A precise timer paused during device sleep can resolve its captured event
-// minutes late; drop any fire more than this grace past the prayer instant so a
-// resumed timer can't play an adhan well after its time. The adhan plays ONLY
-// when the live clock reaches the prayer instant with the page open — opening
-// or refocusing the tab never replays a prayer that already passed.
-const STALE_GRACE = 2 * 60_000; // 2 min
+// minutes late; the shared ±window gate (ADHAN_PLAY_GRACE_MS) drops any fire more
+// than the grace from the prayer instant so a resumed timer can't play an adhan
+// well after its time. The adhan plays ONLY when the live clock is within the
+// window of the prayer instant — opening or refocusing the tab never replays a
+// prayer that already passed.
 
 function clampChunk(ms: number): number {
   return Math.min(MAX_CHUNK, Math.max(1_000, ms));
@@ -52,14 +57,12 @@ export function useAdhanScheduler(input: {
     let lastFiredAt: string | null = null;
 
     const fire = (event: AdhanEvent) => {
-      // Only ever play within STALE_GRACE of a real, VALID prayer instant. The
-      // scheduler arms to fire AT the instant, so a legitimate fire has
-      // |now - time| ≈ 0. This is the hard "is it actually a prayer time now?"
-      // guard: it blocks an invalid/wrong time (NaN) or a timer that resolved
-      // off-schedule (e.g. resumed late after sleep) from EVER playing the adhan
-      // far from a prayer — opening the tab can never trigger a spurious adhan.
-      const t = event.time.getTime();
-      if (!Number.isFinite(t) || Math.abs(Date.now() - t) > STALE_GRACE) return;
+      // The hard "is it actually a prayer time now?" gate, shared with the SW
+      // notification-click path so no route can ever sound the adhan outside the
+      // prayer window. Blocks an invalid/wrong time (NaN) or a timer that resolved
+      // off-schedule (e.g. resumed late after sleep) — opening the tab can never
+      // trigger a spurious adhan.
+      if (!isWithinAdhanWindow(event.time, new Date(), ADHAN_PLAY_GRACE_MS)) return;
       const id = event.time.toISOString();
       if (lastFiredAt === id) return;
       lastFiredAt = id;

@@ -13,6 +13,7 @@ import { usePrayerSettings } from "../hooks/use-prayer-settings";
 import { useAdhanSettings } from "../hooks/use-adhan-settings";
 import { useAdhanScheduler } from "../hooks/use-adhan-scheduler";
 import { scheduleAdhanNotifications } from "../lib/adhan-notifications";
+import { ADHAN_PLAY_GRACE_MS, isWithinAdhanWindow } from "../lib/adhan-schedule";
 import { ADHAN_FIRED_KEY, claimFiredEvent } from "../lib/fired-event-store";
 import { AdhanPlayer, type AdhanPlayerHandle } from "./adhan-player";
 
@@ -137,14 +138,16 @@ export function AdhanController() {
         method: prefs.method,
         madhab: prefs.madhab,
       });
-      const iso = day.instants
-        .find((i) => i.key === key)
-        ?.time?.toISOString();
-      if (!iso) {
-        play();
+      const instant = day.instants.find((i) => i.key === key)?.time ?? null;
+      // SAME hard gate as the foreground scheduler: only ever play within the
+      // prayer window. A notification surfaced/clicked far from its prayer (e.g.
+      // a stale OS-queued trigger shown when the browser reopens) must NEVER
+      // replay the adhan — without this, opening the site could sound the adhan
+      // when it isn't prayer time. A missing/invalid instant fails the gate too.
+      if (instant == null || !isWithinAdhanWindow(instant, new Date(), ADHAN_PLAY_GRACE_MS)) {
         return;
       }
-      void claimFiredEvent(ADHAN_FIRED_KEY, iso).then((owned) => {
+      void claimFiredEvent(ADHAN_FIRED_KEY, instant.toISOString()).then((owned) => {
         if (owned) play();
       });
     };

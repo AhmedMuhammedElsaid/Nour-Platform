@@ -60,6 +60,30 @@ export function isAdhanEventStale(
   return now.getTime() - event.time.getTime() > graceMs;
 }
 
+// Grace window (±) a play is allowed around a prayer instant. The scheduler arms
+// to fire AT the instant, so a legit play has |now - time| ≈ 0; 2 min absorbs
+// clock drift / final-window scheduling without ever letting the adhan sound far
+// from a prayer.
+export const ADHAN_PLAY_GRACE_MS = 2 * 60_000;
+
+// THE hard "is it actually prayer time right now?" gate that EVERY adhan-play
+// path must pass before sounding audio. True only when `time` is a valid instant
+// within `graceMs` of `now` on EITHER side. Unlike isAdhanEventStale (past-only,
+// for dropping a timer that resumed late after sleep) this is symmetric, so it
+// also rejects a notification-click / SW message replay that arrives far from the
+// prayer — e.g. a stale OS-queued notification surfaced when the browser reopens.
+// A non-finite time (malformed Aladhan timing → NaN) is never within the window,
+// so a bad instant can never fire on open. Pure — no DOM/Date.now.
+export function isWithinAdhanWindow(
+  time: Date | null | undefined,
+  now: Date,
+  graceMs: number,
+): boolean {
+  if (time == null) return false;
+  const t = time.getTime();
+  return Number.isFinite(t) && Math.abs(now.getTime() - t) <= graceMs;
+}
+
 // Most-recent *enabled* adhan whose time falls within the last `graceMs`, i.e.
 // in the half-open window (now - graceMs, now]. Used to catch up an adhan that
 // the foreground timer missed because the tab was backgrounded/throttled or the

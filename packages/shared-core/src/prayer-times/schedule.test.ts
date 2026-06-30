@@ -8,6 +8,7 @@ import type { PrayerInstant } from "./compute";
 import {
   isAdhanEventStale,
   isAzkarReminderEventStale,
+  isWithinAdhanWindow,
   nextAdhanEvent,
   nextAzkarReminderEvent,
   recentlyMissedAdhan,
@@ -150,6 +151,38 @@ describe("isAdhanEventStale", () => {
   it("is not stale when the timer fires slightly early", () => {
     const now = new Date(2026, 5, 7, 3, 59, 59);
     expect(isAdhanEventStale(ev(4), now, GRACE)).toBe(false);
+  });
+});
+
+// ── isWithinAdhanWindow (the hard "is it prayer time now?" play gate) ──────────
+
+describe("isWithinAdhanWindow", () => {
+  const GRACE = 2 * 60_000;
+  const fajr = new Date(2026, 5, 7, 4, 0, 0, 0);
+
+  it("allows a play AT the prayer instant", () => {
+    expect(isWithinAdhanWindow(fajr, fajr, GRACE)).toBe(true);
+  });
+
+  it("allows a play within the grace window on either side", () => {
+    expect(isWithinAdhanWindow(fajr, new Date(2026, 5, 7, 4, 1, 0), GRACE)).toBe(true);
+    expect(isWithinAdhanWindow(fajr, new Date(2026, 5, 7, 3, 59, 0), GRACE)).toBe(true);
+  });
+
+  it("BLOCKS a play far from any prayer (the open-the-site replay case)", () => {
+    // Mid-afternoon, nowhere near Fajr — a stale notification/message must NOT play.
+    expect(isWithinAdhanWindow(fajr, new Date(2026, 5, 7, 14, 30, 0), GRACE)).toBe(false);
+  });
+
+  it("blocks just outside the grace boundary on both sides", () => {
+    expect(isWithinAdhanWindow(fajr, new Date(2026, 5, 7, 4, 2, 1), GRACE)).toBe(false);
+    expect(isWithinAdhanWindow(fajr, new Date(2026, 5, 7, 3, 57, 59), GRACE)).toBe(false);
+  });
+
+  it("blocks a null or invalid (NaN) instant — never fires on open", () => {
+    expect(isWithinAdhanWindow(null, fajr, GRACE)).toBe(false);
+    expect(isWithinAdhanWindow(undefined, fajr, GRACE)).toBe(false);
+    expect(isWithinAdhanWindow(new Date(NaN), fajr, GRACE)).toBe(false);
   });
 });
 
