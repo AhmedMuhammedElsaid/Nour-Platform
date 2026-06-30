@@ -140,7 +140,7 @@ export function PrayerTimesWidget({ locale }: { locale: "ar" | "en" }) {
 
       {next ? (
         <div className="mb-3">
-          <PrayerCountdown nextKey={next.key} target={next.time} />
+          <PrayerCountdown nextKey={next.key} target={next.time} locale={locale} />
         </div>
       ) : null}
 

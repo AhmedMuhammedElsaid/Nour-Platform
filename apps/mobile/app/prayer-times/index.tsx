@@ -34,7 +34,7 @@ import {
   type PrayerKey,
 } from "@repo/shared-core/prayer-times/compute";
 import { usePrayerDay } from "@/features/prayer-times/hooks/use-prayer-day";
-import { formatClock, formatCountdown } from "@repo/shared-core/prayer-times/format";
+import { formatClock, formatCountdownClock } from "@repo/shared-core/prayer-times/format";
 
 export default function PrayerTimesScreen() {
   const { t } = useTranslation();
@@ -138,7 +138,7 @@ export default function PrayerTimesScreen() {
     );
   }, [t, locale]);
 
-  const countdown = formatCountdown(upcoming.msUntil);
+  const countdown = formatCountdownClock(upcoming.msUntil, locale);
   const upcomingTime = formatClock(upcoming.time, locale);
 
   // Active body (sun by day, moon by night) + its progress, plus the day-arc dot
@@ -193,11 +193,8 @@ export default function PrayerTimesScreen() {
           <Text variant="display" className="text-3xl text-primary">
             {prayerNames[upcoming.key]}
           </Text>
-          <Text variant="muted">
-            {countdown.h > 0
-              ? t("prayer.countdown", { h: countdown.h, m: countdown.m })
-              : `${countdown.m}m`}{" "}
-            · {t("prayer.at", { time: upcomingTime })}
+          <Text variant="muted" style={{ fontVariant: ["tabular-nums"] }}>
+            {countdown} · {t("prayer.at", { time: upcomingTime })}
           </Text>
         </View>
 

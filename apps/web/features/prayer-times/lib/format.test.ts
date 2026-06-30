@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { formatClock, formatCountdown, hijriDate } from "./format";
+import {
+  formatClock,
+  formatCountdown,
+  formatCountdownClock,
+  hijriDate,
+} from "./format";
 
 describe("formatCountdown", () => {
   it("breaks milliseconds into whole hours and minutes", () => {
@@ -8,6 +13,21 @@ describe("formatCountdown", () => {
   });
   it("never goes negative", () => {
     expect(formatCountdown(-5000)).toEqual({ h: 0, m: 0 });
+  });
+});
+
+describe("formatCountdownClock", () => {
+  it("renders HH:MM:SS when an hour or more remains", () => {
+    expect(formatCountdownClock(2 * 3600_000 + 15 * 60_000 + 43_000)).toBe("02:15:43");
+  });
+  it("drops the hours segment under an hour (MM:SS)", () => {
+    expect(formatCountdownClock(4 * 60_000 + 37_000)).toBe("04:37");
+  });
+  it("clamps a negative duration to 00:00", () => {
+    expect(formatCountdownClock(-5000)).toBe("00:00");
+  });
+  it("localizes digits to Arabic-Indic in ar", () => {
+    expect(formatCountdownClock(4 * 60_000 + 37_000, "ar")).toBe("٠٤:٣٧");
   });
 });
 

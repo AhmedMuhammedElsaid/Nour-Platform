@@ -26,7 +26,7 @@ import {
 import { usePrayerDay } from "@/features/prayer-times/hooks/use-prayer-day";
 import {
   formatClock,
-  formatCountdown,
+  formatCountdownClock,
   hijriDate,
 } from "@repo/shared-core/prayer-times/format";
 
@@ -103,7 +103,10 @@ export function PrayerTimesWidget() {
     now,
   );
   const dots = buildArcDots(day, upcoming.key);
-  const countdown = formatCountdown(Math.max(0, upcoming.time.getTime() - now.getTime()));
+  const countdown = formatCountdownClock(
+    Math.max(0, upcoming.time.getTime() - now.getTime()),
+    locale,
+  );
 
   if (!hydrated) return null;
 
@@ -136,10 +139,8 @@ export function PrayerTimesWidget() {
         <Text variant="display" className="text-xl text-primary">
           {t(`prayer.${upcoming.key}`)}
         </Text>
-        <Text variant="muted" className="text-xs">
-          {countdown.h > 0
-            ? t("prayer.countdown", { h: countdown.h, m: countdown.m })
-            : `${countdown.m}m`}
+        <Text variant="muted" className="text-xs" style={{ fontVariant: ["tabular-nums"] }}>
+          {countdown}
         </Text>
       </View>
 

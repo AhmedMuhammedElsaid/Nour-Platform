@@ -6,8 +6,9 @@ export function formatCountdown(ms: number): { h: number; m: number } {
   return { h: Math.floor(totalMinutes / 60), m: totalMinutes % 60 };
 }
 
-// Live countdown rendered as a zero-padded HH:MM:SS clock string. Digits are
-// localized (Arabic-Indic in `ar`) to match formatClock's prayer times.
+// Live countdown clock string. Shows MM:SS under an hour and HH:MM:SS once an
+// hour or more remains (the hours segment is dropped when zero). Zero-padded;
+// digits localized (Arabic-Indic in `ar`) to match formatClock's prayer times.
 export function formatCountdownClock(ms: number, locale: Locale = "en"): string {
   const totalSeconds = Math.floor(Math.max(0, ms) / 1000);
   const h = Math.floor(totalSeconds / 3600);
@@ -17,7 +18,8 @@ export function formatCountdownClock(ms: number, locale: Locale = "en"): string 
     minimumIntegerDigits: 2,
     useGrouping: false,
   });
-  return [h, m, s].map((n) => nf.format(n)).join(":");
+  const parts = h > 0 ? [h, m, s] : [m, s];
+  return parts.map((n) => nf.format(n)).join(":");
 }
 
 // Localized clock; `timeZone` optional (defaults to the viewer's device tz).

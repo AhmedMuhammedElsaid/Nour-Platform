@@ -9,12 +9,18 @@ vi.mock("next-intl", () => ({
 import { PrayerCountdown } from "./prayer-countdown";
 
 describe("PrayerCountdown", () => {
-  it("names the next prayer and renders an h/m countdown", () => {
+  it("names the next prayer and renders a live HH:MM:SS clock", () => {
     const target = new Date(Date.now() + (2 * 3600 + 14 * 60) * 1000);
-    render(<PrayerCountdown nextKey="asr" target={target} />);
+    render(<PrayerCountdown nextKey="asr" target={target} locale="en" />);
     // prayer name key
     expect(screen.getByText(/asr/)).toBeInTheDocument();
-    // countdown key with h/m args (2h, allow ±1m drift on m)
-    expect(screen.getByText(/countdown:.*"h":2/)).toBeInTheDocument();
+    // ≥1h remaining → HH:MM:SS clock (e.g. 02:13:59)
+    expect(screen.getByText(/^\d{2}:\d{2}:\d{2}$/)).toBeInTheDocument();
+  });
+
+  it("drops the hours segment under an hour (MM:SS)", () => {
+    const target = new Date(Date.now() + (4 * 60 + 30) * 1000);
+    render(<PrayerCountdown nextKey="asr" target={target} locale="en" />);
+    expect(screen.getByText(/^\d{2}:\d{2}$/)).toBeInTheDocument();
   });
 });
