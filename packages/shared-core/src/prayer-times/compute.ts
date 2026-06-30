@@ -185,19 +185,22 @@ function dayTrackFraction(day: PrayerDay, t: Date): number {
 // dot at dusk, and moon→sun on the Sunrise dot at dawn — and the moon visibly
 // rests on the Fajr dot between the night band and the dawn climb.
 //
-// `fraction` is the left→right arc position (0 = Fajr/left, 1 = Isha/right). The
-// night window straddles the calendar boundary, so this needs the location +
-// params (not just a single PrayerDay) to reach into the adjacent day.
+// `fraction` is the left→right arc position (0 = Fajr/left, 1 = Isha/right).
+//
+// `resolveDay` MUST return the SAME authoritative PrayerDay the arc dots and the
+// adhan scheduler use for a given date (e.g. the Aladhan-cached day). Recomputing
+// times here with a second source (adhan-js `computePrayerTimes`) re-introduces a
+// dual source of truth: official Fajr can land a minute earlier than the local
+// computation, so at the instant the adhan fires `now < adhanjs_fajr` and the moon
+// is stuck in the *pre-dawn* night band — sitting *before* the Fajr dot — even
+// though Fajr already passed. Sourcing the moon from the dots' own day makes the
+// handoff land on the exact dot the adhan fired on. The night window straddles the
+// calendar boundary, so adjacent days are resolved through the same callback.
 export function getArcPosition(
-  input: {
-    lat: number;
-    lng: number;
-    method: CalculationMethodId;
-    madhab: MadhabId;
-  },
+  resolveDay: (date: Date) => PrayerDay,
   now: Date,
 ): { isNight: boolean; onNightBand: boolean; fraction: number } {
-  const today = computePrayerTimes({ ...input, date: now });
+  const today = resolveDay(now);
   const fajr = today.instants.find((i) => i.key === "fajr")?.time ?? null;
   const sunrise = today.instants.find((i) => i.key === "sunrise")?.time ?? null;
   const maghrib = today.instants.find((i) => i.key === "maghrib")?.time ?? null;
@@ -253,10 +256,7 @@ export function getArcPosition(
   // dot back toward dawn (*tomorrow's* Fajr), the return journey on the second
   // axis, setting on the Fajr dot at first light.
   if (isha != null && now.getTime() >= isha.getTime()) {
-    const tom = computePrayerTimes({
-      ...input,
-      date: new Date(now.getTime() + DAY_MS),
-    });
+    const tom = resolveDay(new Date(now.getTime() + DAY_MS));
     const end = tom.instants.find((i) => i.key === "fajr")?.time ?? fajr;
     const from = dayTrackFraction(today, isha);
     if (end == null) return { isNight: true, onNightBand: true, fraction: from };
@@ -270,10 +270,7 @@ export function getArcPosition(
   // Pre-dawn (before Fajr): still the night band that began at *yesterday's*
   // Isha; the moon finishes its sweep onto the Fajr dot at first light.
   if (fajr != null && now.getTime() < fajr.getTime()) {
-    const yest = computePrayerTimes({
-      ...input,
-      date: new Date(now.getTime() - DAY_MS),
-    });
+    const yest = resolveDay(new Date(now.getTime() - DAY_MS));
     const start = yest.instants.find((i) => i.key === "isha")?.time ?? isha;
     const to = dayTrackFraction(today, fajr);
     if (start == null) return { isNight: true, onNightBand: true, fraction: to };

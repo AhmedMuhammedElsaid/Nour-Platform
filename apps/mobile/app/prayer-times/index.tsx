@@ -143,8 +143,19 @@ export default function PrayerTimesScreen() {
 
   // Active body (sun by day, moon by night) + its progress, plus the day-arc dot
   // positions. Recomputed each tick so the body glides; both are cheap + pure.
+  // Moon shares the Aladhan `day` the dots use so it hands off on the exact Fajr
+  // dot the adhan fired on; adjacent days (night-band only) fall back to local calc.
   const arc = getArcPosition(
-    { lat: location.lat, lng: location.lng, method: prefs.method, madhab: prefs.madhab },
+    (date) =>
+      date.toDateString() === now.toDateString()
+        ? day
+        : computePrayerTimes({
+            lat: location.lat,
+            lng: location.lng,
+            method: prefs.method,
+            madhab: prefs.madhab,
+            date,
+          }),
     now,
   );
   const dots = buildArcDots(day, upcoming.key);

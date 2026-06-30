@@ -92,7 +92,16 @@ export function PrayerTimesWidget() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [day, now.toDateString(), Math.floor(now.getTime() / 60_000)]);
 
-  const arc = getArcPosition(arcInput, now);
+  // Source the moon from the SAME Aladhan day the dots use (not a second adhan-js
+  // computation) so it hands off on the exact Fajr dot the adhan fired on; adjacent
+  // days (night-band sweep only) fall back to local computation.
+  const arc = getArcPosition(
+    (date) =>
+      date.toDateString() === now.toDateString()
+        ? day
+        : computePrayerTimes({ ...arcInput, date }),
+    now,
+  );
   const dots = buildArcDots(day, upcoming.key);
   const countdown = formatCountdown(Math.max(0, upcoming.time.getTime() - now.getTime()));
 

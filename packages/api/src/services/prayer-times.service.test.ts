@@ -112,7 +112,10 @@ describe("getDayProgress", () => {
 });
 
 describe("getArcPosition", () => {
-  const PARAMS = { ...CAIRO, method: "Egyptian", madhab: "standard" } as const;
+  // getArcPosition takes a day resolver (single source of truth with the dots +
+  // adhan). Here it is the same adhan-js computation the assertions read.
+  const resolveDay = (date: Date): PrayerDay =>
+    computePrayerTimes({ ...CAIRO, date, method: "Egyptian", madhab: "standard" });
 
   it("is the sun (not night) during the day — Sunrise → Maghrib", () => {
     const day = cairoDay();
@@ -121,13 +124,13 @@ describe("getArcPosition", () => {
 
     // Just after Sunrise — sun visible, near the Sunrise dot (small but non-zero
     // fraction since Sunrise sits after Fajr on the Fajr→Isha dot track).
-    const dawn = getArcPosition(PARAMS, new Date(sunrise.getTime() + 60_000));
+    const dawn = getArcPosition(resolveDay, new Date(sunrise.getTime() + 60_000));
     expect(dawn.isNight).toBe(false);
     expect(dawn.fraction).toBeGreaterThanOrEqual(0);
     expect(dawn.fraction).toBeLessThan(0.2);
 
     // Just before Maghrib — sun visible, near the Maghrib dot.
-    const dusk = getArcPosition(PARAMS, new Date(maghrib.getTime() - 60_000));
+    const dusk = getArcPosition(resolveDay, new Date(maghrib.getTime() - 60_000));
     expect(dusk.isNight).toBe(false);
     expect(dusk.fraction).toBeGreaterThan(0.8);
     expect(dusk.fraction).toBeLessThanOrEqual(1);
@@ -145,7 +148,7 @@ describe("getArcPosition", () => {
   it("rises the moon ON the Maghrib dot just after Maghrib (not the far-right Isha horizon)", () => {
     const day = cairoDay();
     const maghrib = day.instants.find((i) => i.key === "maghrib")!.time as Date;
-    const info = getArcPosition(PARAMS, new Date(maghrib.getTime() + 60_000));
+    const info = getArcPosition(resolveDay, new Date(maghrib.getTime() + 60_000));
     expect(info.isNight).toBe(true);
     // Sits on the Maghrib dot (~0.85), NOT pinned to the Isha horizon (1.0).
     expect(info.fraction).toBeCloseTo(dotFraction("maghrib"), 2);
@@ -155,7 +158,7 @@ describe("getArcPosition", () => {
   it("sets the moon ON the Sunrise dot just before Sunrise (Shrouq)", () => {
     const day = cairoDay();
     const sunrise = day.instants.find((i) => i.key === "sunrise")!.time as Date;
-    const info = getArcPosition(PARAMS, new Date(sunrise.getTime() - 60_000));
+    const info = getArcPosition(resolveDay, new Date(sunrise.getTime() - 60_000));
     expect(info.isNight).toBe(true);
     // Lands on the Sunrise/Shrouq dot, where the sun is about to rise.
     expect(info.fraction).toBeCloseTo(dotFraction("sunrise"), 2);
@@ -166,18 +169,18 @@ describe("getArcPosition", () => {
     const fajr = day.instants.find((i) => i.key === "fajr")!.time as Date;
     const isha = day.instants.find((i) => i.key === "isha")!.time as Date;
     // Pre-dawn: after Fajr but before Sunrise → still night (the sun is not up).
-    const preDawn = getArcPosition(PARAMS, new Date(fajr.getTime() + 60_000));
+    const preDawn = getArcPosition(resolveDay, new Date(fajr.getTime() + 60_000));
     expect(preDawn.isNight).toBe(true);
     // After Isha (well after Maghrib) → night.
-    const afterIsha = getArcPosition(PARAMS, new Date(isha.getTime() + 60_000));
+    const afterIsha = getArcPosition(resolveDay, new Date(isha.getTime() + 60_000));
     expect(afterIsha.isNight).toBe(true);
   });
 
   it("moon descends from the right toward the left as the night advances", () => {
     const day = cairoDay();
     const maghrib = day.instants.find((i) => i.key === "maghrib")!.time as Date;
-    const early = getArcPosition(PARAMS, new Date(maghrib.getTime() + 60 * 60_000)).fraction;
-    const late = getArcPosition(PARAMS, new Date(maghrib.getTime() + 4 * 60 * 60_000)).fraction;
+    const early = getArcPosition(resolveDay, new Date(maghrib.getTime() + 60 * 60_000)).fraction;
+    const late = getArcPosition(resolveDay, new Date(maghrib.getTime() + 4 * 60 * 60_000)).fraction;
     // Travelling Maghrib dot → Sunrise dot, so the fraction decreases over the night.
     expect(late).toBeLessThan(early);
   });

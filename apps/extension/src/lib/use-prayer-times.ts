@@ -39,7 +39,9 @@ export function usePrayerTimes(): PrayerTimesState | null {
   };
   const today = computePrayerTimes({ ...input, date: now });
   const upcoming = getUpcomingPrayer(input, now);
-  const arcPos = getArcPosition(input, now);
+  // The extension has no Aladhan source, so the moon shares the same adhan-js day
+  // the dots use — keeping a single source of truth (matches web/mobile contract).
+  const arcPos = getArcPosition((date) => computePrayerTimes({ ...input, date }), now);
 
   return { today, upcoming, arcPos, now };
 }

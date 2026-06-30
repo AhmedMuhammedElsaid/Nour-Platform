@@ -75,7 +75,14 @@ export function PrayerPage({ locale }: { locale: "ar" | "en" }) {
   // Sun rides the arc sunrise→sunset; after sunset it becomes a moon that rides
   // the arc sunset→sunrise. One helper returns the active body's position.
   const arc = getArcPosition(
-    { lat: location.lat, lng: location.lng, method: prefs.method, madhab: prefs.madhab },
+    (date) =>
+      resolvePrayerDay({
+        lat: location.lat,
+        lng: location.lng,
+        method: prefs.method,
+        madhab: prefs.madhab,
+        date,
+      }),
     nowDate,
   );
   const isNight = arc.isNight;
