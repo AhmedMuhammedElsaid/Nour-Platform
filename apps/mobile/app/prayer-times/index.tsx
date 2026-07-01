@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Modal, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import * as Notifications from "expo-notifications";
 
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ import { formatClock, formatCountdownClock } from "@repo/shared-core/prayer-time
 
 export default function PrayerTimesScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const locale = initialLocale;
   const dockSpacing = useDockSpacing();
   const insets = useSafeAreaInsets();
@@ -181,6 +182,16 @@ export default function PrayerTimesScreen() {
             </Text>
           </Pressable>
         </View>
+
+        {/* Qibla entry — the compass shares this screen's stored location. */}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push("/qibla")}
+          className="flex-row items-center justify-between rounded-lg border border-border bg-surface px-4 py-3"
+        >
+          <Text variant="body">🕋 {t("qibla.title")}</Text>
+          <Text variant="muted" className="text-lg">›</Text>
+        </Pressable>
 
         {/* Sun/moon arc */}
         {hydrated && (

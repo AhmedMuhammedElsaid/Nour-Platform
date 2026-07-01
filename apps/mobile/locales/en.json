@@ -210,5 +210,24 @@
     "tafsir": "Tafsir",
     "loading": "Loading…",
     "tafsirError": "Tafsir unavailable for this ayah."
+  },
+  "qibla": {
+    "title": "Qibla Direction",
+    "changeCity": "Change city",
+    "bearing": "{{degrees}}° · {{direction}}",
+    "distanceKm": "{{km}} km to the Kaaba",
+    "facingQibla": "You are facing the Qibla",
+    "calibrateHint": "Move your phone in a figure-8 to calibrate the compass.",
+    "staticHint": "No compass on this device. Use the bearing above with a compass to face the Qibla.",
+    "compass": {
+      "n": "N",
+      "ne": "NE",
+      "e": "E",
+      "se": "SE",
+      "s": "S",
+      "sw": "SW",
+      "w": "W",
+      "nw": "NW"
+    }
   }
 }
