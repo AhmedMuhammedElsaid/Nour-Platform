@@ -204,6 +204,8 @@
     "facingQibla": "You are facing the Qibla",
     "calibrateHint": "Move your phone in a figure-8 to calibrate the compass.",
     "staticHint": "This device has no compass. Use the bearing above with a compass to face the Qibla.",
+    "enableCompass": "Enable compass",
+    "permissionDenied": "Motion access was denied. Enable it in Settings › Safari › Motion & Orientation Access, then reload.",
     "compassLabel": "Compass pointing to the Qibla at {degrees}° {direction}",
     "compass": {
       "n": "N",

@@ -2,10 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import {
+  orientationNeedsGesture,
+  requestOrientationPermission,
+} from "../lib/orientation-permission";
+
 // The DOM lib doesn't type iOS Safari's `webkitCompassHeading` (already
 // true-north referenced, degrees clockwise). Declared here rather than via an
-// `any` cast (CLAUDE.md §4). The iOS permission itself is requested site-wide on
-// the first gesture by <QiblaOrientationPrimer>, so this hook only listens.
+// `any` cast (CLAUDE.md §4).
 type CompassEvent = DeviceOrientationEvent & {
   webkitCompassHeading?: number;
 };
@@ -17,6 +21,10 @@ export type DeviceHeading = {
   heading: number | null;
   /** Device exposes an orientation API at all (hide the compass otherwise). */
   supported: boolean;
+  /** iOS only: gate not yet satisfied — show the Enable-compass button. */
+  needsPermission: boolean;
+  /** Request iOS motion permission from a user gesture; resolves the outcome. */
+  requestPermission: () => Promise<"granted" | "denied" | "unsupported">;
 };
 
 /**
@@ -25,13 +33,15 @@ export type DeviceHeading = {
  * screen-rotation adjustment) on Android/desktop sensors. `heading` stays null
  * until a real reading arrives, so callers render a static fallback meanwhile.
  *
- * Listeners are attached on mount. On iOS they start delivering once permission
- * has been granted (primed on the first site interaction — see
+ * Listeners are attached on mount. On iOS they start delivering only after the
+ * user grants motion access via the Enable-compass button (see
  * orientation-permission.ts); on Android/desktop they fire immediately.
  */
 export function useDeviceHeading(): DeviceHeading {
   const [heading, setHeading] = useState<number | null>(null);
   const [supported, setSupported] = useState(false);
+  // Whether iOS's permission gate is present (only known client-side).
+  const [gated, setGated] = useState(false);
 
   const handle = useCallback((event: DeviceOrientationEvent) => {
     const e = event as CompassEvent;
@@ -56,6 +66,7 @@ export function useDeviceHeading(): DeviceHeading {
       return;
     }
     setSupported(true);
+    setGated(orientationNeedsGesture());
     // `deviceorientationabsolute` gives true/magnetic north on Chromium; iOS
     // only fires `deviceorientation` but populates webkitCompassHeading there.
     window.addEventListener("deviceorientationabsolute", handle);
@@ -66,5 +77,17 @@ export function useDeviceHeading(): DeviceHeading {
     };
   }, [handle]);
 
-  return { heading, supported };
+  const requestPermission = useCallback(async () => {
+    const res = await requestOrientationPermission();
+    // Granted (or no gate at all): drop the gate so the button hides and the
+    // listeners' incoming readings take over. Denied: keep the button visible.
+    if (res !== "denied") setGated(false);
+    return res;
+  }, []);
+
+  // Show the Enable button only where iOS gates the sensor and no reading has
+  // arrived yet; once a heading streams in it hides on its own.
+  const needsPermission = gated && heading == null;
+
+  return { heading, supported, needsPermission, requestPermission };
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -18,7 +19,13 @@ export function QiblaPage({ locale }: { locale: "ar" | "en" }) {
   // rather than duplicating the localStorage read (same reuse the home widget
   // relies on). Qibla only needs lat/lng.
   const { location, setLocation } = usePrayerSettings();
-  const { heading } = useDeviceHeading();
+  const { heading, needsPermission, requestPermission } = useDeviceHeading();
+  const [permDenied, setPermDenied] = useState(false);
+
+  async function enableCompass(): Promise<void> {
+    const res = await requestPermission();
+    setPermDenied(res === "denied");
+  }
 
   const bearing = computeQiblaBearing(location);
   const cardinal = t(`compass.${qiblaCardinalKey(bearing)}`);
@@ -58,11 +65,27 @@ export function QiblaPage({ locale }: { locale: "ar" | "en" }) {
           ) : null}
         </div>
 
-        {/* Sensor state: calibration hint once live, otherwise the static note. */}
+        {/* Sensor state: iOS needs an explicit gesture to unlock the compass;
+            after that (or on Android/desktop) show the calibration/static note. */}
         <div className="mt-4 text-center">
-          <p className="text-xs text-text-2">
-            {heading != null ? t("calibrateHint") : t("staticHint")}
-          </p>
+          {needsPermission ? (
+            <>
+              <button
+                type="button"
+                onClick={enableCompass}
+                className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-fg transition-colors hover:bg-primary/90"
+              >
+                {t("enableCompass")}
+              </button>
+              {permDenied ? (
+                <p className="mt-2 text-xs text-text-2">{t("permissionDenied")}</p>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-xs text-text-2">
+              {heading != null ? t("calibrateHint") : t("staticHint")}
+            </p>
+          )}
         </div>
       </div>
 
