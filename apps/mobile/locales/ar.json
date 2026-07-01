@@ -10,6 +10,14 @@
     "save": "حفظ",
     "cancel": "إلغاء"
   },
+  "footer": {
+    "builtBy": "تطوير",
+    "linkedin": "الملف الشخصي على لينكدإن",
+    "github": "الملف الشخصي على جيت​هب",
+    "portfolio": "الموقع الشخصي",
+    "email": "البريد الإلكتروني",
+    "phone": "الهاتف"
+  },
   "settings": {
     "toggleTheme": "تبديل السمة",
     "switchLocale": "التبديل إلى {{locale}}",

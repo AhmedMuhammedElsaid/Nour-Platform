@@ -5,6 +5,7 @@ import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/ui/button";
+import { DeveloperFooter } from "@/components/developer-footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { LocaleSwitcher } from "@/components/locale-switcher";
@@ -168,6 +169,7 @@ export default function HomeScreen() {
           <ContinueListening />
           <ContinueReading />
         </View>
+        <DeveloperFooter />
       </ScrollView>
       {/* Opaque scrim filling the status-bar area so content scrolled up the
           screen is hidden behind it instead of bleeding under the transparent

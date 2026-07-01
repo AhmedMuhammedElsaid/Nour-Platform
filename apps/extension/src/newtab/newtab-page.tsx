@@ -38,6 +38,7 @@ import { PlaylistDetail } from "../components/playlist-detail";
 import { SearchView } from "../components/search-view";
 import { SiteHeader } from "../components/site-header";
 import { SunArc, buildArcDots } from "../components/sun-arc";
+import { BrandedFooter } from "../components/branded-footer";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -392,6 +393,9 @@ export function NewtabPage() {
                   onNightBand={arcPos.onNightBand}
                 />
               </div>
+              {/* Order: label → name → countdown. The RTL container auto-mirrors
+                  this so Arabic shows countdown → name → label visually. Do not
+                  hand-reorder the spans — that defeats the mirror. */}
               <div className="mb-3 flex items-baseline justify-center gap-2.5">
                 <span className="text-xs uppercase tracking-widest text-text-2">{t("home.nextPrayer")}</span>
                 <span className="font-display text-xl font-semibold text-text">
@@ -437,6 +441,8 @@ export function NewtabPage() {
           onOpen={(slug) => navigate({ view: "playlist", slug })}
           categories={categories}
         />
+
+        <BrandedFooter />
 
         <div className="h-28" aria-hidden="true" />
       </main>

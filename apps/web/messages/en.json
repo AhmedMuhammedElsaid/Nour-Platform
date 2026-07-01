@@ -14,7 +14,13 @@
   },
   "footer": {
     "copyright": "© {year} Nour Platform",
-    "privacy": "Privacy Policy"
+    "privacy": "Privacy Policy",
+    "builtBy": "Built by",
+    "linkedin": "LinkedIn profile",
+    "github": "GitHub profile",
+    "portfolio": "Portfolio website",
+    "email": "Email",
+    "phone": "Phone"
   },
   "home": {
     "heading": "Playlists",
@@ -56,7 +62,7 @@
   "prayer": {
     "title": "Prayer Times",
     "nav": "Prayer Times",
-    "next": "Next prayer",
+    "next": "Coming prayer",
     "countdown": "in {h}h {m}m",
     "at": "at {time}",
     "now": "now {time}",

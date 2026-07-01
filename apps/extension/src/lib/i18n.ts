@@ -116,6 +116,12 @@ const ar: Catalog = {
   "ayah.bookmark": "حفظ الآية",
   "ayah.unbookmark": "إزالة الإشارة",
   "ayah.tafsir": "التفسير",
+  "footer.builtBy": "تطوير",
+  "footer.linkedin": "الملف الشخصي على لينكدإن",
+  "footer.github": "الملف الشخصي على جيت​هب",
+  "footer.portfolio": "الموقع الشخصي",
+  "footer.email": "البريد الإلكتروني",
+  "footer.phone": "الهاتف",
 };
 
 const en: Catalog = {
@@ -224,6 +230,12 @@ const en: Catalog = {
   "ayah.bookmark": "Bookmark ayah",
   "ayah.unbookmark": "Remove bookmark",
   "ayah.tafsir": "Tafsir",
+  "footer.builtBy": "Built by",
+  "footer.linkedin": "LinkedIn profile",
+  "footer.github": "GitHub profile",
+  "footer.portfolio": "Portfolio website",
+  "footer.email": "Email",
+  "footer.phone": "Phone",
 };
 
 const MESSAGES: Record<Locale, Catalog> = { ar, en };

@@ -1,6 +1,7 @@
 import { ADHAN_PRAYER_KEYS, CALCULATION_METHOD_IDS } from "@repo/shared-core/schemas/prayer-times";
 import type { AdhanPrayerKey, CalculationMethodId, MadhabId } from "@repo/shared-core/schemas/prayer-times";
 
+import { BrandedFooter } from "../components/branded-footer";
 import { LocationPicker } from "./location-picker";
 import {
   useAdhanSettings,
@@ -211,6 +212,8 @@ export function OptionsPage() {
         </Section>
 
       </div>
+
+      <BrandedFooter />
     </main>
   );
 }

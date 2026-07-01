@@ -10,6 +10,14 @@
     "save": "Save",
     "cancel": "Cancel"
   },
+  "footer": {
+    "builtBy": "Built by",
+    "linkedin": "LinkedIn profile",
+    "github": "GitHub profile",
+    "portfolio": "Portfolio website",
+    "email": "Email",
+    "phone": "Phone"
+  },
   "settings": {
     "toggleTheme": "Toggle theme",
     "switchLocale": "Switch to {{locale}}",
