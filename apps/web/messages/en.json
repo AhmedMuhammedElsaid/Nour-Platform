@@ -199,7 +199,6 @@
     "changeCity": "Change city",
     "bearing": "{degrees}° · {direction}",
     "distanceKm": "{km} km to the Kaaba",
-    "enableCompass": "Enable compass",
     "facingQibla": "You are facing the Qibla",
     "calibrateHint": "Move your phone in a figure-8 to calibrate the compass.",
     "staticHint": "This device has no compass. Use the bearing above with a compass to face the Qibla.",

@@ -20,10 +20,6 @@ export type DeviceHeading = {
   heading: number | null;
   /** Device exposes an orientation API at all (hide the compass otherwise). */
   supported: boolean;
-  /** iOS-style explicit permission is required before a reading can arrive. */
-  needsPermission: boolean;
-  /** Prompt for permission + start listening. Must be called from a gesture. */
-  request: () => Promise<void>;
 };
 
 /**
@@ -31,11 +27,15 @@ export type DeviceHeading = {
  * true-north `webkitCompassHeading`; falls back to the absolute `alpha` (with a
  * screen-rotation adjustment) on Android/desktop sensors. `heading` stays null
  * until a real reading arrives, so callers render a static fallback meanwhile.
+ *
+ * The compass is enabled automatically — no button. Where the platform requires
+ * an explicit permission (iOS), it is requested on the first user interaction
+ * anywhere on the page (iOS only grants from a user gesture); elsewhere the hook
+ * starts listening immediately on mount.
  */
 export function useDeviceHeading(): DeviceHeading {
   const [heading, setHeading] = useState<number | null>(null);
   const [supported, setSupported] = useState(false);
-  const [needsPermission, setNeedsPermission] = useState(false);
   const listeningRef = useRef(false);
 
   const handle = useCallback((event: DeviceOrientationEvent) => {
@@ -56,50 +56,53 @@ export function useDeviceHeading(): DeviceHeading {
     }
   }, []);
 
-  const startListening = useCallback(() => {
-    if (listeningRef.current) return;
-    listeningRef.current = true;
-    // `deviceorientationabsolute` gives true/magnetic north on Chromium; iOS
-    // only fires `deviceorientation` but populates webkitCompassHeading there.
-    window.addEventListener("deviceorientationabsolute", handle);
-    window.addEventListener("deviceorientation", handle);
-  }, [handle]);
-
   useEffect(() => {
     if (typeof window === "undefined" || !("DeviceOrientationEvent" in window)) {
       return;
     }
     setSupported(true);
+
+    const startListening = () => {
+      if (listeningRef.current) return;
+      listeningRef.current = true;
+      // `deviceorientationabsolute` gives true/magnetic north on Chromium; iOS
+      // only fires `deviceorientation` but populates webkitCompassHeading there.
+      window.addEventListener("deviceorientationabsolute", handle);
+      window.addEventListener("deviceorientation", handle);
+    };
+
     const ctor = window.DeviceOrientationEvent as DeviceOrientationEventCtor;
+    let removeGesture: (() => void) | undefined;
+
     if (typeof ctor.requestPermission === "function") {
-      // iOS: wait for the explicit user-gesture grant via request().
-      setNeedsPermission(true);
-      return;
+      // iOS: permission can only be requested from a user gesture, so enable the
+      // compass on the first interaction anywhere — no dedicated button.
+      const onGesture = () => {
+        removeGesture?.();
+        void ctor
+          .requestPermission!()
+          .then((res) => {
+            if (res === "granted") startListening();
+          })
+          .catch(() => {});
+      };
+      window.addEventListener("click", onGesture, { once: true });
+      window.addEventListener("touchend", onGesture, { once: true });
+      removeGesture = () => {
+        window.removeEventListener("click", onGesture);
+        window.removeEventListener("touchend", onGesture);
+      };
+    } else {
+      startListening();
     }
-    startListening();
+
     return () => {
+      removeGesture?.();
       window.removeEventListener("deviceorientationabsolute", handle);
       window.removeEventListener("deviceorientation", handle);
       listeningRef.current = false;
     };
-  }, [handle, startListening]);
+  }, [handle]);
 
-  const request = useCallback(async () => {
-    if (typeof window === "undefined" || !("DeviceOrientationEvent" in window)) {
-      return;
-    }
-    const ctor = window.DeviceOrientationEvent as DeviceOrientationEventCtor;
-    if (typeof ctor.requestPermission === "function") {
-      try {
-        const result = await ctor.requestPermission();
-        if (result !== "granted") return;
-      } catch {
-        return;
-      }
-    }
-    setNeedsPermission(false);
-    startListening();
-  }, [startListening]);
-
-  return { heading, supported, needsPermission, request };
+  return { heading, supported };
 }

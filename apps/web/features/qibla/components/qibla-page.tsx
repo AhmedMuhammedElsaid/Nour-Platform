@@ -18,7 +18,7 @@ export function QiblaPage({ locale }: { locale: "ar" | "en" }) {
   // rather than duplicating the localStorage read (same reuse the home widget
   // relies on). Qibla only needs lat/lng.
   const { location, setLocation } = usePrayerSettings();
-  const { heading, supported, needsPermission, request } = useDeviceHeading();
+  const { heading } = useDeviceHeading();
 
   const bearing = computeQiblaBearing(location);
   const cardinal = t(`compass.${qiblaCardinalKey(bearing)}`);
@@ -58,21 +58,11 @@ export function QiblaPage({ locale }: { locale: "ar" | "en" }) {
           ) : null}
         </div>
 
-        {/* Sensor state: enable button (iOS), calibrate hint, or static note. */}
+        {/* Sensor state: calibration hint once live, otherwise the static note. */}
         <div className="mt-4 text-center">
-          {supported && needsPermission ? (
-            <button
-              type="button"
-              onClick={() => void request()}
-              className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm text-sun hover:bg-surface-2"
-            >
-              {t("enableCompass")}
-            </button>
-          ) : heading != null ? (
-            <p className="text-xs text-text-2">{t("calibrateHint")}</p>
-          ) : (
-            <p className="text-xs text-text-2">{t("staticHint")}</p>
-          )}
+          <p className="text-xs text-text-2">
+            {heading != null ? t("calibrateHint") : t("staticHint")}
+          </p>
         </div>
       </div>
 
