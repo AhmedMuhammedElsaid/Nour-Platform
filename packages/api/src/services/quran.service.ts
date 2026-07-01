@@ -81,6 +81,8 @@ function reciterToDto(doc: QuranReciterDoc): QuranReciter {
   return {
     slug: doc.slug,
     name: doc.name,
+    ...(doc.arabicName ? { arabicName: doc.arabicName } : {}),
+    ...(doc.image ? { image: doc.image } : {}),
     ...(doc.style ? { style: doc.style } : {}),
     audioBase: doc.audioBase,
   };

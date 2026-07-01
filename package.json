@@ -19,6 +19,7 @@
     "seed:admin": "tsx --env-file-if-exists=.env.local scripts/seed-admin.ts",
     "seed:adhkar": "tsx --env-file-if-exists=.env.local scripts/seed-adhkar.ts",
     "seed:quran": "tsx --env-file-if-exists=.env.local scripts/seed-quran.ts",
+    "backfill:reciter-meta": "tsx --env-file-if-exists=.env.local scripts/backfill-reciter-meta.ts",
     "migrate": "tsx --env-file-if-exists=.env.local scripts/migrate.ts",
     "migrate:dry": "pnpm migrate --dry-run",
     "migrate:search": "tsx --env-file-if-exists=.env.local scripts/migrate-search-indexes.ts",

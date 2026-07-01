@@ -19,6 +19,7 @@
     "./prayer-times/format": "./src/prayer-times/format.ts",
     "./qibla/compute": "./src/qibla/compute.ts",
     "./quran/audio-url": "./src/quran/audio-url.ts",
+    "./quran/reciter-avatar": "./src/quran/reciter-avatar.ts",
     "./prayer-times/schedule": "./src/prayer-times/schedule.ts",
     "./developer": "./src/developer.ts"
   },

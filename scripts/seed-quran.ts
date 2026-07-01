@@ -231,15 +231,20 @@ async function seedTafsir(
 
 // Reciter catalogue. `audioBase` follows the everyayah.com layout — append a
 // new entry to make a new reciter available; CSP already allows everyayah.com.
+// `arabicName` is the Arabic-locale display label; `image` is an optional static
+// /public path (e.g. "/reciters/alafasy.png") — leave undefined to fall back to a
+// gradient+initials avatar on the home "Readers" shelf.
 const RECITERS = [
   {
     slug: "alafasy",
     name: "Mishary Rashid Alafasy",
+    arabicName: "مشاري راشد العفاسي",
     audioBase: "https://everyayah.com/data/Alafasy_128kbps/",
   },
   {
     slug: "qatami",
     name: "Nasser Al Qatami",
+    arabicName: "ناصر القطامي",
     audioBase: "https://everyayah.com/data/Nasser_Alqatami_128kbps/",
   },
 ] as const;
@@ -248,7 +253,14 @@ async function seedReciter(): Promise<void> {
   for (const r of RECITERS) {
     await QuranReciterModel.updateOne(
       { slug: r.slug },
-      { $set: { slug: r.slug, name: r.name, audioBase: r.audioBase } },
+      {
+        $set: {
+          slug: r.slug,
+          name: r.name,
+          arabicName: r.arabicName,
+          audioBase: r.audioBase,
+        },
+      },
       { upsert: true },
     );
     console.log(`[seed:quran] reciter ${r.slug} upserted`);

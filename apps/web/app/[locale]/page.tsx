@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { getPublishedPlaylists } from "@repo/api/services/playlist";
 import { listCategories } from "@repo/api/services/category";
+import { listReciters } from "@repo/api/services/quran";
 import { LOCALES, type Locale } from "@repo/api/schemas/locale";
 import type { Playlist } from "@repo/api/schemas/playlist";
 import { localeAlternates, defaultOpenGraph, defaultTwitter } from "@/lib/seo";
@@ -17,6 +18,7 @@ import { ContinueListening } from "@/features/player/components/continue-listeni
 import { ContinueReadingShelf } from "@/features/quran/components/continue-reading-shelf";
 import { PlaylistSortSelect } from "@/features/playlists/components/playlist-sort-select";
 import { PrayerTimesWidget } from "@/features/prayer-times/components/prayer-times-widget";
+import { ReadersShelf } from "@/features/quran/components/readers-shelf";
 import type { SerializedPlaylist } from "@/features/playlists/types";
 
 // Converts a Playlist DTO to a JSON-serializable shape. createdAt/updatedAt
@@ -67,6 +69,9 @@ export default async function HomePage({
   // Fetch all categories (no locale param — embedded ar/en on each doc).
   const categories = await listCategories();
 
+  // Quran reciters for the home "Readers" shelf (immutable reference data).
+  const reciters = await listReciters();
+
   // Match the ?category= slug against the locale-specific slug field.
   const matchedCategory =
     category != null ? categories.find((c) => c[locale].slug === category) : undefined;
@@ -116,6 +121,9 @@ export default async function HomePage({
       <PrayerTimesWidget locale={locale} />
 
       <hr className="border-border my-8" />
+
+      {/* Readers (Quran reciters) shelf */}
+      <ReadersShelf reciters={reciters} locale={locale} />
 
       {/* Category filter pills */}
       <CategoryFilterBar categories={categoryPills} activeSlug={category} />

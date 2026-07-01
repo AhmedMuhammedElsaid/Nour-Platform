@@ -4,6 +4,8 @@ const quranReciterSchema = new Schema(
   {
     slug: { type: String, required: true },
     name: { type: String, required: true },
+    arabicName: { type: String },
+    image: { type: String },
     style: { type: String },
     audioBase: { type: String, required: true },
   },

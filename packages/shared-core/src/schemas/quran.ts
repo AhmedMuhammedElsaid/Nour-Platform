@@ -64,6 +64,8 @@ export type QuranTranslation = z.infer<typeof quranTranslationSchema>;
 export const quranReciterSchema = z.object({
   slug: z.string().min(1), // e.g. "alafasy"
   name: z.string().min(1),
+  arabicName: z.string().optional(), // Arabic display name, e.g. "مشاري العفاسي"
+  image: z.string().optional(), // static /public path (e.g. "/reciters/alafasy.png") or absolute URL; falls back to a gradient+initials avatar
   style: z.string().optional(),
   audioBase: z.string().url(), // e.g. "https://everyayah.com/data/Alafasy_128kbps/"
 });
