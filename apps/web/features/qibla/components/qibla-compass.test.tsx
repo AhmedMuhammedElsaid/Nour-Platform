@@ -16,6 +16,9 @@ describe("QiblaCompass", () => {
     expect(rose?.getAttribute("transform")).toBe("rotate(0 120 120)");
     // Not aligned → marker uses the primary colour, not the sun highlight.
     expect(container.querySelector('[fill="var(--color-sun)"]')).toBeNull();
+    // No celebration animation while off-target.
+    expect(container.querySelector(".qibla-ping")).toBeNull();
+    expect(container.querySelector(".qibla-kaaba")).toBeNull();
   });
 
   it("rotates the rose and highlights when the device faces the Qibla", () => {
@@ -27,5 +30,9 @@ describe("QiblaCompass", () => {
     expect(rose?.getAttribute("transform")).toBe("rotate(-135 120 120)");
     // |135 - 136| = 1° ≤ tolerance → marker lights up gold.
     expect(container.querySelector('[fill="var(--color-sun)"]')).not.toBeNull();
+    // …and the celebration animation kicks in (pulsing Kaaba + sonar ping).
+    expect(container.querySelector(".qibla-kaaba")).not.toBeNull();
+    expect(container.querySelector(".qibla-ping")).not.toBeNull();
+    expect(container.querySelector(".qibla-needle")).not.toBeNull();
   });
 });

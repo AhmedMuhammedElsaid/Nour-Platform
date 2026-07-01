@@ -57,6 +57,33 @@ export function QiblaCompass({
       role="img"
       aria-label={label}
     >
+      {/* Aligned-state celebration. Scoped to this SVG; `transform-box: fill-box`
+          makes each element scale around its own centre (SVG default origin is
+          0,0). The global prefers-reduced-motion guard neutralises all of it. */}
+      <style>{`
+        .qibla-needle { animation: qiblaNeedleGlow 1.3s ease-in-out infinite; }
+        .qibla-kaaba {
+          transform-box: fill-box; transform-origin: center;
+          animation: qiblaKaabaPulse 1.3s ease-in-out infinite;
+        }
+        .qibla-ping {
+          transform-box: fill-box; transform-origin: center;
+          animation: qiblaPing 1.6s ease-out infinite;
+        }
+        @keyframes qiblaKaabaPulse {
+          0%, 100% { transform: scale(1); filter: drop-shadow(0 0 2px var(--color-sun)); }
+          50% { transform: scale(1.16); filter: drop-shadow(0 0 9px var(--color-sun)); }
+        }
+        @keyframes qiblaPing {
+          0% { transform: scale(1); opacity: 0.55; }
+          100% { transform: scale(2.6); opacity: 0; }
+        }
+        @keyframes qiblaNeedleGlow {
+          0%, 100% { filter: drop-shadow(0 0 1px var(--color-sun)); }
+          50% { filter: drop-shadow(0 0 6px var(--color-sun)); }
+        }
+      `}</style>
+
       {/* Fixed reference triangle at the top — "the way you are facing".
           Only meaningful in live mode, but harmless as a north-marker otherwise. */}
       <polygon
@@ -113,7 +140,9 @@ export function QiblaCompass({
           );
         })}
 
-        {/* Kaaba pointer: a needle from centre to the bearing + a marker head. */}
+        {/* Kaaba pointer: a needle from centre to the bearing + a marker head.
+            When aligned, the needle glows, the Kaaba head pulses, and a sonar
+            ping radiates from it so hitting the right direction feels alive. */}
         <line
           x1={C}
           y1={C}
@@ -122,17 +151,29 @@ export function QiblaCompass({
           stroke={markerColor}
           strokeWidth="3"
           strokeLinecap="round"
+          className={aligned ? "qibla-needle" : undefined}
         />
-        <circle cx={marker.x} cy={marker.y} r="12" fill={markerColor} />
-        <text
-          x={marker.x}
-          y={marker.y}
-          textAnchor="middle"
-          dominantBaseline="central"
-          fontSize="13"
-        >
-          🕋
-        </text>
+        {aligned ? (
+          <circle
+            cx={marker.x}
+            cy={marker.y}
+            r="12"
+            fill="var(--color-sun)"
+            className="qibla-ping"
+          />
+        ) : null}
+        <g className={aligned ? "qibla-kaaba" : undefined}>
+          <circle cx={marker.x} cy={marker.y} r="12" fill={markerColor} />
+          <text
+            x={marker.x}
+            y={marker.y}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize="13"
+          >
+            🕋
+          </text>
+        </g>
       </g>
 
       {/* Centre hub */}
