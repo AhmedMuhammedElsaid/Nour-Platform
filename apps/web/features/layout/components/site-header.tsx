@@ -18,6 +18,7 @@ export async function SiteHeader() {
   const adhkarT = await getTranslations("adhkar");
   const tPrayer = await getTranslations("prayer");
   const tQuran = await getTranslations("quran");
+  const tQibla = await getTranslations("qibla");
   const locale = await getLocale();
   const brand = BRAND[locale] ?? BRAND.en!;
 
@@ -41,6 +42,9 @@ export async function SiteHeader() {
           </Link>
           <Link href="/prayer-times" className={NAV_LINK_CLASS}>
             {tPrayer("nav")}
+          </Link>
+          <Link href="/qibla" className={NAV_LINK_CLASS}>
+            {tQibla("nav")}
           </Link>
           {/* <SearchBox /> */}
         </nav>

@@ -192,5 +192,27 @@
     "changesBody": "We may update this policy from time to time. Material changes will be reflected on this page with a new \"last updated\" date.",
     "contactHeading": "Contact",
     "contactBody": "If you have any questions about this Privacy Policy, contact Ahmed Muhammed Elsaid at <mail>ahmed.muhammed.elsaid@gmail.com</mail>."
+  },
+  "qibla": {
+    "title": "Qibla Direction",
+    "nav": "Qibla",
+    "changeCity": "Change city",
+    "bearing": "{degrees}° · {direction}",
+    "distanceKm": "{km} km to the Kaaba",
+    "enableCompass": "Enable compass",
+    "facingQibla": "You are facing the Qibla",
+    "calibrateHint": "Move your phone in a figure-8 to calibrate the compass.",
+    "staticHint": "This device has no compass. Use the bearing above with a compass to face the Qibla.",
+    "compassLabel": "Compass pointing to the Qibla at {degrees}° {direction}",
+    "compass": {
+      "n": "N",
+      "ne": "NE",
+      "e": "E",
+      "se": "SE",
+      "s": "S",
+      "sw": "SW",
+      "w": "W",
+      "nw": "NW"
+    }
   }
 }
