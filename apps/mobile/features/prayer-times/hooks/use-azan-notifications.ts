@@ -7,8 +7,12 @@
 // alarm quota (so Fajr silently never fired). See lib/adhan-native + modules/nour-adhan.
 //
 // iOS: a single expo-notification per prayer with a ≤30s bundled clip (Apple's
-// closed-app local-notification sound ceiling). Same path is the fallback if the
-// native module is somehow absent on Android (e.g. Expo Go / stale build).
+// closed-app local-notification sound ceiling — no native-service equivalent to
+// Android exists on iOS). interruptionLevel:"critical" + allowCriticalAlerts lets
+// the sound pierce Silent/DND once Apple has granted the critical-alerts
+// entitlement; degrades to a normal notification otherwise. Same path is the
+// fallback if the native module is somehow absent on Android (e.g. Expo Go / stale
+// build).
 
 import { useEffect } from "react";
 import { Platform } from "react-native";
@@ -102,6 +106,10 @@ async function scheduleAzanNotifications(
   }
 
   // iOS (and Android fallback): one notification per prayer, single ≤30s clip.
+  // interruptionLevel:"critical" is what lets the sound pierce Silent/DND/Focus —
+  // it only takes effect once Apple has granted the critical-alerts entitlement and
+  // the user has granted allowCriticalAlerts; otherwise iOS treats it as a normal
+  // notification (no crash, just no DND-piercing).
   await cancelIosAzan();
   for (const instant of instants) {
     await Notifications.scheduleNotificationAsync({
@@ -110,6 +118,7 @@ async function scheduleAzanNotifications(
         title: prayerNames[instant.key],
         body: "حان وقت الصلاة · It's time for prayer.",
         sound: IOS_AZAN_SOUND,
+        interruptionLevel: "critical",
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -156,7 +165,12 @@ export async function scheduleTestAzan(title: string): Promise<Date> {
   }
   await Notifications.scheduleNotificationAsync({
     identifier: `${AZAN_PREFIX}9-dhuhr`,
-    content: { title, body: "حان وقت الصلاة · It's time for prayer.", sound: IOS_AZAN_SOUND },
+    content: {
+      title,
+      body: "حان وقت الصلاة · It's time for prayer.",
+      sound: IOS_AZAN_SOUND,
+      interruptionLevel: "critical",
+    },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: fireAt },
   });
   return fireAt;
@@ -165,7 +179,7 @@ export async function scheduleTestAzan(title: string): Promise<Date> {
 // Utility: request notification permissions. Returns true if granted.
 export async function requestNotificationPermission(): Promise<boolean> {
   const { status } = await Notifications.requestPermissionsAsync({
-    ios: { allowAlert: true, allowSound: true, allowBadge: false },
+    ios: { allowAlert: true, allowSound: true, allowBadge: false, allowCriticalAlerts: true },
   });
   return status === "granted";
 }

@@ -1,10 +1,15 @@
-import { buildAdhanInstants } from "@/features/prayer-times/hooks/use-azan-notifications";
+import {
+  buildAdhanInstants,
+  requestNotificationPermission,
+  scheduleTestAzan,
+} from "@/features/prayer-times/hooks/use-azan-notifications";
 import { getPrayerDay } from "@/features/prayer-times/lib/aladhan";
 import {
   prayerLocationSchema,
   prayerPreferencesSchema,
 } from "@repo/shared-core/schemas/prayer-times";
 import type { PrayerDay, PrayerKey } from "@repo/shared-core/prayer-times/compute";
+import * as Notifications from "expo-notifications";
 
 jest.mock("@/features/prayer-times/lib/aladhan", () => ({
   getPrayerDay: jest.fn(),
@@ -81,5 +86,34 @@ describe("buildAdhanInstants", () => {
       "nour-azan-1-maghrib",
       "nour-azan-1-isha",
     ]);
+  });
+});
+
+// jest-expo's Platform.OS defaults to "ios", so the exported helpers below exercise
+// the iOS notification path (nativeAdhanActive() is only ever true on android).
+describe("iOS Critical Alerts", () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("requests allowCriticalAlerts alongside the standard iOS permissions", async () => {
+    await requestNotificationPermission();
+
+    expect(Notifications.requestPermissionsAsync).toHaveBeenCalledWith({
+      ios: { allowAlert: true, allowSound: true, allowBadge: false, allowCriticalAlerts: true },
+    });
+  });
+
+  it("schedules the test azan with interruptionLevel:critical and the bundled sound", async () => {
+    await scheduleTestAzan("Test");
+
+    expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.objectContaining({
+          sound: "adhan_notify.wav",
+          interruptionLevel: "critical",
+        }),
+      }),
+    );
   });
 });

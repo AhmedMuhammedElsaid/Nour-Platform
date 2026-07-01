@@ -819,6 +819,33 @@ hand-whitelisting.
   nour` ≈10 not ~200; force Doze (`adb shell dumpsys deviceidle force-idle`) and confirm a
   near-term prayer fires full-length; reboot re-arm; RNTP music ducks/resumes.
 
+## iOS adhan — Critical Alerts (2026-07-01)
+
+**iOS has no equivalent of the Android native-service design above** — no `AlarmManager`,
+no way to wake a killed app or start a service at a scheduled time, and a scheduled local
+notification can only carry a bundled sound **≤30s** (Apple's hard ceiling, not a code gap).
+So iOS keeps its existing two-tier design (closed-app: one `≤30s adhan_notify.wav`
+notification per prayer; foreground: full adhan via `use-foreground-adhan.ts`) and closes the
+one real gap vs Android — a plain notification sound is silenced by the Silent switch/Focus/DND,
+where Android's `USAGE_ALARM` isn't.
+
+- **`app.json` `ios.entitlements`**: `com.apple.developer.usernotifications.critical-alerts: true`.
+- **`use-azan-notifications.ts`**: `requestNotificationPermission` now also requests
+  `allowCriticalAlerts: true`; both the real schedule and `scheduleTestAzan` set
+  `interruptionLevel: "critical"` on the iOS notification content.
+- **Not self-service**: `com.apple.developer.usernotifications.critical-alerts` requires an
+  Apple Developer Program membership + a support-form request to Apple justifying the
+  prayer/alarm use case, then must be baked into the provisioning profile EAS builds with.
+  Until granted, `interruptionLevel: "critical"` and `allowCriticalAlerts` degrade silently to
+  a normal notification (no crash, no DND-piercing) — the code is correct either way.
+- Tests: `__tests__/azan-scheduler.test.ts` "iOS Critical Alerts" block asserts both the
+  permission request shape and `interruptionLevel:"critical"` on the scheduled content
+  (jest-expo defaults `Platform.OS` to `"ios"`, so `scheduleTestAzan`/the exported helpers
+  exercise this branch directly without mocking Platform).
+- **Remaining (device + Apple account only)**: request the entitlement from Apple, build with
+  a Critical-Alerts-enabled profile, verify on a real device with Silent on + a Focus enabled
+  (simulator doesn't play notification sounds).
+
 ## Verify before shipping
 
 ```bash

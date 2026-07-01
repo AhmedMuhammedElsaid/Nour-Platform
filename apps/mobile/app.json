@@ -52,6 +52,9 @@
         "UIBackgroundModes": [
           "audio"
         ]
+      },
+      "entitlements": {
+        "com.apple.developer.usernotifications.critical-alerts": true
       }
     },
     "android": {
