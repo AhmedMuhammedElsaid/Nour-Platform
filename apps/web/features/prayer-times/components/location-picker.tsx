@@ -87,7 +87,7 @@ export function LocationPicker({
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <input
           type="text"
           value={query}
@@ -99,8 +99,10 @@ export function LocationPicker({
           type="button"
           onClick={useMyLocation}
           disabled={locating}
-          // Fixed width so swapping the label to "Locating…" doesn't reflow.
-          className="inline-flex min-w-[7.5rem] items-center justify-center rounded-md border border-border px-3 py-2 text-sm text-sun hover:bg-surface-2 disabled:opacity-60"
+          // Full-width under the input on mobile (so the Arabic label never
+          // breaks the row width); on ≥sm it sits inline with a fixed min-width
+          // so swapping the label to "Locating…" doesn't reflow.
+          className="inline-flex w-full items-center justify-center rounded-md border border-border px-3 py-2 text-sm text-sun hover:bg-surface-2 disabled:opacity-60 sm:w-auto sm:min-w-[7.5rem]"
         >
           {locating ? t("locating") : t("useMyLocation")}
         </button>

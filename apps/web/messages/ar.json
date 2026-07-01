@@ -10,7 +10,8 @@
     "skipToContent": "تخطّ إلى المحتوى الرئيسي",
     "language": "اللغة",
     "toggleTheme": "تبديل السمة الفاتحة/الداكنة",
-    "primary": "التنقل الرئيسي"
+    "primary": "التنقل الرئيسي",
+    "menu": "القائمة"
   },
   "footer": {
     "copyright": "© {year}  ويبسيت نور",

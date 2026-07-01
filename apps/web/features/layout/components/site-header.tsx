@@ -3,6 +3,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 // import { SearchBox } from "@/features/search/components/search-box";
 import { LocaleSwitcher } from "./locale-switcher";
+import { MobileNav } from "./mobile-nav";
 import { ThemeToggle } from "./theme-toggle";
 
 const NAV_LINK_CLASS =
@@ -22,36 +23,40 @@ export async function SiteHeader() {
   const locale = await getLocale();
   const brand = BRAND[locale] ?? BRAND.en!;
 
+  const navItems = [
+    { href: "/quran", label: tQuran("navLabel") },
+    { href: "/adhkar", label: adhkarT("navLabel") },
+    { href: "/prayer-times", label: tPrayer("nav") },
+    { href: "/qibla", label: tQibla("nav") },
+  ];
+
   return (
     <header className="sticky top-0 z-40 w-full bg-bg/85 backdrop-blur-lg border-b border-border">
-      <div className="max-w-5xl mx-auto px-6 h-14 flex items-center gap-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3 sm:gap-6">
         <Link
           href="/"
-          className="font-display text-xl font-bold leading-none text-primary hover:text-primary/80 transition-colors"
+          className="shrink-0 font-display text-xl font-bold leading-none text-primary hover:text-primary/80 transition-colors"
           aria-label={t("home")}
         >
           <span lang={brand.lang}>{brand.text}</span>
         </Link>
 
-        <nav aria-label={t("primary")} className="flex items-center gap-5">
-          <Link href="/quran" className={NAV_LINK_CLASS}>
-            {tQuran("navLabel")}
-          </Link>
-          <Link href="/adhkar" className={NAV_LINK_CLASS}>
-            {adhkarT("navLabel")}
-          </Link>
-          <Link href="/prayer-times" className={NAV_LINK_CLASS}>
-            {tPrayer("nav")}
-          </Link>
-          <Link href="/qibla" className={NAV_LINK_CLASS}>
-            {tQibla("nav")}
-          </Link>
+        {/* Inline tabs on ≥sm only. On mobile the four tabs would overflow the
+            viewport and give the whole page a horizontal scroll, so they collapse
+            into the MobileNav hamburger below instead. */}
+        <nav aria-label={t("primary")} className="hidden items-center gap-5 sm:flex">
+          {navItems.map((item) => (
+            <Link key={item.href} href={item.href} className={NAV_LINK_CLASS}>
+              {item.label}
+            </Link>
+          ))}
           {/* <SearchBox /> */}
         </nav>
 
-        <div className="ms-auto flex items-center gap-2">
+        <div className="ms-auto flex shrink-0 items-center gap-2">
           <LocaleSwitcher />
           <ThemeToggle />
+          <MobileNav items={navItems} menuLabel={t("menu")} />
         </div>
       </div>
     </header>

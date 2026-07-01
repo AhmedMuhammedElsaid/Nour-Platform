@@ -10,7 +10,8 @@
     "skipToContent": "Skip to main content",
     "language": "Language",
     "toggleTheme": "Toggle light/dark theme",
-    "primary": "Main navigation"
+    "primary": "Main navigation",
+    "menu": "Menu"
   },
   "footer": {
     "copyright": "© {year} Nour Platform",

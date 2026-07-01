@@ -28,11 +28,11 @@ export function QiblaPage({ locale }: { locale: "ar" | "en" }) {
     Math.abs(((heading - bearing + 540) % 360) - 180) <= 6;
 
   return (
-    <section className="mx-auto max-w-2xl px-6 py-12">
+    <section className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
       <h1 className="font-display text-3xl font-bold text-text">{t("title")}</h1>
       <p className="mt-1 text-sm text-text-2">🕌 {location.label}</p>
 
-      <div className="mt-6 rounded-xl border border-border bg-surface p-6">
+      <div className="mt-6 rounded-xl border border-border bg-surface p-4 sm:p-6">
         <QiblaCompass
           bearing={bearing}
           heading={heading}
