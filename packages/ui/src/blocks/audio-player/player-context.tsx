@@ -15,6 +15,10 @@ export type QueueTrack = {
   // (recently-played store). Unused by the player itself.
   playlistSlug?: string;
   locale?: string;
+  // A live radio stream (infinite duration, no seeking). When set, the player
+  // skips resume-position save/restore and the UI shows a LIVE indicator in
+  // place of the seek bar. See the radio feature.
+  isLive?: boolean;
 };
 
 export type RepeatMode = "off" | "all" | "one";
@@ -346,7 +350,8 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       if (now - lastSaveRef.current > 5000 && audio.currentTime > 0) {
         lastSaveRef.current = now;
         const track = queueRef.current[currentIndexRef.current];
-        if (track) savePosition(track.id, audio.currentTime);
+        // Live streams have no meaningful resume position — never persist one.
+        if (track && !track.isLive) savePosition(track.id, audio.currentTime);
       }
       // Feed the OS media UI a scrubbable position (Media Session). Reads live
       // off the element so there's no stale-closure risk in this once-attached
@@ -473,8 +478,9 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       setCurrentTime(0);
       setDuration(track.durationSecs ?? 0);
       setErrorMessage(null);
-      // Queue the saved resume offset; applied once metadata loads.
-      const saved = getStoredPosition(track.id);
+      // Queue the saved resume offset; applied once metadata loads. Live streams
+      // never resume — they play from the live edge.
+      const saved = track.isLive ? 0 : getStoredPosition(track.id);
       pendingSeekRef.current = saved > 0 ? saved : null;
     }
     // Re-apply the chosen speed: a fresh src resets playbackRate to 1.

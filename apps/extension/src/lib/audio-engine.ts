@@ -200,7 +200,7 @@ async function syncAudio(prev: PlayerCore, next: PlayerCore): Promise<void> {
   const nextItem = currentItem(next);
 
   if (nextItem === null) {
-    if (prevItem) await persistPosition(prevItem.id);
+    if (prevItem && !prevItem.isLive) await persistPosition(prevItem.id);
     playerAudio.pause();
     playerAudio.removeAttribute("src");
     playerAudio.load();
@@ -210,14 +210,15 @@ async function syncAudio(prev: PlayerCore, next: PlayerCore): Promise<void> {
 
   const trackChanged = prevItem?.id !== nextItem.id;
   if (trackChanged) {
-    if (prevItem) await persistPosition(prevItem.id);
+    // Live streams have no meaningful resume position — don't persist or restore.
+    if (prevItem && !prevItem.isLive) await persistPosition(prevItem.id);
     playerAudio.src = nextItem.url;
     // volume persists across src changes; playbackRate can reset on a new source,
     // so re-apply both after swapping the src.
     playerAudio.volume = volume;
     playerAudio.playbackRate = playbackRate;
     errorMessage = null;
-    pendingSeekSec = await loadSavedPosition(nextItem.id);
+    pendingSeekSec = nextItem.isLive ? null : await loadSavedPosition(nextItem.id);
     setMediaSession(nextItem, next.status === "playing" ? "playing" : "paused");
     await recordTrackRecent(nextItem);
   }
@@ -369,7 +370,9 @@ playerAudio.addEventListener("timeupdate", () => {
   const now = Date.now();
   if (now - lastPersistAt > 5_000) {
     lastPersistAt = now;
-    void persistPosition();
+    // Live streams have no resume position — skip persistence.
+    const cur = currentItem(core);
+    if (cur && !cur.isLive) void persistPosition();
   }
   // High-frequency position tick — throttled. State-change broadcasts elsewhere
   // are NOT throttled so play/pause/track changes reach the UI immediately.

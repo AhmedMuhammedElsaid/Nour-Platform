@@ -47,6 +47,8 @@ export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
   if (!hasQueue || !currentTrack) return null;
 
   const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
+  // Live radio stream: no progress bar, no queue/shuffle/repeat — play/pause only.
+  const isLive = currentTrack.isLive ?? false;
 
   return (
     <View
@@ -55,13 +57,15 @@ export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
       accessibilityRole="toolbar"
       accessibilityLabel={t("player.miniPlayer")}
     >
-      {/* Progress bar */}
-      <View className="mb-2 h-1 overflow-hidden rounded-full bg-surface-2">
-        <View
-          className="h-full rounded-full bg-primary"
-          style={{ width: `${Math.min(100, progressPct)}%` }}
-        />
-      </View>
+      {/* Progress bar — hidden for live streams (no finite progress) */}
+      {!isLive && (
+        <View className="mb-2 h-1 overflow-hidden rounded-full bg-surface-2">
+          <View
+            className="h-full rounded-full bg-primary"
+            style={{ width: `${Math.min(100, progressPct)}%` }}
+          />
+        </View>
+      )}
 
       <View className="flex-row items-center gap-3">
         {/* Track info — tap to open the full Now Playing screen */}
@@ -84,42 +88,46 @@ export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
           )}
         </Pressable>
 
-        {/* Quick shuffle + repeat toggles */}
-        <View className="flex-row items-center gap-1">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ selected: isShuffled }}
-            accessibilityLabel={t("player.shuffle")}
-            onPress={toggleShuffle}
-            className="size-9 items-center justify-center"
-          >
-            <ShuffleIcon color={isShuffled ? primaryColor : mutedColor} size={18} />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ selected: repeatMode !== "off" }}
-            accessibilityLabel={t("player.repeat")}
-            onPress={cycleRepeat}
-            className="size-9 items-center justify-center"
-          >
-            {repeatMode === "one" ? (
-              <RepeatOneIcon color={primaryColor} size={18} />
-            ) : (
-              <RepeatIcon color={repeatMode !== "off" ? primaryColor : mutedColor} size={18} />
-            )}
-          </Pressable>
-        </View>
+        {/* Quick shuffle + repeat toggles — not for live streams */}
+        {!isLive && (
+          <View className="flex-row items-center gap-1">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: isShuffled }}
+              accessibilityLabel={t("player.shuffle")}
+              onPress={toggleShuffle}
+              className="size-9 items-center justify-center"
+            >
+              <ShuffleIcon color={isShuffled ? primaryColor : mutedColor} size={18} />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: repeatMode !== "off" }}
+              accessibilityLabel={t("player.repeat")}
+              onPress={cycleRepeat}
+              className="size-9 items-center justify-center"
+            >
+              {repeatMode === "one" ? (
+                <RepeatOneIcon color={primaryColor} size={18} />
+              ) : (
+                <RepeatIcon color={repeatMode !== "off" ? primaryColor : mutedColor} size={18} />
+              )}
+            </Pressable>
+          </View>
+        )}
 
         {/* Transport */}
         <View className="flex-row items-center gap-1">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("player.prev")}
-            onPress={prev}
-            className="size-9 items-center justify-center"
-          >
-            <PrevIcon color={primaryColor} size={18} />
-          </Pressable>
+          {!isLive && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("player.prev")}
+              onPress={prev}
+              className="size-9 items-center justify-center"
+            >
+              <PrevIcon color={primaryColor} size={18} />
+            </Pressable>
+          )}
 
           {errorMessage != null ? (
             <Pressable
@@ -146,14 +154,16 @@ export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
             </Pressable>
           )}
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("player.next")}
-            onPress={next}
-            className="size-9 items-center justify-center"
-          >
-            <NextIcon color={primaryColor} size={18} />
-          </Pressable>
+          {!isLive && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("player.next")}
+              onPress={next}
+              className="size-9 items-center justify-center"
+            >
+              <NextIcon color={primaryColor} size={18} />
+            </Pressable>
+          )}
         </View>
       </View>
     </View>

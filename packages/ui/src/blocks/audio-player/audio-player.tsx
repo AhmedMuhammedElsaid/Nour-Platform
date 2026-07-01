@@ -98,6 +98,9 @@ export function AudioPlayer() {
   const atSequentialEnd = repeatMode !== "all" && !isShuffled;
   const disablePrev = atSequentialEnd && currentIndex <= 0;
   const disableNext = atSequentialEnd && currentIndex >= queue.length - 1;
+  // A live radio stream: no seeking, no queue navigation — show a LIVE badge and
+  // hide the seek bar + shuffle/skip/repeat transport (radio feature).
+  const isLive = currentTrack?.isLive ?? false;
   const repeatLabel =
     repeatMode === "one"
       ? "Repeat one"
@@ -130,12 +133,12 @@ export function AudioPlayer() {
       }
       if (event.key === "ArrowLeft") {
         event.preventDefault();
-        seek(Math.max(0, currentTime - 10));
+        if (!isLive) seek(Math.max(0, currentTime - 10));
         return;
       }
       if (event.key === "ArrowRight") {
         event.preventDefault();
-        seek(currentTime + 10);
+        if (!isLive) seek(currentTime + 10);
         return;
       }
       if (event.key === "n" || event.key === "N") {
@@ -160,7 +163,7 @@ export function AudioPlayer() {
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [hasQueue, toggle, seek, currentTime, next, prev, toggleShuffle, cycleRepeat]);
+  }, [hasQueue, isLive, toggle, seek, currentTime, next, prev, toggleShuffle, cycleRepeat]);
 
   const sliderMax =
     currentTrack != null
@@ -224,25 +227,29 @@ export function AudioPlayer() {
 
         <div className="flex-1 flex flex-col items-center gap-1">
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Shuffle"
-              aria-pressed={isShuffled}
-              onClick={toggleShuffle}
-              className={cn(isShuffled && "text-primary")}
-            >
-              <Shuffle />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Previous track"
-              onClick={prev}
-              disabled={disablePrev}
-            >
-              <SkipBack className="rtl:scale-x-[-1]" />
-            </Button>
+            {!isLive && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Shuffle"
+                  aria-pressed={isShuffled}
+                  onClick={toggleShuffle}
+                  className={cn(isShuffled && "text-primary")}
+                >
+                  <Shuffle />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Previous track"
+                  onClick={prev}
+                  disabled={disablePrev}
+                >
+                  <SkipBack className="rtl:scale-x-[-1]" />
+                </Button>
+              </>
+            )}
             <Button
               variant="default"
               size="icon"
@@ -259,58 +266,74 @@ export function AudioPlayer() {
                 <Play />
               )}
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Next track"
-              onClick={next}
-              disabled={disableNext}
-            >
-              <SkipForward className="rtl:scale-x-[-1]" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={repeatLabel}
-              aria-pressed={repeatMode !== "off"}
-              onClick={cycleRepeat}
-              className={cn(repeatMode !== "off" && "text-primary")}
-            >
-              {repeatMode === "one" ? <Repeat1 /> : <Repeat />}
-            </Button>
+            {!isLive && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Next track"
+                  onClick={next}
+                  disabled={disableNext}
+                >
+                  <SkipForward className="rtl:scale-x-[-1]" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={repeatLabel}
+                  aria-pressed={repeatMode !== "off"}
+                  onClick={cycleRepeat}
+                  className={cn(repeatMode !== "off" && "text-primary")}
+                >
+                  {repeatMode === "one" ? <Repeat1 /> : <Repeat />}
+                </Button>
+              </>
+            )}
           </div>
-          <div className="w-full flex items-center gap-3">
-            <span
-              className="text-2xs text-text-2 tabular-nums w-10 text-end"
-              aria-hidden="true"
-            >
-              {formatTime(displayTime)}
-            </span>
-            <Slider
-              aria-label="Seek"
-              aria-valuetext={`${formatTime(sliderValue)} of ${formatTime(sliderMax)}`}
-              className="flex-1"
-              min={0}
-              max={sliderMax > 0 ? sliderMax : 1}
-              step={1}
-              value={[sliderValue]}
-              onValueChange={(values) => {
-                const v = values[0];
-                if (typeof v === "number") setScrubValue(v);
-              }}
-              onValueCommit={(values) => {
-                const v = values[0];
-                if (typeof v === "number") seek(v);
-                setScrubValue(null);
-              }}
-            />
-            <span
-              className="text-2xs text-text-2 tabular-nums w-10"
-              aria-hidden="true"
-            >
-              {formatTime(sliderMax)}
-            </span>
-          </div>
+          {isLive ? (
+            <div className="w-full flex items-center justify-center gap-2 py-1">
+              <span
+                className="size-2 rounded-full bg-destructive animate-pulse"
+                aria-hidden="true"
+              />
+              <span className="text-xs font-semibold tracking-wide text-foreground">
+                LIVE
+              </span>
+            </div>
+          ) : (
+            <div className="w-full flex items-center gap-3">
+              <span
+                className="text-2xs text-text-2 tabular-nums w-10 text-end"
+                aria-hidden="true"
+              >
+                {formatTime(displayTime)}
+              </span>
+              <Slider
+                aria-label="Seek"
+                aria-valuetext={`${formatTime(sliderValue)} of ${formatTime(sliderMax)}`}
+                className="flex-1"
+                min={0}
+                max={sliderMax > 0 ? sliderMax : 1}
+                step={1}
+                value={[sliderValue]}
+                onValueChange={(values) => {
+                  const v = values[0];
+                  if (typeof v === "number") setScrubValue(v);
+                }}
+                onValueCommit={(values) => {
+                  const v = values[0];
+                  if (typeof v === "number") seek(v);
+                  setScrubValue(null);
+                }}
+              />
+              <span
+                className="text-2xs text-text-2 tabular-nums w-10"
+                aria-hidden="true"
+              >
+                {formatTime(sliderMax)}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="shrink-0 flex items-center gap-1">

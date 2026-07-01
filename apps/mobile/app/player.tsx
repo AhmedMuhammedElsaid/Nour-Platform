@@ -100,6 +100,8 @@ export default function PlayerScreen() {
   }
 
   const sliderMax = duration > 0 ? duration : currentTrack.durationSecs ?? 0;
+  // Live radio stream: no seeking, no queue navigation — LIVE badge + play only.
+  const isLive = currentTrack.isLive ?? false;
   const repeatLabel =
     repeatMode === "one"
       ? t("player.repeatOne")
@@ -145,40 +147,51 @@ export default function PlayerScreen() {
         {errorMessage != null && <Text className="text-sm text-danger">{errorMessage}</Text>}
       </View>
 
-      {/* Seek */}
-      <View className="gap-1">
-        <Slider
-          value={currentTime}
-          max={sliderMax > 0 ? sliderMax : 1}
-          onSlidingComplete={seek}
-          accessibilityLabel={t("player.nowPlaying")}
-        />
-        <View className="flex-row justify-between">
-          <Text variant="muted" className="text-xs tabular-nums">{formatTime(currentTime)}</Text>
-          <Text variant="muted" className="text-xs tabular-nums">{formatTime(sliderMax)}</Text>
+      {/* Seek — or a LIVE badge for radio streams (no seeking) */}
+      {isLive ? (
+        <View className="flex-row items-center justify-center gap-2 py-2">
+          <View className="size-2 rounded-full bg-danger" />
+          <Text className="text-xs font-semibold uppercase tracking-wide text-text-2">LIVE</Text>
         </View>
-      </View>
+      ) : (
+        <View className="gap-1">
+          <Slider
+            value={currentTime}
+            max={sliderMax > 0 ? sliderMax : 1}
+            onSlidingComplete={seek}
+            accessibilityLabel={t("player.nowPlaying")}
+          />
+          <View className="flex-row justify-between">
+            <Text variant="muted" className="text-xs tabular-nums">{formatTime(currentTime)}</Text>
+            <Text variant="muted" className="text-xs tabular-nums">{formatTime(sliderMax)}</Text>
+          </View>
+        </View>
+      )}
 
       {/* Transport */}
-      <View className="flex-row items-center justify-between">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ selected: isShuffled }}
-          accessibilityLabel={t("player.shuffle")}
-          onPress={toggleShuffle}
-          className="size-11 items-center justify-center"
-        >
-          <ShuffleIcon color={isShuffled ? primaryColor : mutedColor} size={24} />
-        </Pressable>
+      <View className={cn("flex-row items-center", isLive ? "justify-center gap-8" : "justify-between")}>
+        {!isLive && (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: isShuffled }}
+              accessibilityLabel={t("player.shuffle")}
+              onPress={toggleShuffle}
+              className="size-11 items-center justify-center"
+            >
+              <ShuffleIcon color={isShuffled ? primaryColor : mutedColor} size={24} />
+            </Pressable>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t("player.prev")}
-          onPress={prev}
-          className="size-12 items-center justify-center"
-        >
-          <PrevIcon color={primaryColor} size={28} />
-        </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("player.prev")}
+              onPress={prev}
+              className="size-12 items-center justify-center"
+            >
+              <PrevIcon color={primaryColor} size={28} />
+            </Pressable>
+          </>
+        )}
 
         {errorMessage != null ? (
           <Pressable
@@ -203,28 +216,32 @@ export default function PlayerScreen() {
           </Pressable>
         )}
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t("player.next")}
-          onPress={next}
-          className="size-12 items-center justify-center"
-        >
-          <NextIcon color={primaryColor} size={28} />
-        </Pressable>
+        {!isLive && (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("player.next")}
+              onPress={next}
+              className="size-12 items-center justify-center"
+            >
+              <NextIcon color={primaryColor} size={28} />
+            </Pressable>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ selected: repeatMode !== "off" }}
-          accessibilityLabel={repeatLabel}
-          onPress={cycleRepeat}
-          className="size-11 items-center justify-center"
-        >
-          {repeatMode === "one" ? (
-            <RepeatOneIcon color={primaryColor} size={24} />
-          ) : (
-            <RepeatIcon color={repeatMode !== "off" ? primaryColor : mutedColor} size={24} />
-          )}
-        </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: repeatMode !== "off" }}
+              accessibilityLabel={repeatLabel}
+              onPress={cycleRepeat}
+              className="size-11 items-center justify-center"
+            >
+              {repeatMode === "one" ? (
+                <RepeatOneIcon color={primaryColor} size={24} />
+              ) : (
+                <RepeatIcon color={repeatMode !== "off" ? primaryColor : mutedColor} size={24} />
+              )}
+            </Pressable>
+          </>
+        )}
       </View>
 
       {/* Volume */}

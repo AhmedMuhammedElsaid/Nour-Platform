@@ -73,10 +73,12 @@ export function PlayerBar({
           send({ type: "toggle" });
           break;
         case "ArrowLeft":
-          send({ type: "seek", positionSec: Math.max(0, state.positionSec - 10) });
+          if (!currentItem(state)?.isLive)
+            send({ type: "seek", positionSec: Math.max(0, state.positionSec - 10) });
           break;
         case "ArrowRight":
-          send({ type: "seek", positionSec: Math.min(state.durationSec, state.positionSec + 10) });
+          if (!currentItem(state)?.isLive)
+            send({ type: "seek", positionSec: Math.min(state.durationSec, state.positionSec + 10) });
           break;
         case "n":
         case "N":
@@ -105,6 +107,8 @@ export function PlayerBar({
   if (!item) return null;
 
   const playing = state.status === "playing";
+  // Live radio stream: no seek, no queue navigation — LIVE badge + play only.
+  const isLive = item.isLive ?? false;
   const duration = state.durationSec || 0;
   const sliderValue = scrub ?? Math.min(state.positionSec, duration);
   const sleepRemaining = sleepEndsAt != null ? Math.max(0, (sleepEndsAt - now) / 1000) : null;
@@ -139,23 +143,27 @@ export function PlayerBar({
 
           {/* Transport */}
           <div className="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              onClick={() => send({ type: "toggleShuffle" })}
-              aria-label={t("player.shuffle")}
-              aria-pressed={state.shuffle}
-              className={`${ghost} ${state.shuffle ? "text-primary" : ""}`}
-            >
-              <Shuffle className="size-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => send({ type: "prev" })}
-              aria-label={t("player.prev")}
-              className={ghost}
-            >
-              <SkipBack className="size-5 rtl:scale-x-[-1]" />
-            </button>
+            {!isLive && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => send({ type: "toggleShuffle" })}
+                  aria-label={t("player.shuffle")}
+                  aria-pressed={state.shuffle}
+                  className={`${ghost} ${state.shuffle ? "text-primary" : ""}`}
+                >
+                  <Shuffle className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => send({ type: "prev" })}
+                  aria-label={t("player.prev")}
+                  className={ghost}
+                >
+                  <SkipBack className="size-5 rtl:scale-x-[-1]" />
+                </button>
+              </>
+            )}
             <button
               type="button"
               onClick={() => send({ type: "toggle" })}
@@ -170,23 +178,27 @@ export function PlayerBar({
                 <Play className="size-5" />
               )}
             </button>
-            <button
-              type="button"
-              onClick={() => send({ type: "next" })}
-              aria-label={t("player.next")}
-              className={ghost}
-            >
-              <SkipForward className="size-5 rtl:scale-x-[-1]" />
-            </button>
-            <button
-              type="button"
-              onClick={() => send({ type: "cycleRepeat" })}
-              aria-label={t("player.repeat")}
-              aria-pressed={state.repeat !== "off"}
-              className={`${ghost} ${state.repeat !== "off" ? "text-primary" : ""}`}
-            >
-              {state.repeat === "one" ? <Repeat1 className="size-4" /> : <Repeat className="size-4" />}
-            </button>
+            {!isLive && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => send({ type: "next" })}
+                  aria-label={t("player.next")}
+                  className={ghost}
+                >
+                  <SkipForward className="size-5 rtl:scale-x-[-1]" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => send({ type: "cycleRepeat" })}
+                  aria-label={t("player.repeat")}
+                  aria-pressed={state.repeat !== "off"}
+                  className={`${ghost} ${state.repeat !== "off" ? "text-primary" : ""}`}
+                >
+                  {state.repeat === "one" ? <Repeat1 className="size-4" /> : <Repeat className="size-4" />}
+                </button>
+              </>
+            )}
           </div>
 
           {/* Right cluster */}
@@ -242,25 +254,32 @@ export function PlayerBar({
           </div>
         </div>
 
-        {/* Seek */}
-        <div className="mt-1 flex items-center gap-2 text-2xs text-text-2">
-          <span className="w-10 text-end font-mono tabular-nums">{fmt(sliderValue)}</span>
-          <Slider
-            aria-label={t("player.position")}
-            aria-valuetext={`${fmt(sliderValue)} / ${fmt(duration)}`}
-            className="flex-1"
-            min={0}
-            max={duration > 0 ? duration : 1}
-            step={1}
-            value={sliderValue}
-            onChange={(v) => setScrub(v)}
-            onCommit={(v) => {
-              send({ type: "seek", positionSec: v });
-              setScrub(null);
-            }}
-          />
-          <span className="w-10 font-mono tabular-nums">{fmt(duration)}</span>
-        </div>
+        {/* Seek — or a LIVE badge for radio streams (no seeking) */}
+        {isLive ? (
+          <div className="mt-1 flex items-center justify-center gap-2 py-1">
+            <span className="size-2 rounded-full bg-danger" />
+            <span className="text-xs font-semibold tracking-wide text-text">LIVE</span>
+          </div>
+        ) : (
+          <div className="mt-1 flex items-center gap-2 text-2xs text-text-2">
+            <span className="w-10 text-end font-mono tabular-nums">{fmt(sliderValue)}</span>
+            <Slider
+              aria-label={t("player.position")}
+              aria-valuetext={`${fmt(sliderValue)} / ${fmt(duration)}`}
+              className="flex-1"
+              min={0}
+              max={duration > 0 ? duration : 1}
+              step={1}
+              value={sliderValue}
+              onChange={(v) => setScrub(v)}
+              onCommit={(v) => {
+                send({ type: "seek", positionSec: v });
+                setScrub(null);
+              }}
+            />
+            <span className="w-10 font-mono tabular-nums">{fmt(duration)}</span>
+          </div>
+        )}
       </div>
 
       {/* Playback settings */}

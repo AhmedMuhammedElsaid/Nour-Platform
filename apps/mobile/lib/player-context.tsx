@@ -30,6 +30,9 @@ export type QueueTrack = {
   playlistTitle?: string;
   playlistSlug?: string;
   locale?: string;
+  // A live radio stream (infinite duration, no seeking). Skips resume-position
+  // save/restore; the UI shows a LIVE badge instead of a seek bar. Radio feature.
+  isLive?: boolean;
 };
 
 export type RepeatMode = "off" | "all" | "one";
@@ -356,7 +359,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     ) {
       lastSaveRef.current = now;
       const track = queueRef.current[currentIndex];
-      if (track) void savePosition(track.id, progress.position);
+      // Live streams have no meaningful resume position — never persist one.
+      if (track && !track.isLive) void savePosition(track.id, progress.position);
     }
   }, [progress.position, currentIndex]);
 
@@ -432,8 +436,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       // Apply stored rate.
       await TrackPlayer.setRate(playbackRateRef.current);
 
-      // Resume position.
-      const saved = await getStoredPosition(track.id);
+      // Resume position — live streams always play from the live edge.
+      const saved = track.isLive ? 0 : await getStoredPosition(track.id);
       if (saved >= RESUME_MIN_SECONDS) {
         const dur = track.durationSecs ?? 0;
         if (!dur || saved < dur - RESUME_TAIL_SECONDS) {

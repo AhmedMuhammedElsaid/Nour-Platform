@@ -11,6 +11,7 @@ export type QueueItem = {
   artwork?: string; // cover image URL for Media Session
   durationSecs?: number; // shown in the queue panel + used for resume-bar math
   slug?: string; // playlist slug — lets a per-track recent deep-link back
+  isLive?: boolean; // live radio stream — no seek/resume; UI shows a LIVE badge
 };
 
 export type PlayerStatus = "playing" | "paused" | "stopped";

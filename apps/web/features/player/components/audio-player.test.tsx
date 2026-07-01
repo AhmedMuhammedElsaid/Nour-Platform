@@ -24,6 +24,17 @@ const fixtureQueue: QueueTrack[] = [
   },
 ]
 
+// A single live radio station — no durationSecs, isLive true.
+const liveStationQueue: QueueTrack[] = [
+  {
+    id: 'radio-cairo',
+    title: 'إذاعة القرآن الكريم',
+    mediaUrl: 'https://example.test/stream',
+    playlistTitle: '🔴 LIVE · Cairo',
+    isLive: true,
+  },
+]
+
 // Test harness that exposes the player context to assertions and lets a test
 // drive loadQueue without rendering a real consumer UI.
 function Harness({ autoLoad }: { autoLoad?: boolean }) {
@@ -36,6 +47,13 @@ function Harness({ autoLoad }: { autoLoad?: boolean }) {
         onClick={() => player.loadQueue(fixtureQueue, 0)}
       >
         load
+      </button>
+      <button
+        type="button"
+        data-testid="load-live"
+        onClick={() => player.loadQueue(liveStationQueue, 0)}
+      >
+        load live
       </button>
       {autoLoad ? <AutoLoad /> : null}
       <span data-testid="is-playing">{String(player.isPlaying)}</span>
@@ -437,6 +455,38 @@ describe('AudioPlayer', () => {
     })
 
     expect(volumeThumb).toHaveAttribute('aria-valuetext', '50%')
+  })
+
+  it('shows a LIVE badge and hides seek + track transport for a live stream', async () => {
+    const user = userEvent.setup()
+    render(
+      <PlayerProvider>
+        <Harness />
+        <AudioPlayer />
+      </PlayerProvider>,
+    )
+
+    await user.click(screen.getByTestId('load-live'))
+
+    // LIVE badge replaces the seek bar.
+    expect(screen.getByText('LIVE')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('slider', { name: /seek/i }),
+    ).not.toBeInTheDocument()
+
+    // Shuffle / skip / repeat are meaningless for a single live stream.
+    expect(
+      screen.queryByRole('button', { name: /shuffle/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /next track/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /previous track/i }),
+    ).not.toBeInTheDocument()
+
+    // Play/pause stays (auto-plays after the click gesture → Pause).
+    expect(screen.getByRole('button', { name: /^pause$/i })).toBeInTheDocument()
   })
 
   it('publishes now-playing metadata to the Media Session API', async () => {
