@@ -13,7 +13,8 @@
     "primary": "Main navigation"
   },
   "footer": {
-    "copyright": "© 2026 Nour Platform"
+    "copyright": "© {year} Nour Platform",
+    "privacy": "Privacy Policy"
   },
   "home": {
     "heading": "Playlists",
@@ -158,5 +159,32 @@
     "bookmarks": "Bookmarks",
     "bookmarksEmpty": "No bookmarks yet.",
     "removeBookmark": "Remove bookmark"
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "eyebrow": "Your data, your device",
+    "metaDescription": "How Nour handles your data: no personal data collected, all settings stay on your device. Privacy policy for the Nour website, mobile app, and browser extension.",
+    "updated": "Last updated: 1 July 2026",
+    "intro": "This Privacy Policy explains how the Nour platform — including its website, mobile app, and browser extension (\"Nour\", \"we\", \"our\") — handles your information. Our guiding principle is simple: Nour is built to keep your data on your own device.",
+    "controllerHeading": "Who we are",
+    "controllerBody": "Nour is an independent project operated by Ahmed Muhammed Elsaid. You can reach us using the contact details at the end of this policy.",
+    "dataHeading": "Information we collect",
+    "dataBody": "We do not collect, store, or transmit any personal information. Nour has no user accounts for its public features, no sign-up, and no tracking of your identity.",
+    "localHeading": "Data stored on your device",
+    "localBody": "Your settings — such as your chosen location for prayer times, calculation method, adhan and reminder preferences, theme, reading progress, and audio playback state — are saved locally on your device (in your browser's local storage, the extension's local storage, or the app's on-device storage). This data never leaves your device and is not visible to us. Clearing your browser or app data removes it.",
+    "networkHeading": "Network requests",
+    "networkBody": "To show prayer times and play Islamic audio, Nour requests content from our own service at nour-platform-web.vercel.app. These requests carry only what is technically necessary to serve the content (for example, standard request metadata such as your IP address, which is handled by our hosting provider). We do not use this information to identify or profile you.",
+    "permissionsHeading": "Browser extension permissions",
+    "permissionsBody": "The Nour browser extension requests a small set of permissions strictly to provide its features: \"alarms\" and \"notifications\" schedule and display the adhan and prayer reminders; \"offscreen\" plays audio; \"storage\" saves your preferences on your device; and host access to nour-platform-web.vercel.app fetches prayer times and audio. None of these permissions are used to collect your personal data.",
+    "analyticsHeading": "Analytics",
+    "analyticsBody": "The Nour website uses privacy-friendly, aggregate analytics (Vercel Analytics and Speed Insights) that measure page performance and traffic without cookies and without identifying individual visitors. The browser extension and mobile app include no analytics.",
+    "thirdPartyHeading": "Sharing and third parties",
+    "thirdPartyBody": "We do not sell, rent, or share your personal data with third parties. Audio content and prayer-time data are served through our own infrastructure and hosting provider.",
+    "childrenHeading": "Children's privacy",
+    "childrenBody": "Nour is suitable for all ages and does not knowingly collect any personal information from anyone, including children.",
+    "changesHeading": "Changes to this policy",
+    "changesBody": "We may update this policy from time to time. Material changes will be reflected on this page with a new \"last updated\" date.",
+    "contactHeading": "Contact",
+    "contactBody": "If you have any questions about this Privacy Policy, contact Ahmed Muhammed Elsaid at <mail>ahmed.muhammed.elsaid@gmail.com</mail>."
   }
 }

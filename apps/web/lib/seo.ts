@@ -136,6 +136,27 @@ export function musicPlaylistLd(input: {
   };
 }
 
+/** schema.org WebPage for a static content route (privacy, about, etc.). */
+export function webPageLd(input: {
+  name: string;
+  description?: string;
+  url: string;
+  locale: Locale;
+  dateModified?: string;
+}): JsonLdObject {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: input.name,
+    ...(input.description ? { description: input.description } : {}),
+    url: input.url,
+    inLanguage: input.locale,
+    ...(input.dateModified ? { dateModified: input.dateModified } : {}),
+    isPartOf: { "@type": "WebSite", name: SITE_NAME, url: absoluteUrl(`/${input.locale}`) },
+    publisher: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
+  };
+}
+
 /** schema.org BreadcrumbList from an ordered list of {name, url} crumbs. */
 export function breadcrumbLd(items: { name: string; url: string }[]): JsonLdObject {
   return {

@@ -25,6 +25,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   }));
 
+  // Static content routes (locale-prefixed, hreflang alternates + x-default).
+  const staticPaths = ["privacy"] as const;
+  for (const path of staticPaths) {
+    for (const locale of LOCALES) {
+      entries.push({
+        url: `${SITE_URL}/${locale}/${path}`,
+        changeFrequency: "yearly",
+        priority: 0.3,
+        alternates: {
+          languages: {
+            ...Object.fromEntries(
+              LOCALES.map((l) => [l, `${SITE_URL}/${l}/${path}`]),
+            ),
+            "x-default": `${SITE_URL}/${DEFAULT_LOCALE}/${path}`,
+          },
+        },
+      });
+    }
+  }
+
   // Published playlist detail pages, with hreflang alternates (including x-default).
   // Guarded so a DB hiccup degrades to the static routes above rather than failing.
   try {
