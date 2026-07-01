@@ -461,8 +461,10 @@ rest needs no rebuild.
     adhan (regular, or `adhan-fajr.mp3` for Fajr) from the web origin via expo-audio's
     imperative `createAudioPlayer` — no bundled asset for this part. Ducks the RNTP queue
     (pause; resume on `didJustFinish`). Respects `useAdhanSettings` enabled+perPrayer+volume.
-  - *Closed-app (short clip):* `assets/audio/adhan_notify.wav` — a 24s mono fade-out clip
-    trimmed from `apps/web/public/audio/adhan.mp3` with ffmpeg. Registered in `app.json`
+  - *Closed-app (short clip):* `assets/audio/adhan_notify.wav` — a mono fade-out clip
+    trimmed from `apps/web/public/audio/adhan.mp3` with ffmpeg (extended 24s→29s on
+    2026-07-01 to use more of Apple's ≤30s ceiling; pcm_s16le/44100/mono, 2s fade-out).
+    Registered in `app.json`
     `expo-notifications.sounds`; the Android "azan" channel uses it (`sound: AZAN_SOUND`)
     and each scheduled notification sets `sound: AZAN_SOUND` (iOS). Filename uses
     **underscores** (Android res/raw naming rules forbid hyphens). ≤30s for the iOS limit.
