@@ -1,16 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-// The DOM lib doesn't type the non-standard bits we rely on: iOS Safari exposes
-// `webkitCompassHeading` (already true-north referenced, degrees clockwise) and
-// gates orientation behind a `requestPermission()` that must be called from a
-// user gesture. Declared here rather than via `any` casts (CLAUDE.md §4).
+// The DOM lib doesn't type iOS Safari's `webkitCompassHeading` (already
+// true-north referenced, degrees clockwise). Declared here rather than via an
+// `any` cast (CLAUDE.md §4). The iOS permission itself is requested site-wide on
+// the first gesture by <QiblaOrientationPrimer>, so this hook only listens.
 type CompassEvent = DeviceOrientationEvent & {
   webkitCompassHeading?: number;
-};
-type DeviceOrientationEventCtor = typeof DeviceOrientationEvent & {
-  requestPermission?: () => Promise<"granted" | "denied" | "default">;
 };
 
 const norm360 = (deg: number): number => ((deg % 360) + 360) % 360;
@@ -28,15 +25,13 @@ export type DeviceHeading = {
  * screen-rotation adjustment) on Android/desktop sensors. `heading` stays null
  * until a real reading arrives, so callers render a static fallback meanwhile.
  *
- * The compass is enabled automatically — no button. Where the platform requires
- * an explicit permission (iOS), it is requested on the first user interaction
- * anywhere on the page (iOS only grants from a user gesture); elsewhere the hook
- * starts listening immediately on mount.
+ * Listeners are attached on mount. On iOS they start delivering once permission
+ * has been granted (primed on the first site interaction — see
+ * orientation-permission.ts); on Android/desktop they fire immediately.
  */
 export function useDeviceHeading(): DeviceHeading {
   const [heading, setHeading] = useState<number | null>(null);
   const [supported, setSupported] = useState(false);
-  const listeningRef = useRef(false);
 
   const handle = useCallback((event: DeviceOrientationEvent) => {
     const e = event as CompassEvent;
@@ -61,46 +56,13 @@ export function useDeviceHeading(): DeviceHeading {
       return;
     }
     setSupported(true);
-
-    const startListening = () => {
-      if (listeningRef.current) return;
-      listeningRef.current = true;
-      // `deviceorientationabsolute` gives true/magnetic north on Chromium; iOS
-      // only fires `deviceorientation` but populates webkitCompassHeading there.
-      window.addEventListener("deviceorientationabsolute", handle);
-      window.addEventListener("deviceorientation", handle);
-    };
-
-    const ctor = window.DeviceOrientationEvent as DeviceOrientationEventCtor;
-    let removeGesture: (() => void) | undefined;
-
-    if (typeof ctor.requestPermission === "function") {
-      // iOS: permission can only be requested from a user gesture, so enable the
-      // compass on the first interaction anywhere — no dedicated button.
-      const onGesture = () => {
-        removeGesture?.();
-        void ctor
-          .requestPermission!()
-          .then((res) => {
-            if (res === "granted") startListening();
-          })
-          .catch(() => {});
-      };
-      window.addEventListener("click", onGesture, { once: true });
-      window.addEventListener("touchend", onGesture, { once: true });
-      removeGesture = () => {
-        window.removeEventListener("click", onGesture);
-        window.removeEventListener("touchend", onGesture);
-      };
-    } else {
-      startListening();
-    }
-
+    // `deviceorientationabsolute` gives true/magnetic north on Chromium; iOS
+    // only fires `deviceorientation` but populates webkitCompassHeading there.
+    window.addEventListener("deviceorientationabsolute", handle);
+    window.addEventListener("deviceorientation", handle);
     return () => {
-      removeGesture?.();
       window.removeEventListener("deviceorientationabsolute", handle);
       window.removeEventListener("deviceorientation", handle);
-      listeningRef.current = false;
     };
   }, [handle]);
 

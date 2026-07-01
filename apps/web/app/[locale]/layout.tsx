@@ -23,6 +23,7 @@ import { ServiceWorkerRegister } from "@/features/pwa/components/service-worker-
 import { InstallPrompt } from "@/features/pwa/components/install-prompt";
 import { AdhanController } from "@/features/prayer-times/components/adhan-controller";
 import { AzkarReminderController } from "@/features/prayer-times/components/azkar-reminder-controller";
+import { QiblaOrientationPrimer } from "@/features/qibla/components/qibla-orientation-primer";
 import { LocaleAlternatesProvider } from "@/features/layout/locale-alternates-context";
 import { routing } from "@/i18n/routing";
 import { defaultOpenGraph, defaultTwitter } from "@/lib/seo";
@@ -161,6 +162,7 @@ export default async function LocaleLayout({
               <ServiceWorkerRegister />
               <AdhanController />
               <AzkarReminderController />
+              <QiblaOrientationPrimer />
               <Analytics />
               <SpeedInsights />
             </LocaleAlternatesProvider>
