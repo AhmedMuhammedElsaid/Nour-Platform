@@ -135,6 +135,19 @@ jest.mock("expo-location", () => ({
   Accuracy: { Balanced: 3 },
 }));
 
+// expo-sensors mock — no native magnetometer under Jest. Available by default,
+// with a no-op listener subscription so useFocusEffect setup/teardown is safe.
+jest.mock("expo-sensors", () => ({
+  Magnetometer: {
+    isAvailableAsync: jest.fn().mockResolvedValue(true),
+    requestPermissionsAsync: jest.fn().mockResolvedValue({ status: "granted", granted: true }),
+    getPermissionsAsync: jest.fn().mockResolvedValue({ status: "granted", granted: true }),
+    setUpdateInterval: jest.fn(),
+    addListener: jest.fn().mockReturnValue({ remove: jest.fn() }),
+    removeAllListeners: jest.fn(),
+  },
+}));
+
 // expo-notifications mock.
 jest.mock("expo-notifications", () => ({
   getPermissionsAsync: jest.fn().mockResolvedValue({ status: "undetermined" }),

@@ -15,6 +15,7 @@ import { Alert, Platform, ScrollView, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Location from "expo-location";
+import { Magnetometer } from "expo-sensors";
 
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
@@ -62,6 +63,16 @@ export function OnboardingGate({ onComplete }: Props) {
       if (notifGranted) {
         setAdhanEnabled(true);
         setAzkarEnabled(true);
+      }
+
+      // Prime the magnetometer up front so the Qibla compass works the first
+      // time it's opened, no per-screen prompt. Raw magnetometer needs no OS
+      // permission on native (this resolves granted), but requesting here also
+      // covers the mobile-web path and any future gating. Non-fatal.
+      try {
+        await Magnetometer.requestPermissionsAsync();
+      } catch {
+        // Sensor unavailable — the Qibla screen falls back to a static bearing.
       }
 
       emitSettingsChanged();
