@@ -17,5 +17,6 @@ export * from "./utils/slug";
 export * from "./prayer-times/compute";
 export * from "./prayer-times/sun-arc";
 export * from "./prayer-times/format";
+export * from "./qibla/compute";
 export * from "./quran/audio-url";
 export * from "./developer";

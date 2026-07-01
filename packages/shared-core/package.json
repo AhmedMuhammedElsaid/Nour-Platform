@@ -17,6 +17,7 @@
     "./prayer-times/compute": "./src/prayer-times/compute.ts",
     "./prayer-times/sun-arc": "./src/prayer-times/sun-arc.ts",
     "./prayer-times/format": "./src/prayer-times/format.ts",
+    "./qibla/compute": "./src/qibla/compute.ts",
     "./quran/audio-url": "./src/quran/audio-url.ts",
     "./prayer-times/schedule": "./src/prayer-times/schedule.ts",
     "./developer": "./src/developer.ts"
