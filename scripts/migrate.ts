@@ -12,6 +12,7 @@ import * as migration0007 from "@repo/api/db/migrations/0007-playlist-order";
 import * as migration0008 from "@repo/api/db/migrations/0008-azkar-indexes";
 import * as migration0009 from "@repo/api/db/migrations/0009-quran-indexes";
 import * as migration0010 from "@repo/api/db/migrations/0010-quran-tafsir-indexes";
+import * as migration0011 from "@repo/api/db/migrations/0011-radio-indexes";
 
 /*
  * Migration runner for the Nour Platform.
@@ -57,6 +58,7 @@ const migrations: Migration[] = [
   migration0008, // azkar indexes — unique ar/en slug, { status,order }, { order }
   migration0009, // quran indexes — additive ensureIndexes on Quran collections (run with --only)
   migration0010, // quran tafsir index — additive
+  migration0011, // radio station indexes — additive ensureIndexes (run with --only)
 ];
 
 async function main(): Promise<void> {

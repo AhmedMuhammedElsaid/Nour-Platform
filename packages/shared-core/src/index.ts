@@ -13,6 +13,7 @@ export * from "./schemas/category";
 export * from "./schemas/azkar";
 export * from "./schemas/prayer-times";
 export * from "./schemas/quran";
+export * from "./schemas/radio";
 export * from "./utils/slug";
 export * from "./prayer-times/compute";
 export * from "./prayer-times/sun-arc";

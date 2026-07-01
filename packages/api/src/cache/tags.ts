@@ -13,3 +13,5 @@ export function azkarTag(id: string): string {
 }
 
 export const QURAN = "quran";
+
+export const RADIO = "radio";
