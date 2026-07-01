@@ -14,8 +14,8 @@ describe("PrayerCountdown", () => {
     render(<PrayerCountdown nextKey="asr" target={target} locale="en" />);
     // prayer name key
     expect(screen.getByText(/asr/)).toBeInTheDocument();
-    // ≥1h remaining → HH:MM:SS clock (e.g. 02:13:59)
-    expect(screen.getByText(/^\d{2}:\d{2}:\d{2}$/)).toBeInTheDocument();
+    // ≥1h remaining → H:MM:SS clock (unpadded hour, e.g. 2:13:59)
+    expect(screen.getByText(/^\d{1,2}:\d{2}:\d{2}$/)).toBeInTheDocument();
   });
 
   it("drops the hours segment under an hour (MM:SS)", () => {
