@@ -6,20 +6,25 @@ export function formatCountdown(ms: number): { h: number; m: number } {
   return { h: Math.floor(totalMinutes / 60), m: totalMinutes % 60 };
 }
 
-// Live countdown clock string. Shows MM:SS under an hour and HH:MM:SS once an
-// hour or more remains (the hours segment is dropped when zero). Zero-padded;
-// digits localized (Arabic-Indic in `ar`) to match formatClock's prayer times.
+// Live countdown clock string. Shows MM:SS under an hour and H:MM:SS once an
+// hour or more remains (the hours segment is dropped when zero). The leading
+// hours segment is NOT zero-padded (4:28:20, not 04:28:20 — two-digit hours like
+// 11/12 render naturally); minutes and seconds stay 2-digit. Digits localized
+// (Arabic-Indic in `ar`) to match formatClock's prayer times.
 export function formatCountdownClock(ms: number, locale: Locale = "en"): string {
   const totalSeconds = Math.floor(Math.max(0, ms) / 1000);
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
   const s = totalSeconds % 60;
-  const nf = new Intl.NumberFormat(locale === "ar" ? "ar-EG" : "en-US", {
+  const bcp47 = locale === "ar" ? "ar-EG" : "en-US";
+  const pad2 = new Intl.NumberFormat(bcp47, {
     minimumIntegerDigits: 2,
     useGrouping: false,
   });
-  const parts = h > 0 ? [h, m, s] : [m, s];
-  return parts.map((n) => nf.format(n)).join(":");
+  const plain = new Intl.NumberFormat(bcp47, { useGrouping: false });
+  return h > 0
+    ? [plain.format(h), pad2.format(m), pad2.format(s)].join(":")
+    : [pad2.format(m), pad2.format(s)].join(":");
 }
 
 // Localized clock; `timeZone` optional (defaults to the viewer's device tz).
