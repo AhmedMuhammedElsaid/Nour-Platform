@@ -25,7 +25,12 @@
 // v7 (2026-06-10): adhan mp3s (~13.5 MB total) removed from PRECACHE — every
 // visitor was downloading them on SW install even with azan disabled. They are
 // now cached on demand via the "nour:cache-adhan" message (see below).
-const VERSION = "v7";
+// v8 (2026-07-03): live radio streams must NOT be cached. handleAudio used to
+// buffer the whole body into AUDIO_CACHE, but a radio stream is infinite (no
+// Content-Length) — cache.put downloaded forever, starving the <audio> element
+// (endless "loading"). Only finite, capped bodies are cached now; streams pass
+// straight through. Bump purges the old cache generation.
+const VERSION = "v8";
 const SHELL_CACHE = `nour-shell-${VERSION}`;
 const PAGES_CACHE = `nour-pages-${VERSION}`;
 const STATIC_CACHE = `nour-static-${VERSION}`;
@@ -43,6 +48,11 @@ const PRECACHE = [OFFLINE_URL, "/icons/icon.svg", "/manifest.webmanifest"];
 const ADHAN_AUDIO = ["/audio/adhan.mp3", "/audio/adhan-fajr.mp3"];
 
 const AUDIO_EXT = /\.(mp3|m4a|aac|ogg|oga|wav|flac)(\?|$)/i;
+
+// Upper bound for caching a full audio body. A finite reciter/adhan track is
+// well under this; a live radio stream has no Content-Length (or an absurd one)
+// and must never be buffered — see handleAudio.
+const MAX_CACHEABLE_AUDIO = 100 * 1024 * 1024; // 100 MB
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -210,6 +220,14 @@ async function handleAudio(request, url) {
     try {
       const response = await fetch(url.toString(), { mode: "cors" });
       if (response && response.status === 200) {
+        // Only cache finite, sanely-sized bodies. A live radio stream is
+        // infinite — it sends no Content-Length (chunked), so caching it would
+        // buffer forever and never hand the <audio> element a response. Stream
+        // those straight through (network-only), never touching AUDIO_CACHE.
+        const len = Number(response.headers.get("content-length"));
+        if (!Number.isFinite(len) || len <= 0 || len > MAX_CACHEABLE_AUDIO) {
+          return response;
+        }
         await cache.put(cacheKey, response.clone());
         full = response;
       } else {
