@@ -20,11 +20,13 @@ export async function SiteHeader() {
   const tPrayer = await getTranslations("prayer");
   const tQuran = await getTranslations("quran");
   const tQibla = await getTranslations("qibla");
+  const tRadio = await getTranslations("radio");
   const locale = await getLocale();
   const brand = BRAND[locale] ?? BRAND.en!;
 
   const navItems = [
     { href: "/quran", label: tQuran("navLabel") },
+    { href: "/radio", label: tRadio("nav") },
     { href: "/adhkar", label: adhkarT("navLabel") },
     { href: "/prayer-times", label: tPrayer("nav") },
     { href: "/qibla", label: tQibla("nav") },

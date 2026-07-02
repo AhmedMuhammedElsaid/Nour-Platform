@@ -217,5 +217,19 @@
       "w": "W",
       "nw": "NW"
     }
+  },
+  "radio": {
+    "nav": "Radio",
+    "title": "Radio",
+    "subtitle": "Live Islamic radio stations, streaming around the clock.",
+    "live": "LIVE",
+    "livePrefix": "🔴 Live",
+    "play": "Play",
+    "pause": "Pause",
+    "favorite": "Add to favorites",
+    "unfavorite": "Remove from favorites",
+    "recentlyPlayed": "Recently played",
+    "allStations": "All stations",
+    "empty": "No stations available right now."
   }
 }

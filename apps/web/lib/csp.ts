@@ -17,6 +17,11 @@ export function buildWebCsp(nonce: string, r2Hostname: string): string {
   // Without this in media-src the browser silently blocks <audio> and the
   // play button does nothing. Add additional reciter hosts here if seeded.
   const RECITER_ORIGINS = "https://everyayah.com";
+  // Live radio stream hosts (radio feature). radiojar 302s from stream.radiojar.com
+  // to a per-connection edge node (*.radiojar.com), so the wildcard subdomain must
+  // be allowed for both the <audio> fetch (media-src) and the SW/redirect
+  // (connect-src). Add further station stream hosts here as stations are seeded.
+  const RADIO_ORIGINS = "https://*.radiojar.com";
   return [
     "default-src 'self'",
     // 'strict-dynamic' lets the nonce-trusted root script load further
@@ -34,10 +39,10 @@ export function buildWebCsp(nonce: string, r2Hostname: string): string {
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data:${r2Origin ? ` ${r2Origin}` : ""}`,
     "font-src 'self'",
-    `media-src 'self'${r2Origin ? ` ${r2Origin}` : ""} ${RECITER_ORIGINS}`,
+    `media-src 'self'${r2Origin ? ` ${r2Origin}` : ""} ${RECITER_ORIGINS} ${RADIO_ORIGINS}`,
     // connect-src governs the service worker's fetch() of audio for offline
-    // caching, so the R2 + reciter origins must be allowed here too.
-    `connect-src 'self'${r2Origin ? ` ${r2Origin}` : ""} ${RECITER_ORIGINS}`,
+    // caching, so the R2 + reciter + radio origins must be allowed here too.
+    `connect-src 'self'${r2Origin ? ` ${r2Origin}` : ""} ${RECITER_ORIGINS} ${RADIO_ORIGINS}`,
     // PWA: allow the same-origin service worker script and web app manifest.
     "worker-src 'self'",
     "manifest-src 'self'",
