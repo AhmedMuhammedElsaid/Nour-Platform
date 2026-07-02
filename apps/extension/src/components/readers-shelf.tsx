@@ -31,7 +31,7 @@ export function ReadersShelf({ onSelect }: { onSelect: (slug: string) => void })
       <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-text-2">
         {t("home.reciters")}
       </h2>
-      <ul className="flex gap-4 overflow-x-auto pb-2 pt-1">
+      <ul className="shelf-scroll flex gap-4 overflow-x-auto pb-2 pt-1">
         {usable.map((reciter) => {
           const displayName =
             locale === "ar" && reciter.arabicName ? reciter.arabicName : reciter.name;

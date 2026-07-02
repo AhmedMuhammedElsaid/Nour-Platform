@@ -108,3 +108,26 @@
     border-color: var(--color-border);
   }
 }
+
+/* Themed thin scrollbar for horizontal shelves (Readers, Continue listening, …).
+   The native OS scrollbar (chunky bar + arrow buttons) clashes with the dark
+   theme; this replaces it with a slim, rounded, token-coloured thumb over a
+   transparent track. Mirrors packages/ui/src/styles/globals.css .shelf-scroll. */
+.shelf-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+.shelf-scroll::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+.shelf-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.shelf-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 9999px;
+}
+.shelf-scroll:hover::-webkit-scrollbar-thumb {
+  background-color: var(--color-muted);
+}
