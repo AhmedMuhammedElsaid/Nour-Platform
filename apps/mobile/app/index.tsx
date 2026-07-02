@@ -13,6 +13,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { CategoryPills } from "@/features/home/components/category-pills";
 import { ContinueListening } from "@/features/home/components/continue-listening";
 import { ContinueReading } from "@/features/home/components/continue-reading";
+import { RecitersShelf } from "@/features/home/components/reciters-shelf";
 import { SortSelect, type SortOption } from "@/features/home/components/sort-select";
 import { PlaylistCard } from "@/features/playlists/components/playlist-card";
 import { PrayerTimesWidget } from "@/features/prayer-times/components/prayer-times-widget";
@@ -166,6 +167,7 @@ export default function HomeScreen() {
           </View>
         )}
         <View className="mt-3">
+          <RecitersShelf />
           <ContinueListening />
           <ContinueReading />
         </View>

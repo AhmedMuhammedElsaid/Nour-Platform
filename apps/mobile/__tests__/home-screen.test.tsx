@@ -30,6 +30,10 @@ const playlist = (over: Partial<Playlist> & Pick<Playlist, "id">): Playlist =>
 function mockApi(playlists: unknown, categories: unknown = []) {
   jest.mocked(getJson).mockImplementation((path: string) => {
     if (path.startsWith("/categories")) return Promise.resolve(categories);
+    // HomeScreen renders the RecitersShelf, which fetches /quran/reciters — return
+    // an empty list so the shelf renders nothing and doesn't consume the playlist
+    // fixture (whose objects aren't reciters).
+    if (path.startsWith("/quran/reciters")) return Promise.resolve([]);
     return Promise.resolve(playlists);
   });
 }

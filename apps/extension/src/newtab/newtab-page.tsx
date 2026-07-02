@@ -10,7 +10,7 @@ import {
 import { getJson } from "../lib/api";
 import { usePrayerTimes } from "../lib/use-prayer-times";
 import { useLocation } from "../options/use-settings";
-import { get } from "../lib/storage";
+import { get, set } from "../lib/storage";
 import type { RecentItem } from "../lib/storage";
 import { usePlayer } from "../lib/use-player";
 import {
@@ -27,6 +27,7 @@ import { navigate, useRoute } from "../lib/router";
 import type { SortMode } from "../components/category-filter";
 import { CategoryFilter } from "../components/category-filter";
 import { PlaylistCard } from "../components/playlist-card";
+import { ReadersShelf } from "../components/readers-shelf";
 import { AdhkarLanding } from "../components/adhkar-landing";
 import { PrayerPage } from "../components/prayer-page";
 import { AdhkarReader } from "../components/adhkar-reader";
@@ -268,6 +269,13 @@ export function NewtabPage() {
     await recordRecent(recent);
   }
 
+  // Set the tapped reader as the active reader voice, then open the Quran view.
+  async function selectReader(slug: string): Promise<void> {
+    const prefs = await get("nour.quran.prefs");
+    await set("nour.quran.prefs", { ...prefs, reciterSlug: slug });
+    navigate({ view: "quran" });
+  }
+
   // Dispatch non-home views (stubs until their phases land).
   const view = route.view;
   const headerEl = <SiteHeader activeView={view} />;
@@ -434,6 +442,9 @@ export function NewtabPage() {
           onPlay={(slug) => void playBySlug(slug)}
           onOpen={(slug, trackId) => navigate({ view: "playlist", slug, trackId })}
         />
+
+        {/* ── Readers (Quran reciters) ─────────────────────────────────── */}
+        <ReadersShelf onSelect={(slug) => void selectReader(slug)} />
 
         {/* ── Library ──────────────────────────────────────────────────── */}
         <LibrarySection

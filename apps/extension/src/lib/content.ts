@@ -91,7 +91,12 @@ export type SurahReaderData = {
   translationDir: "rtl" | "ltr";
 };
 
-export type QuranReciter = { slug: string; name: string };
+export type QuranReciter = {
+  slug: string;
+  name: string;
+  arabicName?: string;
+  image?: string | null;
+};
 export type QuranEdition = { slug: string; name: string; dir: "rtl" | "ltr" };
 
 type RawSurah = {
@@ -138,8 +143,15 @@ export async function fetchSurahReader(
 }
 
 export async function fetchReciters(): Promise<QuranReciter[]> {
-  const list = await getJson<{ slug: string; name: string }[]>("/quran/reciters");
-  return list.map((r) => ({ slug: r.slug, name: r.name }));
+  const list = await getJson<
+    { slug: string; name: string; arabicName?: string; image?: string }[]
+  >("/quran/reciters");
+  return list.map((r) => ({
+    slug: r.slug,
+    name: r.name,
+    arabicName: r.arabicName,
+    image: r.image ? assetUrl(r.image) : null,
+  }));
 }
 
 export type TafsirData = { editionName: string; dir: "rtl" | "ltr"; html: string };

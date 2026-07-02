@@ -92,6 +92,7 @@
     "trackCount": "{{count}} مقطع",
     "continueListening": "متابعة الاستماع",
     "continueReading": "متابعة القراءة",
+    "reciters": "القرّاء",
     "surah": "سورة",
     "ayah": "الآية {{number}}",
     "sort": {
