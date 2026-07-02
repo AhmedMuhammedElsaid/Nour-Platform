@@ -37,10 +37,16 @@ export const RADIO_STATIONS: RadioStationSeed[] = [
     city: "Cairo",
     streamUrl:
       process.env.RADIO_CAIRO_STREAM_URL ??
-      // Verified 2026-07-02: Cairo Quran Radio 98.2 FM (radiojar mount
-      // 8s5u5tpdtwzuv). Tokenless base URL — radiojar 302s to a per-connection
-      // edge token; serves audio/mpeg. Same mount Radio Garden resolves to.
-      "https://stream.radiojar.com/8s5u5tpdtwzuv",
+      // The authentic Cairo broadcast (إذاعة القرآن الكريم, radiojar mount
+      // 8s5u5tpdtwzuv) is HTTP-ONLY: every connection 302s to an insecure
+      // http://n*.radiojar.com edge, which browsers (mixed-content), Android
+      // (cleartext), and our CSP all block — so it can't play on any surface and
+      // a Vercel proxy can't hold a 24/7 stream. Until an HTTPS Cairo feed exists
+      // (e.g. a Zeno.FM mount — drop it in via RADIO_CAIRO_STREAM_URL, no code
+      // change; CSP already allows *.zeno.fm), default to the signature voice of
+      // Egyptian Quran radio: Sheikh Mahmoud Khalil Al-Husary, 24/7 over HTTPS
+      // (mp3quran/qurango). Verified 2026-07-02: end-to-end https, audio/mpeg.
+      "https://backup.qurango.net/radio/mahmoud_khalil_alhussary",
     streamType: "mp3",
     bitrate: 128,
     language: "ar",

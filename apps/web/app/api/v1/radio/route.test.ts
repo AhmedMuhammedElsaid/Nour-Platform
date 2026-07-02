@@ -12,7 +12,7 @@ const station = {
   en: { name: "Holy Quran Radio" },
   country: "EG",
   city: "Cairo",
-  streamUrl: "https://stream.radiojar.com/8s5u5tpdtwzuv",
+  streamUrl: "https://backup.qurango.net/radio/mahmoud_khalil_alhussary",
   streamType: "mp3" as const,
   language: "ar",
   category: "quran" as const,
@@ -31,7 +31,7 @@ describe("GET /api/v1/radio", () => {
     const body = await res.json();
     expect(body[0].ar.name).toBe("إذاعة القرآن الكريم");
     expect(body[0].en.name).toBe("Holy Quran Radio");
-    expect(body[0].streamUrl).toBe("https://stream.radiojar.com/8s5u5tpdtwzuv");
+    expect(body[0].streamUrl).toBe("https://backup.qurango.net/radio/mahmoud_khalil_alhussary");
     expect(body[0].createdAt).toBe("2024-01-01T00:00:00.000Z");
   });
 

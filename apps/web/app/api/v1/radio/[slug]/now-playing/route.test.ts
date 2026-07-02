@@ -16,7 +16,7 @@ const baseStation = {
   ar: { name: "إذاعة" },
   en: { name: "Radio" },
   country: "EG",
-  streamUrl: "https://stream.radiojar.com/8s5u5tpdtwzuv",
+  streamUrl: "https://backup.qurango.net/radio/mahmoud_khalil_alhussary",
   streamType: "mp3" as const,
   language: "ar",
   category: "quran" as const,

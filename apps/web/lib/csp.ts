@@ -17,11 +17,13 @@ export function buildWebCsp(nonce: string, r2Hostname: string): string {
   // Without this in media-src the browser silently blocks <audio> and the
   // play button does nothing. Add additional reciter hosts here if seeded.
   const RECITER_ORIGINS = "https://everyayah.com";
-  // Live radio stream hosts (radio feature). radiojar 302s from stream.radiojar.com
-  // to a per-connection edge node (*.radiojar.com), so the wildcard subdomain must
-  // be allowed for both the <audio> fetch (media-src) and the SW/redirect
-  // (connect-src). Add further station stream hosts here as stations are seeded.
-  const RADIO_ORIGINS = "https://*.radiojar.com";
+  // Live radio stream hosts (radio feature), for both the <audio> fetch
+  // (media-src) and the SW/redirect (connect-src). `*.qurango.net` = the default
+  // HTTPS Quran radios (mp3quran); `*.zeno.fm` = the HTTPS host for an authentic
+  // Cairo stream supplied via RADIO_CAIRO_STREAM_URL. NOTE: radiojar was dropped
+  // — it only serves http:// edges, so it can never satisfy an https media-src.
+  // Add further station stream hosts here as stations are seeded.
+  const RADIO_ORIGINS = "https://*.qurango.net https://*.zeno.fm";
   return [
     "default-src 'self'",
     // 'strict-dynamic' lets the nonce-trusted root script load further
