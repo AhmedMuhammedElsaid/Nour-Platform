@@ -9,6 +9,7 @@ import type {
   QuranReciter,
   SurahReader,
 } from "@repo/shared-core/schemas/quran";
+import type { RadioStation } from "@repo/shared-core/schemas/radio";
 
 import { getJson } from "@/lib/api";
 import type { PlaylistDetailResponse } from "@/lib/types";
@@ -45,6 +46,17 @@ export const playlistDetailQuery = (slug: string, locale: Locale) =>
         `/playlists/${encodeURIComponent(slug)}`,
         { locale },
       ),
+  });
+
+// ── Radio ──────────────────────────────────────────────────────────────────
+
+// Live radio stations. Dates arrive as ISO strings over /api/v1 (withIsoDates);
+// the RadioStation type is used loosely here (the UI never reads the dates), the
+// same way playlistsQuery types the wire as Playlist.
+export const radioStationsQuery = () =>
+  queryOptions({
+    queryKey: ["radio", "stations"] as const,
+    queryFn: () => getJson<RadioStation[]>("/radio"),
   });
 
 // ── Quran ──────────────────────────────────────────────────────────────────

@@ -11,6 +11,9 @@ const QURAN_LAST_READ_KEY = "nour.quran.lastread";
 const QURAN_PREFS_KEY = "nour.quran.prefs";
 const QURAN_BOOKMARKS_KEY = "nour.quran.bookmarks";
 const ADHKAR_PROGRESS_KEY = "nour.adhkar.progress";
+const RADIO_FAVORITES_KEY = "nour.radio.favorites";
+const RADIO_RECENT_KEY = "nour.radio.recent";
+const RADIO_RECENT_MAX = 12;
 
 export type RecentTrack = {
   trackId: string;
@@ -231,4 +234,50 @@ export async function resetAzkarSet(setId: string): Promise<AzkarProgress> {
 export function azkarCompletedCount(progress: AzkarProgress, setId: string, repeats: number[]): number {
   const set = progress.sets[setId] ?? {};
   return repeats.reduce((n, r, i) => n + ((set[String(i)] ?? 0) >= r ? 1 : 0), 0);
+}
+
+// ---------------------------------------------------------------------------
+// Radio favorites + recently-played — `nour.radio.favorites` / `nour.radio.recent`.
+// Flat lists of station slugs. Same keys/shape the web radio feature uses
+// (apps/web/features/radio/lib/radio-favorites.ts + radio-recent.ts) so device
+// state stays conceptually in sync across surfaces.
+// ---------------------------------------------------------------------------
+
+async function readSlugList(key: string): Promise<string[]> {
+  const list = await read<string[]>(key, (v): v is string[] => Array.isArray(v));
+  return (list ?? []).filter((s): s is string => typeof s === "string");
+}
+
+async function writeSlugList(key: string, slugs: string[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(key, JSON.stringify(slugs));
+  } catch {
+    /* storage unavailable — non-fatal */
+  }
+}
+
+export async function getRadioFavorites(): Promise<string[]> {
+  return readSlugList(RADIO_FAVORITES_KEY);
+}
+
+// Flips a slug in/out of favorites and returns the new list.
+export async function toggleRadioFavorite(slug: string): Promise<string[]> {
+  const current = await getRadioFavorites();
+  const next = current.includes(slug)
+    ? current.filter((s) => s !== slug)
+    : [slug, ...current];
+  await writeSlugList(RADIO_FAVORITES_KEY, next);
+  return next;
+}
+
+export async function getRecentStations(): Promise<string[]> {
+  return readSlugList(RADIO_RECENT_KEY);
+}
+
+// Records a play: dedupes, moves to front (MRU), caps the list. Returns the list.
+export async function recordRecentStation(slug: string): Promise<string[]> {
+  const current = await getRecentStations();
+  const next = [slug, ...current.filter((s) => s !== slug)].slice(0, RADIO_RECENT_MAX);
+  await writeSlugList(RADIO_RECENT_KEY, next);
+  return next;
 }
