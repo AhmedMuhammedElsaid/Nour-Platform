@@ -64,12 +64,13 @@ describe("ReadersShelf", () => {
     expect(screen.getByText("Nasser Al Qatami")).toBeInTheDocument();
   });
 
-  it("selecting a reader writes reciterSlug to nour.quran.prefs and navigates to /quran", async () => {
+  it("selecting a reader writes reciterSlug to prefs and opens Al-Fatiha in that voice with autoplay", async () => {
     render(<ReadersShelf reciters={RECITERS} locale="en" />);
     await userEvent.click(screen.getByRole("button", { name: "Mishary Alafasy" }));
 
     const saved = JSON.parse(window.localStorage.getItem(PREFS_KEY) ?? "{}");
     expect(saved.reciterSlug).toBe("alafasy");
-    expect(push).toHaveBeenCalledWith("/quran");
+    // Surah 1 (Al-Fatiha), reciter passed for the RSC audio fetch, autoplay flag.
+    expect(push).toHaveBeenCalledWith("/quran/1?reciter=alafasy&autoplay=1");
   });
 });

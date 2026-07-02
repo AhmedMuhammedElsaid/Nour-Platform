@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { QuranReciter, ReaderAyah, SurahReader } from "@repo/api/schemas/quran";
 import { usePlayer } from "@repo/ui/blocks/player-context";
 import { AyahRow } from "./ayah-row";
@@ -28,6 +29,8 @@ export function Reader({
 }) {
   const [prefs, setPrefs] = useState<QuranPrefs>(loadPrefs);
   const [bookmarks, setBookmarks] = useState<AyahRef[]>([]);
+  const searchParams = useSearchParams();
+  const didAutoplay = useRef(false);
   const [tafsirAyah, setTafsirAyah] = useState<{ numberGlobal: number; ref: string } | null>(null);
   // The reader's ayah audio and the site-wide player are independent
   // HTMLAudioElements — coordinate them so they never play simultaneously.
@@ -51,6 +54,23 @@ export function Reader({
   useEffect(() => {
     setPrefs(loadPrefs());
     setBookmarks(getBookmarks());
+  }, []);
+
+  // Autostart playback from the first ayah when arriving with ?autoplay=1
+  // (e.g. tapping a reciter on the home "Readers" shelf → Al-Fatiha in that
+  // voice). Runs once; the click on the shelf is the user gesture that satisfies
+  // the browser's autoplay policy. Strip the param so a refresh doesn't replay.
+  useEffect(() => {
+    if (didAutoplay.current) return;
+    if (searchParams.get("autoplay") !== "1") return;
+    const first = data.ayahs[0];
+    if (!first?.audioUrl) return;
+    didAutoplay.current = true;
+    audio.playAyah(first.numberGlobal);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("autoplay");
+    window.history.replaceState(null, "", url.pathname + url.search);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Record last-read = first ayah of this surah on mount.

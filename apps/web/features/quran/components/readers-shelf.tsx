@@ -12,9 +12,11 @@ import { useRouter } from "@/i18n/navigation";
 import { loadPrefs, savePrefs } from "@/features/quran/lib/quran-prefs";
 
 // Home "Readers" shelf — a horizontal row of Quran reciters. Tapping a reader
-// sets it as the active reader voice (nour.quran.prefs) and opens the Quran, so
-// any surah opened afterward recites in that voice. Client island: it writes
-// localStorage and navigates.
+// sets it as the active reader voice (nour.quran.prefs) AND opens Al-Fatiha in
+// that voice with playback auto-started. `?reciter=` makes the RSC fetch that
+// reciter's ayah audio (it can't read localStorage); `?autoplay=1` tells the
+// Reader to start playing on mount. Client island: it writes localStorage and
+// navigates.
 export function ReadersShelf({
   reciters,
   locale,
@@ -29,7 +31,7 @@ export function ReadersShelf({
 
   const selectReader = (slug: string): void => {
     savePrefs({ ...loadPrefs(), reciterSlug: slug });
-    router.push("/quran");
+    router.push(`/quran/1?reciter=${encodeURIComponent(slug)}&autoplay=1`);
   };
 
   return (
