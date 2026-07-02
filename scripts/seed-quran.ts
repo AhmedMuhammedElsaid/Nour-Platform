@@ -11,6 +11,7 @@ import { QuranReciterModel } from "@repo/api/db/models/quran-reciter.model";
 import { QuranTafsirModel } from "@repo/api/db/models/quran-tafsir.model";
 import * as migration0009 from "@repo/api/db/migrations/0009-quran-indexes";
 import * as migration0010 from "@repo/api/db/migrations/0010-quran-tafsir-indexes";
+import { RECITERS } from "./reciter-catalogue";
 
 /*
  * One-time Quran seed. Fetches open datasets at SEED TIME (run locally, not a
@@ -229,26 +230,8 @@ async function seedTafsir(
   console.log(`[seed:quran] tafsir ${slug}: ${total} rows`);
 }
 
-// Reciter catalogue. `audioBase` follows the everyayah.com layout — append a
-// new entry to make a new reciter available; CSP already allows everyayah.com.
-// `arabicName` is the Arabic-locale display label; `image` is an optional static
-// /public path (e.g. "/reciters/alafasy.png") — leave undefined to fall back to a
-// gradient+initials avatar on the home "Readers" shelf.
-const RECITERS = [
-  {
-    slug: "alafasy",
-    name: "Mishary Rashid Alafasy",
-    arabicName: "مشاري راشد العفاسي",
-    audioBase: "https://everyayah.com/data/Alafasy_128kbps/",
-  },
-  {
-    slug: "qatami",
-    name: "Nasser Al Qatami",
-    arabicName: "ناصر القطامي",
-    audioBase: "https://everyayah.com/data/Nasser_Alqatami_128kbps/",
-  },
-] as const;
-
+// Reciter catalogue lives in scripts/reciter-catalogue.ts (shared with the
+// lightweight `seed:reciters` upsert) so the two never drift.
 async function seedReciter(): Promise<void> {
   for (const r of RECITERS) {
     await QuranReciterModel.updateOne(
@@ -259,6 +242,7 @@ async function seedReciter(): Promise<void> {
           name: r.name,
           arabicName: r.arabicName,
           audioBase: r.audioBase,
+          ...(r.image ? { image: r.image } : {}),
         },
       },
       { upsert: true },
