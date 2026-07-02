@@ -53,4 +53,111 @@ export const RADIO_STATIONS: RadioStationSeed[] = [
     category: "quran",
     isFeatured: true,
   },
+  {
+    slug: "haram-makki",
+    ar: {
+      name: "إذاعة القرآن الكريم – الحرم المكي",
+      description: "بث مباشر لتلاوات القرآن الكريم من المسجد الحرام بمكة المكرمة.",
+    },
+    en: {
+      name: "Holy Quran Radio – Makkah Grand Mosque",
+      description: "Live Quran recitations from the Grand Mosque in Makkah.",
+    },
+    country: "SA",
+    city: "Makkah",
+    streamUrl: "https://edge.mixlr.com/channel/rwumx",
+    streamType: "mp3",
+    language: "ar",
+    category: "quran",
+    isFeatured: false,
+  },
+  {
+    slug: "haram-sunnah",
+    ar: {
+      name: "إذاعة السنة النبوية",
+      description: "بث مباشر للسنة النبوية والأحاديث الشريفة على مدار الساعة.",
+    },
+    en: {
+      name: "As-Sunnah An-Nabawiyyah Radio",
+      description: "Live 24/7 Prophetic Sunnah and hadith broadcast.",
+    },
+    country: "SA",
+    city: "Makkah",
+    streamUrl: "https://radiosunna.radioca.st/stream",
+    streamType: "mp3",
+    language: "ar",
+    category: "islamic",
+    isFeatured: false,
+  },
+  // Additional stations — the iconic voices of Egyptian Quran radio, each a 24/7
+  // HTTPS stream (mp3quran/qurango; verified 2026-07-02 end-to-end https,
+  // audio/mpeg, no http hop). Adding more later is pure data entry.
+  {
+    slug: "quran-abdulbasit",
+    ar: {
+      name: "إذاعة عبد الباسط عبد الصمد",
+      description: "تلاوات مجوّدة للشيخ عبد الباسط عبد الصمد على مدار الساعة.",
+    },
+    en: {
+      name: "Abdul Basit Abdul Samad Radio",
+      description: "Mujawwad recitations by Sheikh Abdul Basit Abdul Samad, 24/7.",
+    },
+    country: "EG",
+    streamUrl: "https://backup.qurango.net/radio/abdulbasit_abdulsamad_mojawwad",
+    streamType: "mp3",
+    language: "ar",
+    category: "quran",
+    isFeatured: false,
+  },
+  {
+    slug: "quran-minshawi",
+    ar: {
+      name: "إذاعة محمد صديق المنشاوي",
+      description: "تلاوات مجوّدة للشيخ محمد صديق المنشاوي على مدار الساعة.",
+    },
+    en: {
+      name: "Mohamed Siddiq El-Minshawi Radio",
+      description: "Mujawwad recitations by Sheikh Mohamed Siddiq El-Minshawi, 24/7.",
+    },
+    country: "EG",
+    streamUrl: "https://backup.qurango.net/radio/mohammed_siddiq_alminshawi_mojawwad",
+    streamType: "mp3",
+    language: "ar",
+    category: "quran",
+    isFeatured: false,
+  },
+  {
+    slug: "quran-tablawi",
+    ar: {
+      name: "إذاعة محمد الطبلاوي",
+      description: "تلاوات الشيخ محمد الطبلاوي على مدار الساعة.",
+    },
+    en: {
+      name: "Mohamed Al-Tablawi Radio",
+      description: "Recitations by Sheikh Mohamed Al-Tablawi, 24/7.",
+    },
+    country: "EG",
+    streamUrl: "https://backup.qurango.net/radio/mohammad_altablaway",
+    streamType: "mp3",
+    language: "ar",
+    category: "quran",
+    isFeatured: false,
+  },
+  {
+    slug: "quran-banna",
+    ar: {
+      name: "إذاعة محمود علي البنا",
+      description: "تلاوات الشيخ محمود علي البنا على مدار الساعة.",
+    },
+    en: {
+      name: "Mahmoud Ali Al-Banna Radio",
+      description: "Recitations by Sheikh Mahmoud Ali Al-Banna, 24/7.",
+    },
+    country: "EG",
+    streamUrl: "https://backup.qurango.net/radio/mahmoud_ali__albanna",
+    streamType: "mp3",
+    language: "ar",
+    category: "quran",
+    isFeatured: false,
+  },
 ];
