@@ -63,6 +63,7 @@ export function QuranReader({ surah, autoplay, state, send }: Props) {
 
   // (Re)fetch the surah when the number or the translation/reciter changes.
   useEffect(() => {
+    if (!hydrated) return;
     if (!Number.isInteger(surahNumber) || surahNumber < 1 || surahNumber > 114) {
       setError(true);
       return;
@@ -75,7 +76,7 @@ export function QuranReader({ surah, autoplay, state, send }: Props) {
     })
       .then(setData)
       .catch(() => setError(true));
-  }, [surahNumber, prefs.translationSlug, prefs.reciterSlug]);
+  }, [hydrated, surahNumber, prefs.translationSlug, prefs.reciterSlug]);
 
   const audio = useAyahAudio(
     data?.ayahs.map((a) => ({ numberGlobal: a.numberGlobal, audioUrl: a.audioUrl })) ?? [],
