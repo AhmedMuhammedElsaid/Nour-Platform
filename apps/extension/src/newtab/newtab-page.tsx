@@ -27,6 +27,7 @@ import { navigate, useRoute } from "../lib/router";
 import type { SortMode } from "../components/category-filter";
 import { CategoryFilter } from "../components/category-filter";
 import { PlaylistCard } from "../components/playlist-card";
+import { RadioSection } from "../components/radio-section";
 import { ReadersShelf } from "../components/readers-shelf";
 import { AdhkarLanding } from "../components/adhkar-landing";
 import { PrayerPage } from "../components/prayer-page";
@@ -445,6 +446,9 @@ export function NewtabPage() {
 
         {/* ── Readers (Quran reciters) ─────────────────────────────────── */}
         <ReadersShelf onSelect={(slug) => void selectReader(slug)} />
+
+        {/* ── Radio (live stations) ────────────────────────────────────── */}
+        <RadioSection state={playerState} send={send} />
 
         {/* ── Library ──────────────────────────────────────────────────── */}
         <LibrarySection

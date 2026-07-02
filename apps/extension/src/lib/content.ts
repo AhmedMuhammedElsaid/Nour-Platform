@@ -331,6 +331,59 @@ export async function buildPlaylistQueue(
   };
 }
 
+// ── Radio ──────────────────────────────────────────────────────────────────
+
+export type RadioStationSummary = {
+  slug: string;
+  title: string;
+  description: string | null;
+  city: string | null;
+  streamUrl: string;
+  image: string | null;
+  isFeatured: boolean;
+};
+
+// Server shape for /radio (embedded-locale; dates are strings post-JSON.parse
+// but the summary drops them).
+type RawStation = {
+  slug: string;
+  ar: { name: string; description?: string };
+  en: { name: string; description?: string };
+  city?: string;
+  image?: string;
+  streamUrl: string;
+  isFeatured: boolean;
+};
+
+export async function fetchStations(): Promise<RadioStationSummary[]> {
+  const list = await getJson<RawStation[]>("/radio");
+  return list.map((s) => ({
+    slug: s.slug,
+    title: s[LOCALE].name,
+    description: s[LOCALE].description ?? null,
+    city: s.city ?? null,
+    streamUrl: s.streamUrl,
+    image: s.image ? assetUrl(s.image) : null,
+    isFeatured: s.isFeatured,
+  }));
+}
+
+// A station is a one-item, infinite-duration queue. `isLive` makes the engine
+// skip resume-position persistence and the PlayerBar show a LIVE badge.
+export function buildStationQueue(station: RadioStationSummary): QueueItem[] {
+  return [
+    {
+      id: `radio:${station.slug}`,
+      url: station.streamUrl,
+      title: station.title,
+      artist: station.city ? `🔴 بث مباشر · ${station.city}` : "🔴 بث مباشر",
+      ...(station.image ? { artwork: station.image } : {}),
+      slug: station.slug,
+      isLive: true,
+    },
+  ];
+}
+
 export async function recordRecent(item: RecentItem): Promise<void> {
   const list = await get("nour.player.recent");
   const next = [item, ...list.filter((r) => r.slug !== item.slug)].slice(0, 20);
