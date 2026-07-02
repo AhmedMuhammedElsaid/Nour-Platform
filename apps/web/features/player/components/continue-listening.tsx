@@ -51,7 +51,7 @@ export function ContinueListening() {
         </button>
       </div>
 
-      <ul className="mt-3 flex gap-4 overflow-x-auto pb-2 pt-2">
+      <ul className="shelf-scroll mt-3 flex gap-4 overflow-x-auto pb-2 pt-2">
         {linkable.map((item) => {
           const linkLocale =
             item.locale === "ar" || item.locale === "en"

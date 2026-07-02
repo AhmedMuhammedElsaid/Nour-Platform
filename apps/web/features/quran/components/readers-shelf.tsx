@@ -40,7 +40,7 @@ export function ReadersShelf({
         {t("readers")}
       </h2>
 
-      <ul className="mt-3 flex gap-4 overflow-x-auto pb-2 pt-2">
+      <ul className="shelf-scroll mt-3 flex gap-4 overflow-x-auto pb-2 pt-2">
         {reciters.map((reciter) => {
           const displayName =
             locale === "ar" && reciter.arabicName ? reciter.arabicName : reciter.name;
