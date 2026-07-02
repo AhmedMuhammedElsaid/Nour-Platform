@@ -9,6 +9,7 @@ import type { StationView } from "../types";
 import { stationToQueueTrack } from "../lib/station-to-queue";
 import { readFavorites, toggleFavorite } from "../lib/radio-favorites";
 import { readRecentStations, recordRecentStation } from "../lib/radio-recent";
+import { useNowPlaying } from "../hooks/use-now-playing";
 import { StationCard } from "./station-card";
 
 export function RadioPage({ stations }: { stations: StationView[] }) {
@@ -38,6 +39,12 @@ export function RadioPage({ stations }: { stations: StationView[] }) {
     setFavorites(toggleFavorite(slug));
   }, []);
 
+  // Poll "now playing" only for the station that's currently streaming.
+  const currentSlug = currentTrack?.id?.startsWith("radio:")
+    ? currentTrack.id.slice("radio:".length)
+    : null;
+  const nowPlaying = useNowPlaying(currentSlug, isPlaying);
+
   // Favorited stations float to the top; the rest keep the server order.
   const sorted = useMemo(() => {
     const fav = new Set(favorites);
@@ -58,6 +65,7 @@ export function RadioPage({ stations }: { stations: StationView[] }) {
       isCurrent={currentTrack?.id === `radio:${station.slug}`}
       isPlaying={isPlaying}
       isFavorite={favorites.includes(station.slug)}
+      nowPlaying={station.slug === currentSlug ? nowPlaying : null}
       onPlay={handlePlay}
       onToggleFavorite={handleToggleFavorite}
     />

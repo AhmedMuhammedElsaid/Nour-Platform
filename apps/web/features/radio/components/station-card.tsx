@@ -52,6 +52,9 @@ interface Props {
   isCurrent: boolean;
   isPlaying: boolean;
   isFavorite: boolean;
+  // Best-effort "now playing" track title for the current station (null when
+  // unavailable — most Quran streams don't emit one).
+  nowPlaying?: string | null;
   onPlay: (station: StationView) => void;
   onToggleFavorite: (slug: string) => void;
 }
@@ -61,6 +64,7 @@ export function StationCard({
   isCurrent,
   isPlaying,
   isFavorite,
+  nowPlaying,
   onPlay,
   onToggleFavorite,
 }: Props) {
@@ -92,6 +96,9 @@ export function StationCard({
           <span className={cn("size-1.5 rounded-full bg-danger", playingNow && "animate-pulse")} />
           {t("live")}
         </span>
+        {nowPlaying ? (
+          <p className="mt-0.5 truncate text-xs text-text-2">{nowPlaying}</p>
+        ) : null}
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
