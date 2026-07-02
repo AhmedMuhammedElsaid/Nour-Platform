@@ -11,7 +11,7 @@ export type Route =
   | { view: "adhkar" }
   | { view: "adhkar-read"; slug: string }
   | { view: "quran" }
-  | { view: "quran-read"; surah: string }
+  | { view: "quran-read"; surah: string; autoplay?: boolean }
   | { view: "bookmarks" }
   | { view: "prayer-times" };
 
@@ -34,7 +34,7 @@ export function routeToHash(route: Route): string {
     case "quran":
       return "/quran";
     case "quran-read":
-      return `/quran/${encodeURIComponent(route.surah)}`;
+      return `/quran/${encodeURIComponent(route.surah)}${route.autoplay ? "?autoplay=1" : ""}`;
     case "bookmarks":
       return "/bookmarks";
     case "prayer-times":
@@ -60,7 +60,15 @@ export function parseHash(hash: string): Route {
     case "adhkar":
       return arg ? { view: "adhkar-read", slug: arg } : { view: "adhkar" };
     case "quran":
-      return arg ? { view: "quran-read", surah: arg } : { view: "quran" };
+      return arg
+        ? {
+            view: "quran-read",
+            surah: arg,
+            // Keep autoplay optional (omit when absent) so it round-trips with
+            // routeToHash, which only emits ?autoplay=1 when truthy.
+            ...(params.get("autoplay") === "1" ? { autoplay: true } : {}),
+          }
+        : { view: "quran" };
     case "bookmarks":
       return { view: "bookmarks" };
     case "prayer-times":

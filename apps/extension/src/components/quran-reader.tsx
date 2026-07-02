@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   fetchEditions,
@@ -27,15 +27,17 @@ import { Settings, SkipBack } from "./ui/icons";
 
 type Props = {
   surah: string;
+  autoplay?: boolean;
   state: PlayerState | null;
   send: (cmd: PlayerCommand) => void;
 };
 
-export function QuranReader({ surah, state, send }: Props) {
+export function QuranReader({ surah, autoplay, state, send }: Props) {
   const { t } = useI18n();
   const surahNumber = Number(surah);
 
   const [prefs, setPrefs] = useState<QuranPrefs>(DEFAULT_QURAN_PREFS);
+  const [hydrated, setHydrated] = useState(false);
   const [data, setData] = useState<SurahReaderData | null>(null);
   const [editions, setEditions] = useState<QuranEdition[]>([]);
   const [reciters, setReciters] = useState<QuranReciter[]>([]);
@@ -46,7 +48,14 @@ export function QuranReader({ surah, state, send }: Props) {
 
   // Hydrate prefs + bookmarks + edition/reciter lists once.
   useEffect(() => {
-    void get("nour.quran.prefs").then(setPrefs);
+    // Mark hydrated only after prefs load so the surah fetch below runs ONCE with
+    // the stored reciter — never the default. Without this gate, tapping a reader
+    // (which writes prefs then opens ?autoplay=1) would race a default-reciter
+    // fetch and autoplay the wrong voice.
+    void get("nour.quran.prefs").then((p) => {
+      setPrefs(p);
+      setHydrated(true);
+    });
     void getBookmarks().then(setBookmarks);
     void fetchEditions().then(setEditions).catch(() => {});
     void fetchReciters().then(setReciters).catch(() => {});
@@ -77,6 +86,19 @@ export function QuranReader({ surah, state, send }: Props) {
       },
     },
   );
+
+  // Autostart playback from the first ayah when opened via ?autoplay=1 (tapping
+  // a reader on the home shelf → Al-Fatiha in that voice). Fires once, after the
+  // surah data (with the chosen reciter's audio) has loaded.
+  const didAutoplay = useRef(false);
+  const { playAyah } = audio;
+  useEffect(() => {
+    if (!autoplay || didAutoplay.current) return;
+    const first = data?.ayahs[0];
+    if (!first?.audioUrl) return;
+    didAutoplay.current = true;
+    playAyah(first.numberGlobal);
+  }, [autoplay, data, playAyah]);
 
   // Record last-read = first ayah of this surah.
   useEffect(() => {

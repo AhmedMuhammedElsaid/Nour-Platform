@@ -25,7 +25,7 @@ export default function QuranReaderScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const locale = initialLocale;
-  const { surah } = useLocalSearchParams<{ surah: string }>();
+  const { surah, autoplay } = useLocalSearchParams<{ surah: string; autoplay?: string }>();
   const surahNumber = Number(surah);
 
   // Prefs drive the fetch key (translation/reciter) — hydrate from device-local
@@ -91,6 +91,7 @@ export default function QuranReaderScreen() {
         prefs={prefs}
         onChangePrefs={onChangePrefs}
         onBack={() => router.back()}
+        autoStart={autoplay === "1"}
       />
     </>
   );

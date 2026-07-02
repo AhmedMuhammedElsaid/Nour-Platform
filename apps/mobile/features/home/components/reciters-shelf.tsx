@@ -14,9 +14,8 @@ import { initialLocale } from "@/lib/i18n";
 import { quranRecitersQuery } from "@/lib/queries";
 
 // Home "Readers" shelf — a horizontal row of Quran reciters. Tapping a reader
-// sets it as the active reader voice (nour.quran.prefs) and opens the Quran, so
-// any surah opened afterward recites in that voice. Mirrors the web ReadersShelf
-// and the mobile continue-listening shelf.
+// sets it as the active reader voice (nour.quran.prefs) and opens Al-Fatiha,
+// auto-playing it in that voice. Mirrors the web ReadersShelf.
 export function RecitersShelf() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -34,7 +33,9 @@ export function RecitersShelf() {
   const selectReader = async (slug: string): Promise<void> => {
     const prefs = await getQuranPrefs();
     await setQuranPrefs({ ...prefs, reciterSlug: slug });
-    router.push("/quran");
+    // Open Al-Fatiha in that voice and auto-start playback (the reader reads the
+    // reciter from the prefs we just wrote); ?autoplay=1 triggers the playback.
+    router.push("/quran/1?autoplay=1");
   };
 
   return (

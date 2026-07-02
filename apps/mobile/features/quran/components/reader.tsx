@@ -33,6 +33,9 @@ export interface ReaderProps {
   prefs: QuranPrefs;
   onChangePrefs: (next: QuranPrefs) => void;
   onBack: () => void;
+  // Auto-start playback from the first ayah on mount (home Readers shelf →
+  // Al-Fatiha in the tapped reciter's voice).
+  autoStart?: boolean;
 }
 
 // RN port of apps/web/features/quran/components/reader.tsx. The screen owns
@@ -40,7 +43,7 @@ export interface ReaderProps {
 // bookmarks, ayah audio, the settings + tafsir sheets, and current-ayah scroll.
 // It also owns the single themed header (back + title + settings/repeat) —
 // the Stack header is hidden to avoid the duplicate-title white bar (point 25).
-export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs, onBack }: ReaderProps) {
+export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs, onBack, autoStart }: ReaderProps) {
   const { t } = useTranslation();
   const dockSpacing = useDockSpacing();
   const [bookmarks, setBookmarks] = useState<AyahRef[]>([]);
@@ -66,6 +69,18 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs,
   useEffect(() => {
     if (playerPlaying && ayahPlaying) stopAyah();
   }, [playerPlaying, ayahPlaying, stopAyah]);
+
+  // Autostart from the first ayah when arriving with autoStart (Readers shelf →
+  // Al-Fatiha in the tapped voice). Fires once; RN has no autoplay gesture gate.
+  const didAutoStart = useRef(false);
+  const { playAyah } = audio;
+  useEffect(() => {
+    if (!autoStart || didAutoStart.current) return;
+    const first = data.ayahs[0];
+    if (!first?.audioUrl) return;
+    didAutoStart.current = true;
+    playAyah(first.numberGlobal);
+  }, [autoStart, data.ayahs, playAyah]);
 
   const surahNameEn = data.surah.name.en;
   const translationDir = data.translationEdition?.dir ?? (locale === "ar" ? "rtl" : "ltr");

@@ -119,7 +119,7 @@ function ContinueListeningShelf({
           {t("home.clearListening")}
         </button>
       </div>
-      <ul className="flex gap-3 overflow-x-auto pb-2 pt-1">
+      <ul className="shelf-scroll flex gap-3 overflow-x-auto pb-2 pt-1">
         {linkable.map((item) => {
           const savedT = item.trackId ? (positions[item.trackId]?.t ?? 0) : 0;
           const pct =
@@ -270,11 +270,12 @@ export function NewtabPage() {
     await recordRecent(recent);
   }
 
-  // Set the tapped reader as the active reader voice, then open the Quran view.
+  // Set the tapped reader as the active reader voice, then open Al-Fatiha in that
+  // voice with playback auto-started (the reader reads the reciter from prefs).
   async function selectReader(slug: string): Promise<void> {
     const prefs = await get("nour.quran.prefs");
     await set("nour.quran.prefs", { ...prefs, reciterSlug: slug });
-    navigate({ view: "quran" });
+    navigate({ view: "quran-read", surah: "1", autoplay: true });
   }
 
   // Dispatch non-home views (stubs until their phases land).
@@ -294,7 +295,7 @@ export function NewtabPage() {
     return (
       <div className="min-h-screen bg-bg text-text" dir="rtl">
         {headerEl}
-        <QuranReader surah={route.surah} state={playerState} send={send} />
+        <QuranReader surah={route.surah} autoplay={route.autoplay} state={playerState} send={send} />
         <PlayerBar state={playerState} send={send} />
       </div>
     );

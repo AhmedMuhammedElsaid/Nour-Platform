@@ -54,7 +54,7 @@ describe("RecitersShelf", () => {
     expect(screen.getByText("Abdurrahman Al-Sudais")).toBeTruthy();
   });
 
-  it("writes the tapped reciter to prefs and navigates to the Quran", async () => {
+  it("writes the tapped reciter to prefs and opens Al-Fatiha with autoplay", async () => {
     jest.mocked(getJson).mockResolvedValue([reciter({ slug: "sudais", name: "Al-Sudais" })]);
     renderShelf();
     const item = await screen.findByText("Al-Sudais");
@@ -64,6 +64,6 @@ describe("RecitersShelf", () => {
         expect.objectContaining({ reciterSlug: "sudais" }),
       ),
     );
-    expect(mockPush).toHaveBeenCalledWith("/quran");
+    expect(mockPush).toHaveBeenCalledWith("/quran/1?autoplay=1");
   });
 });
