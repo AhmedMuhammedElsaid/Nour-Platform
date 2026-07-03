@@ -85,13 +85,13 @@ export function RadioPage({ stations }: { stations: StationView[] }) {
           {recentStations.length > 0 && (
             <div className="mt-8">
               <h2 className="mb-3 text-sm font-semibold text-text-2">{t("recentlyPlayed")}</h2>
-              <div className="grid gap-3">{recentStations.map(renderCard)}</div>
+              <div className="grid grid-cols-1 gap-3">{recentStations.map(renderCard)}</div>
             </div>
           )}
 
           <div className="mt-8">
             <h2 className="mb-3 text-sm font-semibold text-text-2">{t("allStations")}</h2>
-            <div className="grid gap-3">{sorted.map(renderCard)}</div>
+            <div className="grid grid-cols-1 gap-3">{sorted.map(renderCard)}</div>
           </div>
         </>
       )}
