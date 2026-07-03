@@ -61,6 +61,21 @@ let sleepTimeoutId: ReturnType<typeof setTimeout> | null = null;
 let sleepFadeId: ReturnType<typeof setInterval> | null = null;
 let isBuffering = false;
 let errorMessage: string | null = null;
+// Auto-retry bookkeeping for live streams — the upstream Quran-radio mounts
+// intermittently 5xx on a cold connect; a fresh attempt almost always succeeds,
+// so retry a few times (with backoff) before surfacing the error.
+const MAX_LIVE_RETRIES = 3;
+const LIVE_RETRY_BASE_MS = 800;
+let liveRetryCount = 0;
+let liveRetryTimerId: ReturnType<typeof setTimeout> | null = null;
+
+function clearLiveRetry(): void {
+  liveRetryCount = 0;
+  if (liveRetryTimerId) {
+    clearTimeout(liveRetryTimerId);
+    liveRetryTimerId = null;
+  }
+}
 
 // Restore persisted prefs on startup so the first queue load honours the user's
 // shuffle/repeat and the audio element starts at the saved rate/volume.
@@ -218,6 +233,7 @@ async function syncAudio(prev: PlayerCore, next: PlayerCore): Promise<void> {
     playerAudio.volume = volume;
     playerAudio.playbackRate = playbackRate;
     errorMessage = null;
+    clearLiveRetry();
     pendingSeekSec = nextItem.isLive ? null : await loadSavedPosition(nextItem.id);
     setMediaSession(nextItem, next.status === "playing" ? "playing" : "paused");
     await recordTrackRecent(nextItem);
@@ -227,6 +243,8 @@ async function syncAudio(prev: PlayerCore, next: PlayerCore): Promise<void> {
     void playerAudio.play().catch(() => {});
     setPlaybackState("playing");
   } else {
+    // Cancel any in-flight live auto-retry so it can't resume after a pause/stop.
+    clearLiveRetry();
     playerAudio.pause();
     setPlaybackState("paused");
   }
@@ -269,6 +287,7 @@ playerAudio.addEventListener("waiting", () => {
 playerAudio.addEventListener("playing", () => {
   isBuffering = false;
   errorMessage = null;
+  liveRetryCount = 0;
   broadcast();
 });
 playerAudio.addEventListener("canplay", () => {
@@ -277,6 +296,21 @@ playerAudio.addEventListener("canplay", () => {
 });
 playerAudio.addEventListener("error", () => {
   isBuffering = false;
+  const item = currentItem(core);
+  // Live radio mounts intermittently 5xx on a cold connect; silently retry a
+  // few times (with backoff) before showing the error so it self-heals.
+  if (item?.isLive && liveRetryCount < MAX_LIVE_RETRIES) {
+    liveRetryCount += 1;
+    isBuffering = true;
+    if (liveRetryTimerId) clearTimeout(liveRetryTimerId);
+    liveRetryTimerId = setTimeout(() => {
+      liveRetryTimerId = null;
+      playerAudio.load();
+      void playerAudio.play().catch(() => {});
+    }, LIVE_RETRY_BASE_MS * liveRetryCount);
+    broadcast();
+    return;
+  }
   errorMessage = "تعذّر تشغيل هذا المقطع.";
   broadcast();
 });
@@ -285,6 +319,7 @@ function retryCurrent(): void {
   const item = currentItem(core);
   if (!item) return;
   errorMessage = null;
+  clearLiveRetry();
   isBuffering = true;
   playerAudio.src = item.url;
   playerAudio.volume = volume;
