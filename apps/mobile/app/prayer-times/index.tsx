@@ -132,11 +132,17 @@ export default function PrayerTimesScreen() {
   // one-off azan ~60s out, then tells the user to lock the phone. Exercises the
   // exact-alarm path the permission fix enables.
   const runTestAdhan = useCallback(async () => {
-    const fireAt = await scheduleTestAzan(t("prayer.adhan.testTitle"));
-    Alert.alert(
-      t("prayer.adhan.testTitle"),
-      t("prayer.adhan.testScheduled", { time: formatClock(fireAt, locale) }),
-    );
+    try {
+      const fireAt = await scheduleTestAzan(t("prayer.adhan.testTitle"));
+      Alert.alert(
+        t("prayer.adhan.testTitle"),
+        t("prayer.adhan.testScheduled", { time: formatClock(fireAt, locale) }),
+      );
+    } catch {
+      // Native module absent / ReactContextLost / scheduling failure — surface it
+      // instead of the promise rejecting silently (user saw "nothing happened").
+      Alert.alert(t("prayer.adhan.testTitle"), t("common.error"));
+    }
   }, [t, locale]);
 
   const countdown = formatCountdownClock(upcoming.msUntil, locale);

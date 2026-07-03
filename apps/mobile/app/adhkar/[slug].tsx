@@ -121,7 +121,7 @@ export default function AdhkarReaderScreen() {
     );
   }
 
-  const display = azkar[locale];
+  const display = azkar[locale] ?? azkar.ar ?? azkar.en;
   const progressValue = total > 0 ? (done / total) * 100 : 0;
 
   // Pinned header: back + title + live progress bar. Kept OUTSIDE the FlatList

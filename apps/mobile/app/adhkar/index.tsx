@@ -85,7 +85,8 @@ export default function AdhkarListScreen() {
       }
       ListEmptyComponent={<Text variant="muted">{t("adhkar.empty")}</Text>}
       renderItem={({ item }) => {
-        const display = item[locale];
+        const display = item[locale] ?? item.ar ?? item.en;
+        if (display == null) return null;
         const repeats = item.items.map((d) => d.repeat);
         const done = progress != null ? azkarCompletedCount(progress, item.id, repeats) : 0;
         const total = repeats.length;

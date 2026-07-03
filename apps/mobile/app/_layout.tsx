@@ -3,12 +3,17 @@ import "@/lib/notifications"; // installs the foreground notification handler
 import { hydrateLocale } from "@/lib/i18n";
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { View } from "react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, type ErrorBoundaryProps } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import TrackPlayer from "react-native-track-player";
+
+import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
 
 import { AnimatedSplash } from "@/components/animated-splash";
 import { AzanScheduler } from "@/components/azan-scheduler";
@@ -81,4 +86,21 @@ export default function RootLayout() {
 function ForegroundAdhan() {
   useForegroundAdhan();
   return null;
+}
+
+// Root error boundary. expo-router mounts this automatically when any child
+// route (or its render) throws, converting what would be a native white-screen
+// crash on a release build into a themed, recoverable screen. Belt-and-braces
+// for the embedded-locale dereferences: a malformed API row white-screens the
+// affected screen instead of the whole app, and the user can retry.
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+  const { t } = useTranslation();
+  return (
+    <View className="flex-1 items-center justify-center gap-4 bg-bg px-6">
+      <Text variant="display" className="text-2xl">
+        {t("common.error")}
+      </Text>
+      <Button label={t("common.retry")} variant="outline" onPress={retry} />
+    </View>
+  );
 }

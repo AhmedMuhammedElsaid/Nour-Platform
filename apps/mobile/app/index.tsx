@@ -41,13 +41,20 @@ export default function HomeScreen() {
   const categoryById = useMemo(
     () =>
       new Map<string, CategoryChip>(
-        (categories.data ?? []).map((c) => [c.id, { slug: c[locale].slug, name: c[locale].name }]),
+        (categories.data ?? []).flatMap((c) => {
+          const cl = c[locale] ?? c.ar ?? c.en;
+          return cl ? [[c.id, { slug: cl.slug, name: cl.name }] as const] : [];
+        }),
       ),
     [categories.data, locale],
   );
 
   const pills = useMemo(
-    () => (categories.data ?? []).map((c) => ({ id: c.id, slug: c[locale].slug, name: c[locale].name })),
+    () =>
+      (categories.data ?? []).flatMap((c) => {
+        const cl = c[locale] ?? c.ar ?? c.en;
+        return cl ? [{ id: c.id, slug: cl.slug, name: cl.name }] : [];
+      }),
     [categories.data, locale],
   );
 

@@ -43,7 +43,10 @@ export default function PlaylistDetailScreen() {
     return ids
       .map((id) => byId.get(id))
       .filter((c): c is NonNullable<typeof c> => c != null)
-      .map((c) => ({ slug: c[locale].slug, name: c[locale].name }));
+      .map((c) => {
+        const cl = c[locale] ?? c.ar ?? c.en;
+        return { slug: cl.slug, name: cl.name };
+      });
   }, [detail.data, categories.data, locale]);
 
   // Playable tracks with srcUrl.
@@ -58,15 +61,19 @@ export default function PlaylistDetailScreen() {
   const queueTracks = useMemo<QueueTrack[]>(() => {
     if (!detail.data) return [];
     const { playlist } = detail.data;
-    return playableTracks.map((tr) => ({
-      id: tr.id,
-      title: tr[locale].title,
-      mediaUrl: tr.srcUrl,
-      durationSecs: tr.durationSecs,
-      playlistTitle: playlist[locale].title,
-      playlistSlug: playlist[locale].slug,
-      locale,
-    }));
+    const pl = playlist[locale] ?? playlist.ar ?? playlist.en;
+    return playableTracks.map((tr) => {
+      const trl = tr[locale] ?? tr.ar ?? tr.en;
+      return {
+        id: tr.id,
+        title: trl.title,
+        mediaUrl: tr.srcUrl,
+        durationSecs: tr.durationSecs,
+        playlistTitle: pl.title,
+        playlistSlug: pl.slug,
+        locale,
+      };
+    });
   }, [detail.data, playableTracks, locale]);
 
   // Continue-listening deep link (?trackId=…): auto-start the queue at that
@@ -93,13 +100,15 @@ export default function PlaylistDetailScreen() {
 
   const downloadAll = () => {
     if (!detail.data) return;
+    const pl = detail.data.playlist[locale] ?? detail.data.playlist.ar ?? detail.data.playlist.en;
     for (const tr of playableTracks) {
+      const trl = tr[locale] ?? tr.ar ?? tr.en;
       downloads.startDownload({
         id: tr.id,
-        title: tr[locale].title,
+        title: trl.title,
         srcUrl: tr.srcUrl,
-        playlistTitle: detail.data.playlist[locale].title,
-        playlistSlug: detail.data.playlist[locale].slug,
+        playlistTitle: pl.title,
+        playlistSlug: pl.slug,
       });
     }
   };
@@ -134,7 +143,7 @@ export default function PlaylistDetailScreen() {
   }
 
   const { playlist, tracks } = detail.data;
-  const display = playlist[locale];
+  const display = playlist[locale] ?? playlist.ar ?? playlist.en;
 
   const header = (
     <View className="gap-4 pb-2">
@@ -230,18 +239,18 @@ export default function PlaylistDetailScreen() {
                   numberOfLines={1}
                   className={`flex-1 ${isActive ? "text-primary font-medium" : ""}`}
                 >
-                  {item[locale].title}
+                  {(item[locale] ?? item.ar ?? item.en).title}
                 </Text>
                 {dur != null && <Text variant="muted">{dur}</Text>}
                 {playable && (
                   <DownloadButton
                     trackId={item.id}
-                    title={item[locale].title}
+                    title={(item[locale] ?? item.ar ?? item.en).title}
                     status={dlStatus}
                     onDownload={() =>
                       downloads.startDownload({
                         id: item.id,
-                        title: item[locale].title,
+                        title: (item[locale] ?? item.ar ?? item.en).title,
                         srcUrl: item.srcUrl as string,
                         playlistTitle: display.title,
                         playlistSlug: display.slug,
