@@ -118,6 +118,13 @@ const MAX_STORED_POSITIONS = 100;
 const RESUME_MIN_SECONDS = 5;
 const RESUME_TAIL_SECONDS = 10;
 
+// Live radio streams intermittently return a 5xx on a cold connection (the
+// upstream qurango/icecast mounts do this ~1-in-3); a fresh attempt almost
+// always succeeds. Auto-retry this many times (with linear backoff) before
+// surfacing a play error, so the user rarely has to press Retry themselves.
+const MAX_LIVE_RETRIES = 3;
+const LIVE_RETRY_BASE_MS = 800;
+
 type StoredPositions = Record<string, { t: number; at: number }>;
 
 function readPositions(): StoredPositions {
@@ -245,6 +252,12 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   const pendingSeekRef = React.useRef<number | null>(null);
   // Throttle resume-position writes (timeupdate fires ~4×/s).
   const lastSaveRef = React.useRef<number>(0);
+  // Auto-retry bookkeeping for live streams — count of attempts since the last
+  // successful load, plus the pending retry timer (see MAX_LIVE_RETRIES).
+  const liveRetryCountRef = React.useRef<number>(0);
+  const liveRetryTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const sleepTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -307,6 +320,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   // this the detached HTMLAudioElement keeps playing alongside the new one.
   React.useEffect(() => {
     return () => {
+      if (liveRetryTimerRef.current) clearTimeout(liveRetryTimerRef.current);
       const audio = audioRef.current;
       if (!audio) return;
       audio.pause();
@@ -400,10 +414,31 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     const onPlaying = (): void => {
       setIsBuffering(false);
       setErrorMessage(null);
+      // Successful playback — reset the live-stream retry budget.
+      liveRetryCountRef.current = 0;
     };
     const onCanPlay = (): void => setIsBuffering(false);
     const onError = (): void => {
       setIsBuffering(false);
+      const track = queueRef.current[currentIndexRef.current];
+      // Live radio mounts intermittently 5xx on a cold connect; a fresh attempt
+      // almost always succeeds. Silently retry a few times (with backoff) before
+      // showing the error so live playback self-heals without a user tap.
+      if (track?.isLive && liveRetryCountRef.current < MAX_LIVE_RETRIES) {
+        liveRetryCountRef.current += 1;
+        setIsBuffering(true);
+        if (liveRetryTimerRef.current) clearTimeout(liveRetryTimerRef.current);
+        liveRetryTimerRef.current = setTimeout(() => {
+          liveRetryTimerRef.current = null;
+          const a = audioRef.current;
+          if (!a) return;
+          a.load();
+          void a.play().catch(() => {
+            /* see note in play() */
+          });
+        }, LIVE_RETRY_BASE_MS * liveRetryCountRef.current);
+        return;
+      }
       setErrorMessage("Couldn't play this track.");
     };
     const onEnded = (): void => {
@@ -478,6 +513,12 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       setCurrentTime(0);
       setDuration(track.durationSecs ?? 0);
       setErrorMessage(null);
+      // Fresh source → fresh live-retry budget; drop any pending retry timer.
+      liveRetryCountRef.current = 0;
+      if (liveRetryTimerRef.current) {
+        clearTimeout(liveRetryTimerRef.current);
+        liveRetryTimerRef.current = null;
+      }
       // Queue the saved resume offset; applied once metadata loads. Live streams
       // never resume — they play from the live edge.
       const saved = track.isLive ? 0 : getStoredPosition(track.id);
@@ -522,6 +563,12 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   const pause = React.useCallback((): void => {
     const audio = audioRef.current;
     if (!audio) return;
+    // Cancel any in-flight live-stream auto-retry so it can't resume playback
+    // after the user has deliberately paused.
+    if (liveRetryTimerRef.current) {
+      clearTimeout(liveRetryTimerRef.current);
+      liveRetryTimerRef.current = null;
+    }
     audio.pause();
   }, []);
 
@@ -572,6 +619,12 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     if (!audio) return;
     setErrorMessage(null);
     hasInteractedRef.current = true;
+    // A manual retry gets a fresh auto-retry budget for live streams.
+    liveRetryCountRef.current = 0;
+    if (liveRetryTimerRef.current) {
+      clearTimeout(liveRetryTimerRef.current);
+      liveRetryTimerRef.current = null;
+    }
     audio.load();
     void audio.play().catch(() => {
       /* see note above */
