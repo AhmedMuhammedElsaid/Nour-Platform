@@ -904,15 +904,28 @@ commits landed (`beb96c2` fix + `513809d` chore, PUSHED to `origin/main`). Full 
    form (collects **location** + schedules **local notifications**; no accounts/analytics/ads,
    all state device-local). Privacy policy: `https://nour-platform-web.vercel.app/privacy` (200).
 
-**Recommended perf fast-follow (NOT done — safe, post-launch):** `useProgress(250)` (player-context
-`:321`) ticks `progress.position`/`.duration` into the context `value` memo (`:677-678,:708-709`),
-rebuilding the whole context object 4×/sec during playback. `useDockSpacing()` subscribes the
-whole ticking value but only needs `hasQueue`, so Home + every list screen re-render 4×/sec while
-audio plays — the most probable mid-range-Android scroll-jank source. Fix: split progress into its
-own `PlayerProgressContext` consumed only by `mini-player.tsx` + `app/player.tsx` (or have those
-two call `useProgress()` directly and drop position/duration from the main memo). Also: no
-`React.memo` anywhere — wrapping `AyahRow`/`PlaylistCard` is cheap insurance (but on Home,
-`app/index.tsx` passes a fresh `categories` array per render, so memoize the per-card lookup too).
+**✅ Perf cascade fix DONE (`715411a`, 2026-07-03)** — user reported the app was "very very slow"
+(nav + radio play/stop). Root cause: `useProgress(250)` (player-context `:321`) fed
+`currentTime`/`duration` into the main context `value` memo, so the whole context object rebuilt
+~4×/sec during playback. Every `usePlayer()` consumer re-rendered on each tick — incl.
+`useDockSpacing()`, which Home + every list screen call; expo-router keeps screens **mounted**, so a
+live radio stream (infinite) re-rendered the whole tree 4×/sec forever → JS-thread starvation → laggy
+nav + play/stop. Fix: `currentTime`/`duration` moved OUT of `PlayerContextValue` into a separate
+**`PlayerProgressContext`** with a `usePlayerProgress()` hook, consumed ONLY by `mini-player.tsx` +
+`app/player.tsx` (the two progress-bar surfaces). `usePlayer()` no longer changes on the tick.
+`PlayerProvider` now nests `<PlayerContext.Provider><PlayerProgressContext.Provider>`; tests use the
+real provider so both are supplied. **Pattern: keep any high-frequency (per-frame/per-tick) value in
+its own context — never in a broadly-consumed one.**
+- ⚠️ **Secondary suspect for "radio stop takes a long while" (NOT yet fixed — verify on device after
+  the cascade fix):** the live-stream auto-retry in `player-context.tsx` (`Event.PlaybackError`
+  handler, ~`:420`) resumes playback on ANY live PlaybackError **regardless of user intent** — if
+  pausing/stopping a live stream emits an error, the retry timer (≤2.4s backoff) could resurrect it.
+  If stop is still laggy once the cascade fix is on-device, gate the retry on a "user wants playback"
+  ref. Radio START latency is mostly inherent live-stream buffering (DNS/TLS/buffer) + cold-connect
+  5xx retry — not a render bug.
+- Still open (nice-to-have, not a blocker): no `React.memo` anywhere — wrapping `AyahRow`/`PlaylistCard`
+  is cheap insurance (but on Home, `app/index.tsx` passes a fresh `categories` array per render, so
+  memoize the per-card lookup too).
 
 ## iOS release readiness (2026-07-03)
 
