@@ -146,7 +146,6 @@ export default function PrayerTimesScreen() {
   }, [t, locale]);
 
   const countdown = formatCountdownClock(upcoming.msUntil, locale);
-  const upcomingTime = formatClock(upcoming.time, locale);
 
   // Active body (sun by day, moon by night) + its progress, plus the day-arc dot
   // positions. Recomputed each tick so the body glides; both are cheap + pure.
@@ -213,14 +212,23 @@ export default function PrayerTimesScreen() {
           <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} onNightBand={arc.onNightBand} theme={theme} showLabels />
         )}
 
-        {/* Countdown */}
-        <View className="items-center gap-1">
-          <Text variant="muted">{t("prayer.next")}</Text>
-          <Text variant="display" className="text-3xl text-primary">
+        {/* Countdown — one horizontal row mirroring the web PrayerCountdown.
+            DOM order label → name → countdown; the RTL container (Arabic runs
+            under I18nManager.forceRTL) auto-mirrors it to countdown → name →
+            label, English keeps label → name → countdown. No manual reversal. */}
+        <View className="flex-row items-baseline justify-center gap-2.5">
+          <Text variant="muted" className="text-xs uppercase tracking-[1px]">
+            {t("prayer.next")}
+          </Text>
+          <Text variant="display" className="text-2xl">
             {prayerNames[upcoming.key]}
           </Text>
-          <Text variant="muted" style={{ fontVariant: ["tabular-nums"] }}>
-            {countdown} · {t("prayer.at", { time: upcomingTime })}
+          <Text
+            variant="body"
+            className="text-xl font-semibold text-sun"
+            style={{ fontVariant: ["tabular-nums"] }}
+          >
+            {countdown}
           </Text>
         </View>
 

@@ -131,15 +131,23 @@ export function PrayerTimesWidget() {
         <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} onNightBand={arc.onNightBand} theme={theme} />
       </View>
 
-      {/* next-prayer countdown */}
-      <View className="items-center pb-3">
-        <Text variant="muted" className="text-xs">
+      {/* next-prayer countdown — one horizontal row mirroring the web
+          PrayerCountdown. DOM order is label → name → countdown; because Arabic
+          runs under I18nManager.forceRTL the row auto-mirrors (countdown ends on
+          the left, label on the right), while English keeps label → name →
+          countdown. Never reverse manually — that would defeat the mirror. */}
+      <View className="flex-row items-baseline justify-center gap-2.5 px-3 pb-3">
+        <Text variant="muted" className="text-xs uppercase tracking-[1px]">
           {t("prayer.next")}
         </Text>
-        <Text variant="display" className="text-xl text-primary">
+        <Text variant="display" className="text-xl">
           {t(`prayer.${upcoming.key}`)}
         </Text>
-        <Text variant="muted" className="text-xs" style={{ fontVariant: ["tabular-nums"] }}>
+        <Text
+          variant="body"
+          className="text-base font-semibold text-sun"
+          style={{ fontVariant: ["tabular-nums"] }}
+        >
           {countdown}
         </Text>
       </View>
