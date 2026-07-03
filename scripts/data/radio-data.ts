@@ -54,6 +54,36 @@ export const RADIO_STATIONS: RadioStationSeed[] = [
     isFeatured: true,
   },
   {
+    // The ACTUAL live إذاعة القرآن الكريم broadcast from Cairo (Quran FM 98.2,
+    // holyquranradio.com), added alongside the Al-Husary stand-in above.
+    // ⚠️ The station's own feed is radiojar (stream.radiojar.com/8s5u5tpdtwzuv),
+    // which is HTTP-ONLY — it 302s to an insecure http://n*.radiojar.com edge
+    // (re-verified 2026-07-03), so it can't play over HTTPS/CSP/Android-cleartext.
+    // No official HTTPS origin exists. This points at a reliable HTTPS *re-broadcast*
+    // of the Cairo Quran radio on Zeno.FM (verified 4/4 end-to-end https, audio/mpeg;
+    // stream.zeno.fm 302s to *.surfernetwork.com — both allowed in CSP RADIO_ORIGINS).
+    // Swap to a different mount or the official feed anytime via the streamUrl here
+    // (or override without code via an env, mirroring RADIO_CAIRO_STREAM_URL).
+    slug: "quran-cairo-live",
+    ar: {
+      name: "إذاعة القرآن الكريم من القاهرة – بث مباشر",
+      description: "البث المباشر لإذاعة القرآن الكريم من القاهرة (إف إم 98.2) على مدار الساعة.",
+    },
+    en: {
+      name: "Holy Quran Radio from Cairo – Live",
+      description: "The live 24/7 broadcast of Holy Quran Radio from Cairo (FM 98.2).",
+    },
+    country: "EG",
+    city: "Cairo",
+    streamUrl:
+      process.env.RADIO_CAIRO_LIVE_STREAM_URL ??
+      "https://stream.zeno.fm/ru2hqnplhk7uv",
+    streamType: "mp3",
+    language: "ar",
+    category: "quran",
+    isFeatured: false,
+  },
+  {
     // The authentic 24/7 Grand Mosque broadcast is radiojar HTTP-only (same wall
     // the Cairo entry hit — unusable over HTTPS/CSP). The previous mixlr channel
     // (edge.mixlr.com/channel/rwumx) was actually a personal reciter channel
