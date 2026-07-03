@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FlatList, Pressable, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import type {
   QuranEdition,
@@ -46,6 +47,7 @@ export interface ReaderProps {
 export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs, onBack, autoStart }: ReaderProps) {
   const { t } = useTranslation();
   const dockSpacing = useDockSpacing();
+  const insets = useSafeAreaInsets();
   const [bookmarks, setBookmarks] = useState<AyahRef[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tafsirAyah, setTafsirAyah] = useState<{ numberGlobal: number; ref: string } | null>(null);
@@ -187,14 +189,18 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs,
 
   return (
     <>
+      {/* flex-1 wrapper so the status-bar scrim can overlay the list. The screen
+          renders edge-to-edge under a transparent status bar (no global top
+          SafeAreaView), so without this the surah title collided with the clock/
+          battery icons and ayahs bled under them on scroll — same fix as Home. */}
+      <View className="flex-1 bg-bg">
       <FlatList<ReaderAyah>
         ref={listRef}
         className="flex-1 bg-bg px-4"
         data={data.ayahs}
         keyExtractor={(a) => String(a.numberGlobal)}
         ListHeaderComponent={header}
-        contentContainerClassName="pt-4"
-        contentContainerStyle={{ paddingBottom: dockSpacing }}
+        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: dockSpacing }}
         onScrollToIndexFailed={() => undefined}
         renderItem={({ item }) => (
           <AyahRow
@@ -218,6 +224,14 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs,
           />
         )}
       />
+        {/* Opaque scrim over the status-bar area — hides ayahs scrolled up behind
+            the transparent status bar (mirrors app/index.tsx). */}
+        <View
+          pointerEvents="none"
+          className="absolute left-0 right-0 top-0 bg-bg"
+          style={{ height: insets.top }}
+        />
+      </View>
 
       <ReaderSettingsSheet
         open={settingsOpen}

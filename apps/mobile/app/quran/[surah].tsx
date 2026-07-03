@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -24,6 +25,7 @@ import {
 export default function QuranReaderScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const locale = initialLocale;
   const { surah, autoplay } = useLocalSearchParams<{ surah: string; autoplay?: string }>();
   const surahNumber = Number(surah);
@@ -55,7 +57,7 @@ export default function QuranReaderScreen() {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
-        <View className="flex-1 bg-bg">
+        <View className="flex-1 bg-bg" style={{ paddingTop: insets.top }}>
           <BackRow onBack={() => router.back()} label={t("common.back")} />
           <View className="flex-1 items-center justify-center">
             <Spinner label={t("common.loading")} />
@@ -69,7 +71,7 @@ export default function QuranReaderScreen() {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
-        <View className="flex-1 bg-bg">
+        <View className="flex-1 bg-bg" style={{ paddingTop: insets.top }}>
           <BackRow onBack={() => router.back()} label={t("common.back")} />
           <View className="flex-1 items-center justify-center gap-3 px-4">
             <Text className="text-danger">{t("common.error")}</Text>
