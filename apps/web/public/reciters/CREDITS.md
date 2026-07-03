@@ -1,10 +1,13 @@
 # Reciter avatar image credits
 
-All reciter photos below are sourced from **Wikimedia Commons** and cropped/scaled
-to square avatars. Attribution is provided here to satisfy the CC BY / CC BY-SA
-licence terms. Public-domain and government-open-data images are listed for
-provenance. Reciters not listed (Abu Bakr Ash-Shatri, Muhammad Ayyoub, Abdullah
-Basfar) have no freely-licensed portrait and use a generated initials avatar.
+The **Wikimedia Commons** photos below are cropped/scaled to square avatars.
+Attribution is provided here to satisfy the CC BY / CC BY-SA licence terms.
+Public-domain and government-open-data images are listed for provenance.
+
+The four reciters in the second table (Abdul Basit, Abu Bakr Ash-Shatri,
+Muhammad Ayyoub, Abdullah Basfar) had no freely-licensed Commons portrait, so
+their avatars are **owner-supplied images** of unverified provenance — verify
+licensing before any use that requires attribution.
 
 | slug | reciter | Commons file | licence | author / source |
 | --- | --- | --- | --- | --- |
@@ -19,6 +22,15 @@ Basfar) have no freely-licensed portrait and use a generated initials avatar.
 | hudhaify | Ali Al-Hudhaify | Huthaify.jpg | CC BY-SA 4.0 | Km.jahiruddin md. Babur |
 
 Each file page: https://commons.wikimedia.org/wiki/File:<filename>
+
+## Owner-supplied avatars (provenance unverified)
+
+| slug | reciter | note |
+| --- | --- | --- |
+| abdulbasit | Abdul Basit Abdus-Samad | owner-supplied; cropped to square 240px |
+| shatri | Abu Bakr Ash-Shatri | owner-supplied; circular source flattened to white |
+| ayyoub | Muhammad Ayyoub | owner-supplied; scaled to square 240px |
+| basfar | Abdullah Basfar | owner-supplied; scaled to square 240px |
 
 > CC BY-SA images require attribution + share-alike. If you surface these avatars
 > in a context that needs visible credit, link this file or a credits page.

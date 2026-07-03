@@ -36,6 +36,7 @@ export const RECITERS: readonly ReciterSeed[] = [
     name: "Abdul Basit Abdus-Samad",
     arabicName: "عبد الباسط عبد الصمد",
     audioBase: "https://everyayah.com/data/Abdul_Basit_Murattal_192kbps/",
+    image: "/reciters/abdulbasit.jpg",
   },
   {
     slug: "sudais",
@@ -70,6 +71,7 @@ export const RECITERS: readonly ReciterSeed[] = [
     name: "Abu Bakr Ash-Shatri",
     arabicName: "أبو بكر الشاطري",
     audioBase: "https://everyayah.com/data/Abu_Bakr_Ash-Shaatree_128kbps/",
+    image: "/reciters/shatri.jpg",
   },
   {
     slug: "shuraim",
@@ -97,11 +99,13 @@ export const RECITERS: readonly ReciterSeed[] = [
     name: "Muhammad Ayyoub",
     arabicName: "محمد أيوب",
     audioBase: "https://everyayah.com/data/Muhammad_Ayyoub_128kbps/",
+    image: "/reciters/ayyoub.jpg",
   },
   {
     slug: "basfar",
     name: "Abdullah Basfar",
     arabicName: "عبد الله بصفر",
     audioBase: "https://everyayah.com/data/Abdullah_Basfar_192kbps/",
+    image: "/reciters/basfar.jpg",
   },
 ];
