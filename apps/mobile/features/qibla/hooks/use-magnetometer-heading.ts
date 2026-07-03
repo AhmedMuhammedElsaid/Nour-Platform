@@ -1,21 +1,28 @@
-// Device compass heading from the magnetometer. Mirrors the web use-device-heading
-// hook, but reads expo-sensors instead of DeviceOrientation.
+// Device compass heading for the Qibla screen. Mirrors the web use-device-heading
+// hook, reading expo-sensors instead of DeviceOrientation.
 //
-// The magnetometer reports **magnetic** north (geomagnetic declination is not
-// corrected — see docs/adr/0009-expo-sensors-qibla.md); the exact axis offset is
-// device-specific and only verifiable on hardware, matching the repo's standing
-// "native sensors verify on-device" caveat.
+// Sensor choice (in order of preference):
+//   1. DeviceMotion.rotation.alpha — the OS sensor-fused, **tilt-compensated**
+//      azimuth (Android rotation-vector / iOS attitude), so the heading stays
+//      correct even when the phone isn't held flat. This is the mobile analogue of
+//      the web's `deviceorientationabsolute`.
+//   2. Magnetometer atan2(y,x) — raw horizontal-field fallback when DeviceMotion is
+//      unavailable or yields no rotation (no gyro / rotation-vector). Only accurate
+//      held level.
 //
-// Raw magnetometer samples are noisy and arrive in bursts, which made the dial feel
-// jittery and slow (it only updated past a coarse 2° step). We now sample faster and
-// run a **circular exponential moving average** on the heading's sin/cos so the value
-// glides smoothly toward the true bearing without the wrap-around artefacts a plain
-// numeric average would produce at the 0/360 seam. A small dead-band on the smoothed
-// output keeps a still phone from re-rendering every frame.
+// Both feed a **circular EMA** (smoothing sin/cos, wrap-safe at the 0/360 seam) so
+// the needle glides instead of snapping, with a small dead-band so a still phone
+// doesn't re-render every frame. Heading is **magnetic** north (declination is not
+// corrected — see docs/adr/0009-expo-sensors-qibla.md); native sensors only verify
+// on hardware, matching the repo's standing on-device caveat.
 
 import { useCallback, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
-import { Magnetometer, type MagnetometerMeasurement } from "expo-sensors";
+import {
+  DeviceMotion,
+  Magnetometer,
+  type MagnetometerMeasurement,
+} from "expo-sensors";
 
 const RAD2DEG = 180 / Math.PI;
 const norm360 = (deg: number): number => ((deg % 360) + 360) % 360;
@@ -25,17 +32,26 @@ function signedDelta(a: number, b: number): number {
   return ((b - a + 540) % 360) - 180;
 }
 
-// EMA weight applied each sample: higher tracks turns faster, lower is smoother.
-// At a 60ms sample interval, 0.3 removes jitter while still following a real turn
-// within a few hundred ms.
+// EMA weight per sample: higher tracks turns faster, lower is smoother. At ~60ms
+// sampling, 0.3 removes jitter while still following a real turn within a few 100ms.
 const SMOOTHING = 0.3;
 // Re-render only when the smoothed heading has moved at least this many degrees —
-// enough to keep the dial fluid without a render storm when the phone is still.
+// keeps the dial fluid without a render storm when the phone is still.
 const MIN_DELTA = 0.5;
+// If DeviceMotion is "available" but delivers no usable rotation this soon, fall
+// back to the magnetometer (some devices lack the rotation-vector/gyro).
+const MOTION_FALLBACK_MS = 700;
 
-// Classic expo-sensors compass reduction: atan2 of the horizontal field, normalized
-// to a 0–360 heading where 0 = magnetic north.
-function toHeading({ x, y }: MagnetometerMeasurement): number {
+// DeviceMotion.rotation.alpha → compass heading. W3C convention (which Expo
+// follows): alpha grows counter-clockwise from north, so the clockwise compass
+// heading is 360 − alpha. If an on-device test shows the needle MIRRORED, flip this
+// to `norm360(alphaDeg)` (the only likely platform discrepancy).
+function motionHeading(alphaRad: number): number {
+  return norm360(360 - alphaRad * RAD2DEG);
+}
+
+// Classic magnetometer reduction: atan2 of the horizontal field, 0 = magnetic north.
+function magHeading({ x, y }: MagnetometerMeasurement): number {
   const rad = Math.atan2(y, x);
   return norm360((rad >= 0 ? rad : rad + 2 * Math.PI) * RAD2DEG);
 }
@@ -48,7 +64,7 @@ export type MagnetometerHeading = {
 export function useMagnetometerHeading(): MagnetometerHeading {
   const [heading, setHeading] = useState<number | null>(null);
   const [available, setAvailable] = useState(false);
-  // Circular EMA accumulators + the last value we pushed to state.
+  // Circular EMA accumulators + the last value pushed to state.
   const emaRef = useRef<{ sin: number; cos: number } | null>(null);
   const emittedRef = useRef<number | null>(null);
 
@@ -77,24 +93,64 @@ export function useMagnetometerHeading(): MagnetometerHeading {
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      let sub: ReturnType<typeof Magnetometer.addListener> | null = null;
-      // Reset the smoother each time the screen regains focus so a stale reading
-      // from a previous visit doesn't slew the needle on re-entry.
+      let motionSub: ReturnType<typeof DeviceMotion.addListener> | null = null;
+      let magSub: ReturnType<typeof Magnetometer.addListener> | null = null;
+      let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+      let switched = false;
+      // Reset the smoother on (re)focus so a stale reading doesn't slew the needle.
       emaRef.current = null;
       emittedRef.current = null;
 
-      void Magnetometer.isAvailableAsync().then((ok) => {
-        if (cancelled || !ok) return;
-        setAvailable(true);
-        // 60ms (~16Hz): responsive enough that the smoothed dial reads as a live
-        // glide, cheap enough for the handful of SVG nodes on the compass.
-        Magnetometer.setUpdateInterval(60);
-        sub = Magnetometer.addListener((data) => push(toHeading(data)));
-      });
+      const startMagnetometer = () => {
+        if (cancelled || magSub) return;
+        void Magnetometer.isAvailableAsync().then((ok) => {
+          if (cancelled || !ok || magSub) return;
+          setAvailable(true);
+          Magnetometer.setUpdateInterval(60);
+          magSub = Magnetometer.addListener((data) => push(magHeading(data)));
+        });
+      };
+
+      const fallToMagnetometer = () => {
+        if (switched) return;
+        switched = true;
+        motionSub?.remove();
+        motionSub = null;
+        // Reset the smoother so the two sensors' scales don't blend on handover.
+        emaRef.current = null;
+        emittedRef.current = null;
+        startMagnetometer();
+      };
+
+      const start = async () => {
+        const motionOk = await DeviceMotion.isAvailableAsync().catch(() => false);
+        if (cancelled) return;
+        if (!motionOk) {
+          startMagnetometer();
+          return;
+        }
+        // Give DeviceMotion a moment to produce a rotation; if it doesn't, the
+        // device has no fused orientation → use the raw magnetometer instead.
+        fallbackTimer = setTimeout(fallToMagnetometer, MOTION_FALLBACK_MS);
+        DeviceMotion.setUpdateInterval(60);
+        motionSub = DeviceMotion.addListener((data) => {
+          const alpha = data.rotation?.alpha;
+          if (alpha == null || Number.isNaN(alpha)) return;
+          if (fallbackTimer) {
+            clearTimeout(fallbackTimer);
+            fallbackTimer = null;
+          }
+          setAvailable(true);
+          push(motionHeading(alpha));
+        });
+      };
+      void start();
 
       return () => {
         cancelled = true;
-        sub?.remove();
+        if (fallbackTimer) clearTimeout(fallbackTimer);
+        motionSub?.remove();
+        magSub?.remove();
       };
     }, [push]),
   );

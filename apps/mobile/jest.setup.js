@@ -146,6 +146,14 @@ jest.mock("expo-sensors", () => ({
     addListener: jest.fn().mockReturnValue({ remove: jest.fn() }),
     removeAllListeners: jest.fn(),
   },
+  // DeviceMotion is the tilt-compensated primary in use-magnetometer-heading;
+  // available by default with a no-op listener so focus setup/teardown is safe.
+  DeviceMotion: {
+    isAvailableAsync: jest.fn().mockResolvedValue(true),
+    setUpdateInterval: jest.fn(),
+    addListener: jest.fn().mockReturnValue({ remove: jest.fn() }),
+    removeAllListeners: jest.fn(),
+  },
 }));
 
 // expo-notifications mock.
