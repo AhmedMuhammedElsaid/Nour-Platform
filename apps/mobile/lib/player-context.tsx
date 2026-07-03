@@ -90,6 +90,10 @@ const MAX_POSITIONS = 100;
 const MAX_RECENT = 20;
 const RESUME_MIN_SECONDS = 5;
 const RESUME_TAIL_SECONDS = 10;
+// Live radio streams intermittently 5xx on a cold connect; auto-retry this many
+// times (with linear backoff) before surfacing a play error.
+const MAX_LIVE_RETRIES = 3;
+const LIVE_RETRY_BASE_MS = 800;
 
 type PlayerPrefs = {
   playbackRate: number;
@@ -301,6 +305,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   );
   const sleepAtTrackEndRef = React.useRef(false);
   const lastSaveRef = React.useRef(0);
+  // Auto-retry bookkeeping for live streams — the upstream Quran-radio mounts
+  // intermittently 5xx on a cold connect; a fresh attempt almost always works,
+  // so retry a few times before surfacing the error (see MAX_LIVE_RETRIES).
+  const liveRetryCountRef = React.useRef(0);
+  const liveRetryTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   queueRef.current = queue;
   currentIndexRef.current = currentIndex;
@@ -407,6 +418,23 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   // Handle playback errors.
   useTrackPlayerEvents([Event.PlaybackError], (event) => {
+    const track = queueRef.current[currentIndexRef.current];
+    // Live radio mounts intermittently 5xx on a cold connect; silently retry a
+    // few times (with backoff) before showing the error so it self-heals. Uses
+    // the same lightweight seek-to-live-edge + play as the manual retry.
+    if (track?.isLive && liveRetryCountRef.current < MAX_LIVE_RETRIES) {
+      liveRetryCountRef.current += 1;
+      if (liveRetryTimerRef.current) clearTimeout(liveRetryTimerRef.current);
+      liveRetryTimerRef.current = setTimeout(() => {
+        liveRetryTimerRef.current = null;
+        void TrackPlayer.seekTo(0)
+          .then(() => TrackPlayer.play())
+          .catch(() => {
+            /* next error event re-enters this handler or exhausts the budget */
+          });
+      }, LIVE_RETRY_BASE_MS * liveRetryCountRef.current);
+      return;
+    }
     setErrorMessage(
       (event as unknown as { message?: string }).message ??
         "Couldn't play this track.",
@@ -447,6 +475,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
       await TrackPlayer.play();
       setErrorMessage(null);
+      // Fresh load → fresh live-retry budget; drop any pending retry timer.
+      liveRetryCountRef.current = 0;
+      if (liveRetryTimerRef.current) {
+        clearTimeout(liveRetryTimerRef.current);
+        liveRetryTimerRef.current = null;
+      }
 
       // Record in recently-played.
       void recordRecentlyPlayed({
@@ -531,6 +565,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const retry = React.useCallback((): void => {
     setErrorMessage(null);
+    // A manual retry gets a fresh auto-retry budget for live streams.
+    liveRetryCountRef.current = 0;
+    if (liveRetryTimerRef.current) {
+      clearTimeout(liveRetryTimerRef.current);
+      liveRetryTimerRef.current = null;
+    }
     void TrackPlayer.seekTo(0).then(() => TrackPlayer.play());
   }, []);
 
@@ -613,6 +653,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     return () => {
       if (sleepTimeoutRef.current) clearTimeout(sleepTimeoutRef.current);
+      if (liveRetryTimerRef.current) clearTimeout(liveRetryTimerRef.current);
     };
   }, []);
 
