@@ -848,6 +848,72 @@ where Android's `USAGE_ALARM` isn't.
   a Critical-Alerts-enabled profile, verify on a real device with Silent on + a Focus enabled
   (simulator doesn't play notification sounds).
 
+## Play-Store pre-publish audit + hardening (2026-07-03)
+
+Full production-readiness sweep before the first Google Play submission. Three parallel
+read-only subagent audits — **performance**, **crash-safety**, **store/build readiness** — all
+returned **GO with NO code blockers**; the app was already code-complete and gate-green. Two
+commits landed (`beb96c2` fix + `513809d` chore, PUSHED to `origin/main`). Full gate re-verified:
+**tsc 0 · lint 0 · 23 suites / 76 tests**.
+
+**Audit conclusions (don't re-explore — these areas were checked and are CLEAN):**
+- **Timers/effects**: every `setInterval`/`setTimeout` is `useFocusEffect`-gated or cleared;
+  RNTP listeners use `useTrackPlayerEvents` (auto-unsub); sleep-fade/live-retry timers clear on
+  unmount. No leaks.
+- **Lists virtualized**: Quran index + reader, adhkar reader, playlist detail all use `FlatList`
+  + `keyExtractor`. (Home grid is a deliberate `ScrollView`+flex-wrap — the documented numColumns
+  fix; fine while the catalog is small.)
+- **AsyncStorage**: `device-local.ts` generic `read<T>` + `player-context` readers all try/catch
+  + type-validate → corrupt storage degrades to defaults, never throws. Exemplary.
+- **Native call sites guarded**: onboarding (location/magnetometer), location-picker,
+  battery-optimization, downloads, foreground-adhan, player load — all try/catch or `.catch`.
+- **No debug residue**: zero `console.*` / TODO / FIXME / hardcoded test URLs in app code (only
+  the intentional `lib/api.ts:4` localhost fallback). The "Test adhan (1 min)" button is a
+  deliberate user-facing verify feature, not dev-only.
+- **Config correct**: `app.json` package `com.nour.mobile`, version `1.0.0`, versionCode `6`,
+  newArch, scheme `nour`, EAS Update (`runtimeVersion:appVersion` + `updates.url`), all assets
+  present. `eas.json` production builds an **AAB** on `production` channel + valid submit block.
+  `.easignore` excludes web audio/admin/docs. RNTP pins to exactly `4.1.2` (patch applies).
+
+**Fixes applied this pass:**
+- **Root `ErrorBoundary`** exported from `app/_layout.tsx` — expo-router auto-mounts it, so any
+  render throw becomes a themed recoverable retry screen (`common.error`/`common.retry`) instead
+  of a native white-screen on release. This is the systemic net for the locale-deref class below.
+- **Embedded-locale `?? .ar ?? .en` fallbacks** propagated to the `obj[locale]` derefs the author
+  hadn't guarded (the schema makes `ar`/`en` REQUIRED, so the fallback is the proven-green idiom
+  from `playlist-card.tsx:27`, typechecks clean): `app/index.tsx` categories (`flatMap` drops
+  malformed rows), `app/playlist/[slug].tsx` (category chips + `queueTracks` + `downloadAll` +
+  header `display` + the 3 track-row `title` sites), `app/adhkar/index.tsx` (renderItem returns
+  null if absent), `app/adhkar/[slug].tsx`. Prod data is currently clean so these never fired, but
+  they're now consistent + non-fatal. `noUncheckedIndexedAccess` does NOT catch `obj[locale]`
+  (keyed union access is typed as always-defined) — this is a runtime-only guard.
+- **`runTestAdhan` try/catch** (`app/prayer-times/index.tsx`) — the documented latent silent
+  reject (native module absent / `ReactContextLost`) now surfaces an error Alert (was the user's
+  original "nothing happened").
+- **`.gitignore`** now ignores `google-play-key.json` / `*google-play*.json` — the runbook places
+  the Play service-account key there (referenced by `eas.json` submit) but it wasn't ignored.
+
+**Pre-build checks the audit flagged (NOT code — do before `eas build --profile production`):**
+1. `eas env:list --environment production` MUST show
+   `EXPO_PUBLIC_API_BASE_URL=https://nour-platform-web.vercel.app` — else the AAB bakes
+   `localhost` → blank app. (The `production` build profile has no explicit `environment` key and
+   no inline var; it relies on default env resolution. Adding `"environment":"production"` to
+   `build.production` in `eas.json` would make it explicit — a safe nice-to-have.)
+2. **Play Console**: declare the restricted permissions (`USE_EXACT_ALARM`,
+   `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`) as prayer/alarm justification + fill the Data-safety
+   form (collects **location** + schedules **local notifications**; no accounts/analytics/ads,
+   all state device-local). Privacy policy: `https://nour-platform-web.vercel.app/privacy` (200).
+
+**Recommended perf fast-follow (NOT done — safe, post-launch):** `useProgress(250)` (player-context
+`:321`) ticks `progress.position`/`.duration` into the context `value` memo (`:677-678,:708-709`),
+rebuilding the whole context object 4×/sec during playback. `useDockSpacing()` subscribes the
+whole ticking value but only needs `hasQueue`, so Home + every list screen re-render 4×/sec while
+audio plays — the most probable mid-range-Android scroll-jank source. Fix: split progress into its
+own `PlayerProgressContext` consumed only by `mini-player.tsx` + `app/player.tsx` (or have those
+two call `useProgress()` directly and drop position/duration from the main memo). Also: no
+`React.memo` anywhere — wrapping `AyahRow`/`PlaylistCard` is cheap insurance (but on Home,
+`app/index.tsx` passes a fresh `categories` array per render, so memoize the per-card lookup too).
+
 ## Verify before shipping
 
 ```bash
