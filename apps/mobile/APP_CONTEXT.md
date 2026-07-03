@@ -914,6 +914,29 @@ two call `useProgress()` directly and drop position/duration from the main memo)
 `React.memo` anywhere — wrapping `AyahRow`/`PlaylistCard` is cheap insurance (but on Home,
 `app/index.tsx` passes a fresh `categories` array per render, so memoize the per-card lookup too).
 
+## iOS release readiness (2026-07-03)
+
+**iOS is NOT production-ready** (Android is GO). The app is cross-platform + iOS-*aware*, but
+has **never been built, never run on a simulator/device, and there is no Apple Developer
+account** — a separate mini-project gated on account + build + device QA, not missing code.
+
+- **In place** (verified): `app.json` `ios` = `bundleIdentifier com.nour.mobile`,
+  `UIBackgroundModes:["audio"]`, `supportsTablet`, `critical-alerts` entitlement; icon is
+  flattened opaque RGB (App Store rejects alpha). `eas.json` = `build.production.ios`
+  distribution `store`, `build.preview.ios` simulator, `submit.production.ios` reading
+  `APPLE_ID`/`APPLE_TEAM_ID` env. Critical Alerts code degrades gracefully until Apple grants
+  the entitlement (see "iOS adhan — Critical Alerts").
+- **Gaps before a build**: no `ios.buildNumber`; `APPLE_ID`/`APPLE_TEAM_ID`/`ascAppId` unset;
+  no `ITSAppUsesNonExemptEncryption:false` (export compliance); `EXPO_PUBLIC_API_BASE_URL` must
+  be in the EAS `production` env. Blockers: **$99/yr Apple account**, first build, on-device
+  verification, and the non-self-service Critical Alerts entitlement request.
+- **iOS functional reality**: closed-app adhan is weaker by design — no
+  `AlarmManager`/foreground-service (the native `modules/nour-adhan/` is Android-only); iOS =
+  ≤30s notification clip closed-app, full adhan only foreground via `use-foreground-adhan.ts`.
+- **Full step-by-step iOS runbook** (enroll → ASC record → credentials → simulator smoke →
+  export-compliance → Critical Alerts request → production build/TestFlight → App Store review):
+  see `apps/mobile/publish_play_store.md` → "Publish Nour Mobile to the Apple App Store (iOS)".
+
 ## Verify before shipping
 
 ```bash
