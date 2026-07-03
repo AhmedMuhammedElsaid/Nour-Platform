@@ -10,7 +10,7 @@
 // SVG filters, so the same <Filter><FeGaussianBlur/> the web uses works here).
 
 import { useEffect } from "react";
-import { View } from "react-native";
+import { StyleSheet, Text as RNText, View } from "react-native";
 import Animated, {
   cancelAnimation,
   Easing,
@@ -31,7 +31,6 @@ import Svg, {
   Path,
   RadialGradient,
   Stop,
-  Text as SvgText,
 } from "react-native-svg";
 
 import { ARC, arcPath, arcPoint, tForFraction } from "@repo/shared-core/prayer-times/sun-arc";
@@ -129,11 +128,11 @@ export function SunArc({
   const coronaProps = useAnimatedProps(() => ({ opacity: coronaOpacity.value }));
 
   return (
-    <View>
+    <View style={{ width: "100%", aspectRatio: ARC.w / ARC.h }}>
       <Svg
         viewBox={`0 0 ${ARC.w} ${ARC.h}`}
         width="100%"
-        style={{ aspectRatio: ARC.w / ARC.h }}
+        height="100%"
         accessibilityLabel="Sun and moon arc prayer times visualization"
       >
         <Defs>
@@ -215,35 +214,6 @@ export function SunArc({
           return <Circle key={dot.key} cx={pt.x} cy={pt.y} r={3.5} fill={MUTED} opacity={0.7} />;
         })}
 
-        {/* prayer name labels above each dot (full-screen arc only). Neighbouring
-            dots (Fajr/Sunrise on the left, Maghrib/Isha on the right) sit close, so
-            labels alternate between two heights to avoid overlap; the end labels are
-            edge-anchored so they never spill past the viewBox. */}
-        {showLabels &&
-          dots.map((dot, i) => {
-            if (!dot.label) return null;
-            const pt = arcPoint(tForFraction(dot.fraction));
-            const stagger = i % 2 === 0 ? 12 : 26;
-            // Lift the "next" label clear of its larger glow ring.
-            const labelY = pt.y - (dot.isNext ? Math.max(stagger, 30) : stagger);
-            const anchor =
-              dot.fraction <= 0.1 ? "start" : dot.fraction >= 0.9 ? "end" : "middle";
-            return (
-              <SvgText
-                key={`label-${dot.key}`}
-                testID={`arc-label-${dot.key}`}
-                x={pt.x}
-                y={labelY}
-                textAnchor={anchor}
-                fontSize={15}
-                fontWeight={dot.isNext ? "700" : "400"}
-                fill={dot.isNext ? SUN : MUTED}
-              >
-                {dot.label}
-              </SvgText>
-            );
-          })}
-
         {/* current body: glowing crescent moon at night, rayed sun by day */}
         {isNight ? (
           <>
@@ -293,6 +263,53 @@ export function SunArc({
           </>
         )}
       </Svg>
+
+      {/* Prayer-name labels — rendered as REAL React Native <Text>, NOT the <Text>
+          from react-native-svg. RN-SVG text does not shape/join Arabic glyphs, so
+          Arabic names render disconnected (isolated letters) on device; plain RN
+          Text shapes them correctly. The overlay box exactly covers the Svg (same
+          aspect ratio, no letterboxing), so each dot's viewBox point maps linearly
+          to a percentage offset. Physical left/translate keeps the arc's
+          sunrise-left→sunset-right geometry even under RTL. pointerEvents="none" so
+          taps still reach the Pressable arc behind it. */}
+      {showLabels && (
+        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+          {dots.map((dot, i) => {
+            if (!dot.label) return null;
+            const pt = arcPoint(tForFraction(dot.fraction));
+            // Alternate the lift so neighbouring labels (Fajr/Sunrise on the left,
+            // Maghrib/Isha on the right) don't collide; lift the glowing "next"
+            // label clear of its larger ring.
+            const stagger = i % 2 === 0 ? 10 : 22;
+            const lift = dot.isNext ? Math.max(stagger, 26) : stagger;
+            const leftPct = (pt.x / ARC.w) * 100;
+            const topPct = ((pt.y - lift) / ARC.h) * 100;
+            // End labels anchor inward so they never spill past the arc edges;
+            // interior labels centre on their dot. translateY -100% seats the text
+            // bottom on the lift point (so it sits above the dot).
+            const tx =
+              dot.fraction <= 0.1 ? "0%" : dot.fraction >= 0.9 ? "-100%" : "-50%";
+            return (
+              <RNText
+                key={`label-${dot.key}`}
+                testID={`arc-label-${dot.key}`}
+                numberOfLines={1}
+                style={{
+                  position: "absolute",
+                  left: `${leftPct}%`,
+                  top: `${topPct}%`,
+                  transform: [{ translateX: tx }, { translateY: "-100%" }],
+                  fontSize: 11,
+                  fontWeight: dot.isNext ? "700" : "400",
+                  color: dot.isNext ? SUN : MUTED,
+                }}
+              >
+                {dot.label}
+              </RNText>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }

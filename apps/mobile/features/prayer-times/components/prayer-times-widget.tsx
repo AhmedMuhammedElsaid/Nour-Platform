@@ -102,7 +102,7 @@ export function PrayerTimesWidget() {
         : computePrayerTimes({ ...arcInput, date }),
     now,
   );
-  const dots = buildArcDots(day, upcoming.key);
+  const dots = buildArcDots(day, upcoming.key, (k) => t(`prayer.${k}`));
   const countdown = formatCountdownClock(
     Math.max(0, upcoming.time.getTime() - now.getTime()),
     locale,
@@ -128,7 +128,7 @@ export function PrayerTimesWidget() {
 
       {/* full-bleed arc */}
       <View className="mt-1">
-        <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} onNightBand={arc.onNightBand} theme={theme} />
+        <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} onNightBand={arc.onNightBand} theme={theme} showLabels />
       </View>
 
       {/* next-prayer countdown — one horizontal row mirroring the web
