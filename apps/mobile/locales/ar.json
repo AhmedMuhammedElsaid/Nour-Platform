@@ -214,6 +214,7 @@
   },
   "qibla": {
     "title": "اتجاه القبلة",
+    "homeCardSubtitle": "اعرف اتجاه الكعبة",
     "changeCity": "تغيير المدينة",
     "bearing": "{{degrees}}° · {{direction}}",
     "distanceKm": "{{km}} كم إلى الكعبة",

@@ -15,6 +15,7 @@ import { ContinueListening } from "@/features/home/components/continue-listening
 import { ContinueReading } from "@/features/home/components/continue-reading";
 import { RecitersShelf } from "@/features/home/components/reciters-shelf";
 import { RadioHomeCard } from "@/features/radio/components/radio-home-card";
+import { QiblaHomeCard } from "@/features/qibla/components/qibla-home-card";
 import { SortSelect, type SortOption } from "@/features/home/components/sort-select";
 import { PlaylistCard } from "@/features/playlists/components/playlist-card";
 import { PrayerTimesWidget } from "@/features/prayer-times/components/prayer-times-widget";
@@ -108,11 +109,15 @@ export default function HomeScreen() {
         onSelect={setActiveCategory}
         allLabel={t("home.allCategories")}
       />
+    </View>
+  );
 
-      <View className="flex-row items-center justify-between gap-4">
-        <Text variant="label">{t("home.library")}</Text>
-        <SortSelect value={sort} onChange={setSort} />
-      </View>
+  // The library heading + sort row, pulled out of `header` so the Readers shelf
+  // can sit above the whole Library section (label + grid), per user request.
+  const libraryBar = (
+    <View className="mt-6 mb-4 flex-row items-center justify-between gap-4">
+      <Text variant="label">{t("home.library")}</Text>
+      <SortSelect value={sort} onChange={setSort} />
     </View>
   );
 
@@ -157,6 +162,9 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {header}
+        {/* Readers shelf sits above the Library section (user request). */}
+        <RecitersShelf />
+        {libraryBar}
         {visible.length === 0 ? (
           <Text variant="muted">{t("home.empty")}</Text>
         ) : (
@@ -175,7 +183,7 @@ export default function HomeScreen() {
           </View>
         )}
         <View className="mt-3">
-          <RecitersShelf />
+          <QiblaHomeCard />
           <RadioHomeCard />
           <ContinueListening />
           <ContinueReading />

@@ -214,6 +214,7 @@
   },
   "qibla": {
     "title": "Qibla Direction",
+    "homeCardSubtitle": "Find the direction of the Kaaba",
     "changeCity": "Change city",
     "bearing": "{{degrees}}° · {{direction}}",
     "distanceKm": "{{km}} km to the Kaaba",
