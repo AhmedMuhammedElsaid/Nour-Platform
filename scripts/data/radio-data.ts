@@ -54,18 +54,26 @@ export const RADIO_STATIONS: RadioStationSeed[] = [
     isFeatured: true,
   },
   {
+    // The authentic 24/7 Grand Mosque broadcast is radiojar HTTP-only (same wall
+    // the Cairo entry hit — unusable over HTTPS/CSP). The previous mixlr channel
+    // (edge.mixlr.com/channel/rwumx) was actually a personal reciter channel
+    // (Islam Sobhy) that dropped offline, so it read as "not working". Replaced
+    // 2026-07-03 with the recitations of Sheikh Abdul Rahman Al-Sudais — chief
+    // imam of the Grand Mosque, so the station stays genuinely Haram-associated —
+    // over a reliable 24/7 HTTPS mount (qurango; verified 4/4 end-to-end https,
+    // audio/mpeg).
     slug: "haram-makki",
     ar: {
-      name: "إذاعة القرآن الكريم – الحرم المكي",
-      description: "بث مباشر لتلاوات القرآن الكريم من المسجد الحرام بمكة المكرمة.",
+      name: "إذاعة الحرم المكي – الشيخ السديس",
+      description: "تلاوات الشيخ عبد الرحمن السديس، إمام المسجد الحرام، على مدار الساعة.",
     },
     en: {
-      name: "Holy Quran Radio – Makkah Grand Mosque",
-      description: "Live Quran recitations from the Grand Mosque in Makkah.",
+      name: "Makkah Haram Radio – Sheikh Al-Sudais",
+      description: "Recitations by Sheikh Abdul Rahman Al-Sudais, Imam of the Grand Mosque, 24/7.",
     },
     country: "SA",
     city: "Makkah",
-    streamUrl: "https://edge.mixlr.com/channel/rwumx",
+    streamUrl: "https://backup.qurango.net/radio/abdulrahman_alsudaes",
     streamType: "mp3",
     language: "ar",
     category: "quran",
@@ -155,6 +163,25 @@ export const RADIO_STATIONS: RadioStationSeed[] = [
     },
     country: "EG",
     streamUrl: "https://backup.qurango.net/radio/mahmoud_ali__albanna",
+    streamType: "mp3",
+    language: "ar",
+    category: "quran",
+    isFeatured: false,
+  },
+  {
+    // A rotating mix of leading reciters — one reliable 24/7 HTTPS stream
+    // (qurango `mix` mount; verified 4/4 end-to-end https, audio/mpeg).
+    slug: "quran-mix",
+    ar: {
+      name: "إذاعة تلاوات منوّعة",
+      description: "باقة من تلاوات كبار القرّاء تتنوّع على مدار الساعة.",
+    },
+    en: {
+      name: "Assorted Recitations Radio",
+      description: "A rotating selection of leading reciters, 24/7.",
+    },
+    country: "SA",
+    streamUrl: "https://backup.qurango.net/radio/mix",
     streamType: "mp3",
     language: "ar",
     category: "quran",

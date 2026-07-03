@@ -19,14 +19,14 @@ export function buildWebCsp(nonce: string, r2Hostname: string): string {
   const RECITER_ORIGINS = "https://everyayah.com";
   // Live radio stream hosts (radio feature), for both the <audio> fetch
   // (media-src) and the SW/redirect (connect-src):
-  //   *.qurango.net  — Egyptian reciter Quran radios (mp3quran)
-  //   *.mixlr.com    — Makkah Grand Mosque Quran radio (edge.mixlr.com)
+  //   *.qurango.net  — Quran reciter radios incl. the Haram (Al-Sudais) & mix (mp3quran)
   //   *.radioca.st   — As-Sunnah An-Nabawiyyah radio
   //   *.zeno.fm      — reserved for an authentic Cairo stream via RADIO_CAIRO_STREAM_URL
-  // NOTE: radiojar was dropped — it only serves http:// edges, so it can never
-  // satisfy an https media-src. Add further station stream hosts here as seeded.
+  // NOTE: radiojar (http-only edges) and mixlr (dropped 2026-07-03 when the Haram
+  // station moved to an HTTPS qurango mount) are intentionally absent. Add further
+  // station stream hosts here as seeded.
   const RADIO_ORIGINS =
-    "https://*.qurango.net https://*.mixlr.com https://*.radioca.st https://*.zeno.fm";
+    "https://*.qurango.net https://*.radioca.st https://*.zeno.fm";
   return [
     "default-src 'self'",
     // 'strict-dynamic' lets the nonce-trusted root script load further
