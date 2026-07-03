@@ -17,7 +17,7 @@ import {
 } from "@/components/icons/player-icons";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
-import { usePlayer } from "@/lib/player-context";
+import { usePlayer, usePlayerProgress } from "@/lib/player-context";
 import { useTheme } from "@/lib/theme-context";
 
 export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
@@ -32,8 +32,6 @@ export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
     isPlaying,
     isBuffering,
     errorMessage,
-    currentTime,
-    duration,
     repeatMode,
     isShuffled,
     toggle,
@@ -43,6 +41,7 @@ export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
     cycleRepeat,
     toggleShuffle,
   } = usePlayer();
+  const { currentTime, duration } = usePlayerProgress();
 
   if (!hasQueue || !currentTrack) return null;
 

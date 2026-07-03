@@ -27,7 +27,7 @@ import { Cover } from "@/features/playlists/components/cover";
 import { Slider } from "@/components/ui/slider";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
-import { PLAYBACK_RATES, usePlayer } from "@/lib/player-context";
+import { PLAYBACK_RATES, usePlayer, usePlayerProgress } from "@/lib/player-context";
 import { useTheme } from "@/lib/theme-context";
 
 function formatTime(secs: number): string {
@@ -55,8 +55,6 @@ export default function PlayerScreen() {
     isPlaying,
     isBuffering,
     errorMessage,
-    currentTime,
-    duration,
     repeatMode,
     isShuffled,
     playbackRate,
@@ -74,6 +72,7 @@ export default function PlayerScreen() {
     sleepAtTrackEnd,
     setSleepTimer,
   } = usePlayer();
+  const { currentTime, duration } = usePlayerProgress();
 
   // Live remaining-time readout while a timed sleep timer runs.
   const [now, setNow] = useState(() => Date.now());

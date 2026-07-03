@@ -45,8 +45,6 @@ export type PlayerContextValue = {
   isPlaying: boolean;
   isBuffering: boolean;
   errorMessage: string | null;
-  currentTime: number;
-  duration: number;
   hasQueue: boolean;
   currentTrack: QueueTrack | null;
   repeatMode: RepeatMode;
@@ -77,6 +75,24 @@ export function usePlayer(): PlayerContextValue {
   const ctx = React.useContext(PlayerContext);
   if (!ctx) throw new Error("usePlayer must be used within a PlayerProvider");
   return ctx;
+}
+
+// Live playback position/duration tick ~4×/sec (useProgress). They are kept in a
+// SEPARATE context so the ~4Hz updates only re-render the two components that show
+// a progress/seek bar (mini-player + full player). Consumers that read the main
+// `usePlayer()` value (useDockSpacing → Home + every list screen, all kept mounted
+// by expo-router) must NOT subscribe to this tick, or the whole tree re-renders
+// 4×/sec during playback and the JS thread starves — nav + play/stop go laggy,
+// most visibly on an infinite live-radio stream.
+export type PlayerProgressValue = { currentTime: number; duration: number };
+
+const PlayerProgressContext = React.createContext<PlayerProgressValue>({
+  currentTime: 0,
+  duration: 0,
+});
+
+export function usePlayerProgress(): PlayerProgressValue {
+  return React.useContext(PlayerProgressContext);
 }
 
 // ---------------------------------------------------------------------------
@@ -674,8 +690,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       isPlaying,
       isBuffering,
       errorMessage,
-      currentTime: progress.position,
-      duration: progress.duration,
       hasQueue,
       currentTrack,
       repeatMode: repeatModeState,
@@ -705,8 +719,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       isPlaying,
       isBuffering,
       errorMessage,
-      progress.position,
-      progress.duration,
       hasQueue,
       currentTrack,
       repeatModeState,
@@ -732,7 +744,17 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     ],
   );
 
+  // Isolated fast-ticking value — only mini-player + full player subscribe.
+  const progressValue = React.useMemo<PlayerProgressValue>(
+    () => ({ currentTime: progress.position, duration: progress.duration }),
+    [progress.position, progress.duration],
+  );
+
   return (
-    <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>
+    <PlayerContext.Provider value={value}>
+      <PlayerProgressContext.Provider value={progressValue}>
+        {children}
+      </PlayerProgressContext.Provider>
+    </PlayerContext.Provider>
   );
 }
