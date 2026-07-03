@@ -132,6 +132,8 @@ jest.mock("expo-intent-launcher", () => ({
 jest.mock("expo-location", () => ({
   requestForegroundPermissionsAsync: jest.fn().mockResolvedValue({ status: "granted" }),
   getCurrentPositionAsync: jest.fn().mockResolvedValue({ coords: { latitude: 30.0444, longitude: 31.2357 } }),
+  // Compass heading provider (Qibla). No-op subscription so focus setup/teardown is safe.
+  watchHeadingAsync: jest.fn().mockResolvedValue({ remove: jest.fn() }),
   Accuracy: { Balanced: 3 },
 }));
 
