@@ -59,6 +59,18 @@ describe("GET /api/v1/radio/[slug]/now-playing", () => {
     expect((await res.json()).title).toBe("Surah Al-Mulk");
   });
 
+  it("decodes a percent/form-encoded StreamTitle (e.g. mixlr) to readable text", async () => {
+    vi.mocked(getStationBySlug).mockResolvedValueOnce(baseStation);
+    // "سورة القمر إسلام صبحي" emitted form-urlencoded, as mixlr does.
+    const encoded =
+      "%D8%B3%D9%88%D8%B1%D8%A9+%D8%A7%D9%84%D9%82%D9%85%D8%B1+%D8%A5%D8%B3%D9%84%D8%A7%D9%85+%D8%B5%D8%A8%D8%AD%D9%8A";
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(icyStream(16, encoded), { headers: { "icy-metaint": "16" } }),
+    );
+    const res = await GET(req(), ctx("quran-cairo"));
+    expect((await res.json()).title).toBe("سورة القمر إسلام صبحي");
+  });
+
   it("returns { title: null } when the stream emits no icy-metaint header", async () => {
     vi.mocked(getStationBySlug).mockResolvedValueOnce(baseStation);
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response(new Uint8Array([1, 2, 3])));

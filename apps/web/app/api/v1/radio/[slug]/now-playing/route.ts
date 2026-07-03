@@ -52,11 +52,27 @@ export async function GET(
 
 // Never throws — any failure resolves to null so the client shows "Live broadcast".
 async function resolveNowPlaying(station: RadioStation): Promise<string | null> {
+  let raw: string | null = null;
   if (station.nowPlayingUrl) {
-    const fromJson = await fetchNowPlayingJson(station.nowPlayingUrl);
-    if (fromJson) return fromJson;
+    raw = await fetchNowPlayingJson(station.nowPlayingUrl);
   }
-  return fetchIcyStreamTitle(station.streamUrl);
+  raw ??= await fetchIcyStreamTitle(station.streamUrl);
+  return raw ? decodeStreamTitle(raw) : null;
+}
+
+// Some providers (e.g. mixlr) emit the title percent/form-encoded — the ICY
+// StreamTitle arrives as `%D8%B3%D9%88...+...` and would otherwise render as raw
+// "%D8%…" bytes in the UI. Decode defensively: only touch strings that actually
+// carry a percent-escape (so ordinary titles pass through untouched), treat `+`
+// as space per form-urlencoding, and fall back to the original if decoding throws.
+function decodeStreamTitle(raw: string): string {
+  if (!/%[0-9A-Fa-f]{2}/.test(raw)) return raw;
+  try {
+    const decoded = decodeURIComponent(raw.replace(/\+/g, " ")).trim();
+    return decoded.length > 0 ? decoded : raw;
+  } catch {
+    return raw;
+  }
 }
 
 // Reads a station-provided JSON metadata endpoint and pulls out a title-ish
