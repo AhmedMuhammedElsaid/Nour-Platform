@@ -1,7 +1,9 @@
 // Day-fraction (Fajr→Isha) position for each prayer instant, used to place the
 // dots along the arc. Mirrors `buildArcDots` in
-// apps/web/features/prayer-times/components/prayer-times-widget.tsx — mobile
-// drops the localized label (names live in the countdown/timetable below the arc).
+// apps/web/features/prayer-times/components/prayer-times-widget.tsx. The localized
+// `label` is optional: the full prayer-times screen passes a resolver so SunArc can
+// draw names on the dots (showLabels), while the small Home widget omits it (names
+// live in the labeled row below the widget's arc).
 
 import type {
   PrayerDay,
@@ -13,9 +15,14 @@ export type ArcDot = {
   key: PrayerKey;
   fraction: number; // 0..1 along the Fajr→Isha day
   isNext: boolean;
+  label?: string; // localized prayer name, only when a labelFor resolver is given
 };
 
-export function buildArcDots(day: PrayerDay, nextKey: PrayerKey | null): ArcDot[] {
+export function buildArcDots(
+  day: PrayerDay,
+  nextKey: PrayerKey | null,
+  labelFor?: (key: PrayerKey) => string,
+): ArcDot[] {
   const fajr = day.instants.find((i) => i.key === "fajr")?.time ?? null;
   const isha = day.instants.find((i) => i.key === "isha")?.time ?? null;
   const span =
@@ -31,5 +38,6 @@ export function buildArcDots(day: PrayerDay, nextKey: PrayerKey | null): ArcDot[
           ? Math.min(1, Math.max(0, (i.time.getTime() - fajr.getTime()) / span))
           : 0.5,
       isNext: i.key === nextKey,
+      ...(labelFor ? { label: labelFor(i.key) } : {}),
     }));
 }

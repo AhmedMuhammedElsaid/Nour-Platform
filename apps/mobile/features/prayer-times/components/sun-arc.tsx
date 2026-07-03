@@ -31,6 +31,7 @@ import Svg, {
   Path,
   RadialGradient,
   Stop,
+  Text as SvgText,
 } from "react-native-svg";
 
 import { ARC, arcPath, arcPoint, tForFraction } from "@repo/shared-core/prayer-times/sun-arc";
@@ -87,6 +88,10 @@ type SunArcProps = {
   onNightBand?: boolean;
   // Active theme — selects the light/dark hex palette (SVG can't read NativeWind).
   theme?: ThemeMode;
+  // Draw the localized prayer name above each dot (dots must carry `label`). Only
+  // the full prayer-times screen enables this — the small Home widget's arc is too
+  // cramped and already has a labeled row below it.
+  showLabels?: boolean;
 };
 
 export function SunArc({
@@ -95,6 +100,7 @@ export function SunArc({
   isNight = false,
   onNightBand = isNight,
   theme = "dark",
+  showLabels = false,
 }: SunArcProps) {
   const { gold: GOLD, sun: SUN, moon: MOON, muted: MUTED } = PALETTES[theme];
   const point = arcPoint(tForFraction(fraction));
@@ -208,6 +214,35 @@ export function SunArc({
           }
           return <Circle key={dot.key} cx={pt.x} cy={pt.y} r={3.5} fill={MUTED} opacity={0.7} />;
         })}
+
+        {/* prayer name labels above each dot (full-screen arc only). Neighbouring
+            dots (Fajr/Sunrise on the left, Maghrib/Isha on the right) sit close, so
+            labels alternate between two heights to avoid overlap; the end labels are
+            edge-anchored so they never spill past the viewBox. */}
+        {showLabels &&
+          dots.map((dot, i) => {
+            if (!dot.label) return null;
+            const pt = arcPoint(tForFraction(dot.fraction));
+            const stagger = i % 2 === 0 ? 12 : 26;
+            // Lift the "next" label clear of its larger glow ring.
+            const labelY = pt.y - (dot.isNext ? Math.max(stagger, 30) : stagger);
+            const anchor =
+              dot.fraction <= 0.1 ? "start" : dot.fraction >= 0.9 ? "end" : "middle";
+            return (
+              <SvgText
+                key={`label-${dot.key}`}
+                testID={`arc-label-${dot.key}`}
+                x={pt.x}
+                y={labelY}
+                textAnchor={anchor}
+                fontSize={15}
+                fontWeight={dot.isNext ? "700" : "400"}
+                fill={dot.isNext ? SUN : MUTED}
+              >
+                {dot.label}
+              </SvgText>
+            );
+          })}
 
         {/* current body: glowing crescent moon at night, rayed sun by day */}
         {isNight ? (

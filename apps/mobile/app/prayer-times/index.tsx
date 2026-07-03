@@ -165,7 +165,8 @@ export default function PrayerTimesScreen() {
           }),
     now,
   );
-  const dots = buildArcDots(day, upcoming.key);
+  // Pass a label resolver so the full-screen arc can name each dot (showLabels).
+  const dots = buildArcDots(day, upcoming.key, (key) => t(`prayer.${key}`));
 
   return (
     <>
@@ -189,19 +190,27 @@ export default function PrayerTimesScreen() {
           </Pressable>
         </View>
 
-        {/* Qibla entry — the compass shares this screen's stored location. */}
+        {/* Qibla entry — a prominent banner (the compass shares this screen's
+            stored location). Mirrors the Home Qibla/Radio cards. */}
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel={t("qibla.title")}
           onPress={() => router.push("/qibla")}
-          className="flex-row items-center justify-between rounded-lg border border-border bg-surface px-4 py-3"
+          className="flex-row items-center gap-4 rounded-xl border border-border bg-surface p-4"
         >
-          <Text variant="body">🕋 {t("qibla.title")}</Text>
-          <Text variant="muted" className="text-lg">›</Text>
+          <View className="size-12 items-center justify-center rounded-lg bg-primary/10">
+            <Text className="text-2xl">🕋</Text>
+          </View>
+          <View className="min-w-0 flex-1">
+            <Text variant="body" className="font-medium">{t("qibla.title")}</Text>
+            <Text variant="muted" numberOfLines={1}>{t("qibla.homeCardSubtitle")}</Text>
+          </View>
+          <Text variant="muted" className="text-xl">›</Text>
         </Pressable>
 
         {/* Sun/moon arc */}
         {hydrated && (
-          <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} onNightBand={arc.onNightBand} theme={theme} />
+          <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} onNightBand={arc.onNightBand} theme={theme} showLabels />
         )}
 
         {/* Countdown */}

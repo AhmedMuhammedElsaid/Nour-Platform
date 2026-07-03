@@ -41,3 +41,28 @@ describe("SunArc day/night marker", () => {
     expect(screen.getByTestId("prayer-sun")).toBeTruthy();
   });
 });
+
+describe("SunArc dot labels", () => {
+  const labelled: ArcDot[] = [
+    { key: "fajr", fraction: 0, isNext: false, label: "Fajr" },
+    { key: "dhuhr", fraction: 0.45, isNext: true, label: "Dhuhr" },
+    { key: "isha", fraction: 1, isNext: false, label: "Isha" },
+  ];
+
+  it("draws a label per dot only when showLabels is set", () => {
+    const { rerender } = render(<SunArc dots={labelled} fraction={0.5} />);
+    // Off by default (the small Home widget arc).
+    expect(screen.queryByTestId("arc-label-fajr")).toBeNull();
+
+    rerender(<SunArc dots={labelled} fraction={0.5} showLabels />);
+    expect(screen.getByTestId("arc-label-fajr")).toBeTruthy();
+    expect(screen.getByTestId("arc-label-dhuhr")).toBeTruthy();
+    expect(screen.getByTestId("arc-label-isha")).toBeTruthy();
+  });
+
+  it("skips dots that have no label even with showLabels", () => {
+    render(<SunArc dots={dots} fraction={0.5} showLabels />);
+    // The base `dots` set carries no `label`, so nothing is drawn.
+    expect(screen.queryByTestId("arc-label-fajr")).toBeNull();
+  });
+});
