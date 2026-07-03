@@ -220,6 +220,8 @@
     "distanceKm": "{{km}} km to the Kaaba",
     "facingQibla": "You are facing the Qibla",
     "calibrateHint": "Move your phone in a figure-8 to calibrate the compass.",
+    "calibrateTitle": "Calibrate for accuracy",
+    "calibrateDone": "Got it",
     "staticHint": "No compass on this device. Use the bearing above with a compass to face the Qibla.",
     "compass": {
       "n": "N",

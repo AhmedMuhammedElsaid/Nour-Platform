@@ -3,7 +3,7 @@
 // Reached from the prayer-times screen (router.push("/qibla")); the app has no
 // header chrome (Stack headerShown:false), so this screen draws its own back row.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -36,6 +36,16 @@ export default function QiblaScreen() {
   const { location, hydrated, setLocation } = usePrayerSettings();
   const { heading, available } = useMagnetometerHeading();
   const [showLocationPicker, setShowLocationPicker] = useState(false);
+  // Phone magnetometers read garbage until swept in a figure-8 — the usual cause of
+  // a wildly-wrong compass on first open (no code, native or JS, avoids this). Show a
+  // prominent calibration nudge when a live compass is present; auto-dismiss after a
+  // few seconds so it never lingers, and let the user close it early.
+  const [showCalibration, setShowCalibration] = useState(true);
+  useEffect(() => {
+    if (!available) return;
+    const id = setTimeout(() => setShowCalibration(false), 9000);
+    return () => clearTimeout(id);
+  }, [available]);
 
   const bearing = computeQiblaBearing(location);
   const cardinal = t(`qibla.compass.${qiblaCardinalKey(bearing)}`);
@@ -73,6 +83,28 @@ export default function QiblaScreen() {
             </Pressable>
           </View>
         </View>
+
+        {/* First-open calibration nudge — the fix for a wildly-wrong compass on
+            first use is a figure-8 sweep, not more code. */}
+        {available && showCalibration ? (
+          <View className="flex-row items-center gap-3 rounded-xl border border-primary/40 bg-primary/10 p-4">
+            <Text className="text-2xl">🧭</Text>
+            <View className="min-w-0 flex-1">
+              <Text variant="body" className="font-medium text-primary">
+                {t("qibla.calibrateTitle")}
+              </Text>
+              <Text variant="muted" className="text-xs">{t("qibla.calibrateHint")}</Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("qibla.calibrateDone")}
+              onPress={() => setShowCalibration(false)}
+              className="rounded-md border border-primary/40 px-3 py-1.5"
+            >
+              <Text variant="body" className="text-xs text-primary">{t("qibla.calibrateDone")}</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         {/* Compass */}
         <View className="rounded-xl border border-border bg-surface p-6">
