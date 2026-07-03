@@ -32,11 +32,12 @@ async function main(): Promise<void> {
   await getDb();
   try {
     for (const r of RECITERS) {
-      const set: Record<string, string> = {
+      const set: Record<string, string | number> = {
         slug: r.slug,
         name: r.name,
         arabicName: r.arabicName,
         audioBase: r.audioBase,
+        order: r.order,
       };
       if (r.image) set.image = r.image;
 

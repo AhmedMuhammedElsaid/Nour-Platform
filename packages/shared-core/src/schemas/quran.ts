@@ -67,6 +67,7 @@ export const quranReciterSchema = z.object({
   arabicName: z.string().optional(), // Arabic display name, e.g. "مشاري العفاسي"
   image: z.string().optional(), // static /public path (e.g. "/reciters/alafasy.png") or absolute URL; falls back to a gradient+initials avatar
   style: z.string().optional(),
+  order: z.number().int().optional(), // display order on the "Readers" shelf (ascending; falls back to name sort)
   audioBase: z.string().url(), // e.g. "https://everyayah.com/data/Alafasy_128kbps/"
 });
 export type QuranReciter = z.infer<typeof quranReciterSchema>;

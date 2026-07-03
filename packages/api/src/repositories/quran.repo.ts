@@ -62,7 +62,9 @@ export async function findEditionBySlug(
 
 export async function findReciters(): Promise<QuranReciterDoc[]> {
   await getDb();
-  return QuranReciterModel.find({}).sort({ name: 1 }).lean<QuranReciterDoc[]>();
+  // `order` is the curated shelf order (see scripts/reciter-catalogue.ts); name
+  // is the tiebreaker for any reciter that predates the field / has no order.
+  return QuranReciterModel.find({}).sort({ order: 1, name: 1 }).lean<QuranReciterDoc[]>();
 }
 
 export async function findReciterBySlug(

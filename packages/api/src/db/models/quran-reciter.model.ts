@@ -7,6 +7,7 @@ const quranReciterSchema = new Schema(
     arabicName: { type: String },
     image: { type: String },
     style: { type: String },
+    order: { type: Number },
     audioBase: { type: String, required: true },
   },
   { collection: "quranReciters" },

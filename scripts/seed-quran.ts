@@ -242,6 +242,7 @@ async function seedReciter(): Promise<void> {
           name: r.name,
           arabicName: r.arabicName,
           audioBase: r.audioBase,
+          order: r.order,
           ...(r.image ? { image: r.image } : {}),
         },
       },

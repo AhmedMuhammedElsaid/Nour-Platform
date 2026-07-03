@@ -84,6 +84,7 @@ function reciterToDto(doc: QuranReciterDoc): QuranReciter {
     ...(doc.arabicName ? { arabicName: doc.arabicName } : {}),
     ...(doc.image ? { image: doc.image } : {}),
     ...(doc.style ? { style: doc.style } : {}),
+    ...(typeof doc.order === "number" ? { order: doc.order } : {}),
     audioBase: doc.audioBase,
   };
 }
