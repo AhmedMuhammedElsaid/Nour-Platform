@@ -273,7 +273,14 @@ export function SunArc({
           sunrise-left→sunset-right geometry even under RTL. pointerEvents="none" so
           taps still reach the Pressable arc behind it. */}
       {showLabels && (
-        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        // direction:"ltr" is REQUIRED: under I18nManager.forceRTL (Arabic) Yoga
+        // mirrors absolute `left`/`transform` (left% is measured from the right
+        // edge), which flipped every label to the wrong side while the SVG's
+        // internal viewBox coords stayed put — Fajr's label landed on the right,
+        // over Isha's dot. Forcing this overlay to LTR keeps `left`/translateX
+        // physical so labels sit over their real dots. Arabic glyphs inside each
+        // <Text> still shape RTL correctly (bidi is per-text, not the box).
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { direction: "ltr" }]}>
           {dots.map((dot, i) => {
             if (!dot.label) return null;
             const pt = arcPoint(tForFraction(dot.fraction));
@@ -299,7 +306,7 @@ export function SunArc({
                   left: `${leftPct}%`,
                   top: `${topPct}%`,
                   transform: [{ translateX: tx }, { translateY: "-100%" }],
-                  fontSize: 11,
+                  fontSize: dot.isNext ? 13 : 11,
                   fontWeight: dot.isNext ? "700" : "400",
                   color: dot.isNext ? SUN : MUTED,
                 }}
