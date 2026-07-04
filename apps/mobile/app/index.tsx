@@ -66,8 +66,7 @@ export default function HomeScreen() {
     // grid — "newest" only escaped because it doesn't read [locale] here and the
     // FlatList virtualizes the offending card off-screen. (Matching fallback in
     // PlaylistCard so the card itself can't crash either.)
-    const titleOf = (p: Playlist): string =>
-      p[locale]?.title ?? p.ar?.title ?? p.en?.title ?? "";
+    const titleOf = (p: Playlist): string => p[locale]?.title ?? p.ar?.title ?? p.en?.title ?? "";
     let list = playlists.data ?? [];
     if (activeCategory != null) list = list.filter((p) => p.categoryIds.includes(activeCategory));
     const sorted = [...list];
@@ -83,7 +82,9 @@ export default function HomeScreen() {
     <View className="gap-6 pb-4">
       {/* Top bar: theme toggle + locale switcher */}
       <View className="flex-row items-center justify-between">
-        <Text variant="display" className="text-xl">{t("common.appName")}</Text>
+        <Text variant="display" className="text-xl">
+          {t("common.appName")}
+        </Text>
         <View className="flex-row items-center gap-2">
           <LocaleSwitcher />
           <ThemeToggle />
@@ -115,7 +116,7 @@ export default function HomeScreen() {
   // The library heading + sort row, pulled out of `header` so the Readers shelf
   // can sit above the whole Library section (label + grid), per user request.
   const libraryBar = (
-    <View className="mt-6 mb-4 flex-row items-center justify-between gap-4">
+    <View className="mb-4 mt-6 flex-row items-center justify-between gap-4">
       <Text variant="label">{t("home.library")}</Text>
       <SortSelect value={sort} onChange={setSort} />
     </View>
@@ -123,7 +124,7 @@ export default function HomeScreen() {
 
   if (playlists.isPending) {
     return (
-      <View className="flex-1 bg-bg px-4" style={{ paddingTop: topPad }}>
+      <View className="bg-bg flex-1 px-4" style={{ paddingTop: topPad }}>
         {header}
         <View className="flex-row flex-wrap gap-3">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -139,15 +140,19 @@ export default function HomeScreen() {
 
   if (playlists.isError) {
     return (
-      <View className="flex-1 items-center justify-center gap-3 bg-bg px-4">
+      <View className="bg-bg flex-1 items-center justify-center gap-3 px-4">
         <Text className="text-danger">{t("common.error")}</Text>
-        <Button label={t("common.retry")} variant="outline" onPress={() => void playlists.refetch()} />
+        <Button
+          label={t("common.retry")}
+          variant="outline"
+          onPress={() => void playlists.refetch()}
+        />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-bg">
+    <View className="bg-bg flex-1">
       {/* A ScrollView + flex-wrap grid (the same deterministic layout the loading
           skeleton uses), NOT a numColumns FlatList. FlatList computed its
           multi-column cell positions once on mount while the header was still
@@ -164,6 +169,10 @@ export default function HomeScreen() {
         {header}
         {/* Readers shelf sits above the Library section (user request). */}
         <RecitersShelf />
+        <View className="mt-3">
+          <QiblaHomeCard />
+          <RadioHomeCard />
+        </View>
         {libraryBar}
         {visible.length === 0 ? (
           <Text variant="muted">{t("home.empty")}</Text>
@@ -195,7 +204,7 @@ export default function HomeScreen() {
           status bar (the clipped hero subtitle in the report). */}
       <View
         pointerEvents="none"
-        className="absolute left-0 right-0 top-0 bg-bg"
+        className="bg-bg absolute left-0 right-0 top-0"
         style={{ height: insets.top }}
       />
     </View>
