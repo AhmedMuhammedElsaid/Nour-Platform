@@ -24,46 +24,42 @@ export type RadioStationSeed = {
 
 export const RADIO_STATIONS: RadioStationSeed[] = [
   {
+    // Sheikh Mahmoud Khalil Al-Husary (الشيخ محمود خليل الحصري) — the signature
+    // voice of Egyptian Quran radio, 24/7 over HTTPS (mp3quran/qurango; verified
+    // end-to-end https, audio/mpeg). This entry used to be a stand-in named "Holy
+    // Quran Radio – Cairo" (the authentic Cairo broadcast has no HTTPS feed — see
+    // `quran-cairo-live` below); now that the real Cairo station is its own entry,
+    // this is renamed honestly to its actual reciter and is just another reciter
+    // station (like abdulbasit/minshawi). Slug kept `quran-cairo` so existing
+    // favorites/recents and the seeded Atlas row aren't orphaned.
     slug: "quran-cairo",
     ar: {
-      name: "إذاعة القرآن الكريم – القاهرة",
-      description: "إذاعة القرآن الكريم من القاهرة — بث مباشر على مدار الساعة.",
+      name: "إذاعة الشيخ محمود خليل الحصري",
+      description: "تلاوات الشيخ محمود خليل الحصري على مدار الساعة.",
     },
     en: {
-      name: "Holy Quran Radio – Cairo",
-      description: "The Holy Quran Radio from Cairo — 24/7 live broadcast.",
+      name: "Sheikh Mahmoud Khalil Al-Husary Radio",
+      description: "Recitations by Sheikh Mahmoud Khalil Al-Husary, 24/7.",
     },
     country: "EG",
-    city: "Cairo",
-    streamUrl:
-      process.env.RADIO_CAIRO_STREAM_URL ??
-      // The authentic Cairo broadcast (إذاعة القرآن الكريم, radiojar mount
-      // 8s5u5tpdtwzuv) is HTTP-ONLY: every connection 302s to an insecure
-      // http://n*.radiojar.com edge, which browsers (mixed-content), Android
-      // (cleartext), and our CSP all block — so it can't play on any surface and
-      // a Vercel proxy can't hold a 24/7 stream. Until an HTTPS Cairo feed exists
-      // (e.g. a Zeno.FM mount — drop it in via RADIO_CAIRO_STREAM_URL, no code
-      // change; CSP already allows *.zeno.fm), default to the signature voice of
-      // Egyptian Quran radio: Sheikh Mahmoud Khalil Al-Husary, 24/7 over HTTPS
-      // (mp3quran/qurango). Verified 2026-07-02: end-to-end https, audio/mpeg.
-      "https://backup.qurango.net/radio/mahmoud_khalil_alhussary",
+    streamUrl: "https://backup.qurango.net/radio/mahmoud_khalil_alhussary",
     streamType: "mp3",
     bitrate: 128,
     language: "ar",
     category: "quran",
-    isFeatured: true,
+    isFeatured: false,
   },
   {
     // The ACTUAL live إذاعة القرآن الكريم broadcast from Cairo (Quran FM 98.2,
-    // holyquranradio.com), added alongside the Al-Husary stand-in above.
+    // holyquranradio.com) — the featured flagship station.
     // ⚠️ The station's own feed is radiojar (stream.radiojar.com/8s5u5tpdtwzuv),
     // which is HTTP-ONLY — it 302s to an insecure http://n*.radiojar.com edge
     // (re-verified 2026-07-03), so it can't play over HTTPS/CSP/Android-cleartext.
     // No official HTTPS origin exists. This points at a reliable HTTPS *re-broadcast*
     // of the Cairo Quran radio on Zeno.FM (verified 4/4 end-to-end https, audio/mpeg;
     // stream.zeno.fm 302s to *.surfernetwork.com — both allowed in CSP RADIO_ORIGINS).
-    // Swap to a different mount or the official feed anytime via the streamUrl here
-    // (or override without code via an env, mirroring RADIO_CAIRO_STREAM_URL).
+    // Swap to a different mount or the official feed anytime via the streamUrl here,
+    // or without a code change via the RADIO_CAIRO_LIVE_STREAM_URL env override.
     slug: "quran-cairo-live",
     ar: {
       name: "إذاعة القرآن الكريم من القاهرة – بث مباشر",
@@ -81,7 +77,7 @@ export const RADIO_STATIONS: RadioStationSeed[] = [
     streamType: "mp3",
     language: "ar",
     category: "quran",
-    isFeatured: false,
+    isFeatured: true,
   },
   {
     // The authentic 24/7 Grand Mosque broadcast is radiojar HTTP-only (same wall
@@ -193,6 +189,29 @@ export const RADIO_STATIONS: RadioStationSeed[] = [
     },
     country: "EG",
     streamUrl: "https://backup.qurango.net/radio/mahmoud_ali__albanna",
+    streamType: "mp3",
+    language: "ar",
+    category: "quran",
+    isFeatured: false,
+  },
+  {
+    // Sheikh Mohamed Rifat (محمد رفعت, 1882–1950) — the pioneering voice of
+    // Egyptian Quran radio (his was the first recitation broadcast when Egyptian
+    // radio launched in 1934). No qurango/mp3quran mount exists for him; this is a
+    // dedicated 24/7 HTTPS re-broadcast on Zeno.FM ("راديو القرآن - محمد رفعت";
+    // verified 3/3 end-to-end https, audio/mpeg — stream.zeno.fm 302s to
+    // *.surfernetwork.com, both already in CSP RADIO_ORIGINS).
+    slug: "quran-rifat",
+    ar: {
+      name: "إذاعة الشيخ محمد رفعت",
+      description: "تلاوات الشيخ محمد رفعت، رائد قرّاء الإذاعة المصرية، على مدار الساعة.",
+    },
+    en: {
+      name: "Sheikh Mohamed Rifat Radio",
+      description: "Recitations by Sheikh Mohamed Rifat, pioneer of Egyptian radio reciters, 24/7.",
+    },
+    country: "EG",
+    streamUrl: "https://stream.zeno.fm/1fatuk10fkhvv",
     streamType: "mp3",
     language: "ar",
     category: "quran",
