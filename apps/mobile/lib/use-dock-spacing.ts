@@ -3,7 +3,6 @@
 // components/bottom-dock.tsx). The tab bar is always shown and carries the
 // safe-area inset; the mini-player stacks above it when a queue is loaded.
 
-import { usePathname } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { usePlayer } from "@/lib/player-context";
@@ -16,13 +15,15 @@ const MINI_PLAYER_HEIGHT = 60;
 // Small breathing room below the last item, independent of the dock.
 const BASE_GAP = 8;
 
+// NOTE: deliberately does NOT read usePathname(). Every screen that calls this
+// hook stays MOUNTED in the expo-router stack, so subscribing to the pathname
+// re-rendered all of them on every navigation (JS-thread storm → janky tab
+// switches). The only thing the path was used for was collapsing the pad on the
+// /player modal — but this hook is never called there, and those background
+// screens are invisible behind the full-screen modal, so the pad is moot.
 export function useDockSpacing(): number {
   const insets = useSafeAreaInsets();
-  const pathname = usePathname();
   const { hasQueue } = usePlayer();
-
-  // The full-screen player owns its own layout — no dock is rendered there.
-  if (pathname === "/player") return BASE_GAP;
 
   let dock = TAB_BAR_HEIGHT + insets.bottom;
   if (hasQueue) dock += MINI_PLAYER_HEIGHT;
