@@ -916,6 +916,14 @@ nav + play/stop. Fix: `currentTime`/`duration` moved OUT of `PlayerContextValue`
 `PlayerProvider` now nests `<PlayerContext.Provider><PlayerProgressContext.Provider>`; tests use the
 real provider so both are supplied. **Pattern: keep any high-frequency (per-frame/per-tick) value in
 its own context — never in a broadly-consumed one.**
+- **✅ Nav re-render storm ALSO fixed (`6400a6e`)** — after the cascade fix the user still felt tab-switch
+  lag ("page opens, THEN the pill moves"). `useDockSpacing()` (`lib/use-dock-spacing.ts`) called
+  `usePathname()`, and it's used by Home/Quran/Adhkar/Playlist/Downloads/radio — all kept MOUNTED by
+  expo-router — so EVERY navigation re-rendered ALL of them synchronously → JS-thread storm → janky
+  switch + delayed pill. The pathname only shrank the pad on the `/player` modal (never rendered by this
+  hook; bg screens hidden behind the modal anyway). Fix = drop `usePathname`; depends only on insets +
+  `hasQueue`. **Pattern: never call `usePathname()`/route-subscribing hooks from a hook used by
+  always-mounted screens.** The tab-bar pill is already `useNativeDriver:true` (not the bottleneck).
 - ⚠️ **Secondary suspect for "radio stop takes a long while" (NOT yet fixed — verify on device after
   the cascade fix):** the live-stream auto-retry in `player-context.tsx` (`Event.PlaybackError`
   handler, ~`:420`) resumes playback on ANY live PlaybackError **regardless of user intent** — if
