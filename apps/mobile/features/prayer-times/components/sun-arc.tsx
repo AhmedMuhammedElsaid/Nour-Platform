@@ -277,7 +277,7 @@ export function SunArc({
         // mirrors absolute `left`/`transform` (left% is measured from the right
         // edge), which flipped every label to the wrong side while the SVG's
         // internal viewBox coords stayed put — Fajr's label landed on the right,
-        // over Isha's dot. Forcing this overlay to LTR keeps `left`/translateX
+        // over Isha's dot. Forcing this overlay to LTR keeps `left`/`marginLeft`
         // physical so labels sit over their real dots. Arabic glyphs inside each
         // <Text> still shape RTL correctly (bidi is per-text, not the box).
         <View pointerEvents="none" style={[StyleSheet.absoluteFill, { direction: "ltr" }]}>
@@ -291,11 +291,18 @@ export function SunArc({
             const lift = dot.isNext ? Math.max(stagger, 26) : stagger;
             const leftPct = (pt.x / ARC.w) * 100;
             const topPct = ((pt.y - lift) / ARC.h) * 100;
-            // End labels anchor inward so they never spill past the arc edges;
-            // interior labels centre on their dot. translateY -100% seats the text
-            // bottom on the lift point (so it sits above the dot).
-            const tx =
-              dot.fraction <= 0.1 ? "0%" : dot.fraction >= 0.9 ? "-100%" : "-50%";
+            // Centre each label on its dot with a FIXED-WIDTH box + NUMERIC
+            // margins — NOT a percentage translateX. Under forced RTL the
+            // percentage translate resolved inconsistently and shifted every
+            // label left of its dot. A numeric marginLeft of -box/2 seats the
+            // box centre on `left`, and textAlign:"center" centres the word in
+            // the box → the word sits over the dot. End labels anchor inward
+            // (start/end) so long names never clip the arc edges. translateY
+            // -100% (no horizontal component, so RTL can't flip it) seats the
+            // text bottom on the lift point, above the dot.
+            const LABEL_BOX = 96;
+            const edge =
+              dot.fraction <= 0.1 ? "start" : dot.fraction >= 0.9 ? "end" : "mid";
             return (
               <RNText
                 key={`label-${dot.key}`}
@@ -305,7 +312,11 @@ export function SunArc({
                   position: "absolute",
                   left: `${leftPct}%`,
                   top: `${topPct}%`,
-                  transform: [{ translateX: tx }, { translateY: "-100%" }],
+                  width: LABEL_BOX,
+                  marginLeft:
+                    edge === "start" ? 0 : edge === "end" ? -LABEL_BOX : -LABEL_BOX / 2,
+                  textAlign: edge === "start" ? "left" : edge === "end" ? "right" : "center",
+                  transform: [{ translateY: "-100%" }],
                   fontSize: dot.isNext ? 13 : 11,
                   fontWeight: dot.isNext ? "700" : "400",
                   color: dot.isNext ? SUN : MUTED,
