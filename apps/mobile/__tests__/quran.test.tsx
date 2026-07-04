@@ -7,12 +7,33 @@ import { getJson } from "@/lib/api";
 import { PlayerProvider } from "@/lib/player-context";
 
 jest.mock("@/lib/api", () => ({ getJson: jest.fn() }));
-jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: jest.fn() }),
-  useLocalSearchParams: () => ({ surah: "1" }),
-  usePathname: () => "/quran",
-  Stack: { Screen: () => null },
+
+// A controllable ayah-audio player so we can assert playback is stopped when the
+// reader leaves. `mock`-prefixed names are allowed through jest's hoisting.
+const mockPlayer = {
+  replace: jest.fn(),
+  play: jest.fn(),
+  pause: jest.fn(),
+  remove: jest.fn(),
+};
+jest.mock("expo-audio", () => ({
+  useAudioPlayer: () => mockPlayer,
+  useAudioPlayerStatus: () => ({ playing: false, didJustFinish: false }),
+  setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
 }));
+
+// Model useFocusEffect as a mount-run effect whose cleanup fires on blur/unmount
+// (matches @react-navigation semantics for the case under test).
+jest.mock("expo-router", () => {
+  const react = jest.requireActual("react") as typeof import("react");
+  return {
+    useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+    useLocalSearchParams: () => ({ surah: "1" }),
+    usePathname: () => "/quran",
+    useFocusEffect: (cb: () => void | (() => void)) => react.useEffect(cb, []),
+    Stack: { Screen: () => null },
+  };
+});
 
 const surah = {
   number: 1,
@@ -94,5 +115,21 @@ describe("QuranReaderScreen", () => {
     const play = screen.getByLabelText(/Play ayah|تشغيل الآية/);
     expect(play).toBeTruthy();
     fireEvent.press(play);
+  });
+
+  // Regression: tapping a reciter on the home shelf opens the reader and
+  // autoplays; leaving and opening another must not leave the first voice
+  // playing. The reader stops its ayah audio when it loses focus/unmounts.
+  it("stops ayah audio when the reader loses focus/unmounts", async () => {
+    mockApi();
+    const view = renderWith(<QuranReaderScreen />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/In the name of Allah/)).toBeTruthy(),
+    );
+
+    mockPlayer.pause.mockClear();
+    view.unmount();
+    expect(mockPlayer.pause).toHaveBeenCalled();
   });
 });

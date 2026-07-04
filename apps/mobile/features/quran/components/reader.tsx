@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FlatList, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
 import type {
   QuranEdition,
@@ -71,6 +72,13 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs,
   useEffect(() => {
     if (playerPlaying && ayahPlaying) stopAyah();
   }, [playerPlaying, ayahPlaying, stopAyah]);
+
+  // Stop this reader's ayah audio whenever the screen loses focus — leaving via
+  // back, a tab switch, or opening another surah. Each Reader owns its own
+  // expo-audio player, which keeps playing after the screen is gone; without
+  // this, re-entering from the home Readers shelf spins up a second player and
+  // the two recitations overlap (the reported bug). Fires on blur AND unmount.
+  useFocusEffect(useCallback(() => () => stopAyah(), [stopAyah]));
 
   // Autostart from the first ayah when arriving with autoStart (Readers shelf →
   // Al-Fatiha in the tapped voice). Fires once; RN has no autoplay gesture gate.
