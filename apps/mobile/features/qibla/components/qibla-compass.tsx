@@ -1,14 +1,23 @@
 // Qibla compass dial — react-native-svg port of
-// apps/web/features/qibla/components/qibla-compass.tsx. The whole rose rotates
-// by -heading in live mode so the Kaaba marker shows the real-world turn to make;
-// with no magnetometer reading the rose stays north-up (read it like a map). SVG
-// fills can't read NativeWind classes, so the palette is resolved from the active
-// theme here, exactly like sun-arc.tsx.
+// apps/web/features/qibla/components/qibla-compass.tsx. The rose (ticks, cardinals,
+// Kaaba marker) rotates by -heading so the marker shows the real-world turn to make;
+// with no reading the rose stays north-up (read it like a map).
+//
+// **Rotation runs on the UI thread**, not by re-rendering the SVG. The rose SVG is
+// drawn once and rotated via a reanimated View transform (GPU-composited, like the
+// web's CSS transform); the fixed reference pointer + hub are a static overlay on
+// top. This is the whole point — the previous `<G rotation={heading}>` re-drew every
+// SVG node on the JS thread on each sample, which is what made the dial feel slow.
+// SVG fills can't read NativeWind classes, so the palette is resolved from the theme.
 
-import { View } from "react-native";
+import { memo } from "react";
+import { StyleSheet, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  type SharedValue,
+} from "react-native-reanimated";
 import Svg, {
   Circle,
-  G,
   Line,
   Polygon,
   Text as SvgText,
@@ -19,7 +28,6 @@ import type { ThemeMode } from "@/lib/theme-context";
 const SIZE = 240;
 const C = SIZE / 2;
 const R = 104;
-const ALIGN_TOLERANCE = 6;
 
 type Palette = {
   gold: string;
@@ -39,10 +47,6 @@ function polar(angleDeg: number, radius: number): { x: number; y: number } {
   return { x: C + radius * Math.sin(a), y: C - radius * Math.cos(a) };
 }
 
-function angularDiff(a: number, b: number): number {
-  return Math.abs(((a - b + 540) % 360) - 180);
-}
-
 const CARDINALS: Array<{ label: string; angle: number }> = [
   { label: "N", angle: 0 },
   { label: "E", angle: 90 },
@@ -50,42 +54,47 @@ const CARDINALS: Array<{ label: string; angle: number }> = [
   { label: "W", angle: 270 },
 ];
 
-export function QiblaCompass({
-  bearing,
-  heading,
-  theme = "dark",
-}: {
-  bearing: number;
-  heading: number | null;
-  theme?: ThemeMode;
-}) {
-  const { gold, sun, muted, surface2, border } = PALETTES[theme];
-  const live = heading != null;
-  const roseRotation = live ? -heading : 0;
-  const aligned = live && angularDiff(heading, bearing) <= ALIGN_TOLERANCE;
+const TICKS = Array.from({ length: 24 }, (_, i) => i * 15);
 
+export type QiblaCompassProps = {
+  bearing: number;
+  // Continuous (unwrapped) heading in degrees, or null before the first reading.
+  // Drives the UI-thread rotation; never triggers a React re-render.
+  headingSV: SharedValue<number | null>;
+  // Within the alignment tolerance of the Qibla — highlights the marker. Changes
+  // rarely, so it (and theme/bearing) are the only things that re-render this SVG.
+  aligned: boolean;
+  theme?: ThemeMode;
+};
+
+export const QiblaCompass = memo(function QiblaCompass({
+  bearing,
+  headingSV,
+  aligned,
+  theme = "dark",
+}: QiblaCompassProps) {
+  const { gold, sun, muted, surface2, border } = PALETTES[theme];
   const markerColor = aligned ? sun : gold;
   const marker = polar(bearing, R - 6);
   const markerBase = polar(bearing, R - 34);
 
+  // Rotate the whole dial on the UI thread. `-heading` because turning the phone
+  // right must swing the rose left. Null → north-up (static map).
+  const dialStyle = useAnimatedStyle(() => {
+    const h = headingSV.value;
+    return { transform: [{ rotate: `${h == null ? 0 : -h}deg` }] };
+  });
+
   return (
-    <View>
-      <Svg
-        viewBox={`0 0 ${SIZE} ${SIZE}`}
-        width="100%"
-        style={{ aspectRatio: 1, maxWidth: 320, alignSelf: "center" }}
-        accessibilityLabel="Qibla compass"
-      >
-        {/* Fixed reference triangle at the top — the way you are facing. */}
-        <Polygon points={`${C - 8},14 ${C + 8},14 ${C},30`} fill={muted} />
+    <View style={{ width: "100%", maxWidth: 320, aspectRatio: 1, alignSelf: "center" }}>
+      {/* Rotating dial (drawn once; the View transform is UI-thread/GPU). */}
+      <Animated.View style={[StyleSheet.absoluteFill, dialStyle]}>
+        <Svg viewBox={`0 0 ${SIZE} ${SIZE}`} width="100%" height="100%" accessibilityLabel="Qibla compass">
+          {/* Dial backdrop */}
+          <Circle cx={C} cy={C} r={R + 14} fill={surface2} stroke={border} />
 
-        {/* Dial backdrop */}
-        <Circle cx={C} cy={C} r={R + 14} fill={surface2} stroke={border} />
-
-        {/* Rotating rose: ticks + cardinals + Kaaba marker share this rotation. */}
-        <G rotation={roseRotation} originX={C} originY={C}>
-          {Array.from({ length: 24 }, (_, i) => {
-            const angle = i * 15;
+          {/* Ticks */}
+          {TICKS.map((angle) => {
             const isCardinal = angle % 90 === 0;
             const outer = polar(angle, R);
             const inner = polar(angle, R - (isCardinal ? 14 : 8));
@@ -103,6 +112,7 @@ export function QiblaCompass({
             );
           })}
 
+          {/* Cardinals */}
           {CARDINALS.map(({ label, angle }) => {
             const p = polar(angle, R - 28);
             return (
@@ -120,6 +130,7 @@ export function QiblaCompass({
             );
           })}
 
+          {/* Kaaba marker + spoke */}
           <Line
             x1={C}
             y1={C}
@@ -139,11 +150,20 @@ export function QiblaCompass({
           >
             🕋
           </SvgText>
-        </G>
+        </Svg>
+      </Animated.View>
 
-        {/* Centre hub */}
+      {/* Static overlay: fixed reference pointer (the way you face) + centre hub. */}
+      <Svg
+        viewBox={`0 0 ${SIZE} ${SIZE}`}
+        width="100%"
+        height="100%"
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      >
+        <Polygon points={`${C - 8},14 ${C + 8},14 ${C},30`} fill={muted} />
         <Circle cx={C} cy={C} r={5} fill={muted} />
       </Svg>
     </View>
   );
-}
+});

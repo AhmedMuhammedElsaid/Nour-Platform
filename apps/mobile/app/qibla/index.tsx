@@ -34,7 +34,7 @@ export default function QiblaScreen() {
   const dockSpacing = useDockSpacing();
   const { theme } = useTheme();
   const { location, hydrated, setLocation } = usePrayerSettings();
-  const { heading, available } = useMagnetometerHeading();
+  const { headingSV, heading, available } = useMagnetometerHeading();
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   // Phone magnetometers read garbage until swept in a figure-8 — the usual cause of
   // a wildly-wrong compass on first open (no code, native or JS, avoids this). Show a
@@ -109,7 +109,7 @@ export default function QiblaScreen() {
         {/* Compass */}
         <View className="rounded-xl border border-border bg-surface p-6">
           {hydrated && (
-            <QiblaCompass bearing={bearing} heading={heading} theme={theme} />
+            <QiblaCompass bearing={bearing} headingSV={headingSV} aligned={aligned} theme={theme} />
           )}
 
           <View className="mt-4 items-center gap-1">
