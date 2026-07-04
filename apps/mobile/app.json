@@ -84,15 +84,15 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "aa9ab236-a124-4566-9848-4e0144554018"
+        "projectId": "e95180e7-fd4e-464b-a7e9-932b7a2d8e86"
       }
     },
-    "owner": "volunteering-apps",
+    "owner": "ahmedmuhammedelsaid",
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/aa9ab236-a124-4566-9848-4e0144554018"
+      "url": "https://u.expo.dev/e95180e7-fd4e-464b-a7e9-932b7a2d8e86"
     }
   }
 }
