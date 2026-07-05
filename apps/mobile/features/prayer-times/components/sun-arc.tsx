@@ -291,18 +291,17 @@ export function SunArc({
             const lift = dot.isNext ? Math.max(stagger, 34) : stagger;
             const leftPct = (pt.x / ARC.w) * 100;
             const topPct = ((pt.y - lift) / ARC.h) * 100;
-            // Centre each label on its dot with a FIXED-WIDTH box + NUMERIC
-            // margins — NOT a percentage translateX. Under forced RTL the
-            // percentage translate resolved inconsistently and shifted every
-            // label left of its dot. A numeric marginLeft of -box/2 seats the
-            // box centre on `left`, and textAlign:"center" centres the word in
-            // the box → the word sits over the dot. End labels anchor inward
-            // (start/end) so long names never clip the arc edges. translateY
-            // -100% (no horizontal component, so RTL can't flip it) seats the
-            // text bottom on the lift point, above the dot.
+            // Centre EVERY label on its dot with a FIXED-WIDTH box + NUMERIC
+            // margins — NOT a percentage translateX (under forced RTL the
+            // percentage translate resolved inconsistently and shifted labels).
+            // marginLeft:-box/2 seats the box centre on `left` and
+            // textAlign:"center" centres the word in the box, so the name sits
+            // directly over its dot. (Earlier end-anchoring right-aligned the two
+            // rightmost labels — Maghrib/Isha, fraction ≥ 0.9 — entirely to the
+            // LEFT of their dots; the short names don't need edge-anchoring.)
+            // translateY -100% (no horizontal component, RTL can't flip it) seats
+            // the text bottom on the lift point, above the dot.
             const LABEL_BOX = 96;
-            const edge =
-              dot.fraction <= 0.1 ? "start" : dot.fraction >= 0.9 ? "end" : "mid";
             return (
               <RNText
                 key={`label-${dot.key}`}
@@ -313,9 +312,8 @@ export function SunArc({
                   left: `${leftPct}%`,
                   top: `${topPct}%`,
                   width: LABEL_BOX,
-                  marginLeft:
-                    edge === "start" ? 0 : edge === "end" ? -LABEL_BOX : -LABEL_BOX / 2,
-                  textAlign: edge === "start" ? "left" : edge === "end" ? "right" : "center",
+                  marginLeft: -LABEL_BOX / 2,
+                  textAlign: "center",
                   transform: [{ translateY: "-100%" }],
                   fontSize: dot.isNext ? 13 : 11,
                   fontWeight: dot.isNext ? "700" : "400",
