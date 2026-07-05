@@ -11,7 +11,6 @@ import {
 import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-settings";
 import { LocationPicker } from "@/features/prayer-times/components/location-picker";
 import { QiblaCompass } from "./qibla-compass";
-import { QiblaDebug } from "./qibla-debug";
 import { useDeviceHeading } from "../hooks/use-device-heading";
 
 export function QiblaPage({ locale }: { locale: "ar" | "en" }) {
@@ -88,8 +87,6 @@ export function QiblaPage({ locale }: { locale: "ar" | "en" }) {
             </p>
           )}
         </div>
-
-        <QiblaDebug bearing={bearing} />
       </div>
 
       {/* Change location — reuses the prayer-times picker + stored location. */}
