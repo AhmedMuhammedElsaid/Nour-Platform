@@ -48,22 +48,29 @@ class NourCompassModule : Module(), SensorEventListener {
       ).declination
     }
 
+    // NOTE: no bare `return@Function` here. Under the New-Arch stack (Kotlin
+    // 2.1.20 K2 + expo-modules-core 56) a `Function {}` body's expected return
+    // type is `Any?`; only the implicit last-expression return is Unit-coerced,
+    // so an explicit bare `return@Function` fails to compile. Use if-blocks.
     Function("start") {
-      if (listening) return@Function
-      val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
-        ?: return@Function
-      sensorManager.registerListener(
-        this@NourCompassModule,
-        sensor,
-        SensorManager.SENSOR_DELAY_GAME,
-      )
-      listening = true
+      if (!listening) {
+        val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+        if (sensor != null) {
+          sensorManager.registerListener(
+            this@NourCompassModule,
+            sensor,
+            SensorManager.SENSOR_DELAY_GAME,
+          )
+          listening = true
+        }
+      }
     }
 
     Function("stop") {
-      if (!listening) return@Function
-      sensorManager.unregisterListener(this@NourCompassModule)
-      listening = false
+      if (listening) {
+        sensorManager.unregisterListener(this@NourCompassModule)
+        listening = false
+      }
     }
 
     OnDestroy {
