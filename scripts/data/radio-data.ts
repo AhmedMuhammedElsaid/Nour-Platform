@@ -195,12 +195,42 @@ export const RADIO_STATIONS: RadioStationSeed[] = [
     isFeatured: false,
   },
   {
-    // Sheikh Mohamed Rifat (محمد رفعت, 1882–1950) — the pioneering voice of
-    // Egyptian Quran radio (his was the first recitation broadcast when Egyptian
-    // radio launched in 1934). No qurango/mp3quran mount exists for him; this is a
-    // dedicated 24/7 HTTPS re-broadcast on Zeno.FM ("راديو القرآن - محمد رفعت";
-    // verified 3/3 end-to-end https, audio/mpeg — stream.zeno.fm 302s to
-    // *.surfernetwork.com, both already in CSP RADIO_ORIGINS).
+    // 2026-07-05 CORRECTION (owner-confirmed by listening): this entry was
+    // seeded as "quran-rifat" but the stream is NOT Sheikh Mohamed Rifat
+    // reciting Quran — it's recorded lectures/durus by Sheikh Muhammad Rateb
+    // Al-Nabulsi. Renamed honestly; category moved quran → islamic (lectures,
+    // not recitation). Slug changed (was never applied to Atlas, so no
+    // favorites/recents are orphaned). streamUrl unchanged — still a valid,
+    // verified Zeno.FM mount (stream.zeno.fm 302s to *.surfernetwork.com,
+    // already in CSP RADIO_ORIGINS). The real Sheikh Mohamed Rifat station is
+    // the separate `quran-rifat` entry below.
+    slug: "nabulsi-lectures",
+    ar: {
+      name: "دروس الشيخ محمد راتب النابلسي",
+      description: "دروس ومحاضرات الشيخ محمد راتب النابلسي على مدار الساعة.",
+    },
+    en: {
+      name: "Sheikh Muhammad Rateb Al-Nabulsi Lectures",
+      description: "Recorded lectures and lessons by Sheikh Muhammad Rateb Al-Nabulsi, 24/7.",
+    },
+    country: "SY",
+    streamUrl: "https://stream.zeno.fm/1fatuk10fkhvv",
+    streamType: "mp3",
+    language: "ar",
+    category: "islamic",
+    isFeatured: false,
+  },
+  {
+    // The REAL Sheikh Mohamed Rifat (محمد رفعت, 1882–1950) — pioneering voice
+    // of Egyptian Quran radio (his was the first recitation broadcast when
+    // Egyptian radio launched in 1934). No qurango/mp3quran mount exists for
+    // him. This is a direct HTTPS-native Shoutcast stream from mp3islam.com
+    // (verified 7/8 end-to-end https, audio/mpeg, no http hop; identity
+    // confirmed via live ICY StreamTitle: "Mohammad Refat محمد رفعت - 012
+    // Yusuf يوسف"). An earlier Zeno.FM mount tried for this slug
+    // (stream.zeno.fm/toyii0eewivtv, relaying the same mp3islam origin) was
+    // intermittently 503 "Mount point not active" — using the origin
+    // directly instead.
     slug: "quran-rifat",
     ar: {
       name: "إذاعة الشيخ محمد رفعت",
@@ -211,10 +241,59 @@ export const RADIO_STATIONS: RadioStationSeed[] = [
       description: "Recitations by Sheikh Mohamed Rifat, pioneer of Egyptian radio reciters, 24/7.",
     },
     country: "EG",
-    streamUrl: "https://stream.zeno.fm/1fatuk10fkhvv",
+    streamUrl: "https://radio.mp3islam.com/listen/refaat/radio.mp3",
     streamType: "mp3",
+    bitrate: 128,
     language: "ar",
     category: "quran",
+    isFeatured: false,
+  },
+  {
+    // Sheikh Muhammad Metwalli Al-Sha'rawi (محمد متولي الشعراوي) — his tafsir
+    // read/rebroadcast on a dedicated Zeno.FM station (verified 3/3 end-to-end
+    // https, audio/mpeg; identity confirmed via live ICY StreamTitle, a named
+    // episode of tafsir attributed to "الشيخ محمد متولي الشعراوي" — stream.zeno.fm
+    // 302s to *.surfernetwork.com, already in CSP RADIO_ORIGINS).
+    slug: "sharawi-lectures",
+    ar: {
+      name: "إذاعة الشيخ الشعراوي",
+      description: "دروس وتفسير الشيخ محمد متولي الشعراوي على مدار الساعة.",
+    },
+    en: {
+      name: "Sheikh Al-Sha'rawi Radio",
+      description: "Lectures and Quran commentary by Sheikh Muhammad Metwalli Al-Sha'rawi, 24/7.",
+    },
+    country: "EG",
+    streamUrl: "https://stream.zeno.fm/guuggdfrvssuv",
+    streamType: "mp3",
+    language: "ar",
+    category: "islamic",
+    isFeatured: false,
+  },
+  {
+    // Tawasheeh/ibtihalat station on Zeno.FM, page-labeled "سيد النقشبندي"
+    // (Sayed Al-Naqshbandi); verified 3/3 end-to-end https, audio/aac —
+    // identity confirmed via live ICY StreamTitle for a known Naqshbandi-style
+    // ibtihal ("أشرق الكون بالهدى وأطمئن"). ⚠️ Naqshbandi and Nasruddin Tobar
+    // are commonly paired in tawasheeh compilations/playlists, but only a
+    // single track was sampled live (long-running track; no rotation change
+    // observed in ~100s) — Tobar's presence in this station's rotation is
+    // NOT independently confirmed. If the owner listens and it's Naqshbandi-only,
+    // rename/re-describe accordingly.
+    slug: "tawasheeh",
+    ar: {
+      name: "إذاعة التواشيح والابتهالات",
+      description: "تواشيح وابتهالات دينية، منها للشيخ سيد النقشبندي، على مدار الساعة.",
+    },
+    en: {
+      name: "Tawasheeh & Ibtihalat Radio",
+      description: "Religious chants and supplications, including Sayed Al-Naqshbandi, 24/7.",
+    },
+    country: "EG",
+    streamUrl: "https://stream.zeno.fm/s0vc98c0pnhvv",
+    streamType: "aac",
+    language: "ar",
+    category: "islamic",
     isFeatured: false,
   },
   {
