@@ -37,3 +37,17 @@ export const CITIES: City[] = [
   { id: "london", en: "London", ar: "لندن", country: "GB", lat: 51.5074, lng: -0.1278 },
   { id: "new-york", en: "New York", ar: "نيويورك", country: "US", lat: 40.7128, lng: -74.006 },
 ];
+
+// Nearest curated city to an arbitrary coordinate (for labelling geolocation).
+export function nearestCity(lat: number, lng: number): City {
+  let best = CITIES[0]!;
+  let bestD = Number.POSITIVE_INFINITY;
+  for (const c of CITIES) {
+    const d = (c.lat - lat) ** 2 + (c.lng - lng) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = c;
+    }
+  }
+  return best;
+}

@@ -18,7 +18,7 @@ export default defineManifest({
     "192": "icons/icon-192.png",
     "512": "icons/icon-512.png",
   },
-  permissions: ["alarms", "notifications", "storage", "offscreen"],
+  permissions: ["alarms", "notifications", "storage", "offscreen", "geolocation"],
   host_permissions: ["https://nour-platform-web.vercel.app/*"],
   background: {
     service_worker: "src/background/index.ts",

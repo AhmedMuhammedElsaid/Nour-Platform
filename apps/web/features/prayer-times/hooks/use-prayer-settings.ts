@@ -15,8 +15,13 @@ import {
   prayerLocationSchema,
 } from "@repo/api/schemas/prayer-times";
 
+import { nearestCity } from "@/features/prayer-times/data/cities";
+
 const LOCATION_KEY = "nour.prayer.location";
 const PREFS_KEY = "nour.prayer.prefs";
+// Set once after the first-visit geolocation attempt so we never re-prompt on
+// later loads (even if the user denied and we kept the Cairo default).
+const ASKED_KEY = "nour.prayer.locationAsked";
 
 function readLocation(): PrayerLocation {
   try {
@@ -45,6 +50,50 @@ function readPrefs(): PrayerPreferences {
   }
 }
 
+// First-visit: ask the browser for the device location so prayer times are
+// computed for where the user actually is, not the Cairo default (the root
+// cause of "prayer times show Egypt time"). Runs at most once per browser;
+// on denial/timeout we keep the default and the city picker stays available.
+function autoDetectLocation(apply: (loc: PrayerLocation) => void): void {
+  try {
+    if (localStorage.getItem(ASKED_KEY)) return;
+  } catch {
+    return;
+  }
+  // getCurrentPosition needs a secure context (https/localhost).
+  if (typeof window === "undefined" || !window.isSecureContext) return;
+  if (!("geolocation" in navigator)) return;
+
+  try {
+    localStorage.setItem(ASKED_KEY, "1");
+  } catch {
+    /* ignore — worst case we re-ask next load */
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const city = nearestCity(pos.coords.latitude, pos.coords.longitude);
+      const loc: PrayerLocation = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        label: city.en,
+        cityId: city.id,
+      };
+      apply(loc);
+      try {
+        localStorage.setItem(LOCATION_KEY, JSON.stringify(loc));
+      } catch {
+        /* keep in-memory state */
+      }
+    },
+    () => {
+      // Denied / unavailable / timeout — keep the default; the user can still
+      // pick a city from the location picker.
+    },
+    { enableHighAccuracy: false, timeout: 15_000, maximumAge: 300_000 },
+  );
+}
+
 export type PrayerSettings = {
   location: PrayerLocation;
   prefs: PrayerPreferences;
@@ -64,9 +113,20 @@ export function usePrayerSettings(): PrayerSettings {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    // Did the user ever store a location? (null = genuine first visit, so the
+    // prayer times would otherwise silently use the Cairo default.)
+    let hasStored = false;
+    try {
+      hasStored = localStorage.getItem(LOCATION_KEY) != null;
+    } catch {
+      /* storage unavailable — treat as not stored */
+    }
+
     setLocationState(readLocation());
     setPrefs(readPrefs());
     setHydrated(true);
+
+    if (!hasStored) autoDetectLocation(setLocationState);
   }, []);
 
   const setLocation = useCallback((loc: PrayerLocation) => {
