@@ -1,0 +1,9 @@
+{
+  "platforms": ["android", "ios"],
+  "android": {
+    "modules": ["com.nour.compass.NourCompassModule"]
+  },
+  "ios": {
+    "modules": ["NourCompassModule"]
+  }
+}

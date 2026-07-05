@@ -10,7 +10,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
 import { Text } from "@/components/ui/text";
-import { QiblaCompass, type QiblaCompassState } from "@/features/qibla/components/qibla-compass";
+import { QiblaCompass } from "@/features/qibla/components/qibla-compass";
+import { useCompassHeading } from "@/features/qibla/hooks/use-compass-heading";
 import { LocationPicker } from "@/features/prayer-times/components/location-picker";
 import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-settings";
 import { cityLabel } from "@/features/prayer-times/data/cities";
@@ -33,23 +34,24 @@ export default function QiblaScreen() {
   const dockSpacing = useDockSpacing();
   const { theme } = useTheme();
   const { location, hydrated, setLocation } = usePrayerSettings();
-  // Heading/alignment come from the WebView compass (it owns the browser sensors).
-  const [compass, setCompass] = useState<QiblaCompassState>({ aligned: false, live: false });
+  // Native fused compass (rotation-vector / CoreMotion) — smooth + accurate.
+  const { headingSV, heading, available } = useCompassHeading(location);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
-  // Phone magnetometers read garbage until swept in a figure-8 — the usual cause of
-  // a wildly-wrong compass on first open (no code, native or JS, avoids this). Show a
-  // prominent calibration nudge when a live compass is present; auto-dismiss after a
-  // few seconds so it never lingers, and let the user close it early.
+  // The magnetometer reads garbage until swept in a figure-8 (the usual cause of a
+  // wrong compass on first open — no code avoids it). Show a prominent calibration
+  // nudge when a live compass is present; auto-dismiss after a few seconds.
   const [showCalibration, setShowCalibration] = useState(true);
   useEffect(() => {
-    if (!compass.live) return;
+    if (!available) return;
     const id = setTimeout(() => setShowCalibration(false), 9000);
     return () => clearTimeout(id);
-  }, [compass.live]);
+  }, [available]);
 
   const bearing = computeQiblaBearing(location);
   const cardinal = t(`qibla.compass.${qiblaCardinalKey(bearing)}`);
   const distanceKm = groupThousands(Math.round(qiblaDistanceKm(location)));
+  const aligned =
+    heading != null && Math.abs(((heading - bearing + 540) % 360) - 180) <= 6;
 
   return (
     <>
@@ -83,7 +85,7 @@ export default function QiblaScreen() {
 
         {/* First-open calibration nudge — the fix for a wildly-wrong compass on
             first use is a figure-8 sweep, not more code. */}
-        {compass.live && showCalibration ? (
+        {available && showCalibration ? (
           <View className="flex-row items-center gap-3 rounded-xl border border-primary/40 bg-primary/10 p-4">
             <Text className="text-2xl">🧭</Text>
             <View className="min-w-0 flex-1">
@@ -106,7 +108,7 @@ export default function QiblaScreen() {
         {/* Compass */}
         <View className="rounded-xl border border-border bg-surface p-6">
           {hydrated && (
-            <QiblaCompass bearing={bearing} theme={theme} onState={setCompass} />
+            <QiblaCompass bearing={bearing} headingSV={headingSV} aligned={aligned} theme={theme} />
           )}
 
           <View className="mt-4 items-center gap-1">
@@ -118,14 +120,14 @@ export default function QiblaScreen() {
               {t("qibla.bearing", { degrees: Math.round(bearing), direction: cardinal })}
             </Text>
             <Text variant="muted">{t("qibla.distanceKm", { km: distanceKm })}</Text>
-            {compass.aligned ? (
+            {aligned ? (
               <Text className="mt-1 text-sun">{t("qibla.facingQibla")}</Text>
             ) : null}
           </View>
 
           <View className="mt-3 items-center">
             <Text variant="muted" className="text-center text-xs">
-              {compass.live ? t("qibla.calibrateHint") : t("qibla.staticHint")}
+              {available ? t("qibla.calibrateHint") : t("qibla.staticHint")}
             </Text>
           </View>
         </View>

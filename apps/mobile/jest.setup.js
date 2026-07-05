@@ -128,14 +128,6 @@ jest.mock("expo-intent-launcher", () => ({
   },
 }));
 
-// react-native-webview mock — the Qibla compass hosts an HTML compass in a WebView.
-// Alias it to a plain View (a component reference, so the nativewind babel plugin
-// doesn't rewrite a createElement call inside this factory); the WebView carries its
-// own testID, and its props (source/onMessage) are readable on the test instance.
-jest.mock("react-native-webview", () => ({
-  WebView: require("react-native").View,
-}));
-
 // expo-location mock.
 jest.mock("expo-location", () => ({
   requestForegroundPermissionsAsync: jest.fn().mockResolvedValue({ status: "granted" }),
