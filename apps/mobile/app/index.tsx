@@ -168,11 +168,11 @@ export default function HomeScreen() {
       >
         {header}
         {/* Readers shelf sits above the Library section (user request). */}
-        <RecitersShelf />
         <View className="mt-3">
           <QiblaHomeCard />
           <RadioHomeCard />
         </View>
+        <RecitersShelf />
         {libraryBar}
         {visible.length === 0 ? (
           <Text variant="muted">{t("home.empty")}</Text>
