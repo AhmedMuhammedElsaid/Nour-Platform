@@ -966,11 +966,16 @@ account** — a separate mini-project gated on account + build + device QA, not 
   in `features/quran/components/reader.tsx` (stops on blur AND unmount).
 - **EAS project MIGRATED to personal account (`8bfbf3b`)**: `app.json` `owner`
   `volunteering-apps`→`ahmedmuhammedelsaid`, new `projectId`/`updates.url` (`e95180e7-…`).
-  ⚠️ **The new project's EAS env is EMPTY** — before any build/OTA, set
-  `EXPO_PUBLIC_API_BASE_URL=https://nour-platform-web.vercel.app` in BOTH `production` and
-  `preview` (`eas env:create …`), else the bundle bakes `localhost` → blank app. `eas.json`
+  ✅ **New project's EAS env verified 2026-07-05: `EXPO_PUBLIC_API_BASE_URL=https://nour-platform-web.vercel.app`
+  is set on BOTH `production` and `preview`** (was empty right after migration). `eas.json`
   credentials/`ascAppId` are per-project too. `publish_play_store.md` still names the OLD
   `volunteering-apps/nour-platform` project — update when you next touch it.
+- **Radio + Readers-shelf risk review (2026-07-03, subagent): NO blockers.** Endpoints verified
+  live (`/api/v1/quran/reciters` 13 rows, `/api/v1/radio` 7 stations, all streams HTTPS);
+  `isLive` path skips seek/resume/duration; malformed-row guards present. Two cosmetic
+  post-launch follow-ups: (a) saved playback-rate (e.g. 1.5x) is applied to live streams at load
+  (`player-context.tsx` setRate at load) → stalls at the live edge; (b) `recordRecentlyPlayed`
+  runs for radio → no-op rows in Home "Continue listening".
 
 ## Verify before shipping
 
