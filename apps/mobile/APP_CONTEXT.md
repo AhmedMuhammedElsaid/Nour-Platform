@@ -958,6 +958,20 @@ account** — a separate mini-project gated on account + build + device QA, not 
   export-compliance → Critical Alerts request → production build/TestFlight → App Store review):
   see `apps/mobile/publish_play_store.md` → "Publish Nour Mobile to the Apple App Store (iOS)".
 
+## 2026-07-05 — Quran audio-overlap fix + EAS project migration
+
+- **Quran reader ayah-overlap FIXED (`1c7e7df`)**: each `Reader` owns its own expo-audio player
+  that kept playing after blur; re-entering from the home Readers shelf spun up a 2nd player →
+  overlapping recitations. Fix: `useFocusEffect(useCallback(() => () => stopAyah(), [stopAyah]))`
+  in `features/quran/components/reader.tsx` (stops on blur AND unmount).
+- **EAS project MIGRATED to personal account (`8bfbf3b`)**: `app.json` `owner`
+  `volunteering-apps`→`ahmedmuhammedelsaid`, new `projectId`/`updates.url` (`e95180e7-…`).
+  ⚠️ **The new project's EAS env is EMPTY** — before any build/OTA, set
+  `EXPO_PUBLIC_API_BASE_URL=https://nour-platform-web.vercel.app` in BOTH `production` and
+  `preview` (`eas env:create …`), else the bundle bakes `localhost` → blank app. `eas.json`
+  credentials/`ascAppId` are per-project too. `publish_play_store.md` still names the OLD
+  `volunteering-apps/nour-platform` project — update when you next touch it.
+
 ## Verify before shipping
 
 ```bash
@@ -966,3 +980,19 @@ pnpm typecheck && pnpm lint && pnpm test
 npx expo export --platform android   # confirms the JS bundle compiles
 ```
 Device checklist + build/submit steps: see `apps/mobile/deploy.md`.
+
+## Qibla compass — native module (2026-07-05, `5164083`, PUSHED, REBUILD-GATED)
+
+Went through JS sensor attempts (Magnetometer, DeviceMotion, `Location.watchHeadingAsync`)
+and a WebView (ADR 0010, failed to load on RN 0.85 New-Arch) before landing on the
+correct fix: a local Expo native module **`modules/nour-compass`** (mirrors `nour-adhan`)
+reading the **fused rotation-vector sensor** — the same one browsers use, so it doesn't
+suffer raw-magnetometer "accuracy 0". Android `TYPE_ROTATION_VECTOR` + `GeomagneticField`
+declination → `trueHeading`; iOS `CMMotionManager .xTrueNorthZVertical`. JS bridge
+`lib/compass-native.ts` (safe no-op if native module absent) → `use-compass-heading.ts`
+feeds a reanimated SharedValue → UI-thread SVG rotation in `qibla-compass.tsx` (GPU,
+no per-sample re-render — that render-path fix is what made it *smooth*; the native
+sensor swap is what makes it *accurate*). ADR `docs/adr/0011` (supersedes 0010).
+**Needs `eas build` (not OTA) to test — module absent on OTA shows the static dial.**
+Kotlin/Swift only compile at EAS build time; unverified on-device as of this write.
+See [[project_qibla_feature]] for the full attempt history/gotchas.
