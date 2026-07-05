@@ -281,14 +281,14 @@ export function SunArc({
         // physical so labels sit over their real dots. Arabic glyphs inside each
         // <Text> still shape RTL correctly (bidi is per-text, not the box).
         <View pointerEvents="none" style={[StyleSheet.absoluteFill, { direction: "ltr" }]}>
-          {dots.map((dot, i) => {
+          {dots.map((dot) => {
             if (!dot.label) return null;
             const pt = arcPoint(tForFraction(dot.fraction));
-            // Alternate the lift so neighbouring labels (Fajr/Sunrise on the left,
-            // Maghrib/Isha on the right) don't collide; lift the glowing "next"
-            // label clear of its larger ring.
-            const stagger = i % 2 === 0 ? 16 : 30;
-            const lift = dot.isNext ? Math.max(stagger, 34) : stagger;
+            // Same constant lift as the web SunArc (sun-arc.tsx: `p.y - (isNext
+            // ? 24 : 14)`) — a per-index stagger was tried here and made the gap
+            // inconsistent (some labels floating far above their dot). One
+            // constant, same as web, reads correctly for every dot.
+            const lift = dot.isNext ? 24 : 14;
             const leftPct = (pt.x / ARC.w) * 100;
             const topPct = ((pt.y - lift) / ARC.h) * 100;
             // Centre EVERY label on its dot with a FIXED-WIDTH box + NUMERIC
