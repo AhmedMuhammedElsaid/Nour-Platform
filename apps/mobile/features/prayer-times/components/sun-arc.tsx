@@ -287,8 +287,8 @@ export function SunArc({
             // Alternate the lift so neighbouring labels (Fajr/Sunrise on the left,
             // Maghrib/Isha on the right) don't collide; lift the glowing "next"
             // label clear of its larger ring.
-            const stagger = i % 2 === 0 ? 10 : 22;
-            const lift = dot.isNext ? Math.max(stagger, 26) : stagger;
+            const stagger = i % 2 === 0 ? 16 : 30;
+            const lift = dot.isNext ? Math.max(stagger, 34) : stagger;
             const leftPct = (pt.x / ARC.w) * 100;
             const topPct = ((pt.y - lift) / ARC.h) * 100;
             // Centre each label on its dot with a FIXED-WIDTH box + NUMERIC
