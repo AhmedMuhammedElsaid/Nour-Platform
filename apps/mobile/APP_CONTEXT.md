@@ -1001,3 +1001,32 @@ sensor swap is what makes it *accurate*). ADR `docs/adr/0011` (supersedes 0010).
 **Needs `eas build` (not OTA) to test — module absent on OTA shows the static dial.**
 Kotlin/Swift only compile at EAS build time; unverified on-device as of this write.
 See [[project_qibla_feature]] for the full attempt history/gotchas.
+
+## Prayer arc/countdown web-parity pass (2026-07-04/05) — JS-only, OTA-able
+
+`a62d47f`..`0eb6b76`, all pushed. User-driven mirror-to-web pass on the Home widget
+(`prayer-times-widget.tsx`) + full screen (`app/prayer-times/index.tsx`) + shared
+`sun-arc.tsx`.
+
+- **Next-prayer row**: was a vertical stack; now one `flex-row items-baseline` row,
+  DOM order `[label, name, countdown]` — auto-mirrors under `I18nManager.forceRTL`
+  (AR shows countdown/name/label, EN shows label/name/countdown), matching web's
+  `PrayerCountdown`. Dropped the extra "· at HH:MM" suffix on the full screen.
+- **Arc dot labels — 4 iterative fixes, now settled:**
+  1. Switched from react-native-svg `<Text>` (does NOT shape/join Arabic — glyphs
+     rendered disconnected) to a real RN `<Text>` overlaid on the `<Svg>` via a
+     `StyleSheet.absoluteFill` view. Enabled `showLabels` on the Home widget too
+     (web hides them below `sm`; mobile shows them always per explicit request).
+  2. Under `I18nManager.forceRTL`, Yoga mirrors the overlay's absolute `left%`/
+     `transform` — labels landed on the wrong side. Fix: force the overlay
+     `<View style={{direction:"ltr"}}>` so `left`/margins stay physical.
+  3. Percentage `translateX` centering resolved inconsistently under forced RTL
+     (shifted labels left of their dot) — replaced with a fixed-width box
+     (`LABEL_BOX=96`) + numeric `marginLeft: -48` + `textAlign:"center"`.
+  4. An `i%2` stagger (added to dodge collisions) made vertical gaps inconsistent
+     per-dot. Removed it — now one constant lift matching web's exact recipe
+     (`isNext ? 24 : 14`, same viewBox units as `apps/web/.../sun-arc.tsx`).
+- **Pattern for next time**: any RN-SVG arc/overlay needs (a) RN `<Text>` for
+  Arabic, (b) `direction:"ltr"` on the overlay under forced RTL, (c) numeric
+  margins not percentage transforms, (d) match web's constant offsets rather than
+  inventing per-index staggers. See [[project_mobile_sun_arc_bloom]].
