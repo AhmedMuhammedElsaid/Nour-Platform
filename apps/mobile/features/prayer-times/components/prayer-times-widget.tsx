@@ -10,6 +10,7 @@ import { Pressable, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 
 import { Text } from "@/components/ui/text";
+import { PrayerCountdown } from "@/features/prayer-times/components/prayer-countdown";
 import { SunArc } from "@/features/prayer-times/components/sun-arc";
 import { buildArcDots } from "@/features/prayer-times/lib/arc-dots";
 import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-settings";
@@ -24,11 +25,7 @@ import {
   type PrayerKey,
 } from "@repo/shared-core/prayer-times/compute";
 import { usePrayerDay } from "@/features/prayer-times/hooks/use-prayer-day";
-import {
-  formatClock,
-  formatCountdownClock,
-  hijriDate,
-} from "@repo/shared-core/prayer-times/format";
+import { formatClock, hijriDate } from "@repo/shared-core/prayer-times/format";
 
 // Shrouq (sunrise) is shown for reference but is NOT a prayer — getUpcomingPrayer
 // never returns it (COUNTDOWN_ORDER excludes it), so it is never the "next"
@@ -103,10 +100,6 @@ export function PrayerTimesWidget() {
     now,
   );
   const dots = buildArcDots(day, upcoming.key, (k) => t(`prayer.${k}`));
-  const countdown = formatCountdownClock(
-    Math.max(0, upcoming.time.getTime() - now.getTime()),
-    locale,
-  );
 
   if (!hydrated) return null;
 
@@ -131,25 +124,10 @@ export function PrayerTimesWidget() {
         <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} onNightBand={arc.onNightBand} theme={theme} showLabels />
       </View>
 
-      {/* next-prayer countdown — one horizontal row mirroring the web
-          PrayerCountdown. DOM order is label → name → countdown; because Arabic
-          runs under I18nManager.forceRTL the row auto-mirrors (countdown ends on
-          the left, label on the right), while English keeps label → name →
-          countdown. Never reverse manually — that would defeat the mirror. */}
-      <View className="flex-row items-baseline justify-center gap-2.5 px-3 pb-3">
-        <Text variant="muted" className="text-xs uppercase tracking-[1px]">
-          {t("prayer.next")}
-        </Text>
-        <Text variant="display" className="text-xl">
-          {t(`prayer.${upcoming.key}`)}
-        </Text>
-        <Text
-          variant="body"
-          className="text-base font-semibold text-sun"
-          style={{ fontVariant: ["tabular-nums"] }}
-        >
-          {countdown}
-        </Text>
+      {/* Isolated ticking leaf — only this re-renders every second, not the
+          whole widget/Home screen (see prayer-countdown.tsx). */}
+      <View className="px-3 pb-3">
+        <PrayerCountdown nextKey={upcoming.key} target={upcoming.time} locale={locale} size="sm" />
       </View>
 
       {/* five-prayer row */}

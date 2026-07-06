@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { SunArc } from "@/features/prayer-times/components/sun-arc";
 import { buildArcDots } from "@/features/prayer-times/lib/arc-dots";
+import { PrayerCountdown } from "@/features/prayer-times/components/prayer-countdown";
 import { PrayerTimetable } from "@/features/prayer-times/components/prayer-timetable";
 import { LocationPicker } from "@/features/prayer-times/components/location-picker";
 import { MethodSettings } from "@/features/prayer-times/components/method-settings";
@@ -31,10 +32,9 @@ import {
   getArcPosition,
   getNextPrayer,
   type NextPrayer,
-  type PrayerKey,
 } from "@repo/shared-core/prayer-times/compute";
 import { usePrayerDay } from "@/features/prayer-times/hooks/use-prayer-day";
-import { formatClock, formatCountdownClock } from "@repo/shared-core/prayer-times/format";
+import { formatClock } from "@repo/shared-core/prayer-times/format";
 
 export default function PrayerTimesScreen() {
   const { t } = useTranslation();
@@ -91,19 +91,10 @@ export default function PrayerTimesScreen() {
     const fallback = new Date(now.getTime() + DAY_MS);
     const t = fajr ?? fallback;
     return { key: "fajr", time: t, msUntil: t.getTime() - now.getTime() };
+    // `msUntil` above is a point-in-time snapshot — only PrayerCountdown's own
+    // internal tick should read a live delta from `target`, never this field.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [day, now.toDateString()]);
-
-  const prayerNames = useMemo<Record<Exclude<PrayerKey, "sunrise">, string>>(
-    () => ({
-      fajr: t("prayer.fajr"),
-      dhuhr: t("prayer.dhuhr"),
-      asr: t("prayer.asr"),
-      maghrib: t("prayer.maghrib"),
-      isha: t("prayer.isha"),
-    }),
-    [t],
-  );
+  }, [day, now.toDateString(), Math.floor(now.getTime() / 60_000)]);
 
   // Scheduling of azan + adhkar notifications is centralized in the root
   // <AzanScheduler> (components/azan-scheduler.tsx) so it runs regardless of
@@ -144,8 +135,6 @@ export default function PrayerTimesScreen() {
       Alert.alert(t("prayer.adhan.testTitle"), t("common.error"));
     }
   }, [t, locale]);
-
-  const countdown = formatCountdownClock(upcoming.msUntil, locale);
 
   // Active body (sun by day, moon by night) + its progress, plus the day-arc dot
   // positions. Recomputed each tick so the body glides; both are cheap + pure.
@@ -212,25 +201,9 @@ export default function PrayerTimesScreen() {
           <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} onNightBand={arc.onNightBand} theme={theme} showLabels />
         )}
 
-        {/* Countdown — one horizontal row mirroring the web PrayerCountdown.
-            DOM order label → name → countdown; the RTL container (Arabic runs
-            under I18nManager.forceRTL) auto-mirrors it to countdown → name →
-            label, English keeps label → name → countdown. No manual reversal. */}
-        <View className="flex-row items-baseline justify-center gap-2.5">
-          <Text variant="muted" className="text-xs uppercase tracking-[1px]">
-            {t("prayer.next")}
-          </Text>
-          <Text variant="display" className="text-2xl">
-            {prayerNames[upcoming.key]}
-          </Text>
-          <Text
-            variant="body"
-            className="text-xl font-semibold text-sun"
-            style={{ fontVariant: ["tabular-nums"] }}
-          >
-            {countdown}
-          </Text>
-        </View>
+        {/* Isolated ticking leaf — only this re-renders every second, not the
+            whole screen (see prayer-countdown.tsx). */}
+        <PrayerCountdown nextKey={upcoming.key} target={upcoming.time} locale={locale} size="lg" />
 
         {/* Timetable */}
         {hydrated && (
