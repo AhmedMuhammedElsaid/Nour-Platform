@@ -42,20 +42,27 @@ export function useCompassHeading(location: { lat: number; lng: number }): Compa
   const unwrappedRef = useRef<number | null>(null);
   const lastStateRef = useRef(0);
 
-  const debugLogRef = useRef(0);
+  const debugLastRawRef = useRef<number | null>(null);
+  const debugLastTsRef = useRef<number | null>(null);
 
   const push = useCallback(
     (raw: number, magRaw?: number, accuracy?: number) => {
       // TEMP diagnostic (2026-07-06): investigating a reported fixed-offset
-      // wrong-direction bug on the native compass. Throttled to ~1/s. Remove
-      // once root-caused.
+      // wrong-direction bug on the native compass. UNTHROTTLED (every native
+      // sample, ~30ms) so a within-second discontinuity is visible — the
+      // earlier 1/s-throttled version could only show two 1s-apart values,
+      // never whether the transition between them was a smooth ramp or a
+      // sudden snap. Remove once root-caused.
       const now0 = Date.now();
-      if (now0 - debugLogRef.current > 1000) {
-        debugLogRef.current = now0;
-        console.warn(
-          `[qibla-debug] trueHeading=${raw.toFixed(1)} magHeading=${magRaw?.toFixed(1)} accuracy=${accuracy} loc=${location.lat.toFixed(4)},${location.lng.toFixed(4)}`,
-        );
-      }
+      const prevRaw = debugLastRawRef.current;
+      const prevTs = debugLastTsRef.current;
+      const dtMs = prevTs == null ? null : now0 - prevTs;
+      const dDeg = prevRaw == null ? null : signedDelta(norm360(prevRaw), raw);
+      debugLastRawRef.current = raw;
+      debugLastTsRef.current = now0;
+      console.warn(
+        `[qibla-debug] trueHeading=${raw.toFixed(1)} magHeading=${magRaw?.toFixed(1)} accuracy=${accuracy} dtMs=${dtMs} dDeg=${dDeg?.toFixed(1)}`,
+      );
       // Drive the UI-thread rotation, unwrapped so withTiming eases along the short
       // arc instead of unwinding through the 0/360 seam.
       const prev = unwrappedRef.current;
@@ -73,7 +80,7 @@ export function useCompassHeading(location: { lat: number; lng: number }): Compa
         setHeading(norm360(raw));
       }
     },
-    [headingSV, location.lat, location.lng],
+    [headingSV],
   );
 
   useFocusEffect(
