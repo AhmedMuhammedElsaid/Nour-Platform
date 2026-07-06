@@ -4,15 +4,19 @@
 // only wires the OS transport events to TrackPlayer's imperative API.
 
 import TrackPlayer, { Event } from "react-native-track-player";
+import { setUserWantsPlayback } from "@/lib/playback-intent";
 
 export async function playbackService(): Promise<void> {
   TrackPlayer.addEventListener(Event.RemotePlay, () => {
+    setUserWantsPlayback(true);
     void TrackPlayer.play();
   });
   TrackPlayer.addEventListener(Event.RemotePause, () => {
+    setUserWantsPlayback(false);
     void TrackPlayer.pause();
   });
   TrackPlayer.addEventListener(Event.RemoteStop, () => {
+    setUserWantsPlayback(false);
     void TrackPlayer.stop();
   });
   TrackPlayer.addEventListener(Event.RemoteNext, () => {

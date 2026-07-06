@@ -6,6 +6,7 @@
 
 import * as React from "react";
 import { getLocalPath } from "@/lib/downloads";
+import { getUserWantsPlayback, setUserWantsPlayback } from "@/lib/playback-intent";
 import TrackPlayer, {
   Capability,
   Event,
@@ -435,6 +436,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   // Handle playback errors.
   useTrackPlayerEvents([Event.PlaybackError], (event) => {
     const track = queueRef.current[currentIndexRef.current];
+    // A user-initiated pause/stop can surface as a PlaybackError on a live
+    // stream (the connection drops) — don't resurrect playback the user just
+    // stopped, and don't show a scary error for what was really just a stop.
+    if (track?.isLive && !getUserWantsPlayback()) {
+      return;
+    }
     // Live radio mounts intermittently 5xx on a cold connect; silently retry a
     // few times (with backoff) before showing the error so it self-heals. Uses
     // the same lightweight seek-to-live-edge + play as the manual retry.
@@ -443,6 +450,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       if (liveRetryTimerRef.current) clearTimeout(liveRetryTimerRef.current);
       liveRetryTimerRef.current = setTimeout(() => {
         liveRetryTimerRef.current = null;
+        // Re-check at fire time: the user may have pressed pause/stop during
+        // the backoff window (the timer was already armed) — don't resurrect.
+        if (!getUserWantsPlayback()) return;
         void TrackPlayer.seekTo(0)
           .then(() => TrackPlayer.play())
           .catch(() => {
@@ -477,8 +487,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         duration: track.durationSecs,
       });
 
-      // Apply stored rate.
-      await TrackPlayer.setRate(playbackRateRef.current);
+      // Apply stored rate — never to a live stream (a saved non-1x rate would
+      // stall it at the live edge; live playback is always real-time).
+      if (!track.isLive) {
+        await TrackPlayer.setRate(playbackRateRef.current);
+      }
 
       // Resume position — live streams always play from the live edge.
       const saved = track.isLive ? 0 : await getStoredPosition(track.id);
@@ -489,6 +502,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // Any track load (fresh queue, next/prev, repeat-one replay) implies the
+      // user wants playback — covers every path that reaches this effect, not
+      // just the imperative play()/loadQueue() callbacks below.
+      setUserWantsPlayback(true);
       await TrackPlayer.play();
       setErrorMessage(null);
       // Fresh load → fresh live-retry budget; drop any pending retry timer.
@@ -498,14 +515,17 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         liveRetryTimerRef.current = null;
       }
 
-      // Record in recently-played.
-      void recordRecentlyPlayed({
-        trackId: track.id,
-        title: track.title,
-        playlistTitle: track.playlistTitle,
-        playlistSlug: track.playlistSlug,
-        duration: track.durationSecs,
-      });
+      // Record in recently-played — skip live radio, it has no "recently
+      // played" meaning and would just leave a no-op row in Continue listening.
+      if (!track.isLive) {
+        void recordRecentlyPlayed({
+          trackId: track.id,
+          title: track.title,
+          playlistTitle: track.playlistTitle,
+          playlistSlug: track.playlistSlug,
+          duration: track.durationSecs,
+        });
+      }
     };
 
     void load().catch(() => {
@@ -535,17 +555,21 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   );
 
   const play = React.useCallback((): void => {
+    setUserWantsPlayback(true);
     void TrackPlayer.play();
   }, []);
 
   const pause = React.useCallback((): void => {
+    setUserWantsPlayback(false);
     void TrackPlayer.pause();
   }, []);
 
   const toggle = React.useCallback((): void => {
     if (isPlaying) {
+      setUserWantsPlayback(false);
       void TrackPlayer.pause();
     } else {
+      setUserWantsPlayback(true);
       void TrackPlayer.play();
     }
   }, [isPlaying]);
@@ -581,6 +605,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const retry = React.useCallback((): void => {
     setErrorMessage(null);
+    setUserWantsPlayback(true);
     // A manual retry gets a fresh auto-retry budget for live streams.
     liveRetryCountRef.current = 0;
     if (liveRetryTimerRef.current) {
@@ -615,7 +640,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const setPlaybackRate = React.useCallback((rate: number): void => {
     playbackRateRef.current = rate;
     setPlaybackRateState(rate);
-    void TrackPlayer.setRate(rate);
+    // Persist the pref/state but never apply a non-1x rate to a LIVE stream —
+    // it stalls at the live edge (same rule as the stored-rate skip on load).
+    // The saved rate still applies to the next non-live track.
+    const track = queueRef.current[currentIndexRef.current];
+    if (!track?.isLive) {
+      void TrackPlayer.setRate(rate);
+    }
   }, []);
 
   const setVolume = React.useCallback((vol: number): void => {
@@ -658,6 +689,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         void TrackPlayer.setVolume(v);
         if (step >= steps) {
           clearInterval(fade);
+          setUserWantsPlayback(false);
           void TrackPlayer.pause();
           void TrackPlayer.setVolume(startVol);
         }
