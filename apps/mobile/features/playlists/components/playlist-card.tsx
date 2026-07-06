@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Pressable, View } from "react-native";
@@ -18,7 +19,11 @@ export type PlaylistCardProps = {
 // Mirrors the web playlist card (apps/web/features/playlists/components/
 // playlist-card.tsx): a centered column with a CIRCULAR scholar avatar, title,
 // scholar name, a track-count pill, and category chips.
-export function PlaylistCard({ playlist, locale, categories = [] }: PlaylistCardProps) {
+// Wrapped in memo: the Home grid re-renders often (sort/filter changes, ticks
+// elsewhere in the tree), and most cards' props are unchanged on any given
+// render — memo skips their re-render as long as `categories` is a stable
+// array reference (see app/index.tsx's per-item categories memo).
+function PlaylistCardComponent({ playlist, locale, categories = [] }: PlaylistCardProps) {
   const router = useRouter();
   const { t } = useTranslation();
   // Tolerate a row missing the active-locale object (embedded-locale data can
@@ -78,3 +83,5 @@ export function PlaylistCard({ playlist, locale, categories = [] }: PlaylistCard
     </Pressable>
   );
 }
+
+export const PlaylistCard = memo(PlaylistCardComponent);

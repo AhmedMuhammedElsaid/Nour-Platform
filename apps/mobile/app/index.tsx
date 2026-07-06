@@ -78,6 +78,24 @@ export default function HomeScreen() {
     return sorted;
   }, [playlists.data, activeCategory, sort, locale]);
 
+  // Precomputed per-playlist category-chip arrays, keyed by playlist id — so
+  // each <PlaylistCard>'s `categories` prop is a STABLE reference across
+  // renders that don't actually change the playlist/category data. Without
+  // this, `item.categoryIds.map(...).filter(...)` built a fresh array inline
+  // on every render, which would defeat PlaylistCard's React.memo.
+  const categoriesByPlaylistId = useMemo(
+    () =>
+      new Map<string, CategoryChip[]>(
+        visible.map((item) => [
+          item.id,
+          item.categoryIds
+            .map((id) => categoryById.get(id))
+            .filter((c): c is CategoryChip => c != null),
+        ]),
+      ),
+    [visible, categoryById],
+  );
+
   const header = (
     <View className="gap-6 pb-4">
       {/* Top bar: theme toggle + locale switcher */}
@@ -183,9 +201,7 @@ export default function HomeScreen() {
                 <PlaylistCard
                   playlist={item}
                   locale={locale}
-                  categories={item.categoryIds
-                    .map((id) => categoryById.get(id))
-                    .filter((c): c is CategoryChip => c != null)}
+                  categories={categoriesByPlaylistId.get(item.id) ?? []}
                 />
               </View>
             ))}
