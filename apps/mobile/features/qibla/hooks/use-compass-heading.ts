@@ -6,12 +6,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
-import {
-  Easing,
-  useSharedValue,
-  withTiming,
-  type SharedValue,
-} from "react-native-reanimated";
+import { useSharedValue, type SharedValue } from "react-native-reanimated";
 
 import {
   addHeadingListener,
@@ -63,17 +58,18 @@ export function useCompassHeading(location: { lat: number; lng: number }): Compa
       console.warn(
         `[qibla-debug] trueHeading=${raw.toFixed(1)} magHeading=${magRaw?.toFixed(1)} accuracy=${accuracy} dtMs=${dtMs} dDeg=${dDeg?.toFixed(1)}`,
       );
-      // Drive the UI-thread rotation, unwrapped so withTiming eases along the short
-      // arc instead of unwinding through the 0/360 seam.
+      // Drive the UI-thread rotation directly (unwrapped so the transform takes
+      // the short arc instead of unwinding through the 0/360 seam). The native
+      // module already streams at ~33Hz, which is smooth enough on its own —
+      // wrapping every sample in its own withTiming (as before) meant each new
+      // ~30ms sample interrupted the previous 120ms tween at only ~25-40%
+      // complete, so the rendered value perpetually chased a moving target and
+      // never caught up. That's what looked like the needle being "stuck"
+      // oscillating in a narrow band during a real back-and-forth search motion.
       const prev = unwrappedRef.current;
-      if (prev == null) {
-        unwrappedRef.current = raw;
-        headingSV.value = raw;
-      } else {
-        const next = prev + signedDelta(norm360(prev), raw);
-        unwrappedRef.current = next;
-        headingSV.value = withTiming(next, { duration: 120, easing: Easing.linear });
-      }
+      const next = prev == null ? raw : prev + signedDelta(norm360(prev), raw);
+      unwrappedRef.current = next;
+      headingSV.value = next;
       const now = Date.now();
       if (now - lastStateRef.current >= STATE_THROTTLE_MS) {
         lastStateRef.current = now;
