@@ -119,6 +119,18 @@ export default function QiblaScreen() {
             <QiblaCompass bearing={bearing} headingSV={headingSV} aligned={aligned} theme={theme} />
           )}
 
+          {/* TEMP diagnostic (2026-07-06): on-screen readout so the reported
+              heading number can be compared live against the rendered needle
+              and a reference compass, isolating sensor vs. render bugs. Remove
+              once root-caused. */}
+          <View className="mt-2 items-center">
+            <Text variant="muted" className="text-center text-xs" style={{ fontVariant: ["tabular-nums"] }}>
+              DEBUG heading={heading != null ? heading.toFixed(1) : "null"} bearing=
+              {bearing.toFixed(1)} delta=
+              {heading != null ? (((heading - bearing + 540) % 360) - 180).toFixed(1) : "—"}
+            </Text>
+          </View>
+
           <View className="mt-4 items-center gap-1">
             <Text
               variant="display"
