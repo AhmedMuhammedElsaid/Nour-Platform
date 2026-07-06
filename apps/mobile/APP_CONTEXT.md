@@ -1042,6 +1042,8 @@ assignment; (2) raw ~33Hz sensor noise then looked jittery → EMA smoothing
 (pointer now draws below the rotating dial, matching web); (4) "Facing Qibla"
 text recolored to `text-primary` (gold) + pulses in sync.
 
+**nour-compass Android build fix** (`29f0599`, committed on `main`, NOT pushed, 2026-07-06): first EAS Android build failed at `:nour-compass:compileReleaseKotlin` — bare `return@Function` is illegal under Kotlin 2.1.20 K2 because the zero-arg `Function(name){}` overload is `body: () -> Any?` (must return a value). Fix = restructure `start`/`stop` to `if`-blocks (no bare returns). Rule: never bare-`return@Function`/`return@AsyncFunction` in an Expo Kotlin module. Needs a fresh `eas build` to confirm green (EAS quota ~15/mo).
+
 **Prayer countdown freeze fixed** (`prayer-times/index.tsx` +
 `prayer-times-widget.tsx`): the full screen displayed
 `formatCountdownClock(upcoming.msUntil, locale)` where `msUntil` is baked in
@@ -1051,4 +1053,50 @@ day. New `features/prayer-times/components/prayer-countdown.tsx` (mirrors
 web's `PrayerCountdown`) is an isolated leaf owning its own 1s tick, computing
 `target - now` fresh every render; used by both surfaces. Also added the
 missing per-minute memo dependency on the full screen (widget already had it).
+**Follow-up refinement (`a4913a3`):** BOTH the full screen's and the Home
+widget's own `now` tick were dropped 1s→60s (`setInterval(..., 60_000)`),
+since the isolated `<PrayerCountdown>` leaf owns the only per-second tick
+actually needed — the parents only need minute-granularity for the arc body/
+upcoming-key.
+
+## Pre-Play-Store perf pass #2 — live-radio correctness + render insurance (2026-07-06)
+
+User reported the app still felt slow everywhere post-launch-audit; investigated live via an
+`eas update` OTA (not a rebuild) since the app was already release-mode on device. Three fixes,
+all pushed to `main` (`a4913a3`, `531fd22`, `ea82e2c`), OTA-published to the `preview` channel,
+device-verified working by the owner:
+
+1. **Prayer-tick throttle** — see above.
+2. **Live-radio retry/rate/recents correctness (`531fd22`)** — root cause of "radio stop takes a
+   while": the live-stream `PlaybackError` auto-retry (`player-context.tsx`) resumed playback on
+   ANY error regardless of user intent, including a connection drop caused by the user's own
+   pause/stop; an already-armed retry timer could also fire minutes after a later pause (found
+   in review, not the first pass). New `lib/playback-intent.ts` singleton
+   (`getUserWantsPlayback`/`setUserWantsPlayback`) is written by every JS control
+   (play/pause/toggle/retry/load-effect/sleep-fade) AND the lock-screen remote handlers
+   (`playback-service.ts` Remote Play/Pause/Stop) — the retry path checks it both when arming
+   and at fire time. Same review pass also found a saved non-1x rate was applied to a live
+   stream on load AND via the Now-Playing speed chips (stalls the live edge — both paths now
+   skip `TrackPlayer.setRate` for `isLive`), and live sessions wrote no-op rows into
+   recently-played (now skipped). Regression tests in `__tests__/player-context-retry.test.tsx`.
+3. **Render insurance (`ea82e2c`)** — `PlaylistCard` wrapped in `React.memo`; Home's per-card
+   `categories` prop was previously a fresh array literal every render (defeats memo), now built
+   once into a `Map` keyed by playlist id alongside the existing `visible`/`categoryById` memos.
+
+**Verification:** full mobile jest standalone 24 suites (only the documented `home-screen`
+cold-cache flake, pre-existing, unrelated), typecheck/lint clean, `expo export --platform
+android` compiles. Published via `eas update --branch preview --environment preview
+--clear-cache` (NOT a rebuild — same `versionCode 6` binary, runtime version 1.0.0 matches).
+**`versionCode` bump + a fresh `eas build` are still pending** for the next store submission.
+
+**Qibla "~20° drift" report investigated + NOT a bug (2026-07-06):** owner saw
+the needle start correct then apparently drift ~15-20° right. `git diff` proved
+no compass math changed since the last confirmed-good state (only cosmetic
+glow/z-order edits). Live logcat via the still-present `[qibla-debug2]` raw/
+unwrapped/smoothed log showed: stable ~137° for ~27s, then a clean jump to
+~318° (~180° away) held rock-stable for the rest of the capture — i.e. two
+genuine stable readings, consistent with the owner physically reorienting the
+phone mid-test, not sensor drift or a code regression. Owner confirmed "works
+fine" after. The `[qibla-debug2]` log is still in `use-compass-heading.ts`
+(harmless no-op cost) — remove whenever convenient, not urgent.
 All JS-only, OTA-shippable.
