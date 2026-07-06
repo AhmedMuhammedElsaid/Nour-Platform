@@ -23,6 +23,15 @@ function signedDelta(a: number, b: number): number {
 }
 
 const STATE_THROTTLE_MS = 150;
+// Exponential moving average applied to the unwrapped heading. The native
+// module streams at ~33Hz with real (small) sensor noise on top of genuine
+// motion; assigning each raw sample straight to the SharedValue renders that
+// noise directly (looks jittery/inaccurate even at rest). A per-sample
+// withTiming() tween was tried first, but re-triggering a 120ms animation
+// every ~30ms just made the value chase a perpetually-moving target instead —
+// worse than either raw or smoothed. A plain EMA has no "animation in flight"
+// to interrupt, so it settles cleanly while still damping noise.
+const EMA_ALPHA = 0.3;
 
 export type CompassHeading = {
   headingSV: SharedValue<number | null>;
@@ -35,45 +44,27 @@ export function useCompassHeading(location: { lat: number; lng: number }): Compa
   const [heading, setHeading] = useState<number | null>(null);
   const [available] = useState(() => isNativeCompassAvailable());
   const unwrappedRef = useRef<number | null>(null);
+  const smoothedRef = useRef<number | null>(null);
   const lastStateRef = useRef(0);
 
-  const debugLastRawRef = useRef<number | null>(null);
-  const debugLastTsRef = useRef<number | null>(null);
-
   const push = useCallback(
-    (raw: number, magRaw?: number, accuracy?: number) => {
-      // TEMP diagnostic (2026-07-06): investigating a reported fixed-offset
-      // wrong-direction bug on the native compass. UNTHROTTLED (every native
-      // sample, ~30ms) so a within-second discontinuity is visible — the
-      // earlier 1/s-throttled version could only show two 1s-apart values,
-      // never whether the transition between them was a smooth ramp or a
-      // sudden snap. Remove once root-caused.
-      const now0 = Date.now();
-      const prevRaw = debugLastRawRef.current;
-      const prevTs = debugLastTsRef.current;
-      const dtMs = prevTs == null ? null : now0 - prevTs;
-      const dDeg = prevRaw == null ? null : signedDelta(norm360(prevRaw), raw);
-      debugLastRawRef.current = raw;
-      debugLastTsRef.current = now0;
-      console.warn(
-        `[qibla-debug] trueHeading=${raw.toFixed(1)} magHeading=${magRaw?.toFixed(1)} accuracy=${accuracy} dtMs=${dtMs} dDeg=${dDeg?.toFixed(1)}`,
-      );
-      // Drive the UI-thread rotation directly (unwrapped so the transform takes
-      // the short arc instead of unwinding through the 0/360 seam). The native
-      // module already streams at ~33Hz, which is smooth enough on its own —
-      // wrapping every sample in its own withTiming (as before) meant each new
-      // ~30ms sample interrupted the previous 120ms tween at only ~25-40%
-      // complete, so the rendered value perpetually chased a moving target and
-      // never caught up. That's what looked like the needle being "stuck"
-      // oscillating in a narrow band during a real back-and-forth search motion.
-      const prev = unwrappedRef.current;
-      const next = prev == null ? raw : prev + signedDelta(norm360(prev), raw);
+    (raw: number) => {
+      // Unwrap so the smoothing (and the dial's transform) take the short arc
+      // instead of unwinding through the 0/360 seam.
+      const prevUnwrapped = unwrappedRef.current;
+      const next =
+        prevUnwrapped == null ? raw : prevUnwrapped + signedDelta(norm360(prevUnwrapped), raw);
       unwrappedRef.current = next;
-      headingSV.value = next;
+
+      const prevSmoothed = smoothedRef.current;
+      const smoothed = prevSmoothed == null ? next : prevSmoothed + EMA_ALPHA * (next - prevSmoothed);
+      smoothedRef.current = smoothed;
+      headingSV.value = smoothed;
+
       const now = Date.now();
       if (now - lastStateRef.current >= STATE_THROTTLE_MS) {
         lastStateRef.current = now;
-        setHeading(norm360(raw));
+        setHeading(norm360(smoothed));
       }
     },
     [headingSV],
@@ -83,9 +74,10 @@ export function useCompassHeading(location: { lat: number; lng: number }): Compa
     useCallback(() => {
       if (!isNativeCompassAvailable()) return;
       unwrappedRef.current = null;
+      smoothedRef.current = null;
       lastStateRef.current = 0;
       setCompassLocation(location.lat, location.lng);
-      const sub = addHeadingListener((h) => push(h.trueHeading, h.magHeading, h.accuracy));
+      const sub = addHeadingListener((h) => push(h.trueHeading));
       startCompass();
       return () => {
         sub?.remove();
