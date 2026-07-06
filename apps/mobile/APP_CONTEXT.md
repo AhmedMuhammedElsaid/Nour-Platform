@@ -1087,7 +1087,45 @@ device-verified working by the owner:
 cold-cache flake, pre-existing, unrelated), typecheck/lint clean, `expo export --platform
 android` compiles. Published via `eas update --branch preview --environment preview
 --clear-cache` (NOT a rebuild — same `versionCode 6` binary, runtime version 1.0.0 matches).
-**`versionCode` bump + a fresh `eas build` are still pending** for the next store submission.
+**`versionCode` bumped 6→7 (`f1399b5`, chore, committed NOT pushed).** Full monorepo
+`turbo run lint typecheck test build` re-verified green after the bump (only the documented
+`home-screen` flake). **A fresh `eas build` (production profile, for the actual Play Store AAB —
+no production build has ever been made, only `preview` APKs) is still the one pending step,
+deliberately deferred by the owner.**
+
+## Radio/player: pause on force-close + restore controls on reopen (2026-07-07, JS-only, OTA-able)
+
+**Bug (owner-reported):** play a radio station → force-close the app (swipe from recents) →
+audio kept playing headlessly, and on reopen the in-app mini-player was **gone**, so there was
+no way to stop it from inside the app.
+
+**Root cause:** `PlayerProvider` (`lib/player-context.tsx`) holds `queue`/`currentIndex` in React
+state, which resets to empty on every fresh JS boot; `mini-player.tsx:46` gates on `hasQueue`, so
+after an app kill (JS context wiped, native RNTP service survives) the mini-player never rendered.
+`setupPlayer()` also never set `android.appKilledPlaybackBehavior` → RNTP default `ContinuePlayback`
+kept the audio alive. Nothing persisted the now-playing queue (only prefs/positions/recent).
+
+**Fix (owner chose "pause on force-close + restore controls"), all in `lib/player-context.tsx`:**
+- `updateOptions({ android: { appKilledPlaybackBehavior: AppKilledPlaybackBehavior.PausePlayback } })`
+  — swiping the app away now **pauses** (notification stays, native session survives paused).
+- New `SESSION_KEY = "nour.player.session"` persists `{ queue, index }` (full `QueueTrack`, so
+  `isLive` survives) via a persist effect gated on a `sessionHydratedRef` so the empty boot state
+  can't clobber a surviving session before it's read.
+- An **adopt-on-mount** effect: after `setupPlayer()`, if `TrackPlayer.getActiveTrackIndex()` shows a
+  surviving native track, it reads the persisted session (fallback: reconstruct from
+  `getQueue()` via `nativeToQueueTrack`, loses `isLive`) and rehydrates `queue`/`currentIndex` so the
+  mini-player returns. A one-shot `skipNextLoadRef` makes the existing `[currentIndex, queue]` load
+  effect bail once, so it does **not** `reset()`+`add()`+`play()` (which would restart/hiccup the
+  stream). `setUserWantsPlayback` reflects the real native state (paused after a kill).
+- A stale session is harmless: it's only ever *read* when `getActiveTrackIndex()` returns a live
+  index, so a leftover session from a fully-closed app (RNTP gone) never makes a phantom player.
+
+**Tests:** extended the `jest.setup.js` RNTP mock (`getActiveTrackIndex`/`getQueue`/`getPlaybackState`
+defaults + `AppKilledPlaybackBehavior` enum) + new `__tests__/player-context-session.test.tsx` (4
+tests: pause-playback configured; session persisted on `loadQueue`; rehydrate-without-reset/add on
+reopen; no phantom player on a cold start). Gate green: typecheck/lint clean, 24/25 suites (only the
+documented `home-screen` cold-cache flake), `expo export --platform android` compiles. **Purely JS →
+OTA-shippable (`eas update --branch preview`), no `eas build`.**
 
 **Qibla "~20° drift" report investigated + NOT a bug (2026-07-06):** owner saw
 the needle start correct then apparently drift ~15-20° right. `git diff` proved
