@@ -233,6 +233,11 @@ jest.mock("react-native-track-player", () => {
     JumpBackward: "jump-backward",
   };
   const RepeatMode = { Off: 0, Track: 1, Queue: 2 };
+  const AppKilledPlaybackBehavior = {
+    ContinuePlayback: "continue-playback",
+    PausePlayback: "pause-playback",
+    StopPlaybackAndRemoveNotification: "stop-playback-and-remove-notification",
+  };
 
   return {
     __esModule: true,
@@ -249,6 +254,11 @@ jest.mock("react-native-track-player", () => {
       setVolume: jest.fn().mockResolvedValue(undefined),
       setRepeatMode: jest.fn().mockResolvedValue(undefined),
       getProgress: jest.fn().mockResolvedValue({ position: 0, duration: 0, buffered: 0 }),
+      // Default to "cold start, nothing playing" so existing suites are
+      // unaffected; the session test overrides these per-case.
+      getActiveTrackIndex: jest.fn().mockResolvedValue(undefined),
+      getQueue: jest.fn().mockResolvedValue([]),
+      getPlaybackState: jest.fn().mockResolvedValue({ state: State.None }),
       skipToNext: jest.fn().mockResolvedValue(undefined),
       skipToPrevious: jest.fn().mockResolvedValue(undefined),
       registerPlaybackService: jest.fn(),
@@ -258,6 +268,7 @@ jest.mock("react-native-track-player", () => {
     Event,
     Capability,
     RepeatMode,
+    AppKilledPlaybackBehavior,
     usePlaybackState: jest.fn().mockReturnValue({ state: State.None }),
     useProgress: jest.fn().mockReturnValue({ position: 0, duration: 0, buffered: 0 }),
     useActiveTrack: jest.fn().mockReturnValue(null),

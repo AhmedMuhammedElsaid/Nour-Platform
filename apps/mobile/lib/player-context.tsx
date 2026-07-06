@@ -8,6 +8,7 @@ import * as React from "react";
 import { getLocalPath } from "@/lib/downloads";
 import { getUserWantsPlayback, setUserWantsPlayback } from "@/lib/playback-intent";
 import TrackPlayer, {
+  AppKilledPlaybackBehavior,
   Capability,
   Event,
   RepeatMode as RNTPRepeatMode,
@@ -15,6 +16,7 @@ import TrackPlayer, {
   usePlaybackState,
   useProgress,
   useTrackPlayerEvents,
+  type Track,
 } from "react-native-track-player";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -103,6 +105,11 @@ export function usePlayerProgress(): PlayerProgressValue {
 const PREFS_KEY = "nour.player.prefs";
 const POSITIONS_KEY = "nour.player.positions";
 const RECENT_KEY = "nour.player.recent";
+// The currently-loaded queue + index. Persisted so that after an app kill (the
+// native RNTP service survives, but the JS context is wiped) the reopened app
+// can rehydrate the in-app player and restore its controls. Stores QueueTrack
+// objects (which carry `isLive`), unlike the raw native Track queue.
+const SESSION_KEY = "nour.player.session";
 const MAX_POSITIONS = 100;
 const MAX_RECENT = 20;
 const RESUME_MIN_SECONDS = 5;
@@ -221,6 +228,57 @@ async function recordRecentlyPlayed(entry: Omit<RecentEntry, "updatedAt">): Prom
 }
 
 // ---------------------------------------------------------------------------
+// Now-playing session persistence (for post-app-kill rehydration)
+// ---------------------------------------------------------------------------
+
+type StoredSession = { queue: QueueTrack[]; index: number };
+
+async function readSession(): Promise<StoredSession | null> {
+  try {
+    const raw = await AsyncStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredSession>;
+    if (!Array.isArray(parsed.queue) || typeof parsed.index !== "number") {
+      return null;
+    }
+    return { queue: parsed.queue as QueueTrack[], index: parsed.index };
+  } catch {
+    return null;
+  }
+}
+
+async function writeSession(session: StoredSession): Promise<void> {
+  try {
+    await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  } catch {
+    /* non-fatal */
+  }
+}
+
+async function clearSession(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(SESSION_KEY);
+  } catch {
+    /* non-fatal */
+  }
+}
+
+// Best-effort reconstruction of a QueueTrack from a native RNTP Track — used only
+// as a fallback when the native player has a surviving track but the persisted
+// session is somehow missing, so the user can at least see and stop what's
+// playing. Loses `isLive` (the native Track doesn't carry it).
+function nativeToQueueTrack(t: Track): QueueTrack {
+  return {
+    id: String(t.id ?? t.url),
+    title: typeof t.title === "string" ? t.title : "",
+    mediaUrl: typeof t.url === "string" ? t.url : String(t.url),
+    coverUrl: typeof t.artwork === "string" ? t.artwork : undefined,
+    playlistTitle: typeof t.artist === "string" ? t.artist : undefined,
+    durationSecs: typeof t.duration === "number" ? t.duration : undefined,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Shuffle (Fisher–Yates) — same as web
 // ---------------------------------------------------------------------------
 
@@ -280,6 +338,15 @@ async function setupPlayer(): Promise<void> {
       ],
       forwardJumpInterval: 10,
       backwardJumpInterval: 10,
+      // Force-closing the app (swipe from recents) PAUSES playback rather than
+      // continuing it headlessly — the notification stays so playback can be
+      // resumed, and on reopen the JS session is rehydrated from the surviving
+      // native player (see the adopt-on-mount effect) so the in-app player
+      // controls come back. Without this, RNTP defaults to ContinuePlayback and
+      // audio kept playing with no way to stop it from inside the reopened app.
+      android: {
+        appKilledPlaybackBehavior: AppKilledPlaybackBehavior.PausePlayback,
+      },
     });
     // Tell RNTP not to auto-handle track advancement — we drive it ourselves
     // (to support shuffle + repeat parity with the web).
@@ -329,6 +396,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const liveRetryTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  // Gate: don't persist the now-playing session until the mount-time adopt()
+  // has run, or the empty initial state would clobber a surviving session
+  // before we get a chance to read it back.
+  const sessionHydratedRef = React.useRef(false);
+  // One-shot: when we adopt a surviving native session on reopen, suppress the
+  // load effect once so it doesn't reset/re-add/replay the already-loaded track.
+  const skipNextLoadRef = React.useRef(false);
 
   queueRef.current = queue;
   currentIndexRef.current = currentIndex;
@@ -346,6 +420,92 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     void setupPlayer();
   }, []);
+
+  // Adopt a surviving native session on mount. After an app kill the native RNTP
+  // service keeps the (now paused) track loaded, but the JS state is wiped — so
+  // the in-app player would be gone and the user couldn't stop/resume from the
+  // app. Rehydrate `queue`/`currentIndex` from the persisted session so the
+  // mini-player comes back, WITHOUT reloading (which would restart the stream).
+  React.useEffect(() => {
+    let cancelled = false;
+    const adopt = async (): Promise<void> => {
+      await setupPlayer();
+      let activeIndex: number | undefined;
+      try {
+        activeIndex = await TrackPlayer.getActiveTrackIndex();
+      } catch {
+        activeIndex = undefined;
+      }
+      if (cancelled) return;
+      // No surviving native track → cold start, nothing to adopt.
+      if (activeIndex == null) {
+        sessionHydratedRef.current = true;
+        return;
+      }
+
+      const session = await readSession();
+      if (cancelled) return;
+      let restoredQueue = session?.queue ?? null;
+      let restoredIndex = session
+        ? Math.min(Math.max(session.index, 0), session.queue.length - 1)
+        : activeIndex;
+      if (!restoredQueue || restoredQueue.length === 0) {
+        // Fallback: rebuild a minimal queue from the native tracks so the user
+        // can still see + stop what's playing (loses isLive; rarely reached).
+        try {
+          const nativeQueue = await TrackPlayer.getQueue();
+          restoredQueue = nativeQueue.map(nativeToQueueTrack);
+          restoredIndex = Math.min(
+            Math.max(activeIndex, 0),
+            Math.max(nativeQueue.length - 1, 0),
+          );
+        } catch {
+          restoredQueue = null;
+        }
+      }
+      if (cancelled || !restoredQueue || restoredQueue.length === 0) {
+        sessionHydratedRef.current = true;
+        return;
+      }
+
+      // Adopt without triggering the load effect's reset/add/play.
+      skipNextLoadRef.current = true;
+      setQueue(restoredQueue);
+      setCurrentIndex(restoredIndex);
+      playOrderRef.current = buildPlayOrder(
+        restoredQueue.length,
+        isShuffledRef.current,
+        restoredIndex,
+      );
+      // Reflect the actual native state (PausePlayback leaves it paused, so the
+      // user must have wanted playback earlier but it's paused now).
+      try {
+        const state = (await TrackPlayer.getPlaybackState()).state;
+        setUserWantsPlayback(state === RNTPState.Playing);
+      } catch {
+        setUserWantsPlayback(false);
+      }
+      sessionHydratedRef.current = true;
+    };
+    void adopt().catch(() => {
+      sessionHydratedRef.current = true;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Persist the now-playing session so it can be rehydrated after an app kill.
+  // Gated on sessionHydratedRef so the empty initial state can't overwrite a
+  // surviving session before adopt() reads it.
+  React.useEffect(() => {
+    if (!sessionHydratedRef.current) return;
+    if (queue.length > 0 && currentIndex >= 0) {
+      void writeSession({ queue, index: currentIndex });
+    } else {
+      void clearSession();
+    }
+  }, [queue, currentIndex]);
 
   // Hydrate prefs.
   React.useEffect(() => {
@@ -472,6 +632,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (currentIndex < 0 || currentIndex >= queue.length) return;
     const track = queue[currentIndex];
     if (!track) return;
+
+    // Adopting a surviving native session (see the adopt-on-mount effect): the
+    // track is already loaded and (paused) in the native player, so skip the
+    // reset/add/play that would restart the stream. Consume the one-shot flag.
+    if (skipNextLoadRef.current) {
+      skipNextLoadRef.current = false;
+      return;
+    }
 
     const load = async (): Promise<void> => {
       await setupPlayer();
