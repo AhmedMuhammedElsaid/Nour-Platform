@@ -1030,3 +1030,25 @@ See [[project_qibla_feature]] for the full attempt history/gotchas.
   Arabic, (b) `direction:"ltr"` on the overlay under forced RTL, (c) numeric
   margins not percentage transforms, (d) match web's constant offsets rather than
   inventing per-index staggers. See [[project_mobile_sun_arc_bloom]].
+
+## Qibla native compass + prayer countdown fixes (2026-07-06, PUSHED, OTA `preview`)
+
+Native `nour-compass` module verified on-device for the first time (see
+[[project_qibla_feature]] for the full attempt/root-cause log). Summary: (1)
+per-sample `withTiming` caused a lagged/stuck needle → direct SharedValue
+assignment; (2) raw ~33Hz sensor noise then looked jittery → EMA smoothing
+(`alpha=0.3`); (3) aligned-state glow/pulse/ping added to `qibla-compass.tsx`
+(mirrors web, reuses the sun-arc corona `withRepeat` pattern) + z-order fix
+(pointer now draws below the rotating dial, matching web); (4) "Facing Qibla"
+text recolored to `text-primary` (gold) + pulses in sync.
+
+**Prayer countdown freeze fixed** (`prayer-times/index.tsx` +
+`prayer-times-widget.tsx`): the full screen displayed
+`formatCountdownClock(upcoming.msUntil, locale)` where `msUntil` is baked in
+once inside `getNextPrayer`, and the `useMemo` deps (`[day, now.toDateString()]`)
+only recomputed once per calendar day — the countdown was frozen almost all
+day. New `features/prayer-times/components/prayer-countdown.tsx` (mirrors
+web's `PrayerCountdown`) is an isolated leaf owning its own 1s tick, computing
+`target - now` fresh every render; used by both surfaces. Also added the
+missing per-minute memo dependency on the full screen (widget already had it).
+All JS-only, OTA-shippable.
