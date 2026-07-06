@@ -208,8 +208,6 @@ export default function HomeScreen() {
           </View>
         )}
         <View className="mt-3">
-          <QiblaHomeCard />
-          <RadioHomeCard />
           <ContinueListening />
           <ContinueReading />
         </View>
