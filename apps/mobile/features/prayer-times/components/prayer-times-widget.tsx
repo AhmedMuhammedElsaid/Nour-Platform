@@ -47,15 +47,18 @@ export function PrayerTimesWidget() {
   const { location, prefs, hydrated } = usePrayerSettings();
   const [now, setNow] = useState(() => new Date());
 
-  // Tick every second so the body glides along the arc and the countdown updates
-  // — but ONLY while Home is focused. The screen stays mounted in the stack when
-  // you navigate away, so an unconditional interval would keep recomputing prayer
-  // times every second on every other screen, making the whole app feel laggy.
-  // useFocusEffect starts the interval on focus and clears it on blur.
+  // Tick once a MINUTE (only while Home is focused — the screen stays mounted in
+  // the stack, so an ungated interval would keep recomputing on every screen).
+  // The per-second countdown lives in the isolated <PrayerCountdown> leaf; this
+  // tick only nudges the arc body / upcoming-prayer row, where a minute of drift
+  // is imperceptible. A 1s tick here re-rendered the whole widget subtree
+  // (usePrayerDay + getArcPosition + buildArcDots + the SunArc SVG) every second
+  // on the app's most-visited screen. Trade-off: the "next prayer" flip can lag
+  // the actual instant by up to a minute; the leaf clamps its countdown at 0:00.
   useFocusEffect(
     useCallback(() => {
       setNow(new Date());
-      const id = setInterval(() => setNow(new Date()), 1000);
+      const id = setInterval(() => setNow(new Date()), 60_000);
       return () => clearInterval(id);
     }, []),
   );

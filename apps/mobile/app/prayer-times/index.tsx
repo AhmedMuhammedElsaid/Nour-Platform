@@ -53,13 +53,15 @@ export default function PrayerTimesScreen() {
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [notifGranted, setNotifGranted] = useState(false);
 
-  // 1s tick for the countdown — only while this screen is focused. It stays
-  // mounted in the stack after you leave it, so an unconditional interval would
-  // keep ticking (and recomputing) in the background and add to app-wide lag.
+  // Tick once a MINUTE — only while this screen is focused (it stays mounted in
+  // the stack after you leave it). The per-second countdown lives in the isolated
+  // <PrayerCountdown> leaf; this tick only moves the arc body / upcoming key,
+  // where a minute of drift is imperceptible. A 1s tick here re-rendered the
+  // whole screen (usePrayerDay + arc math + SunArc SVG + timetable) every second.
   useFocusEffect(
     useCallback(() => {
       setNow(new Date());
-      const id = setInterval(() => setNow(new Date()), 1000);
+      const id = setInterval(() => setNow(new Date()), 60_000);
       return () => clearInterval(id);
     }, []),
   );
