@@ -3,24 +3,45 @@
 //
 // Rotation runs on the UI thread: the rose SVG is drawn once and rotated via a
 // reanimated View transform (GPU-composited, like the web's CSS transform), fed by a
-// SharedValue from useCompassHeading. The fixed reference pointer + hub are a static
-// overlay. Heading now comes from the native fused rotation-vector sensor, so it is
-// smooth AND accurate (no "accuracy 0"). SVG fills can't read NativeWind classes, so
-// the palette is resolved from the theme here.
+// SharedValue from useCompassHeading. Heading comes from the native fused
+// rotation-vector sensor, so it is smooth AND accurate. SVG fills can't read
+// NativeWind classes, so the palette is resolved from the theme here.
+//
+// Z-order mirrors the web compass's SVG document order: the fixed reference
+// pointer draws BELOW the rotating dial, and the centre hub draws ABOVE it — so
+// the Kaaba marker sits above the pointer whenever they overlap (previously the
+// pointer was a single "static overlay" drawn on top of everything).
 
-import { memo } from "react";
+import { memo, useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {
+  Easing,
+  cancelAnimation,
+  useAnimatedProps,
   useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
   type SharedValue,
 } from "react-native-reanimated";
-import Svg, { Circle, Line, Polygon, Text as SvgText } from "react-native-svg";
+import Svg, {
+  Circle,
+  Defs,
+  FeGaussianBlur,
+  Filter,
+  Line,
+  Polygon,
+  Text as SvgText,
+} from "react-native-svg";
 
 import type { ThemeMode } from "@/lib/theme-context";
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 const SIZE = 240;
 const C = SIZE / 2;
 const R = 104;
+const MARKER_R = 12;
 
 type Palette = {
   gold: string;
@@ -76,11 +97,79 @@ export const QiblaCompass = memo(function QiblaCompass({
     return { transform: [{ rotate: `${h == null ? 0 : -h}deg` }] };
   });
 
+  // Aligned-state celebration — mirrors the web compass's CSS keyframes (needle
+  // glow / Kaaba pulse / sonar ping) using the same Reanimated pattern already
+  // established by the sun-arc's corona breathing pulse: withRepeat+withTiming
+  // driving an AnimatedCircle's props on the UI thread, no JS re-render.
+  const glowOpacity = useSharedValue(0);
+  const kaabaScale = useSharedValue(1);
+  const pingProgress = useSharedValue(0);
+
+  useEffect(() => {
+    if (aligned) {
+      glowOpacity.value = withRepeat(
+        withTiming(0.55, { duration: 650, easing: Easing.inOut(Easing.ease) }),
+        -1,
+        true,
+      );
+      kaabaScale.value = withRepeat(
+        withTiming(1.16, { duration: 650, easing: Easing.inOut(Easing.ease) }),
+        -1,
+        true,
+      );
+      // Sonar ping: expand and fade, then snap back to the start (not a
+      // ping-pong) — reverse:false restarts each cycle from 0.
+      pingProgress.value = withRepeat(
+        withTiming(1, { duration: 1600, easing: Easing.out(Easing.ease) }),
+        -1,
+        false,
+      );
+    } else {
+      cancelAnimation(glowOpacity);
+      cancelAnimation(kaabaScale);
+      cancelAnimation(pingProgress);
+      glowOpacity.value = 0;
+      kaabaScale.value = 1;
+      pingProgress.value = 0;
+    }
+    return () => {
+      cancelAnimation(glowOpacity);
+      cancelAnimation(kaabaScale);
+      cancelAnimation(pingProgress);
+    };
+  }, [aligned, glowOpacity, kaabaScale, pingProgress]);
+
+  const glowProps = useAnimatedProps(() => ({ opacity: glowOpacity.value }));
+  const kaabaProps = useAnimatedProps(() => ({ r: MARKER_R * kaabaScale.value }));
+  const pingProps = useAnimatedProps(() => ({
+    r: MARKER_R * (1 + pingProgress.value * 1.6),
+    opacity: 0.55 * (1 - pingProgress.value),
+  }));
+
   return (
     <View style={{ width: "100%", maxWidth: 320, aspectRatio: 1, alignSelf: "center" }}>
+      {/* Fixed reference triangle — "the way you are facing". Drawn BELOW the
+          rotating dial (matches the web compass's document order) so the Kaaba
+          marker sits above it once the rose rotates it underneath. */}
+      <Svg
+        viewBox={`0 0 ${SIZE} ${SIZE}`}
+        width="100%"
+        height="100%"
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      >
+        <Polygon points={`${C - 8},14 ${C + 8},14 ${C},30`} fill={muted} />
+      </Svg>
+
       {/* Rotating dial (drawn once; the View transform is UI-thread/GPU). */}
       <Animated.View style={[StyleSheet.absoluteFill, dialStyle]}>
         <Svg viewBox={`0 0 ${SIZE} ${SIZE}`} width="100%" height="100%" accessibilityLabel="Qibla compass">
+          <Defs>
+            <Filter id="qibla-bloom" x="-75%" y="-75%" width="250%" height="250%">
+              <FeGaussianBlur stdDeviation="3" />
+            </Filter>
+          </Defs>
+
           <Circle cx={C} cy={C} r={R + 14} fill={surface2} stroke={border} />
 
           {TICKS.map((angle) => {
@@ -127,7 +216,20 @@ export const QiblaCompass = memo(function QiblaCompass({
             strokeWidth={3}
             strokeLinecap="round"
           />
-          <Circle testID="qibla-marker" cx={marker.x} cy={marker.y} r={12} fill={markerColor} />
+
+          {/* Aligned-state glow halo + sonar ping, then the crisp Kaaba marker
+              on top — only visibly pulsing while `aligned` (values reset to
+              baseline otherwise, so they're inert/invisible when idle). */}
+          <AnimatedCircle
+            cx={marker.x}
+            cy={marker.y}
+            fill={sun}
+            filter="url(#qibla-bloom)"
+            animatedProps={glowProps}
+            r={MARKER_R + 8}
+          />
+          <AnimatedCircle cx={marker.x} cy={marker.y} fill={sun} animatedProps={pingProps} />
+          <AnimatedCircle testID="qibla-marker" cx={marker.x} cy={marker.y} fill={markerColor} animatedProps={kaabaProps} />
           <SvgText
             x={marker.x}
             y={marker.y}
@@ -140,7 +242,7 @@ export const QiblaCompass = memo(function QiblaCompass({
         </Svg>
       </Animated.View>
 
-      {/* Static overlay: fixed reference pointer (the way you face) + centre hub. */}
+      {/* Centre hub — drawn ABOVE everything (matches the web compass). */}
       <Svg
         viewBox={`0 0 ${SIZE} ${SIZE}`}
         width="100%"
@@ -148,7 +250,6 @@ export const QiblaCompass = memo(function QiblaCompass({
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       >
-        <Polygon points={`${C - 8},14 ${C + 8},14 ${C},30`} fill={muted} />
         <Circle cx={C} cy={C} r={5} fill={muted} />
       </Svg>
     </View>
