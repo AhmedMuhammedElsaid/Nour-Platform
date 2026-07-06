@@ -48,6 +48,14 @@ export default function QiblaScreen() {
   }, [available]);
 
   const bearing = computeQiblaBearing(location);
+  // TEMP diagnostic (2026-07-06): investigating a reported fixed-offset
+  // wrong-direction bug on the native compass. Remove once root-caused.
+  useEffect(() => {
+    if (!hydrated) return;
+    console.warn(
+      `[qibla-debug] bearing=${bearing.toFixed(1)} location=${location.lat.toFixed(4)},${location.lng.toFixed(4)} label=${location.label}`,
+    );
+  }, [hydrated, bearing, location.lat, location.lng, location.label]);
   const cardinal = t(`qibla.compass.${qiblaCardinalKey(bearing)}`);
   const distanceKm = groupThousands(Math.round(qiblaDistanceKm(location)));
   const aligned =

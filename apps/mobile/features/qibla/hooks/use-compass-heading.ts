@@ -42,8 +42,20 @@ export function useCompassHeading(location: { lat: number; lng: number }): Compa
   const unwrappedRef = useRef<number | null>(null);
   const lastStateRef = useRef(0);
 
+  const debugLogRef = useRef(0);
+
   const push = useCallback(
-    (raw: number) => {
+    (raw: number, magRaw?: number, accuracy?: number) => {
+      // TEMP diagnostic (2026-07-06): investigating a reported fixed-offset
+      // wrong-direction bug on the native compass. Throttled to ~1/s. Remove
+      // once root-caused.
+      const now0 = Date.now();
+      if (now0 - debugLogRef.current > 1000) {
+        debugLogRef.current = now0;
+        console.warn(
+          `[qibla-debug] trueHeading=${raw.toFixed(1)} magHeading=${magRaw?.toFixed(1)} accuracy=${accuracy} loc=${location.lat.toFixed(4)},${location.lng.toFixed(4)}`,
+        );
+      }
       // Drive the UI-thread rotation, unwrapped so withTiming eases along the short
       // arc instead of unwinding through the 0/360 seam.
       const prev = unwrappedRef.current;
@@ -61,7 +73,7 @@ export function useCompassHeading(location: { lat: number; lng: number }): Compa
         setHeading(norm360(raw));
       }
     },
-    [headingSV],
+    [headingSV, location.lat, location.lng],
   );
 
   useFocusEffect(
@@ -70,7 +82,7 @@ export function useCompassHeading(location: { lat: number; lng: number }): Compa
       unwrappedRef.current = null;
       lastStateRef.current = 0;
       setCompassLocation(location.lat, location.lng);
-      const sub = addHeadingListener((h) => push(h.trueHeading));
+      const sub = addHeadingListener((h) => push(h.trueHeading, h.magHeading, h.accuracy));
       startCompass();
       return () => {
         sub?.remove();
