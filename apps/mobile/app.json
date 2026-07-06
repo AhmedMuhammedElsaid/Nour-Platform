@@ -59,7 +59,7 @@
     },
     "android": {
       "package": "com.nour.mobile",
-      "versionCode": 6,
+      "versionCode": 7,
       "adaptiveIcon": {
         "backgroundColor": "#0E6E59",
         "foregroundImage": "./assets/adaptive-icon.png",
