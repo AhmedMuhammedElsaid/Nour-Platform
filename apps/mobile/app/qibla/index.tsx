@@ -8,6 +8,14 @@ import { useTranslation } from "react-i18next";
 import { Modal, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import Animated, {
+  Easing,
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 
 import { Text } from "@/components/ui/text";
 import { QiblaCompass } from "@/features/qibla/components/qibla-compass";
@@ -52,6 +60,24 @@ export default function QiblaScreen() {
   const distanceKm = groupThousands(Math.round(qiblaDistanceKm(location)));
   const aligned =
     heading != null && Math.abs(((heading - bearing + 540) % 360) - 180) <= 6;
+
+  // "Facing Qibla" text breathes in sync with the compass's own aligned-state
+  // pulse (same duration/easing as qibla-compass.tsx's glow/Kaaba pulse).
+  const facingOpacity = useSharedValue(1);
+  useEffect(() => {
+    if (aligned) {
+      facingOpacity.value = withRepeat(
+        withTiming(0.45, { duration: 650, easing: Easing.inOut(Easing.ease) }),
+        -1,
+        true,
+      );
+    } else {
+      cancelAnimation(facingOpacity);
+      facingOpacity.value = 1;
+    }
+    return () => cancelAnimation(facingOpacity);
+  }, [aligned, facingOpacity]);
+  const facingStyle = useAnimatedStyle(() => ({ opacity: facingOpacity.value }));
 
   return (
     <>
@@ -121,7 +147,11 @@ export default function QiblaScreen() {
             </Text>
             <Text variant="muted">{t("qibla.distanceKm", { km: distanceKm })}</Text>
             {aligned ? (
-              <Text className="mt-1 text-sun">{t("qibla.facingQibla")}</Text>
+              <Animated.View style={facingStyle}>
+                <Text className="mt-1 font-semibold text-primary">
+                  {t("qibla.facingQibla")}
+                </Text>
+              </Animated.View>
             ) : null}
           </View>
 
