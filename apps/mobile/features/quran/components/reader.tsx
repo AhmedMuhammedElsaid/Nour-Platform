@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
 import type {
   QuranEdition,
@@ -11,7 +10,6 @@ import type {
 } from "@repo/shared-core/schemas/quran";
 
 import { Text } from "@/components/ui/text";
-import { cn } from "@/lib/cn";
 import {
   getQuranBookmarks,
   isAyahBookmarked,
@@ -22,7 +20,7 @@ import {
 } from "@/lib/device-local";
 import { usePlayer } from "@/lib/player-context";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
-import { useAyahAudio } from "../hooks/use-ayah-audio";
+import { ayahTrackId, buildAyahQueue, parseAyahTrackId } from "../lib/ayah-queue";
 import { AyahRow } from "./ayah-row";
 import { ReaderSettingsSheet } from "./reader-settings-sheet";
 import { TafsirSheet } from "./tafsir-sheet";
@@ -54,43 +52,26 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs,
   const [tafsirAyah, setTafsirAyah] = useState<{ numberGlobal: number; ref: string } | null>(null);
   const listRef = useRef<FlatList<ReaderAyah>>(null);
 
-  // The reader's ayah audio (expo-audio) and the site-wide RNTP player are
-  // independent — coordinate them so they never play at once (point 3).
+  // Quran recitation plays through the site-wide RNTP player (one engine), so it
+  // gets the mini-player + lock-screen controls and keeps playing when you leave
+  // the reader. The reader builds a per-ayah queue and reads back the active ayah
+  // from player.currentTrack for highlight + scroll.
   const player = usePlayer();
-  const audio = useAyahAudio(
-    data.ayahs.map((a) => ({ numberGlobal: a.numberGlobal, audioUrl: a.audioUrl })),
-    {
-      onPlaybackStart: () => {
-        if (player.isPlaying) player.pause();
-      },
-    },
+  const queue = useMemo(
+    () => buildAyahQueue(data.surah, data.ayahs, data.reciter, locale),
+    [data.surah, data.ayahs, data.reciter, locale],
   );
-
-  // Reverse direction: starting the site-wide player stops the ayah audio.
-  const { isPlaying: ayahPlaying, stop: stopAyah } = audio;
-  const playerPlaying = player.isPlaying;
-  useEffect(() => {
-    if (playerPlaying && ayahPlaying) stopAyah();
-  }, [playerPlaying, ayahPlaying, stopAyah]);
-
-  // Stop this reader's ayah audio whenever the screen loses focus — leaving via
-  // back, a tab switch, or opening another surah. Each Reader owns its own
-  // expo-audio player, which keeps playing after the screen is gone; without
-  // this, re-entering from the home Readers shelf spins up a second player and
-  // the two recitations overlap (the reported bug). Fires on blur AND unmount.
-  useFocusEffect(useCallback(() => () => stopAyah(), [stopAyah]));
+  const activeGlobal = parseAyahTrackId(player.currentTrack?.id);
 
   // Autostart from the first ayah when arriving with autoStart (Readers shelf →
   // Al-Fatiha in the tapped voice). Fires once; RN has no autoplay gesture gate.
   const didAutoStart = useRef(false);
-  const { playAyah } = audio;
+  const { loadQueue } = player;
   useEffect(() => {
-    if (!autoStart || didAutoStart.current) return;
-    const first = data.ayahs[0];
-    if (!first?.audioUrl) return;
+    if (!autoStart || didAutoStart.current || queue.length === 0) return;
     didAutoStart.current = true;
-    playAyah(first.numberGlobal);
-  }, [autoStart, data.ayahs, playAyah]);
+    loadQueue(queue, 0);
+  }, [autoStart, queue, loadQueue]);
 
   const surahNameEn = data.surah.name.en;
   const translationDir = data.translationEdition?.dir ?? (locale === "ar" ? "rtl" : "ltr");
@@ -116,12 +97,12 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs,
 
   // Scroll the currently-playing ayah into view.
   useEffect(() => {
-    if (audio.currentGlobal === null) return;
-    const idx = data.ayahs.findIndex((a) => a.numberGlobal === audio.currentGlobal);
+    if (activeGlobal === null) return;
+    const idx = data.ayahs.findIndex((a) => a.numberGlobal === activeGlobal);
     if (idx >= 0) {
       listRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.3 });
     }
-  }, [audio.currentGlobal, data.ayahs]);
+  }, [activeGlobal, data.ayahs]);
 
   const onToggleBookmark = useCallback(
     (ayah: ReaderAyah) => {
@@ -135,13 +116,18 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs,
     [surahNameEn],
   );
 
-  // Same ayah toggles play/pause; a different ayah starts fresh.
+  // Same ayah toggles play/pause; a different ayah (re)loads the queue at it.
   const onPlayToggle = useCallback(
     (numberGlobal: number) => {
-      if (audio.currentGlobal === numberGlobal) audio.toggle();
-      else audio.playAyah(numberGlobal);
+      if (activeGlobal === numberGlobal) {
+        player.toggle();
+        return;
+      }
+      const idx = queue.findIndex((tk) => tk.id === ayahTrackId(numberGlobal));
+      if (idx < 0) return;
+      player.loadQueue(queue, idx);
     },
-    [audio],
+    [activeGlobal, queue, player],
   );
 
   const display = data.surah.name;
@@ -170,19 +156,6 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs,
         {data.surah.meaning} · {data.surah.ayahCount} {t("quran.ayahs")}
       </Text>
       <View className="flex-row items-center gap-2">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ selected: audio.repeatAyah }}
-          onPress={() => audio.setRepeatAyah(!audio.repeatAyah)}
-          className={cn(
-            "rounded-md border px-3 py-1.5",
-            audio.repeatAyah ? "border-primary" : "border-border",
-          )}
-        >
-          <Text className={cn("text-sm", audio.repeatAyah ? "text-primary" : "text-text-2")}>
-            🔁 {t("quran.repeatAyah")}
-          </Text>
-        </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t("quran.settings")}
@@ -217,8 +190,8 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs,
             translationDir={translationDir}
             showWordByWord={prefs.showWordByWord}
             fontScale={prefs.fontScale}
-            isCurrent={audio.currentGlobal === item.numberGlobal}
-            isPlaying={audio.isPlaying}
+            isCurrent={activeGlobal === item.numberGlobal}
+            isPlaying={player.isPlaying && activeGlobal === item.numberGlobal}
             isBookmarked={isAyahBookmarked(bookmarks, {
               surah: item.surah,
               ayahInSurah: item.ayahInSurah,

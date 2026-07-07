@@ -6,24 +6,29 @@ import QuranReaderScreen from "@/app/quran/[surah]";
 import { getJson } from "@/lib/api";
 import { PlayerProvider } from "@/lib/player-context";
 
-jest.mock("@/lib/api", () => ({ getJson: jest.fn() }));
-
-// A controllable ayah-audio player so we can assert playback is stopped when the
-// reader leaves. `mock`-prefixed names are allowed through jest's hoisting.
-const mockPlayer = {
-  replace: jest.fn(),
-  play: jest.fn(),
-  pause: jest.fn(),
-  remove: jest.fn(),
-};
-jest.mock("expo-audio", () => ({
-  useAudioPlayer: () => mockPlayer,
-  useAudioPlayerStatus: () => ({ playing: false, didJustFinish: false }),
-  setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
+jest.mock("@/lib/api", () => ({
+  getJson: jest.fn(),
+  assetUrl: (p: string) => `https://cdn.test${p}`,
 }));
 
-// Model useFocusEffect as a mount-run effect whose cleanup fires on blur/unmount
-// (matches @react-navigation semantics for the case under test).
+// Controllable player stub so we can assert the Reader drives the RNTP player.
+const mockLoadQueue = jest.fn();
+const mockToggle = jest.fn();
+let mockCurrentTrack: { id: string } | null = null;
+jest.mock("@/lib/player-context", () => ({
+  usePlayer: () => ({
+    isPlaying: false,
+    hasQueue: false,
+    currentTrack: mockCurrentTrack,
+    loadQueue: mockLoadQueue,
+    toggle: mockToggle,
+    pause: jest.fn(),
+    play: jest.fn(),
+  }),
+  usePlayerProgress: () => ({ currentTime: 0, duration: 0 }),
+  PlayerProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 jest.mock("expo-router", () => {
   const react = jest.requireActual("react") as typeof import("react");
   return {
@@ -102,7 +107,12 @@ describe("QuranIndexScreen", () => {
 });
 
 describe("QuranReaderScreen", () => {
-  beforeEach(() => jest.mocked(getJson).mockReset());
+  beforeEach(() => {
+    jest.mocked(getJson).mockReset();
+    mockLoadQueue.mockClear();
+    mockToggle.mockClear();
+    mockCurrentTrack = null;
+  });
 
   it("renders ayah text and a working play button", async () => {
     mockApi();
@@ -113,23 +123,10 @@ describe("QuranReaderScreen", () => {
     );
 
     const play = screen.getByLabelText(/Play ayah|تشغيل الآية/);
-    expect(play).toBeTruthy();
     fireEvent.press(play);
-  });
-
-  // Regression: tapping a reciter on the home shelf opens the reader and
-  // autoplays; leaving and opening another must not leave the first voice
-  // playing. The reader stops its ayah audio when it loses focus/unmounts.
-  it("stops ayah audio when the reader loses focus/unmounts", async () => {
-    mockApi();
-    const view = renderWith(<QuranReaderScreen />);
-
-    await waitFor(() =>
-      expect(screen.getByText(/In the name of Allah/)).toBeTruthy(),
-    );
-
-    mockPlayer.pause.mockClear();
-    view.unmount();
-    expect(mockPlayer.pause).toHaveBeenCalled();
+    expect(mockLoadQueue).toHaveBeenCalled();
+    const [tracks, startIndex] = mockLoadQueue.mock.calls[0]!;
+    expect(tracks[0].id).toBe("quran:1");
+    expect(startIndex).toBe(0);
   });
 });
