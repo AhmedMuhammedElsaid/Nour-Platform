@@ -1138,3 +1138,32 @@ phone mid-test, not sensor drift or a code regression. Owner confirmed "works
 fine" after. The `[qibla-debug2]` log is still in `use-compass-heading.ts`
 (harmless no-op cost) — remove whenever convenient, not urgent.
 All JS-only, OTA-shippable.
+
+## Quran recitation routed through RNTP (2026-07-07, JS-only, OTA'd) — PR #20 merged (`4032f33`)
+
+**Bug (owner-reported):** tapping a reciter → recitation played but had NO transport controls;
+leaving the Reader either kept it playing headlessly (uncontrollable) or, after the earlier
+`1c7e7df` fix, force-STOPPED it on blur. Owner wanted it to **keep playing WITH controls**.
+
+**Root cause:** two audio engines. Quran used `expo-audio` (`use-ayah-audio.ts`), a Reader-local
+player with no mini-player / lock-screen / background presence — separate from the RNTP player
+that playlists/radio use (which has all of those).
+
+**Fix (commits `1ac5e27`+`8f81234`):** route recitation through the ONE RNTP player.
+- New pure `features/quran/lib/ayah-queue.ts`: `buildAyahQueue(surah,ayahs,reciter,locale)→QueueTrack[]`
+  (id `quran:<numberGlobal>`, title=surah·ayah, artist=reciter name, artwork=`assetUrl(reciter.image)`;
+  skips ayahs with null `audioUrl` → **queue index ≠ data.ayahs index**, so locate by id) + `ayahTrackId`/`parseAyahTrackId`.
+- `reader.tsx` drives `usePlayer()`: tap → `loadQueue(queue, idxById)` (same ayah → `toggle()`);
+  autostart → `loadQueue(queue,0)` once (ref-guard); highlight/scroll derive from
+  `parseAyahTrackId(player.currentTrack?.id)`. **DELETED** `use-ayah-audio.ts` + the two-engine
+  mutual-pause effects + the `useFocusEffect` stop-on-blur + the repeat-ayah toggle. Overlap now
+  structurally impossible (one engine). **No `player-context.tsx` change.**
+- **Accepted trade-offs:** ayahs are normal tracks → get resume positions + appear in "Continue
+  listening" (mid-ayah resume possible since everyayah ayahs lack `durationSecs`); repeat-ayah
+  dropped (player repeat-one covers it); `quran.repeatAyah` locale string left orphaned (harmless).
+  If mid-ayah resume annoys → add an `ephemeral` flag to `QueueTrack` (WOULD touch player-context).
+- Tests: `__tests__/ayah-queue.test.ts` (4) + rewired `quran.test.tsx` (mocks `@/lib/player-context`,
+  asserts tap→`loadQueue` `quran:1` @0). Full gate green: 26 suites/90 tests, typecheck/lint, expo export.
+- **Pending:** on-device verify after OTA (mini-player appears, keeps playing on leave, lock-screen
+  controls, no overlap, plays on silent switch — RNTP playback category replaces `playsInSilentMode`).
+  Design spec/plan: `docs/superpowers/specs|plans/2026-07-07-quran-recitation-through-rntp*` (docs/ gitignored).
