@@ -1,5 +1,5 @@
 import { act, render, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   DEFAULT_ADHAN_SETTINGS,
@@ -46,6 +46,15 @@ describe("useAdhanScheduler", () => {
     mockedCompute.mockReset();
   });
 
+  afterEach(() => {
+    // Some cases below drive visibilityState directly; keep it from bleeding
+    // into later tests (jsdom defaults to "visible").
+    Object.defineProperty(document, "visibilityState", {
+      value: "visible",
+      configurable: true,
+    });
+  });
+
   it("does NOT play a just-passed adhan when the tab is opened/focused", async () => {
     const now = Date.now();
     mockedCompute.mockReturnValue(
@@ -78,5 +87,60 @@ describe("useAdhanScheduler", () => {
       timeout: 2000,
     });
     expect(onFire.mock.calls[0]![0].key).toBe("dhuhr");
+  });
+
+  it("does NOT fire while the tab is hidden, even on time", async () => {
+    Object.defineProperty(document, "visibilityState", {
+      value: "hidden",
+      configurable: true,
+    });
+
+    const now = Date.now();
+    mockedCompute.mockReturnValue(dayWith({ dhuhr: new Date(now + 100) }));
+    const onFire = vi.fn();
+    render(<Harness onFire={onFire} />);
+
+    // Wait well past the instant + the fired-claim settle window (120ms).
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(onFire).not.toHaveBeenCalled();
+  });
+
+  it("fires exactly once when visible and on time", async () => {
+    Object.defineProperty(document, "visibilityState", {
+      value: "visible",
+      configurable: true,
+    });
+
+    const now = Date.now();
+    mockedCompute.mockReturnValue(dayWith({ dhuhr: new Date(now + 200) }));
+    const onFire = vi.fn();
+    render(<Harness onFire={onFire} />);
+
+    await waitFor(() => expect(onFire).toHaveBeenCalledTimes(1), {
+      timeout: 2000,
+    });
+    expect(onFire.mock.calls[0]![0].key).toBe("dhuhr");
+  });
+
+  it("drops a fire whose instant resolved more than the tight window late (frozen/throttled tab resume)", async () => {
+    vi.useFakeTimers();
+    try {
+      const start = Date.now();
+      const eventTime = new Date(start + 200); // lands in the final window
+      mockedCompute.mockReturnValue(dayWith({ dhuhr: eventTime }));
+      const onFire = vi.fn();
+      render(<Harness onFire={onFire} />);
+
+      // Simulate a tab frozen/throttled across the prayer instant: jump the
+      // live clock well past ADHAN_FIRE_WINDOW_MS (45s) BEFORE the captured
+      // setTimeout resolves, mirroring a precise timer paused during sleep
+      // that wakes up late — the fire must be dropped, never replayed.
+      vi.setSystemTime(new Date(eventTime.getTime() + 46_000));
+      await vi.advanceTimersByTimeAsync(200);
+
+      expect(onFire).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

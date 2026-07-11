@@ -7,7 +7,6 @@ import type { PrayerLocation, PrayerPreferences } from "@repo/api/schemas/prayer
 
 import { resolvePrayerDay } from "../lib/aladhan";
 import {
-  ADHAN_PLAY_GRACE_MS,
   type AdhanEvent,
   isWithinAdhanWindow,
   nextAdhanEvent,
@@ -19,12 +18,17 @@ import { ADHAN_FIRED_KEY, claimFiredEvent } from "../lib/fired-event-store";
 // the exact remaining ms so it lands on the second.
 const MAX_CHUNK = 5 * 60_000; // 5 min
 const FINAL_WINDOW = 30_000; // last 30s: arm the precise timeout
+// Only fire if the live clock is within this of the prayer instant. Kept ≥
+// FINAL_WINDOW so a legitimate on-time foreground fire (lands ~0–2s off) is never
+// missed, but far below the shared ±2-min notification grace so a frozen/throttled
+// timer resuming late on focus is dropped — never replays a passed prayer on open.
+const ADHAN_FIRE_WINDOW_MS = 45_000; // 45s
 // A precise timer paused during device sleep can resolve its captured event
-// minutes late; the shared ±window gate (ADHAN_PLAY_GRACE_MS) drops any fire more
-// than the grace from the prayer instant so a resumed timer can't play an adhan
-// well after its time. The adhan plays ONLY when the live clock is within the
-// window of the prayer instant — opening or refocusing the tab never replays a
-// prayer that already passed.
+// minutes late; the tight ±window gate (ADHAN_FIRE_WINDOW_MS) drops any fire more
+// than that window from the prayer instant so a resumed timer can't play an adhan
+// well after its time. The adhan plays ONLY when the tab is visible AND the live
+// clock is within the window of the prayer instant — opening or refocusing the
+// tab never replays a prayer that already passed.
 
 function clampChunk(ms: number): number {
   return Math.min(MAX_CHUNK, Math.max(1_000, ms));
@@ -57,12 +61,14 @@ export function useAdhanScheduler(input: {
     let lastFiredAt: string | null = null;
 
     const fire = (event: AdhanEvent) => {
-      // The hard "is it actually a prayer time now?" gate, shared with the SW
-      // notification-click path so no route can ever sound the adhan outside the
-      // prayer window. Blocks an invalid/wrong time (NaN) or a timer that resolved
-      // off-schedule (e.g. resumed late after sleep) — opening the tab can never
-      // trigger a spurious adhan.
-      if (!isWithinAdhanWindow(event.time, new Date(), ADHAN_PLAY_GRACE_MS)) return;
+      // Active-tab-only + tight window. Only sound the adhan when THIS tab is
+      // visible AND the live clock is within ADHAN_FIRE_WINDOW_MS of the instant.
+      // Dropping a hidden-tab fire enforces the owner's "active tab only" rule;
+      // the tight window (well under the shared ±2-min notification grace) drops a
+      // precise timer that was frozen while the tab was hidden and resumes late on
+      // focus — so opening/refocusing the tab can never replay a passed prayer.
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      if (!isWithinAdhanWindow(event.time, new Date(), ADHAN_FIRE_WINDOW_MS)) return;
       const id = event.time.toISOString();
       if (lastFiredAt === id) return;
       lastFiredAt = id;
