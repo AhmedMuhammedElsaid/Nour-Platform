@@ -30,7 +30,10 @@
 // Content-Length) — cache.put downloaded forever, starving the <audio> element
 // (endless "loading"). Only finite, capped bodies are cached now; streams pass
 // straight through. Bump purges the old cache generation.
-const VERSION = "v8";
+// v9 (2026-07-11): one-time cache-bust so every client purges stale shell/pages
+// caches and re-claims — evicts any cached HTML/JS still running the old
+// adhan-fires-on-open code (superseded by the active-tab + tight-window fire gate).
+const VERSION = "v9";
 const SHELL_CACHE = `nour-shell-${VERSION}`;
 const PAGES_CACHE = `nour-pages-${VERSION}`;
 const STATIC_CACHE = `nour-static-${VERSION}`;
