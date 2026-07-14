@@ -1204,3 +1204,24 @@ needs one `eas build --profile preview` (NOT `eas update` — OTA can't ship the
 JS-only OTA would make the OLD native arm ~64 alarms = re-trigger the quota bug). A72 checks:
 `dumpsys alarm` shows ~12 armed (not 2/200); 1-min test under forced Doze; after a real fire the
 window rolls forward WITHOUT reopening; reboot re-arms.
+
+### Adhan-window fix — follow-ups (2026-07-15)
+- Fix + tests PUSHED to `origin/main`: `da1d019` (native rolling re-arm + 60-day pool) +
+  `7d27cb3` (dispatch tests: iOS caps at `IOS_MAX_AZAN=40`, Android hands the FULL pool to
+  native — `scheduleAzanNotifications` now exported as the test seam). Full monorepo
+  lint/typecheck green; mobile 26 suites/92 tests. (`home-screen.test.tsx` flakes only under
+  turbo parallel load — passes 4/4 isolated; pre-existing timer-teardown, not this change.)
+- **Pre-build de-risk done** (EAS attempts are quota-limited): Kotlin reviewed compile-clean,
+  manifest unchanged (receivers already registered), `versionCode` 8, EAS project = live
+  `ahmedmuhammedelsaid`, and BOTH `preview` + `production` EAS envs confirmed to hold
+  `EXPO_PUBLIC_API_BASE_URL`. Build itself still user-run; A72 `dumpsys` verify still pending.
+- ⚠️ **OTA-vs-native gotcha (why the adhan fix can't ship via `eas update`):** `runtimeVersion.
+  policy = "appVersion"` → runtimeVersion == the `version` string (still `1.0.0`). I bumped
+  `versionCode` 7→8 but NOT `version`, so old-native (vC7) and new-native (vC8) builds share
+  runtimeVersion `1.0.0` — an OTA to `1.0.0` lands on BOTH, and the 60-day JS on old native
+  does `.take(64)` = re-triggers the quota bug. **Rule going forward: bump `version` on any
+  native change** so runtimeVersion isolates native builds from JS-only OTAs. Owner leaning
+  **store-primary** (native releases via Play Store; OTA only for internal test + true JS-only
+  hotfixes on the same version). See memory [[project_mobile_ota_vs_build_discipline]].
+- Concurrent session landed `a498753` (web+mobile player close/replay controls, JS-only) on
+  `main` on top of the adhan commits — all pushed; working tree clean.
