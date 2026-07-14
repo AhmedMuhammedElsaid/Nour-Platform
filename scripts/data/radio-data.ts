@@ -316,3 +316,18 @@ export const RADIO_STATIONS: RadioStationSeed[] = [
     isFeatured: false,
   },
 ];
+
+// Display order (top → bottom) shown on every surface (web/mobile/extension all
+// read the `order`-sorted `/api/v1/radio`). The seed maps each slug's position
+// here to the DB `order` field. Any station whose slug is NOT listed keeps its
+// catalog (array) position, appended after all listed ones. To reorder: edit
+// this list, then re-run `pnpm seed:radio` on Atlas (the seed now updates
+// `order` on existing rows, not only new ones).
+export const RADIO_STATION_ORDER: string[] = [
+  "quran-cairo-live",
+  "quran-abdulbasit",
+  "quran-minshawi",
+  "sharawi-lectures",
+  "tawasheeh",
+  "quran-rifat",
+];

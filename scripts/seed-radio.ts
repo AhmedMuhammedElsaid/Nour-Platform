@@ -3,14 +3,24 @@
 import { disconnectDb, getDb } from "@repo/api/db/client";
 import { RadioStationModel } from "@repo/api/db/models/radio-station.model";
 
-import { RADIO_STATIONS } from "./data/radio-data";
+import { RADIO_STATIONS, RADIO_STATION_ORDER } from "./data/radio-data";
+
+// Full display order: the curated slug list first, then any station not listed
+// there, in catalog (array) order. Each station's rank in this list becomes its
+// DB `order` (the field the API sorts by, asc).
+const ORDERED_SLUGS: string[] = [
+  ...RADIO_STATION_ORDER,
+  ...RADIO_STATIONS.map((s) => s.slug).filter((s) => !RADIO_STATION_ORDER.includes(s)),
+];
+const orderOf = (slug: string): number => ORDERED_SLUGS.indexOf(slug);
 
 // Seeds the radio station catalog. UPSERTS by `slug`: re-running re-applies the
-// catalog content (name/description/stream/etc.) while preserving each station's
-// `order` and `isLive` toggle on existing rows. New rows default `isLive: true`.
+// catalog content (name/description/stream/etc.) AND the display `order` (from
+// RADIO_STATION_ORDER) on existing rows; the `isLive` toggle is preserved. New
+// rows default `isLive: true`.
 async function main(): Promise<void> {
   await getDb();
-  for (const [index, station] of RADIO_STATIONS.entries()) {
+  for (const station of RADIO_STATIONS) {
     const existing = await RadioStationModel.findOne({ slug: station.slug });
     if (existing) {
       // Dot-path $set so the `ar`/`en` locale subdocs merge (preserve untouched
@@ -29,6 +39,7 @@ async function main(): Promise<void> {
         language: station.language,
         category: station.category,
         isFeatured: station.isFeatured,
+        order: orderOf(station.slug),
       };
       const unset: Record<string, ""> = {};
       for (const key of ["city", "image", "bitrate", "nowPlayingUrl"] as const) {
@@ -45,7 +56,7 @@ async function main(): Promise<void> {
     }
     await RadioStationModel.create({
       slug: station.slug,
-      order: index,
+      order: orderOf(station.slug),
       isLive: true,
       isFeatured: station.isFeatured,
       ar: { name: station.ar.name, description: station.ar.description },
