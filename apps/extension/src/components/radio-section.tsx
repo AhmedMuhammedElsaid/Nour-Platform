@@ -71,33 +71,38 @@ export function RadioSection({
           const isCurrent = currentId === `radio:${station.slug}`;
           const playingNow = isCurrent && playing;
           return (
-            <li
-              key={station.slug}
-              className={`flex items-center gap-3 rounded-xl border bg-surface p-3 transition-colors ${
-                isCurrent ? "border-primary/50 bg-primary/5" : "border-border"
-              }`}
-            >
-              <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary">
-                {station.image ? (
-                  <img src={station.image} alt="" loading="lazy" className="size-full object-cover" />
-                ) : (
-                  <RadioGlyph />
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-text">{station.title}</p>
-                <span className="mt-0.5 inline-flex items-center gap-1.5 text-2xs font-semibold tracking-wide text-danger">
-                  <span className={`size-1.5 rounded-full bg-danger ${playingNow ? "animate-pulse" : ""}`} />
-                  {t("radio.live")}
-                </span>
-              </div>
+            <li key={station.slug}>
+              {/* Whole row is the play/pause control (not just the icon) — one
+                  button keeps it keyboard-accessible with no nested-interactive
+                  a11y issue. */}
               <button
                 type="button"
                 onClick={() => handlePlay(station)}
-                aria-label={playingNow ? t("player.pause") : t("player.play")}
-                className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-fg transition-transform hover:scale-105"
+                aria-label={`${playingNow ? t("player.pause") : t("player.play")}: ${station.title}`}
+                className={`group flex w-full cursor-pointer items-center gap-3 rounded-xl border bg-surface p-3 text-start transition-colors ${
+                  isCurrent ? "border-primary/50 bg-primary/5" : "border-border hover:border-primary/40"
+                }`}
               >
-                {playingNow ? <PauseIcon /> : <PlayIcon />}
+                <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary">
+                  {station.image ? (
+                    <img src={station.image} alt="" loading="lazy" className="size-full object-cover" />
+                  ) : (
+                    <RadioGlyph />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-text">{station.title}</p>
+                  <span className="mt-0.5 inline-flex items-center gap-1.5 text-2xs font-semibold tracking-wide text-danger">
+                    <span className={`size-1.5 rounded-full bg-danger ${playingNow ? "animate-pulse" : ""}`} />
+                    {t("radio.live")}
+                  </span>
+                </div>
+                <span
+                  aria-hidden="true"
+                  className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-fg transition-transform group-hover:scale-105"
+                >
+                  {playingNow ? <PauseIcon /> : <PlayIcon />}
+                </span>
               </button>
             </li>
           );

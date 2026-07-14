@@ -194,31 +194,20 @@ export function PlaylistDetail({ slug, startTrackId, state, send, categories }: 
               ? Math.min(1, savedT / track.durationSecs)
               : null;
 
-          return (
-            <li
-              key={track.id}
-              className={`flex items-center gap-3 px-4 py-3 ${isCurrent ? "bg-primary/5" : "hover:bg-surface-2"} transition-colors`}
-            >
-              {/* Play/pause button or track number */}
+          const rowInner = (
+            <>
+              {/* Play/pause glyph (presentational — the whole row is the control) or track number */}
               {track.hasAudio ? (
-                <button
-                  type="button"
-                  aria-label={isPlaying ? `${t("player.pause")} ${track.title}` : `${t("player.play")} ${track.title}`}
-                  onClick={() => {
-                    if (isCurrent) {
-                      send({ type: "toggle" });
-                    } else {
-                      void playFrom(track.id);
-                    }
-                  }}
+                <span
+                  aria-hidden="true"
                   className={`flex size-8 shrink-0 items-center justify-center rounded-full transition-colors ${
                     isCurrent
                       ? "bg-primary text-primary-fg"
-                      : "text-text-2 hover:bg-surface-2 hover:text-primary"
+                      : "text-text-2 group-hover:bg-surface-2 group-hover:text-primary"
                   }`}
                 >
                   {isPlaying ? <Pause className="size-3.5" /> : <Play className="size-3.5 ms-0.5" />}
-                </button>
+                </span>
               ) : (
                 <span className="flex size-8 shrink-0 items-center justify-end text-sm text-muted">
                   {idx + 1}
@@ -244,6 +233,32 @@ export function PlaylistDetail({ slug, startTrackId, state, send, categories }: 
               <span className="shrink-0 font-mono text-xs text-text-2">
                 {track.durationSecs != null ? fmt(track.durationSecs) : "—"}
               </span>
+            </>
+          );
+
+          return (
+            <li key={track.id}>
+              {track.hasAudio ? (
+                // Entire row is clickable to play (or toggle if it's the current track).
+                <button
+                  type="button"
+                  aria-label={isPlaying ? `${t("player.pause")} ${track.title}` : `${t("player.play")} ${track.title}`}
+                  onClick={() => {
+                    if (isCurrent) {
+                      send({ type: "toggle" });
+                    } else {
+                      void playFrom(track.id);
+                    }
+                  }}
+                  className={`group flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-start transition-colors ${
+                    isCurrent ? "bg-primary/5" : "hover:bg-surface-2"
+                  }`}
+                >
+                  {rowInner}
+                </button>
+              ) : (
+                <div className="flex items-center gap-3 px-4 py-3">{rowInner}</div>
+              )}
             </li>
           );
         })}
