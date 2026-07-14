@@ -439,14 +439,14 @@ export function NewtabPage() {
         {/* ── Daily dhikr ──────────────────────────────────────────────── */}
         {pt ? <DhikrWidget now={pt.now} /> : null}
 
+        {/* ── Readers (Quran reciters) ─────────────────────────────────── */}
+        <ReadersShelf onSelect={(slug) => void selectReader(slug)} />
+
         {/* ── Continue listening ────────────────────────────────────────── */}
         <ContinueListeningShelf
           onPlay={(slug) => void playBySlug(slug)}
           onOpen={(slug, trackId) => navigate({ view: "playlist", slug, trackId })}
         />
-
-        {/* ── Readers (Quran reciters) ─────────────────────────────────── */}
-        <ReadersShelf onSelect={(slug) => void selectReader(slug)} />
 
         {/* ── Radio (live stations) ────────────────────────────────────── */}
         <RadioSection state={playerState} send={send} />
