@@ -17,12 +17,14 @@ import {
   Play,
   Repeat,
   Repeat1,
+  RotateCcw,
   RotateCw,
   Shuffle,
   SkipBack,
   SkipForward,
   Volume2,
   VolumeX,
+  X,
 } from "./ui/icons";
 
 function fmt(sec: number): string {
@@ -147,6 +149,15 @@ export function PlayerBar({
               <>
                 <button
                   type="button"
+                  onClick={() => send({ type: "seek", positionSec: 0 })}
+                  aria-label={t("player.replay")}
+                  title={t("player.replay")}
+                  className={ghost}
+                >
+                  <RotateCcw className="size-4" />
+                </button>
+                <button
+                  type="button"
                   onClick={() => send({ type: "toggleShuffle" })}
                   aria-label={t("player.shuffle")}
                   aria-pressed={state.shuffle}
@@ -250,6 +261,16 @@ export function PlayerBar({
               className={ghost}
             >
               <ListMusic className="size-4" />
+            </button>
+            {/* Close: stop playback + clear the queue so the bar hides entirely. */}
+            <button
+              type="button"
+              onClick={() => send({ type: "stop" })}
+              aria-label={t("player.close")}
+              title={t("player.close")}
+              className={ghost}
+            >
+              <X className="size-4" />
             </button>
           </div>
         </div>
