@@ -10,7 +10,7 @@ class BootReceiver : BroadcastReceiver() {
     when (intent.action) {
       Intent.ACTION_BOOT_COMPLETED,
       "android.intent.action.QUICKBOOT_POWERON",
-      -> AdhanScheduler.rearmPersisted(context)
+      -> AdhanScheduler.rearmFromPersisted(context)
     }
   }
 }

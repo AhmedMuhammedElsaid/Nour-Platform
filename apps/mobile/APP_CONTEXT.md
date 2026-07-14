@@ -1167,3 +1167,40 @@ that playlists/radio use (which has all of those).
 - **Pending:** on-device verify after OTA (mini-player appears, keeps playing on leave, lock-screen
   controls, no overlap, plays on silent switch — RNTP playback category replaces `playsInSilentMode`).
   Design spec/plan: `docs/superpowers/specs|plans/2026-07-07-quran-recitation-through-rntp*` (docs/ gitignored).
+
+## Adhan scheduling-window depletion — 60-day pool + native rolling re-arm (2026-07-14)
+
+**Symptom (owner):** fresh install fires the adhan on time for ~2-3 days, then silently stops
+when the app is left closed.
+
+**Root cause (architectural, not config):** the Android adhan schedule only ever covered **~2
+days** and nothing rolled it forward from the closed state. `buildAdhanInstants`
+(`use-azan-notifications.ts`) looped `dayOffset <= 1` (today+tomorrow); `AdhanScheduler.arm()`
+uses one-shot `setExactAndAllowWhileIdle`; `AdhanAlarmReceiver` only started the player — it
+did NOT re-arm the next day. Refill happened ONLY on app cold-start / settings change / reboot.
+So a fresh installer opening the app a lot kept re-rolling the 2-day window (worked ~2-3 days);
+once they left it closed, the window drained and the adhan stopped until next open.
+
+**Fix (owner chose native fix + A72 verify + ~60-day pool):** keep ~12 alarms ARMED (quota-safe;
+the old ~200-alarm scheme is what hit the per-app allow-while-idle quota and silenced Fajr — see
+memory `project_mobile_adhan_alarm_quota`), backed by a **~60-day persisted POOL** of Aladhan
+instants. Each fire re-arms the next pooled instant → rolls the window forward with no app open.
+Aladhan stays the single time source (no native compute → no display/fire parity regression).
+- JS `use-azan-notifications.ts`: `HORIZON_DAYS = 60` (loop `dayOffset < 60`); Android passes ALL
+  instants to native; iOS sliced to `IOS_MAX_AZAN = 40` (its hard 64 pending-notif OS cap, shared
+  with azkar). `getPrayerDay` caches per month so 60 days ≈ ≤3 fetches then cache/offline-compute.
+- Native `AdhanScheduler.kt`: split **persisted pool (full future list)** from **armed window
+  (`MAX_ARMED = 12`)**. New `rearmFromPersisted()` arms nearest 12 from the pool WITHOUT shrinking
+  it; used by both boot and post-fire. `MAX_ALARMS = 64` kept only as the cancel-sweep ceiling.
+- `AdhanAlarmReceiver.kt`: after `startForegroundService`, calls `rearmFromPersisted` (the rolling
+  step; cheap — SharedPreferences read + ~12 setExact, safe in the broadcast window).
+- `BootReceiver.kt`: now calls `rearmFromPersisted` (was `rearmPersisted`, which shrank the pool).
+- `app.json` versionCode 7 → **8**. Test `__tests__/azan-scheduler.test.ts` updated for the 60-day
+  horizon (head = today+tomorrow, length `3 + 59*4`, day-59 present, no day-60).
+
+**Gates:** mobile jest 26 suites/90 tests, tsc, eslint, `expo export --platform android` all green.
+Kotlin has no local compile (no Android SDK here) → **REBUILD-GATED + device-verify pending**:
+needs one `eas build --profile preview` (NOT `eas update` — OTA can't ship the native change, and a
+JS-only OTA would make the OLD native arm ~64 alarms = re-trigger the quota bug). A72 checks:
+`dumpsys alarm` shows ~12 armed (not 2/200); 1-min test under forced Doze; after a real fire the
+window rolls forward WITHOUT reopening; reboot re-arms.

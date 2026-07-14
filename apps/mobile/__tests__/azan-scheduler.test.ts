@@ -54,10 +54,11 @@ describe("buildAdhanInstants", () => {
     jest.clearAllMocks();
   });
 
-  it("drops sunrise, past times, and per-prayer-disabled prayers across today+tomorrow", async () => {
+  it("drops sunrise, past times, and per-prayer-disabled prayers; heads with today+tomorrow", async () => {
     const items = await buildAdhanInstants(location, prefs, perPrayer);
 
-    expect(items.map((i) => i.id)).toEqual([
+    // The head of the pool is today's remaining prayers then tomorrow's, in order.
+    expect(items.slice(0, 7).map((i) => i.id)).toEqual([
       "nour-azan-0-dhuhr",
       "nour-azan-0-maghrib",
       "nour-azan-0-isha",
@@ -66,6 +67,12 @@ describe("buildAdhanInstants", () => {
       "nour-azan-1-maghrib",
       "nour-azan-1-isha",
     ]);
+
+    // Long pool (60-day HORIZON_DAYS): 3 remaining today (fajr already past at 10:00)
+    // + 4 enabled prayers × 59 further days. Proves we build far beyond today+tomorrow.
+    expect(items).toHaveLength(3 + 59 * 4);
+    expect(items.some((i) => i.id === "nour-azan-59-fajr")).toBe(true);
+    expect(items.some((i) => i.id.startsWith("nour-azan-60-"))).toBe(false);
   });
 
   it("never includes sunrise or a disabled prayer, and flags only fajr", async () => {
@@ -77,10 +84,12 @@ describe("buildAdhanInstants", () => {
     expect(items.find((i) => i.key === "dhuhr")?.fajr).toBe(false);
   });
 
-  it("only schedules tomorrow once today's prayers are all past", async () => {
+  it("skips today entirely once its prayers are all past (starts at tomorrow)", async () => {
     jest.setSystemTime(new Date(2026, 5, 26, 23, 59, 0)); // after today's Isha
     const items = await buildAdhanInstants(location, prefs, perPrayer);
-    expect(items.map((i) => i.id)).toEqual([
+    // No day-0 instants survive; the pool now heads with tomorrow's prayers.
+    expect(items.some((i) => i.id.startsWith("nour-azan-0-"))).toBe(false);
+    expect(items.slice(0, 4).map((i) => i.id)).toEqual([
       "nour-azan-1-fajr",
       "nour-azan-1-dhuhr",
       "nour-azan-1-maghrib",

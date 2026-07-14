@@ -1,10 +1,16 @@
-// Schedules azan for the next ~48h whenever prayer/adhan settings change.
-// Device-local only — no server/auth.
+// Schedules azan whenever prayer/adhan settings change (and on every app open,
+// since the root <AzanScheduler> mounts then). Device-local only — no server/auth.
 //
 // Android: delegates to the native `nour-adhan` module — ONE exact alarm per prayer
 // that starts a foreground service playing the FULL adhan. This replaced the old
 // 22-chained-notification scheme that exhausted Android's per-app allow-while-idle
 // alarm quota (so Fajr silently never fired). See lib/adhan-native + modules/nour-adhan.
+// We build a long (~HORIZON_DAYS) pool of instants and hand ALL of them to native,
+// which persists the pool but only ARMS the nearest few — and re-arms the next one
+// each time an alarm fires. That way the adhan keeps firing for ~HORIZON_DAYS even if
+// the app is never reopened, without ever arming enough alarms to hit the quota.
+// (Before this, the horizon was only ~2 days and nothing rolled it forward from the
+// closed state, so the adhan silently stopped a couple of days after the last app open.)
 //
 // iOS: a single expo-notification per prayer with a ≤30s bundled clip (Apple's
 // closed-app local-notification sound ceiling — no native-service equivalent to
@@ -30,6 +36,16 @@ import * as AdhanNative from "@/lib/adhan-native";
 type PrayerNames = Record<AdhanPrayerKey, string>;
 type PerPrayer = Record<AdhanPrayerKey, boolean>;
 
+// How many days of adhan instants to build. Android persists the whole pool and
+// rolls through it (see the native module), so this is the "keep firing even if the
+// app is never reopened" ceiling. Every app open / settings change refills it.
+const HORIZON_DAYS = 60;
+
+// iOS can't self-perpetuate (no native scheduler equivalent) and shares a hard 64
+// pending-notification OS cap with the azkar reminders, so cap the iOS azan horizon
+// well under 64 to leave room. Android ignores this (it pools all of them natively).
+const IOS_MAX_AZAN = 40;
+
 type AdhanInstant = {
   id: string;
   key: AdhanPrayerKey;
@@ -37,10 +53,10 @@ type AdhanInstant = {
   fajr: boolean;
 };
 
-// Build the next ~48h of adhan instants (today + tomorrow), dropping sunrise, past
-// times, and per-prayer-disabled prayers. getPrayerDay returns Aladhan's
-// authoritative times (cached per month) with an offline local-compute fallback.
-// Exported for unit testing the filtering logic.
+// Build the next ~HORIZON_DAYS of adhan instants, dropping sunrise, past times, and
+// per-prayer-disabled prayers. getPrayerDay returns Aladhan's authoritative times
+// (cached per month, so a 60-day build is ≤3 month fetches then cache/offline-compute)
+// with an offline local-compute fallback. Exported for unit testing the filtering logic.
 export async function buildAdhanInstants(
   location: PrayerLocation,
   prefs: PrayerPreferences,
@@ -50,7 +66,7 @@ export async function buildAdhanInstants(
   const DAY_MS = 24 * 60 * 60 * 1000;
   const out: AdhanInstant[] = [];
 
-  for (let dayOffset = 0; dayOffset <= 1; dayOffset++) {
+  for (let dayOffset = 0; dayOffset < HORIZON_DAYS; dayOffset++) {
     const date = new Date(now + dayOffset * DAY_MS);
     const day = await getPrayerDay(location.lat, location.lng, prefs.method, prefs.madhab, date);
 
@@ -110,8 +126,10 @@ async function scheduleAzanNotifications(
   // it only takes effect once Apple has granted the critical-alerts entitlement and
   // the user has granted allowCriticalAlerts; otherwise iOS treats it as a normal
   // notification (no crash, just no DND-piercing).
+  // Cap at IOS_MAX_AZAN: iOS enforces a hard 64 pending-notification limit shared with
+  // the azkar reminders, and instants is now the full ~HORIZON_DAYS pool.
   await cancelIosAzan();
-  for (const instant of instants) {
+  for (const instant of instants.slice(0, IOS_MAX_AZAN)) {
     await Notifications.scheduleNotificationAsync({
       identifier: instant.id,
       content: {

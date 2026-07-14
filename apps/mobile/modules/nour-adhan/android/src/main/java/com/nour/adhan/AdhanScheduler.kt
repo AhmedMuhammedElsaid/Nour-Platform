@@ -17,28 +17,41 @@ data class AdhanAlarm(
 )
 
 /**
- * Arms one exact alarm per prayer (vs the old 22-chained-notifications scheme that
- * exhausted the per-app allow-while-idle quota). Each alarm fires [AdhanAlarmReceiver],
- * which starts [AdhanPlayerService] to play the full adhan — no JS/React needed at fire
- * time. The schedule is persisted so [BootReceiver] can re-arm after a reboot.
+ * Arms exact adhan alarms (vs the old 22-chained-notifications scheme that exhausted the
+ * per-app allow-while-idle quota). Each alarm fires [AdhanAlarmReceiver], which starts
+ * [AdhanPlayerService] to play the full adhan — no JS/React needed at fire time.
+ *
+ * Pool vs armed window: the JS layer hands us a long (~60-day) pool of instants. We
+ * PERSIST the whole pool but only ARM the nearest [MAX_ARMED] (keeping the count of
+ * live allow-while-idle alarms tiny, well clear of the OS quota that once deferred
+ * every alarm). Each time an alarm fires, [AdhanAlarmReceiver] calls [rearmFromPersisted]
+ * to roll the window forward to the next pooled instant — so the adhan keeps firing for
+ * the whole horizon even if the app is never reopened. [BootReceiver] re-arms the same
+ * way after a reboot (alarms don't survive reboot). Every app open refills the pool.
  */
 object AdhanScheduler {
   private const val PREFS = "nour_adhan_prefs"
   private const val KEY_ITEMS = "items"
   private const val BASE_REQUEST_CODE = 7100
   private const val TEST_REQUEST_CODE = 7099
+  // Request-code / cancel-sweep ceiling. Only ever [MAX_ARMED] are live at once, but we
+  // sweep the whole range on cancel so no stale PendingIntent from a prior arming lingers.
   private const val MAX_ALARMS = 64
+  // How many alarms are actually armed at any moment (~2.5 days at 5/day). Kept small so
+  // the per-app allow-while-idle quota never meters us (the old ~200-alarm bug).
+  private const val MAX_ARMED = 12
 
   const val EXTRA_KEY = "key"
   const val EXTRA_FAJR = "fajr"
   const val EXTRA_VOLUME = "volume"
 
+  /** Replace the schedule: persist the full future pool, arm only the nearest [MAX_ARMED]. */
   fun scheduleAll(context: Context, alarms: List<AdhanAlarm>) {
     cancelAll(context)
     val now = System.currentTimeMillis()
-    val future = alarms.filter { it.fireAtMillis > now }.sortedBy { it.fireAtMillis }.take(MAX_ALARMS)
-    future.forEachIndexed { index, alarm -> arm(context, alarm, BASE_REQUEST_CODE + index) }
+    val future = alarms.filter { it.fireAtMillis > now }.sortedBy { it.fireAtMillis }
     persist(context, future)
+    armNearest(context, future)
   }
 
   /** Arms a single one-off alarm (the in-app "Test adhan" button) without touching the real schedule. */
@@ -47,17 +60,34 @@ object AdhanScheduler {
   }
 
   fun cancelAll(context: Context) {
+    cancelArmed(context)
+    clearPersisted(context)
+  }
+
+  /**
+   * Re-arm the nearest still-future alarms from the persisted pool WITHOUT shrinking it.
+   * Used after a reboot AND after each alarm fires — in the fire case the just-fired
+   * instant is now in the past, so it drops out and the next pooled instant enters the
+   * armed window (the rolling step that keeps the adhan going with no app open).
+   */
+  fun rearmFromPersisted(context: Context) {
+    val now = System.currentTimeMillis()
+    val future = loadPersisted(context).filter { it.fireAtMillis > now }.sortedBy { it.fireAtMillis }
+    cancelArmed(context)
+    armNearest(context, future)
+  }
+
+  /** Arm the nearest [MAX_ARMED] of an already-future, already-sorted list. */
+  private fun armNearest(context: Context, future: List<AdhanAlarm>) {
+    future.take(MAX_ARMED).forEachIndexed { index, alarm -> arm(context, alarm, BASE_REQUEST_CODE + index) }
+  }
+
+  /** Cancel every armable PendingIntent slot (does NOT touch the persisted pool). */
+  private fun cancelArmed(context: Context) {
     val am = alarmManager(context)
     for (i in 0 until MAX_ALARMS) {
       existingPendingIntent(context, BASE_REQUEST_CODE + i)?.let { am.cancel(it); it.cancel() }
     }
-    clearPersisted(context)
-  }
-
-  /** Re-arm the persisted, still-future alarms after a device reboot (alarms don't survive reboot). */
-  fun rearmPersisted(context: Context) {
-    val saved = loadPersisted(context)
-    if (saved.isNotEmpty()) scheduleAll(context, saved)
   }
 
   private fun arm(context: Context, alarm: AdhanAlarm, requestCode: Int) {
