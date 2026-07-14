@@ -11,7 +11,7 @@ export function ThemeToggle({ label }: { label: (key: string) => string }) {
       type="button"
       onClick={() => setTheme(toLight ? "light" : "dark")}
       aria-label={label(toLight ? "theme.toggleToLight" : "theme.toggleToDark")}
-      className="inline-flex size-9 items-center justify-center rounded text-text-2 hover:bg-surface-2 hover:text-text"
+      className="inline-flex size-9 cursor-pointer items-center justify-center rounded text-text-2 hover:bg-surface-2 hover:text-text"
     >
       {toLight ? <Sun className="size-4" /> : <Moon className="size-4" />}
     </button>

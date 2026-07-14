@@ -31,7 +31,7 @@ export function SiteHeader({ activeView }: SiteHeaderProps) {
         <button
           type="button"
           onClick={() => navigate({ view: "home" })}
-          className="me-2 font-display text-lg font-bold text-primary focus-visible:outline-none"
+          className="me-2 cursor-pointer font-display text-lg font-bold text-primary focus-visible:outline-none"
           aria-label={t("common.appName")}
         >
           {t("common.appName")}
@@ -47,7 +47,7 @@ export function SiteHeader({ activeView }: SiteHeaderProps) {
                 type="button"
                 onClick={() => navigate(route)}
                 aria-current={isCurrent ? "page" : undefined}
-                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
                   isCurrent
                     ? "bg-primary/10 text-primary"
                     : "text-text-2 hover:bg-surface-2 hover:text-text"
@@ -66,7 +66,7 @@ export function SiteHeader({ activeView }: SiteHeaderProps) {
             type="button"
             onClick={() => navigate({ view: "search", q: "" })}
             aria-label={t("common.search")}
-            className="inline-flex size-8 items-center justify-center rounded text-text-2 hover:bg-surface-2 hover:text-text"
+            className="inline-flex size-8 cursor-pointer items-center justify-center rounded text-text-2 hover:bg-surface-2 hover:text-text"
           >
             <Search className="size-4" />
           </button>
@@ -76,7 +76,7 @@ export function SiteHeader({ activeView }: SiteHeaderProps) {
             type="button"
             onClick={toggleLocale}
             aria-label={locale === "ar" ? "Switch to English" : "التبديل إلى العربية"}
-            className="inline-flex size-8 items-center justify-center rounded text-text-2 hover:bg-surface-2 hover:text-text"
+            className="inline-flex size-8 cursor-pointer items-center justify-center rounded text-text-2 hover:bg-surface-2 hover:text-text"
           >
             <span className="text-xs font-semibold">{locale === "ar" ? "EN" : "ع"}</span>
           </button>
