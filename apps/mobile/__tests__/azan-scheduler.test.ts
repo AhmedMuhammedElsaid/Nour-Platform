@@ -1,8 +1,11 @@
+import { Platform } from "react-native";
 import {
   buildAdhanInstants,
   requestNotificationPermission,
+  scheduleAzanNotifications,
   scheduleTestAzan,
 } from "@/features/prayer-times/hooks/use-azan-notifications";
+import * as AdhanNative from "@/lib/adhan-native";
 import { getPrayerDay } from "@/features/prayer-times/lib/aladhan";
 import {
   prayerLocationSchema,
@@ -13,6 +16,17 @@ import * as Notifications from "expo-notifications";
 
 jest.mock("@/features/prayer-times/lib/aladhan", () => ({
   getPrayerDay: jest.fn(),
+}));
+
+// Native adhan module: report "available" so the Android dispatch branch can be
+// exercised. On the default jest platform (ios) nativeAdhanActive() is still false
+// (it requires Platform.OS === "android"), so this doesn't affect the iOS-path tests.
+jest.mock("@/lib/adhan-native", () => ({
+  isNativeAdhanAvailable: jest.fn(() => true),
+  scheduleAll: jest.fn().mockResolvedValue(undefined),
+  cancelAll: jest.fn().mockResolvedValue(undefined),
+  playTest: jest.fn().mockResolvedValue(undefined),
+  stop: jest.fn().mockResolvedValue(undefined),
 }));
 
 // Fixed daily clock for the mocked calendar (local time).
@@ -39,6 +53,7 @@ const location = prayerLocationSchema.parse({ lat: 30, lng: 31, label: "Cairo", 
 const prefs = prayerPreferencesSchema.parse({});
 // Asr disabled to prove per-prayer toggles are honoured.
 const perPrayer = { fajr: true, dhuhr: true, asr: false, maghrib: true, isha: true };
+const prayerNames = { fajr: "Fajr", dhuhr: "Dhuhr", asr: "Asr", maghrib: "Maghrib", isha: "Isha" };
 
 describe("buildAdhanInstants", () => {
   beforeEach(() => {
@@ -95,6 +110,55 @@ describe("buildAdhanInstants", () => {
       "nour-azan-1-maghrib",
       "nour-azan-1-isha",
     ]);
+  });
+});
+
+describe("scheduleAzanNotifications — platform dispatch", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2026, 5, 26, 10, 0, 0)); // 2026-06-26 10:00 local
+    jest
+      .mocked(getPrayerDay)
+      .mockImplementation(async (_lat, _lng, _method, _madhab, date) => dayFor(date));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.clearAllMocks();
+  });
+
+  it("iOS caps scheduled notifications at 40 (stays under the 64-notification OS limit)", async () => {
+    // Default jest platform is ios → notification fallback path (native inactive).
+    const pool = await buildAdhanInstants(location, prefs, perPrayer);
+    expect(pool.length).toBeGreaterThan(40); // the cap must actually bite
+
+    await scheduleAzanNotifications(location, prefs, prayerNames, perPrayer, 1);
+
+    expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(40);
+    expect(AdhanNative.scheduleAll).not.toHaveBeenCalled();
+  });
+
+  describe("android native path", () => {
+    const originalOS = Platform.OS;
+    beforeAll(() => {
+      Platform.OS = "android";
+    });
+    afterAll(() => {
+      Platform.OS = originalOS;
+    });
+
+    it("hands the FULL ~60-day pool to native, uncapped (native arms only a few, pools the rest)", async () => {
+      const pool = await buildAdhanInstants(location, prefs, perPrayer);
+
+      await scheduleAzanNotifications(location, prefs, prayerNames, perPrayer, 0.8);
+
+      expect(AdhanNative.scheduleAll).toHaveBeenCalledTimes(1);
+      const passed = jest.mocked(AdhanNative.scheduleAll).mock.calls[0]![0];
+      expect(passed.length).toBe(pool.length); // whole pool, NOT sliced to 40
+      expect(passed.length).toBeGreaterThan(40);
+      expect(passed.every((i) => i.volume === 0.8)).toBe(true);
+      expect(Notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
+    });
   });
 });
 

@@ -105,7 +105,9 @@ async function cancelAllAzan(): Promise<void> {
   await cancelIosAzan();
 }
 
-async function scheduleAzanNotifications(
+// Exported for unit testing the platform dispatch (Android pools ALL instants
+// natively; iOS caps at IOS_MAX_AZAN to stay under the 64-notification OS limit).
+export async function scheduleAzanNotifications(
   location: PrayerLocation,
   prefs: PrayerPreferences,
   prayerNames: PrayerNames,
