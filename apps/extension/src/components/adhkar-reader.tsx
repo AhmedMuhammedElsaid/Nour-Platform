@@ -80,7 +80,12 @@ export function AdhkarReader({ slug }: Props) {
     if (next[i]! >= item.repeat && i === activeIndex) {
       const target = next.findIndex((c, j) => c < (repeats[j] ?? 1));
       if (target !== -1) {
-        cardRefs.current[target]?.scrollIntoView({ behavior: "smooth", block: "center" });
+        // Defer a frame so we scroll from the settled post-tap layout, and land
+        // the next card just below the sticky header (block:"start" + the card's
+        // scroll-mt) instead of centred under it — a smoother "push up to read".
+        requestAnimationFrame(() => {
+          cardRefs.current[target]?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
       }
     }
   }
@@ -172,7 +177,7 @@ export function AdhkarReader({ slug }: Props) {
                 ref={(el) => {
                   cardRefs.current[i] = el;
                 }}
-                className={`flex flex-col items-center gap-4 rounded-xl border bg-surface p-6 text-center transition-colors ${
+                className={`flex scroll-mt-20 flex-col items-center gap-4 rounded-xl border bg-surface p-6 text-center transition-colors ${
                   isActive ? "border-primary ring-1 ring-primary/40" : "border-border"
                 } ${isDone ? "opacity-60" : ""}`}
               >
