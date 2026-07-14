@@ -63,6 +63,8 @@ export type PlayerContextValue = {
   prev: () => void;
   goTo: (index: number) => void;
   retry: () => void;
+  // Stop playback and clear the queue — hides the mini-player / full player.
+  stop: () => void;
   cycleRepeat: () => void;
   toggleShuffle: () => void;
   setPlaybackRate: (rate: number) => void;
@@ -783,6 +785,23 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     void TrackPlayer.seekTo(0).then(() => TrackPlayer.play());
   }, []);
 
+  // Stop playback and drop the queue → hasQueue false hides the player UI. Resets
+  // the native RNTP queue (the load effect early-returns on index -1, so nothing
+  // else stops native audio) and cancels any pending live-retry. The session
+  // effect clears the persisted now-playing session once the queue empties.
+  const stop = React.useCallback((): void => {
+    setUserWantsPlayback(false);
+    if (liveRetryTimerRef.current) {
+      clearTimeout(liveRetryTimerRef.current);
+      liveRetryTimerRef.current = null;
+    }
+    setErrorMessage(null);
+    setQueue([]);
+    setCurrentIndex(-1);
+    playOrderRef.current = [];
+    void TrackPlayer.reset();
+  }, []);
+
   const cycleRepeat = React.useCallback((): void => {
     setRepeatModeState((prev) => {
       const seq: RepeatMode[] = ["off", "all", "one"];
@@ -905,6 +924,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       prev,
       goTo,
       retry,
+      stop,
       cycleRepeat,
       toggleShuffle,
       setPlaybackRate,
@@ -934,6 +954,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       prev,
       goTo,
       retry,
+      stop,
       cycleRepeat,
       toggleShuffle,
       setPlaybackRate,

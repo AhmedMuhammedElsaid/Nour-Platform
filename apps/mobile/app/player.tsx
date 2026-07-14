@@ -18,10 +18,12 @@ import {
   PauseIcon,
   NextIcon,
   RetryIcon,
+  ReplayIcon,
   RepeatIcon,
   RepeatOneIcon,
   VolumeIcon,
   MuteIcon,
+  CloseIcon,
 } from "@/components/icons/player-icons";
 import { Cover } from "@/features/playlists/components/cover";
 import { Slider } from "@/components/ui/slider";
@@ -64,6 +66,7 @@ export default function PlayerScreen() {
     next,
     prev,
     retry,
+    stop,
     cycleRepeat,
     toggleShuffle,
     setPlaybackRate,
@@ -85,6 +88,13 @@ export default function PlayerScreen() {
   const sleepRemainingMs = sleepTimerEndsAt != null ? Math.max(0, sleepTimerEndsAt - now) : 0;
 
   const close = () => router.back();
+  // Close button: dismiss the modal AND stop playback / clear the queue (unlike
+  // the chevron, which only collapses the modal and keeps playing). Navigate
+  // first so the screen unmounts before hasQueue flips to false (no fallback flash).
+  const stopAndClose = () => {
+    router.back();
+    stop();
+  };
 
   if (!hasQueue || !currentTrack) {
     return (
@@ -129,7 +139,14 @@ export default function PlayerScreen() {
         <Text variant="muted" className="text-xs uppercase">
           {t("player.nowPlaying")}
         </Text>
-        <View className="size-9" />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("player.close")}
+          onPress={stopAndClose}
+          className="size-9 items-center justify-center"
+        >
+          <CloseIcon color={textColor} size={22} />
+        </Pressable>
       </View>
 
       {/* Artwork */}
@@ -171,6 +188,15 @@ export default function PlayerScreen() {
       <View className={cn("flex-row items-center", isLive ? "justify-center gap-8" : "justify-between")}>
         {!isLive && (
           <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("player.replay")}
+              onPress={() => seek(0)}
+              className="size-11 items-center justify-center"
+            >
+              <ReplayIcon color={primaryColor} size={22} />
+            </Pressable>
+
             <Pressable
               accessibilityRole="button"
               accessibilityState={{ selected: isShuffled }}

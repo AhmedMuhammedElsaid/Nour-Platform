@@ -53,6 +53,8 @@ export type PlayerContextValue = {
   prev: () => void;
   goTo: (index: number) => void;
   retry: () => void;
+  // Stop playback and clear the queue — hides the player bar entirely.
+  stop: () => void;
   cycleRepeat: () => void;
   toggleShuffle: () => void;
   setPlaybackRate: (rate: number) => void;
@@ -631,6 +633,22 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     });
   }, []);
 
+  // Stop playback and drop the queue → currentIndex -1 makes the bar slide out
+  // (hasQueue false). The currentIndex effect clears the audio src; here we also
+  // cancel any pending live-retry timer so it can't resume after a close.
+  const stop = React.useCallback((): void => {
+    if (liveRetryTimerRef.current) {
+      clearTimeout(liveRetryTimerRef.current);
+      liveRetryTimerRef.current = null;
+    }
+    const audio = audioRef.current;
+    if (audio) audio.pause();
+    setErrorMessage(null);
+    setQueue([]);
+    setCurrentIndex(-1);
+    playOrderRef.current = [];
+  }, []);
+
   const cycleRepeat = React.useCallback((): void => {
     setRepeatMode((prev) => {
       const seq: RepeatMode[] = ["off", "all", "one"];
@@ -827,6 +845,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       prev,
       goTo,
       retry,
+      stop,
       cycleRepeat,
       toggleShuffle,
       setPlaybackRate,
@@ -858,6 +877,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       prev,
       goTo,
       retry,
+      stop,
       cycleRepeat,
       toggleShuffle,
       setPlaybackRate,

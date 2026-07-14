@@ -177,6 +177,43 @@ export function RetryIcon({ color, size = 24 }: IconProps) {
   );
 }
 
+// Replay from start — counter-clockwise rotate (mirror of RetryIcon).
+export function ReplayIcon({ color, size = 24 }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M1 4v6h6" />
+      <Path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+    </Svg>
+  );
+}
+
+export function CloseIcon({ color, size = 24 }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Line x1={18} y1={6} x2={6} y2={18} />
+      <Line x1={6} y1={6} x2={18} y2={18} />
+    </Svg>
+  );
+}
+
 export function DownloadIcon({ color, size = 24 }: IconProps) {
   return (
     <Svg

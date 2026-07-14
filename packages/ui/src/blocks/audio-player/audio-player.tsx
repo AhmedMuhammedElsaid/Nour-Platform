@@ -9,12 +9,14 @@ import {
   Play,
   Repeat,
   Repeat1,
+  RotateCcw,
   RotateCw,
   Shuffle,
   SkipBack,
   SkipForward,
   Volume2,
   VolumeX,
+  X,
 } from "lucide-react";
 
 import { cn } from "../../lib/utils";
@@ -71,6 +73,7 @@ export function AudioPlayer() {
     prev,
     goTo,
     retry,
+    stop,
     cycleRepeat,
     toggleShuffle,
     setPlaybackRate,
@@ -229,6 +232,14 @@ export function AudioPlayer() {
           <div className="flex items-center gap-2">
             {!isLive && (
               <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Replay from start"
+                  onClick={() => seek(0)}
+                >
+                  <RotateCcw />
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -516,6 +527,15 @@ export function AudioPlayer() {
               </ol>
             </SheetContent>
           </Sheet>
+          {/* Close: stop playback + clear the queue so the bar slides away. */}
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Close player"
+            onClick={stop}
+          >
+            <X />
+          </Button>
         </div>
           </div>
         </>

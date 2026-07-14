@@ -14,6 +14,7 @@ import {
   RepeatIcon,
   RepeatOneIcon,
   RetryIcon,
+  CloseIcon,
 } from "@/components/icons/player-icons";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
@@ -38,6 +39,7 @@ export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
     next,
     prev,
     retry,
+    stop,
     cycleRepeat,
     toggleShuffle,
   } = usePlayer();
@@ -163,6 +165,16 @@ export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
               <NextIcon color={primaryColor} size={18} />
             </Pressable>
           )}
+
+          {/* Close — stop playback + clear the queue so the bar disappears. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("player.close")}
+            onPress={stop}
+            className="size-9 items-center justify-center"
+          >
+            <CloseIcon color={mutedColor} size={18} />
+          </Pressable>
         </View>
       </View>
     </View>

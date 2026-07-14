@@ -87,6 +87,8 @@
     "next": "Next track",
     "prev": "Previous track",
     "retry": "Retry",
+    "replay": "Replay from start",
+    "close": "Close player",
     "shuffle": "Shuffle",
     "repeat": "Repeat",
     "repeatOne": "Repeat one",
