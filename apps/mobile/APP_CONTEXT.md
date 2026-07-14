@@ -1225,3 +1225,16 @@ window rolls forward WITHOUT reopening; reboot re-arms.
   hotfixes on the same version). See memory [[project_mobile_ota_vs_build_discipline]].
 - Concurrent session landed `a498753` (web+mobile player close/replay controls, JS-only) on
   `main` on top of the adhan commits — all pushed; working tree clean.
+
+## Pre-release review → release plan (2026-07-15, review-only session, no code)
+
+Full Android/Play release plan at repo-root **`review_mobile_report_fable.md`** (untracked/
+local; supersedes mobile §3 of `fable_review_for_apps.md`). Rulings: THE gate = one
+`eas build --profile preview` + A72 verify (adhan re-arm Kotlin + nour-compass K2 fix never
+compiled/run; checklist in report §3); register Play Console IMMEDIATELY (personal acct =
+14-day/20-tester closed test = the bottleneck); `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`
+keep-vs-drop = Opus decision pre-submission. **Pending (planned, NOT done):** Phase 2 hygiene —
+qibla-debug2 log (`features/qibla/hooks/use-compass-heading.ts:71`), `eas.json` explicit
+`"environment":"production"` on `build.production`, `publish_play_store.md` still names old
+`volunteering-apps` project, `.gitignore` edit uncommitted; then preview build (user-run) +
+first-ever production AAB.
