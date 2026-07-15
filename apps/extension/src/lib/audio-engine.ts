@@ -7,6 +7,7 @@ import browser from "webextension-polyfill";
 import { ADHAN_CACHE_NAME } from "./cache-manager";
 import {
   EMPTY_CORE,
+  buildTrackRecent,
   currentItem,
   reducePlayer,
   type PlayerCommand,
@@ -382,20 +383,11 @@ function fadeOutAndPause(): void {
 // ── Per-track recents (continue-listening source) ───────────────────────────
 
 // Writes an MRU per-track recent (deduped by playlist slug, ≤20) so the
-// continue-listening shelf can show a cover + resume bar. Guarded on `slug`:
-// queue items without one (current code path) are skipped until later phases
-// populate it.
+// continue-listening shelf can show a cover + resume bar. `buildTrackRecent`
+// owns which items qualify (see it for why live radio is excluded).
 async function recordTrackRecent(item: QueueItem): Promise<void> {
-  if (!item.slug) return;
-  const entry = {
-    slug: item.slug,
-    title: item.artist ?? item.title,
-    type: "playlist" as const,
-    trackId: item.id,
-    cover: item.artwork,
-    playlistTitle: item.artist,
-    durationSecs: item.durationSecs,
-  };
+  const entry = buildTrackRecent(item);
+  if (!entry) return;
   const list = await get("nour.player.recent");
   const next = [entry, ...list.filter((r) => r.slug !== entry.slug)].slice(0, 20);
   await set("nour.player.recent", next);

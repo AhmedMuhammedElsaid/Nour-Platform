@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   EMPTY_CORE,
   buildOrder,
+  buildTrackRecent,
   currentItem,
   reducePlayer,
   type PlayerCore,
@@ -153,5 +154,53 @@ describe("currentItem", () => {
     expect(currentItem(playingAt(1))).toEqual(Q[1]);
     expect(currentItem(EMPTY_CORE)).toBeNull();
     expect(currentItem(core({ index: 9 }))).toBeNull();
+  });
+});
+
+describe("buildTrackRecent", () => {
+  const track: QueueItem = {
+    id: "t1",
+    url: "https://x/t1.mp3",
+    title: "سورة الفاتحة",
+    artist: "مصحف المنشاوي",
+    artwork: "https://x/cover.jpg",
+    durationSecs: 90,
+    slug: "minshawi",
+  };
+
+  it("maps a playlist track to a linkable shelf entry", () => {
+    expect(buildTrackRecent(track)).toEqual({
+      slug: "minshawi",
+      title: "مصحف المنشاوي",
+      type: "playlist",
+      trackId: "t1",
+      cover: "https://x/cover.jpg",
+      playlistTitle: "مصحف المنشاوي",
+      durationSecs: 90,
+    });
+  });
+
+  // Radio lives in nour.radio.recent on web; a station card here would deep-link
+  // to a playlist route that doesn't exist for a `radio:<slug>` id.
+  it("skips live radio even though a station carries a slug", () => {
+    const station: QueueItem = {
+      id: "radio:quran-cairo",
+      url: "https://stream.radiojar.com/8s5u5tpdtwzuv",
+      title: "إذاعة القرآن الكريم",
+      artist: "🔴 بث مباشر · Cairo",
+      slug: "quran-cairo",
+      isLive: true,
+    };
+    expect(buildTrackRecent(station)).toBeNull();
+  });
+
+  it("skips items with no slug — nothing to link back to", () => {
+    expect(buildTrackRecent({ id: "x", url: "https://x/x.mp3", title: "X" })).toBeNull();
+  });
+
+  it("falls back to the track title and omits absent optional fields", () => {
+    expect(buildTrackRecent({ id: "t2", url: "https://x/t2.mp3", title: "T2", slug: "s" })).toEqual(
+      { slug: "s", title: "T2", type: "playlist", trackId: "t2" },
+    );
   });
 });

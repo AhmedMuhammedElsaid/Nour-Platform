@@ -3,6 +3,8 @@
 // diffing the reducer's output; keeping the structural transitions pure makes
 // them testable without a DOM or chrome mocks.
 
+import type { RecentItem } from "./storage";
+
 export type QueueItem = {
   id: string; // track id — keys the resume-position store (nour.player.positions)
   url: string; // absolute audio URL (carried pre-formed by /api/v1 responses)
@@ -183,4 +185,22 @@ export function reducePlayer(core: PlayerCore, command: PlayerCommand): PlayerCo
       return _exhaustive;
     }
   }
+}
+
+// Maps a queue item to its "Continue listening" entry, or null when the item
+// doesn't belong on the shelf. Live radio is excluded to match web, where
+// stations use a separate `nour.radio.recent` key: a station's id is synthetic
+// (`radio:<slug>`) and its slug has no playlist route, so a card here would
+// deep-link nowhere. Items without a slug can't be linked back to at all.
+export function buildTrackRecent(item: QueueItem): RecentItem | null {
+  if (!item.slug || item.isLive) return null;
+  return {
+    slug: item.slug,
+    title: item.artist ?? item.title,
+    type: "playlist",
+    trackId: item.id,
+    ...(item.artwork ? { cover: item.artwork } : {}),
+    ...(item.artist ? { playlistTitle: item.artist } : {}),
+    ...(item.durationSecs !== undefined ? { durationSecs: item.durationSecs } : {}),
+  };
 }
