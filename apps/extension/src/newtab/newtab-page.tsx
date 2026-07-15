@@ -113,7 +113,12 @@ function ContinueListeningShelf({
         </h2>
         <button
           type="button"
-          onClick={() => setRecent([])}
+          onClick={() => {
+            setRecent([]);
+            // Must also clear the store, or the shelf repopulates on next open
+            // (web parity: clearRecentlyPlayed removes the localStorage key).
+            void set("nour.player.recent", []);
+          }}
           className="text-xs text-text-2 hover:text-primary"
         >
           {t("home.clearListening")}
