@@ -1238,3 +1238,26 @@ qibla-debug2 log (`features/qibla/hooks/use-compass-heading.ts:71`), `eas.json` 
 `"environment":"production"` on `build.production`, `publish_play_store.md` still names old
 `volunteering-apps` project, `.gitignore` edit uncommitted; then preview build (user-run) +
 first-ever production AAB.
+
+## Phase 1 gate PASSED + Phase 2 hygiene DONE (2026-07-15, on-device session)
+
+**Phase 1 (THE release gate) — all 4 checklist items PASS on the A72** (versionCode 8,
+owner's own preview build, already installed — not built this session): armed-alarm count
+12–14 (healthy, not ~2/~200); Doze-firing confirmed via logcat (`usage=USAGE_ALARM
+content=CONTENT_TYPE_MUSIC`, channel `adhan_playback`, full clip); reboot re-arm confirmed
+(`BootReceiver` re-armed 12 alarms with the app never opened — first `dumpsys alarm` read
+of 0 was a race against the async boot JS init, resolved seconds later); **window-rolls-forward
+confirmed on a REAL Maghrib fire** (19:57, app closed the whole time, pool re-armed to 14
+afterward). Release gate is clear — the 60-day adhan re-arm fix (`da1d019`/`7d27cb3`) is
+device-verified.
+
+**Phase 2 hygiene — committed + pushed `0c8efd2`:** removed qibla-debug2 log, added
+`eas.json` `build.production.environment:"production"`, fixed `publish_play_store.md`'s
+stale `volunteering-apps`→`ahmedmuhammedelsaid` EAS project reference, deleted
+`capture-crash.sh` (owner call: one-off scratch script, no longer needed). Full
+`pnpm turbo run lint typecheck test build` green (25/25) before push.
+
+**Next: Phase 3** — Play Console registration ($25, register ASAP since personal accounts
+eat a 14-day/20-tester closed-test window), `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`
+keep-vs-drop decision (Opus call, pre-submission), then first production AAB build. Plan
+in `review_mobile_report_fable.md` §5 (Phase 3 steps) — still untracked/local, unchanged.
