@@ -97,9 +97,14 @@ export async function generateMetadata({
   };
 }
 
-// Match the PWA manifest theme so the browser/OS chrome blends in.
+// Match the PWA manifest theme so the browser/OS chrome blends in. Literal hex
+// is unavoidable here (viewport metadata is not CSS) — values mirror
+// --color-bg in packages/ui/src/styles/tokens.css for each theme.
 export const viewport = {
-  themeColor: "#0E6E59",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0f0d0a" },
+    { media: "(prefers-color-scheme: light)", color: "#fdfaf4" },
+  ],
 };
 
 export default async function LocaleLayout({
