@@ -70,7 +70,9 @@ export function QuranLanding() {
           <li key={s.number}>
             <button
               type="button"
-              onClick={() => navigate({ view: "quran-read", surah: String(s.number) })}
+              onClick={() =>
+                navigate({ view: "quran-read", surah: String(s.number), autoplay: true })
+              }
               className="flex w-full items-center gap-3 px-3 py-3 text-start hover:bg-primary/5 transition-colors"
             >
               <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-sm font-medium text-primary">

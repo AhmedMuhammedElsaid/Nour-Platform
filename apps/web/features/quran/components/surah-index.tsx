@@ -7,7 +7,7 @@ export function SurahIndex({ surahs }: { surahs: QuranSurah[] }) {
       {surahs.map((s) => (
         <li key={s.number}>
           <Link
-            href={`/quran/${s.number}`}
+            href={`/quran/${s.number}?autoplay=1`}
             className="hover:bg-primary/5 flex items-center gap-3 px-2 py-3"
           >
             <span className="bg-primary/15 text-primary inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-medium">

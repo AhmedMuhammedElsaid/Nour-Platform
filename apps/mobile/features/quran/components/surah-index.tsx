@@ -12,7 +12,7 @@ export function SurahRow({ surah }: { surah: QuranSurah }) {
   return (
     <Pressable
       accessibilityRole="button"
-      onPress={() => router.push(`/quran/${surah.number}`)}
+      onPress={() => router.push(`/quran/${surah.number}?autoplay=1`)}
       className="flex-row items-center gap-3 border-b border-border px-1 py-3"
     >
       <Text className="h-9 w-9 rounded-full bg-surface-2 text-center text-sm font-medium leading-9 text-primary">
