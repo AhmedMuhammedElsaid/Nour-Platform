@@ -21,7 +21,10 @@
   --font-mono:
     ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
     monospace;
-  /* Quran mushaf face — overridden by the next/font --font-quran var on <html>. */
+  /* Quran mushaf face fallback. The next/font --font-quran var overrides this,
+     but only inside the /quran segment (app/[locale]/quran/layout.tsx) — the
+     face is scoped there rather than loaded on every route, so this stack is
+     what renders anywhere else that asks for font-quran. */
   --font-quran: "Amiri Quran", "Scheherazade New", "Times New Roman", serif;
 
   --fs-2xs: 0.6875rem;
