@@ -66,6 +66,19 @@ export function escapeXml(value: string): string {
     .replace(/'/g, "&apos;");
 }
 
+/**
+ * Percent-encode an IRI to an ASCII URI, then XML-escape it.
+ *
+ * Slugs are Unicode (Arabic), so `<loc>` would otherwise carry raw non-ASCII
+ * IRIs — sitemaps.org requires RFC-3986-escaped URLs. Order matters: encodeURI
+ * leaves `&` untouched, so escaping afterwards still yields `&amp;`. This is only
+ * safe to apply once, which holds here: slugs are schema-constrained to letters,
+ * numbers and hyphens, so no pre-encoded `%` can arrive and be double-escaped.
+ */
+function renderUrl(url: string): string {
+  return escapeXml(encodeURI(url));
+}
+
 /** Alternates for a path that exists identically under every locale prefix. */
 function sharedPathAlternates(path: string): Record<string, string> {
   const suffix = path ? `/${path}` : "";
@@ -184,7 +197,7 @@ export function buildSitemapEntries(data: {
 // ---------------------------------------------------------------------------
 
 function renderEntry(entry: SitemapEntry): string {
-  const lines = [`    <loc>${escapeXml(entry.url)}</loc>`];
+  const lines = [`    <loc>${renderUrl(entry.url)}</loc>`];
   if (entry.lastModified != null) {
     lines.push(`    <lastmod>${escapeXml(entry.lastModified)}</lastmod>`);
   }
@@ -192,7 +205,7 @@ function renderEntry(entry: SitemapEntry): string {
   lines.push(`    <priority>${entry.priority.toFixed(1)}</priority>`);
   for (const [hreflang, href] of Object.entries(entry.alternates)) {
     lines.push(
-      `    <xhtml:link rel="alternate" hreflang="${escapeXml(hreflang)}" href="${escapeXml(href)}"/>`,
+      `    <xhtml:link rel="alternate" hreflang="${escapeXml(hreflang)}" href="${renderUrl(href)}"/>`,
     );
   }
   return `  <url>\n${lines.join("\n")}\n  </url>`;

@@ -152,6 +152,29 @@ describe("renderSitemapXml", () => {
     );
   });
 
+  // sitemaps.org requires RFC-3986-escaped URLs, but slugs are Arabic. loc and
+  // href must encode identically or Google stops matching an alternate to its
+  // own <loc> and the hreflang set silently loses reciprocity.
+  it("percent-encodes non-ASCII slugs in both loc and alternate hrefs", () => {
+    const url = `${BASE}/ar/playlists/خطب-الجمعة`;
+    const encoded = `${BASE}/ar/playlists/${encodeURIComponent("خطب-الجمعة")}`;
+    const xml = renderSitemapXml([
+      {
+        url,
+        changeFrequency: "weekly",
+        priority: 0.7,
+        alternates: { ar: url, "x-default": url },
+      },
+    ]);
+
+    expect(xml).toContain(`<loc>${encoded}</loc>`);
+    expect(xml).toContain(
+      `<xhtml:link rel="alternate" hreflang="ar" href="${encoded}"/>`,
+    );
+    // No raw Arabic survives anywhere in the serialized output.
+    expect(xml).not.toContain("خطب-الجمعة");
+  });
+
   it("emits lastmod only when the entry has one", () => {
     const withMod = renderSitemapXml([
       {
