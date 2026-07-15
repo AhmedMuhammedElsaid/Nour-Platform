@@ -45,6 +45,13 @@ export default defineManifest({
   },
   // @ts-expect-error — browser_specific_settings is Firefox-only, not in CRXJS ManifestV3Export
   browser_specific_settings: {
-    gecko: { id: "nour@nour-platform.com", strict_min_version: "115.0" },
+    gecko: {
+      id: "nour@nour-platform.com",
+      strict_min_version: "115.0",
+      // Mandatory for new AMO submissions since 2025-11-03 — without it the
+      // upload is blocked at signing. "none" is accurate: location is computed
+      // and stored on-device, nothing is transmitted anywhere.
+      data_collection_permissions: { required: ["none"] },
+    },
   },
 });
