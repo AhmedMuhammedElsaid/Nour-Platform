@@ -2,12 +2,7 @@ import "../globals.css";
 
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import {
-  Fraunces,
-  Inter,
-  IBM_Plex_Sans_Arabic,
-  Amiri_Quran,
-} from "next/font/google";
+import { Fraunces, Inter, IBM_Plex_Sans_Arabic } from "next/font/google";
 import { notFound } from "next/navigation";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
@@ -53,14 +48,9 @@ const fontArabic = IBM_Plex_Sans_Arabic({
   variable: "--font-arabic",
 });
 
-// Uthmani mushaf face for Quran ayah text (single weight). Exposed as
-// --font-quran and consumed via the Tailwind `font-quran` utility.
-const fontQuran = Amiri_Quran({
-  subsets: ["arabic"],
-  weight: ["400"],
-  display: "swap",
-  variable: "--font-quran",
-});
+// NOTE: the Quran mushaf face (Amiri Quran → --font-quran) is deliberately NOT
+// loaded here — it is scoped to app/[locale]/quran/layout.tsx so its woff2 is
+// not preloaded on every route. tokens.css carries the fallback stack.
 
 // Pre-render both locale shells (pages stay force-dynamic for the CSP nonce).
 export function generateStaticParams() {
@@ -131,12 +121,7 @@ export default async function LocaleLayout({
       dir={isRtl ? "rtl" : "ltr"}
       // Dark is the default theme; ThemeToggle overrides from localStorage on mount.
       data-theme="dark"
-      className={cn(
-        fontSans.variable,
-        fontDisplay.variable,
-        fontArabic.variable,
-        fontQuran.variable,
-      )}
+      className={cn(fontSans.variable, fontDisplay.variable, fontArabic.variable)}
       // For Arabic, point the shared `--font-sans` token at the Arabic face so
       // every `font-sans` element renders Arabic text correctly.
       style={isRtl ? { ["--font-sans" as string]: "var(--font-arabic)" } : undefined}
