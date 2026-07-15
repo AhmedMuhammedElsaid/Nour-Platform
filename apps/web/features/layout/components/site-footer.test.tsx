@@ -46,4 +46,57 @@ describe("SiteFooter", () => {
       `tel:${DEVELOPER_CONTACT.phone}`,
     );
   });
+
+  it("renders the tagline and both column headings", async () => {
+    render(await SiteFooter());
+
+    expect(screen.getByText("tagline")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "explore", level: 2 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "contact", level: 2 }),
+    ).toBeInTheDocument();
+  });
+
+  it("mirrors the header's five nav routes", async () => {
+    render(await SiteFooter());
+
+    const explore = screen.getByRole("navigation", { name: "explore" });
+    const hrefs = Array.from(explore.querySelectorAll("a")).map((a) =>
+      a.getAttribute("href"),
+    );
+
+    expect(hrefs).toEqual([
+      "/quran",
+      "/radio",
+      "/adhkar",
+      "/prayer-times",
+      "/qibla",
+    ]);
+  });
+
+  it("renders the privacy link and the copyright year", async () => {
+    render(await SiteFooter());
+
+    expect(screen.getByRole("link", { name: "privacy" })).toHaveAttribute(
+      "href",
+      "/privacy",
+    );
+    // The mocked `t` echoes the key, so the year interpolation isn't visible —
+    // asserting the key renders is enough to catch the block going missing.
+    expect(screen.getByText("copyright")).toBeInTheDocument();
+  });
+
+  it("opens external profiles in a new tab but keeps mailto/tel in place", async () => {
+    render(await SiteFooter());
+
+    expect(screen.getByRole("link", { name: "github" })).toHaveAttribute(
+      "target",
+      "_blank",
+    );
+    expect(screen.getByRole("link", { name: "email" })).not.toHaveAttribute(
+      "target",
+    );
+  });
 });

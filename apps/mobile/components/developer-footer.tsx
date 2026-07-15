@@ -30,8 +30,8 @@ export function DeveloperFooter() {
   const { theme } = useTheme();
   const locale = initialLocale;
 
-  // Matches --color-text-2 in packages/ui tokens (dark / light).
-  const iconColor = theme === "dark" ? "#8a7a62" : "#3f4a44";
+  // Matches --color-muted in packages/ui tokens (dark / light).
+  const iconColor = theme === "dark" ? "#5a4a38" : "#6b7670";
 
   const links = [
     { key: "linkedin", url: DEVELOPER_CONTACT.links.linkedin, Icon: LinkedinIcon },
@@ -41,9 +41,11 @@ export function DeveloperFooter() {
     { key: "phone", url: developerTel, Icon: PhoneIcon },
   ] as const;
 
+  // Condensed variant of the web Ledger footer: credit block + a labelled contact
+  // list. No nav column — the tab bar already covers navigation.
   return (
-    <View className="mt-8 items-center gap-4 border-t border-border pt-6">
-      <View className="items-center gap-0.5">
+    <View className="mt-8 gap-6 border-t border-border pt-6">
+      <View className="gap-0.5">
         <Text variant="label" className="text-text-2">
           {t("footer.builtBy")}
         </Text>
@@ -51,18 +53,25 @@ export function DeveloperFooter() {
         <Text variant="muted">{developerTitle(locale)}</Text>
       </View>
 
-      <View className="flex-row items-center gap-6">
-        {links.map(({ key, url, Icon }) => (
-          <Pressable
-            key={key}
-            onPress={() => void Linking.openURL(url)}
-            accessibilityRole="link"
-            accessibilityLabel={t(`footer.${key}`)}
-            hitSlop={8}
-          >
-            <Icon color={iconColor} />
-          </Pressable>
-        ))}
+      <View className="gap-2.5">
+        <Text variant="label" className="text-text-2">
+          {t("footer.contact")}
+        </Text>
+        <View className="gap-2">
+          {links.map(({ key, url, Icon }) => (
+            <Pressable
+              key={key}
+              onPress={() => void Linking.openURL(url)}
+              accessibilityRole="link"
+              accessibilityLabel={t(`footer.${key}`)}
+              hitSlop={8}
+              className="flex-row items-center gap-2"
+            >
+              <Icon color={iconColor} size={16} />
+              <Text variant="muted">{t(`footer.${key}`)}</Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
     </View>
   );

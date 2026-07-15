@@ -12,9 +12,10 @@
   },
   "footer": {
     "builtBy": "Built by",
-    "linkedin": "LinkedIn profile",
-    "github": "GitHub profile",
-    "portfolio": "Portfolio website",
+    "contact": "Contact",
+    "linkedin": "LinkedIn",
+    "github": "GitHub",
+    "portfolio": "Portfolio",
     "email": "Email",
     "phone": "Phone"
   },

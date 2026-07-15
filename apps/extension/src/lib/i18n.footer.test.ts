@@ -6,6 +6,7 @@ import { translate } from "./i18n";
 // back to Arabic (or the raw key), so guard both catalogs explicitly.
 const FOOTER_KEYS = [
   "footer.builtBy",
+  "footer.contact",
   "footer.linkedin",
   "footer.github",
   "footer.portfolio",

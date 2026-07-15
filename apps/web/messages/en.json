@@ -16,10 +16,13 @@
   "footer": {
     "copyright": "© {year} Nour Platform",
     "privacy": "Privacy Policy",
+    "tagline": "Light for the daily practice",
+    "explore": "Explore",
+    "contact": "Contact",
     "builtBy": "Built by",
-    "linkedin": "LinkedIn profile",
-    "github": "GitHub profile",
-    "portfolio": "Portfolio website",
+    "linkedin": "LinkedIn",
+    "github": "GitHub",
+    "portfolio": "Portfolio",
     "email": "Email",
     "phone": "Phone"
   },

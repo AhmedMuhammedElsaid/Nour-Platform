@@ -19,9 +19,9 @@ describe("DeveloperFooter", () => {
     render(<DeveloperFooter />);
 
     const cases: ReadonlyArray<readonly [string, string]> = [
-      ["LinkedIn profile", DEVELOPER_CONTACT.links.linkedin],
-      ["GitHub profile", DEVELOPER_CONTACT.links.github],
-      ["Portfolio website", DEVELOPER_CONTACT.links.portfolio],
+      ["LinkedIn", DEVELOPER_CONTACT.links.linkedin],
+      ["GitHub", DEVELOPER_CONTACT.links.github],
+      ["Portfolio", DEVELOPER_CONTACT.links.portfolio],
       ["Email", `mailto:${DEVELOPER_CONTACT.email}`],
       ["Phone", `tel:${DEVELOPER_CONTACT.phone}`],
     ];

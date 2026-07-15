@@ -8,7 +8,9 @@ import {
   developerTitle,
 } from "@repo/shared-core/developer";
 
-const ICON_SIZE = 20;
+import { Link } from "@/i18n/navigation";
+
+const ICON_SIZE = 16;
 
 // Brand marks (fill) + feather-style glyphs (stroke). Inline SVG keeps the footer
 // dependency-free and matches the repo icon convention (see theme-toggle.tsx).
@@ -85,61 +87,128 @@ function PhoneIcon() {
   );
 }
 
-const linkClass =
-  "text-text-2 transition-colors hover:text-primary focus-visible:text-primary";
+const BRAND: Record<string, { text: string; lang: string }> = {
+  ar: { text: "نور", lang: "ar" },
+  en: { text: "Nour", lang: "en" },
+};
+
+const COLUMN_HEADING_CLASS =
+  "text-2xs font-medium uppercase tracking-[0.12em] text-muted";
+const LIST_LINK_CLASS =
+  "flex items-center gap-2 text-sm text-text-2 transition-colors hover:text-primary focus-visible:text-primary";
 
 export async function SiteFooter() {
   const t = await getTranslations("footer");
+  const tNav = await getTranslations("nav");
+  const tQuran = await getTranslations("quran");
+  const tRadio = await getTranslations("radio");
+  const tAdhkar = await getTranslations("adhkar");
+  const tPrayer = await getTranslations("prayer");
+  const tQibla = await getTranslations("qibla");
   const rawLocale = await getLocale();
   const locale = isLocale(rawLocale) ? rawLocale : "ar";
+  const brand = BRAND[locale] ?? BRAND.en!;
+
+  // Mirrors the header's nav so the two never drift (see site-header.tsx).
+  const exploreLinks = [
+    { href: "/quran", label: tQuran("navLabel") },
+    { href: "/radio", label: tRadio("nav") },
+    { href: "/adhkar", label: tAdhkar("navLabel") },
+    { href: "/prayer-times", label: tPrayer("nav") },
+    { href: "/qibla", label: tQibla("nav") },
+  ];
+
+  // `external` drives target/rel — mailto/tel must stay in the same tab.
+  const contactLinks = [
+    {
+      href: DEVELOPER_CONTACT.links.linkedin,
+      label: t("linkedin"),
+      Icon: LinkedInIcon,
+      external: true,
+    },
+    {
+      href: DEVELOPER_CONTACT.links.github,
+      label: t("github"),
+      Icon: GitHubIcon,
+      external: true,
+    },
+    {
+      href: DEVELOPER_CONTACT.links.portfolio,
+      label: t("portfolio"),
+      Icon: GlobeIcon,
+      external: true,
+    },
+    { href: developerMailto, label: t("email"), Icon: MailIcon, external: false },
+    { href: developerTel, label: t("phone"), Icon: PhoneIcon, external: false },
+  ];
 
   return (
-    <footer className="flex flex-col items-center gap-4 border-t border-border py-8 text-sm text-text-2">
-      <div className="flex flex-col items-center gap-0.5 text-center">
-        <span className="text-xs uppercase tracking-wide text-text-2">
-          {t("builtBy")}
-        </span>
-        <span className="font-display text-base font-semibold text-text">
-          {developerName(locale)}
-        </span>
-        <span className="text-xs text-text-2">{developerTitle(locale)}</span>
+    <footer className="border-t border-border">
+      <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 px-4 py-12 sm:px-6 md:grid-cols-[1.3fr_1fr_1fr]">
+        <div className="flex flex-col gap-2.5">
+          <Link
+            href="/"
+            className="w-fit font-display text-xl font-bold leading-none text-primary transition-colors hover:text-primary/80"
+            aria-label={tNav("home")}
+          >
+            <span lang={brand.lang}>{brand.text}</span>
+          </Link>
+          <p className="max-w-[26ch] text-sm text-text-2">{t("tagline")}</p>
+
+          <div className="mt-1 flex flex-col gap-0.5">
+            <span className={COLUMN_HEADING_CLASS}>{t("builtBy")}</span>
+            <span className="font-display text-lg font-semibold text-text">
+              {developerName(locale)}
+            </span>
+            <span className="text-xs text-text-2">{developerTitle(locale)}</span>
+          </div>
+        </div>
+
+        <nav aria-label={t("explore")} className="flex flex-col gap-2.5">
+          <h2 className={COLUMN_HEADING_CLASS}>{t("explore")}</h2>
+          <ul className="flex flex-col gap-2">
+            {exploreLinks.map((item) => (
+              <li key={item.href}>
+                <Link href={item.href} className={LIST_LINK_CLASS}>
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <nav aria-label={t("contact")} className="flex flex-col gap-2.5">
+          <h2 className={COLUMN_HEADING_CLASS}>{t("contact")}</h2>
+          <ul className="flex flex-col gap-2">
+            {contactLinks.map(({ href, label, Icon, external }) => (
+              <li key={href}>
+                <a
+                  href={href}
+                  className={`group ${LIST_LINK_CLASS}`}
+                  {...(external
+                    ? { target: "_blank", rel: "noopener noreferrer" }
+                    : {})}
+                >
+                  <span className="text-muted transition-colors group-hover:text-primary">
+                    <Icon />
+                  </span>
+                  {label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </div>
 
-      <nav aria-label={t("builtBy")} className="flex items-center gap-5">
-        <a
-          href={DEVELOPER_CONTACT.links.linkedin}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={t("linkedin")}
-          className={linkClass}
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-4 text-xs text-muted sm:px-6">
+        <span>{t("copyright", { year: new Date().getFullYear() })}</span>
+        <Link
+          href="/privacy"
+          className="transition-colors hover:text-primary focus-visible:text-primary"
         >
-          <LinkedInIcon />
-        </a>
-        <a
-          href={DEVELOPER_CONTACT.links.github}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={t("github")}
-          className={linkClass}
-        >
-          <GitHubIcon />
-        </a>
-        <a
-          href={DEVELOPER_CONTACT.links.portfolio}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={t("portfolio")}
-          className={linkClass}
-        >
-          <GlobeIcon />
-        </a>
-        <a href={developerMailto} aria-label={t("email")} className={linkClass}>
-          <MailIcon />
-        </a>
-        <a href={developerTel} aria-label={t("phone")} className={linkClass}>
-          <PhoneIcon />
-        </a>
-      </nav>
+          {t("privacy")}
+        </Link>
+      </div>
     </footer>
   );
 }
