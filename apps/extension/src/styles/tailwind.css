@@ -131,3 +131,47 @@
 .shelf-scroll:hover::-webkit-scrollbar-thumb {
   background-color: var(--color-muted);
 }
+
+/* Radio shelf (RadioSection, lantern grid) — sun-like gold bloom + waveform
+   bars for the currently-playing station card. Referenced via Tailwind
+   arbitrary `animate-[name_...]` utilities wrapped in `motion-safe:`, so
+   prefers-reduced-motion users get the static (non-animated) box-shadow/
+   opacity values already set on the element instead of these keyframes. */
+@keyframes radio-card-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgb(228 197 126 / 35%),
+      0 10px 28px rgb(200 160 80 / 22%),
+      0 0 36px rgb(228 197 126 / 22%);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgb(228 197 126 / 60%),
+      0 14px 42px rgb(200 160 80 / 38%),
+      0 0 64px rgb(228 197 126 / 45%);
+  }
+}
+@keyframes radio-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+@keyframes radio-wave-bar {
+  0%,
+  100% {
+    height: 3px;
+  }
+  30% {
+    height: 10px;
+  }
+  60% {
+    height: 5px;
+  }
+}
