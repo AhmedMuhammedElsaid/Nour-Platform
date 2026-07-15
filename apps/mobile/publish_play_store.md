@@ -13,7 +13,7 @@ Two facts shape the timeline:
 - **No Google Play account yet** → must register ($25 one-time). A **personal/individual**
   account is subject to Google's 2023+ policy: a **closed test with 20 testers for 14
   continuous days** before production access. An **organization** account (e.g.
-  `volunteering-apps`, the existing EAS owner) is **exempt** — register as an organization
+  `ahmedmuhammedelsaid`, the existing EAS owner) is **exempt** — register as an organization
   if eligible to skip the 14-day gate.
 - **Privacy policy** → add a `/privacy` page to `apps/web` (Play requires a hosted URL
   because the app uses location + notifications).

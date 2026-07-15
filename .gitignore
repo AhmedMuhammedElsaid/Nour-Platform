@@ -36,7 +36,7 @@ CLAUDE.md
 PLAN.md
 /.claude
 /.turbo
-
+*.zip
 /scripts/find-broken-tracks.ts
 /scripts/migrate-search-indexes.ts
 /scripts/delete-broken-tracks.ts

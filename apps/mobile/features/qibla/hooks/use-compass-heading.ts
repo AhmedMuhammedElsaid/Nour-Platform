@@ -61,16 +61,6 @@ export function useCompassHeading(location: { lat: number; lng: number }): Compa
       smoothedRef.current = smoothed;
       headingSV.value = smoothed;
 
-      // TEMP diagnostic (2026-07-06 round 2): owner reports a fast spin
-      // specifically right at the Qibla bearing while the phone was held
-      // still — checking whether raw is unstable there (real local magnetic
-      // interference at that specific room-relative direction) vs. the
-      // smoothed/unwrapped value diverging from a clean raw signal (a bug in
-      // the unwrap/EMA above). Remove once root-caused.
-      console.warn(
-        `[qibla-debug2] raw=${raw.toFixed(1)} unwrapped=${next.toFixed(1)} smoothed=${smoothed.toFixed(1)} smoothedNorm=${norm360(smoothed).toFixed(1)}`,
-      );
-
       const now = Date.now();
       if (now - lastStateRef.current >= STATE_THROTTLE_MS) {
         lastStateRef.current = now;
