@@ -42,10 +42,10 @@ export function DeveloperFooter() {
   ] as const;
 
   // Condensed variant of the web Ledger footer: credit block + a labelled contact
-  // list. No nav column — the tab bar already covers navigation.
+  // list, side by side in a row (no nav column — the tab bar covers navigation).
   return (
-    <View className="mt-8 gap-6 border-t border-border pt-6">
-      <View className="gap-0.5">
+    <View className="mt-8 flex-row gap-6 border-t border-border pt-6">
+      <View className="flex-1 gap-0.5">
         <Text variant="label" className="text-text-2">
           {t("footer.builtBy")}
         </Text>

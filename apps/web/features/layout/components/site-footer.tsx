@@ -144,8 +144,8 @@ export async function SiteFooter() {
 
   return (
     <footer className="border-t border-border">
-      <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 px-4 py-12 sm:px-6 md:grid-cols-[1.3fr_1fr_1fr]">
-        <div className="flex flex-col gap-2.5">
+      <div className="mx-auto grid max-w-5xl grid-cols-2 gap-x-6 gap-y-8 px-4 py-12 sm:px-6 md:grid-cols-[1.3fr_1fr_1fr] md:gap-8">
+        <div className="col-span-2 flex flex-col gap-2.5 md:col-span-1">
           <Link
             href="/"
             className="w-fit font-display text-xl font-bold leading-none text-primary transition-colors hover:text-primary/80"
