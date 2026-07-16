@@ -30,6 +30,7 @@ import type { SortMode } from "../components/category-filter";
 import { CategoryFilter } from "../components/category-filter";
 import { PlaylistCard } from "../components/playlist-card";
 import { RadioSection } from "../components/radio-section";
+import { AdhkarPreviewShelf } from "../components/adhkar-preview-shelf";
 import { RadioPage } from "../components/radio-page";
 import { ReadersShelf } from "../components/readers-shelf";
 import { AdhkarLanding } from "../components/adhkar-landing";
@@ -505,6 +506,9 @@ export function NewtabPage() {
 
         {/* ── Radio (live stations) ────────────────────────────────────── */}
         <RadioSection state={playerState} send={send} />
+
+        {/* ── Adhkar ───────────────────────────────────────────────────── */}
+        <AdhkarPreviewShelf />
 
         {/* ── Library ──────────────────────────────────────────────────── */}
         <LibrarySection
