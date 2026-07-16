@@ -17,7 +17,9 @@
     "github": "GitHub",
     "portfolio": "Portfolio",
     "email": "Email",
-    "phone": "Phone"
+    "phone": "Phone",
+    "copyright": "© {{year}} Nour Platform",
+    "privacy": "Privacy Policy"
   },
   "settings": {
     "toggleTheme": "Toggle theme",

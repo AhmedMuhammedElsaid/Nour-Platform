@@ -25,6 +25,11 @@ import { Text } from "@/components/ui/text";
 import { initialLocale } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme-context";
 
+// Same origin fallback as lib/api.ts's API_ORIGIN, inlined rather than imported —
+// several tests mock "@/lib/api" down to just `{ getJson }`, and importing
+// assetUrl from there would resolve to undefined under those mocks.
+const WEB_ORIGIN = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:3000";
+
 export function DeveloperFooter() {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -41,37 +46,59 @@ export function DeveloperFooter() {
     { key: "phone", url: developerTel, Icon: PhoneIcon },
   ] as const;
 
+  // No in-app privacy screen — mobile only talks to web's /api/v1 + shared-core
+  // (CLAUDE.md boundary), so this opens the web page externally like the other
+  // contact links already do.
+  const privacyUrl = `${WEB_ORIGIN}/${locale}/privacy`;
+
   // Condensed variant of the web Ledger footer: credit block + a labelled contact
-  // list, side by side in a row (no nav column — the tab bar covers navigation).
+  // list, side by side in a row (no nav column — the tab bar covers navigation),
+  // plus the copyright/privacy baseline bar.
   return (
-    <View className="mt-8 flex-row gap-6 border-t border-border pt-6">
-      <View className="flex-1 gap-0.5">
-        <Text variant="label" className="text-text-2">
-          {t("footer.builtBy")}
-        </Text>
-        <Text variant="title">{developerName(locale)}</Text>
-        <Text variant="muted">{developerTitle(locale)}</Text>
+    <View className="mt-8 gap-6">
+      <View className="flex-row gap-6 border-t border-border pt-6">
+        <View className="flex-1 gap-0.5">
+          <Text variant="label" className="text-text-2">
+            {t("footer.builtBy")}
+          </Text>
+          <Text variant="title">{developerName(locale)}</Text>
+          <Text variant="muted">{developerTitle(locale)}</Text>
+        </View>
+
+        <View className="gap-2.5">
+          <Text variant="label" className="text-text-2">
+            {t("footer.contact")}
+          </Text>
+          {/* Icon-only row — no visible labels; accessibilityLabel still carries
+              the name to screen readers. */}
+          <View className="flex-row flex-wrap gap-4">
+            {links.map(({ key, url, Icon }) => (
+              <Pressable
+                key={key}
+                onPress={() => void Linking.openURL(url)}
+                accessibilityRole="link"
+                accessibilityLabel={t(`footer.${key}`)}
+                hitSlop={8}
+              >
+                <Icon color={iconColor} size={18} />
+              </Pressable>
+            ))}
+          </View>
+        </View>
       </View>
 
-      <View className="gap-2.5">
-        <Text variant="label" className="text-text-2">
-          {t("footer.contact")}
+      <View className="flex-row items-center justify-between border-t border-border pt-4">
+        <Text variant="muted">
+          {t("footer.copyright", { year: new Date().getFullYear() })}
         </Text>
-        {/* Icon-only row — no visible labels; accessibilityLabel still carries
-            the name to screen readers. */}
-        <View className="flex-row flex-wrap gap-4">
-          {links.map(({ key, url, Icon }) => (
-            <Pressable
-              key={key}
-              onPress={() => void Linking.openURL(url)}
-              accessibilityRole="link"
-              accessibilityLabel={t(`footer.${key}`)}
-              hitSlop={8}
-            >
-              <Icon color={iconColor} size={18} />
-            </Pressable>
-          ))}
-        </View>
+        <Pressable
+          onPress={() => void Linking.openURL(privacyUrl)}
+          accessibilityRole="link"
+          accessibilityLabel={t("footer.privacy")}
+          hitSlop={8}
+        >
+          <Text variant="muted">{t("footer.privacy")}</Text>
+        </Pressable>
       </View>
     </View>
   );

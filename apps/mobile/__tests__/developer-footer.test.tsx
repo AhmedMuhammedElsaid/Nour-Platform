@@ -33,4 +33,23 @@ describe("DeveloperFooter", () => {
 
     spy.mockRestore();
   });
+
+  it("renders the copyright line for the current year", () => {
+    render(<DeveloperFooter />);
+    expect(
+      screen.getByText(new RegExp(String(new Date().getFullYear()))),
+    ).toBeTruthy();
+  });
+
+  it("opens the web privacy page for the current locale", () => {
+    const spy = jest
+      .spyOn(Linking, "openURL")
+      .mockResolvedValue(undefined as never);
+    render(<DeveloperFooter />);
+
+    fireEvent.press(screen.getByLabelText("Privacy Policy"));
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining("/en/privacy"));
+
+    spy.mockRestore();
+  });
 });

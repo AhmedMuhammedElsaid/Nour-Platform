@@ -17,7 +17,9 @@
     "github": "جيت​هب",
     "portfolio": "الموقع الشخصي",
     "email": "البريد الإلكتروني",
-    "phone": "الهاتف"
+    "phone": "الهاتف",
+    "copyright": "© {{year}}  ويبسيت نور",
+    "privacy": "سياسة الخصوصية"
   },
   "settings": {
     "toggleTheme": "تبديل السمة",
