@@ -315,6 +315,103 @@ export const RADIO_STATIONS: RadioStationSeed[] = [
     category: "quran",
     isFeatured: false,
   },
+  // Thematic Seerah/Sahaba/Prophets-stories stations added 2026-07-16 — same
+  // qurango network as 7 of the entries above (verified via curl -I: 200,
+  // audio/mpeg, Icy-Br 128, https end-to-end; host already in CSP RADIO_ORIGINS,
+  // no CSP change needed). No dedicated 24/7 stream exists under the literal
+  // names "يوم في حياة النبي"/"غزوات الرسول" (those are episodic
+  // lectures/podcasts, not live radio brands) — the two Seerah stations below
+  // are the closest real substitute (owner-confirmed).
+  {
+    slug: "seerah-fi-zilal",
+    ar: {
+      name: "في ظلال السيرة النبوية",
+      description: "سلسلة من 400 حلقة عن السيرة النبوية على مدار الساعة.",
+    },
+    en: {
+      name: "In the Shadows of the Prophet's Seerah",
+      description: "A 400-episode series on the Prophet's biography, 24/7.",
+    },
+    country: "SA",
+    streamUrl: "https://backup.qurango.net/radio/fi_zilal_alsiyra",
+    streamType: "mp3",
+    bitrate: 128,
+    language: "ar",
+    category: "islamic",
+    isFeatured: false,
+  },
+  {
+    slug: "seerah-mukhtasar",
+    ar: {
+      name: "المختصر في السيرة النبوية",
+      description: "عرض مختصر للسيرة النبوية على مدار الساعة.",
+    },
+    en: {
+      name: "The Concise Seerah",
+      description: "A concise account of the Prophet's biography, 24/7.",
+    },
+    country: "SA",
+    streamUrl: "https://backup.qurango.net/radio/almukhtasar_fi_alsiyra",
+    streamType: "mp3",
+    bitrate: 128,
+    language: "ar",
+    category: "islamic",
+    isFeatured: false,
+  },
+  {
+    slug: "sahaba-stories",
+    ar: {
+      name: "صور من حياة الصحابة والتابعين",
+      description: "قصص وصور من حياة الصحابة والتابعين رضوان الله عليهم على مدار الساعة.",
+    },
+    en: {
+      name: "Scenes from the Lives of the Companions",
+      description: "Stories from the lives of the Prophet's Companions and their followers, 24/7.",
+    },
+    country: "SA",
+    streamUrl: "https://backup.qurango.net/radio/sahabah",
+    streamType: "mp3",
+    bitrate: 128,
+    language: "ar",
+    category: "islamic",
+    isFeatured: false,
+  },
+  {
+    slug: "prophets-stories",
+    ar: {
+      name: "قصص الأنبياء",
+      description: "قصص الأنبياء عليهم السلام على مدار الساعة.",
+    },
+    en: {
+      name: "Stories of the Prophets",
+      description: "Stories of the Prophets, peace be upon them, 24/7.",
+    },
+    country: "SA",
+    streamUrl: "https://backup.qurango.net/radio/alanbiya",
+    streamType: "mp3",
+    bitrate: 128,
+    language: "ar",
+    category: "islamic",
+    isFeatured: false,
+  },
+  {
+    slug: "shamail-nabawiyyah",
+    ar: {
+      name: "الشمائل المحمدية",
+      description: "صفات وشمائل النبي صلى الله عليه وسلم على مدار الساعة.",
+    },
+    en: {
+      name: "Ash-Shama'il Al-Muhammadiyyah",
+      description: "The Prophet's noble characteristics and description, 24/7.",
+    },
+    country: "SA",
+    streamUrl: "https://backup.qurango.net/radio/shmaeel",
+    streamType: "mp3",
+    bitrate: 128,
+    language: "ar",
+    category: "islamic",
+    isFeatured: false,
+  },
 ];
 
 // Display order (top → bottom) shown on every surface (web/mobile/extension all
@@ -324,10 +421,17 @@ export const RADIO_STATIONS: RadioStationSeed[] = [
 // this list, then re-run `pnpm seed:radio` on Atlas (the seed now updates
 // `order` on existing rows, not only new ones).
 export const RADIO_STATION_ORDER: string[] = [
+  // First 4 = the home-page preview shelf (web/mobile/ext all slice the
+  // first PREVIEW_COUNT=4 of this order-sorted list) — owner-curated 2026-07-16.
   "quran-cairo-live",
+  "sahaba-stories",
+  "seerah-mukhtasar",
+  "sharawi-lectures",
   "quran-abdulbasit",
   "quran-minshawi",
-  "sharawi-lectures",
   "tawasheeh",
   "quran-rifat",
+  "seerah-fi-zilal",
+  "prophets-stories",
+  "shamail-nabawiyyah",
 ];
