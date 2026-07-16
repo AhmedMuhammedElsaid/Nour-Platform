@@ -168,6 +168,8 @@ jest.mock("expo-notifications", () => ({
   setNotificationHandler: jest.fn(),
   setNotificationChannelAsync: jest.fn().mockResolvedValue(undefined),
   addNotificationReceivedListener: jest.fn().mockReturnValue({ remove: jest.fn() }),
+  addNotificationResponseReceivedListener: jest.fn().mockReturnValue({ remove: jest.fn() }),
+  getLastNotificationResponseAsync: jest.fn().mockResolvedValue(null),
   SchedulableTriggerInputTypes: { DATE: "date" },
   AndroidImportance: { HIGH: 4, DEFAULT: 3 },
 }));

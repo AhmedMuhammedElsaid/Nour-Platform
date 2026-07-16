@@ -5,6 +5,7 @@
 // — no separate foreground scheduler needed. Device-local only — no server.
 
 import { useEffect } from "react";
+import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 
 import type {
@@ -15,6 +16,13 @@ import type {
 import { computePrayerTimes } from "@repo/shared-core/prayer-times/compute";
 
 const NOTIF_TAG_PREFIX = "nour-azkar-";
+
+// How many days ahead to schedule. The old ~48h horizon meant reminders stopped
+// if the app wasn't opened for 2 days (same bug class as the adhan horizon bug).
+// iOS shares a hard 64 pending-notification OS cap with the azan schedule, which
+// reserves up to IOS_MAX_AZAN=40 (use-azan-notifications.ts) — 10 days × 2 kinds
+// = 20 keeps the total at 60 < 64. Android has no comparable cap here (28 ≪ 500).
+const HORIZON_DAYS = Platform.OS === "ios" ? 10 : 14;
 
 export type AzkarReminderKind = "sabah" | "masaa";
 
@@ -51,8 +59,7 @@ async function scheduleAzkarReminders(
   const DAY_MS = 24 * 60 * 60 * 1000;
   const offsetMs = settings.offsetMinutes * 60_000;
 
-  // Today + tomorrow (~48h of coverage so reminders persist without re-opening).
-  for (let dayOffset = 0; dayOffset <= 1; dayOffset++) {
+  for (let dayOffset = 0; dayOffset < HORIZON_DAYS; dayOffset++) {
     const date = new Date(now.getTime() + dayOffset * DAY_MS);
     const day = computePrayerTimes({
       lat: location.lat,

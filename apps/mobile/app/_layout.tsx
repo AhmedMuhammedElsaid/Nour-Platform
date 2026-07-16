@@ -20,6 +20,7 @@ import { AzanScheduler } from "@/components/azan-scheduler";
 import { BottomDock } from "@/components/bottom-dock";
 import { OnboardingGate } from "@/features/onboarding/components/onboarding-gate";
 import { useOnboarding } from "@/features/onboarding/hooks/use-onboarding";
+import { useAzkarNotificationRouter } from "@/features/prayer-times/hooks/use-azkar-notification-router";
 import { useForegroundAdhan } from "@/features/prayer-times/hooks/use-foreground-adhan";
 import { ThemeProvider } from "@/lib/theme-context";
 import { PlayerProvider } from "@/lib/player-context";
@@ -65,6 +66,7 @@ export default function RootLayout() {
             {localeReady && (
               <>
                 <ForegroundAdhan />
+                <AzkarNotificationRouter />
                 <AzanScheduler />
                 <Stack screenOptions={{ headerShown: false }} />
                 <BottomDock />
@@ -85,6 +87,13 @@ export default function RootLayout() {
 // Renders nothing — it only wires the azan notification → full-adhan listener.
 function ForegroundAdhan() {
   useForegroundAdhan();
+  return null;
+}
+
+// Renders nothing — deep-links an azkar-reminder notification tap (warm or
+// cold start) to the adhkar reader screen.
+function AzkarNotificationRouter() {
+  useAzkarNotificationRouter();
   return null;
 }
 

@@ -1273,3 +1273,19 @@ Mirrors the web homepage shelf. NEW `features/radio/components/radio-preview-she
 ## Readers shelf: tap plays Al-Fatiha in background, opens surah list (2026-07-16, JS-only, cross-surface)
 
 `features/home/components/reciters-shelf.tsx` `selectReader`: no longer `router.push("/quran/1?autoplay=1")`. Now fetches `/quran/surah/1?reciter=<slug>` (NEW `features/quran/lib/al-fatiha-queue.ts`, `getJson`+map to `QueueTrack[]`), `usePlayer().loadQueue(queue, 0)`, then `router.push("/quran")` (surah list). Same change on web + extension, full detail in root `APP_CONTEXT.md`. No overlap risk: the RNTP-unified reader already pauses the shared queue when real ayah playback starts. `__tests__/reciters-shelf.test.tsx` updated (mocks `usePlayer`/`getJson`, asserts `loadQueue` + `push("/quran")`, no more `autoplay=1`). ⚠️ Hit a jest gotcha while writing the mock: `jest.mock(() => ({ usePlayer: () => ({ loadQueue }) }))` used SHORTHAND property syntax — a blind find/replace renaming `loadQueue`→`mockLoadQueue` (jest's hoist-guard requires the `mock`-prefixed name) also silently renamed the shorthand key, so `usePlayer()` returned `{mockLoadQueue}` instead of `{loadQueue: mockLoadQueue}` and the component's real `loadQueue` was `undefined`. **Always write mock-factory object properties explicitly (`{ loadQueue: mockLoadQueue }`), never shorthand, when the local var must be `mock`-prefixed for jest's hoist check.**
+
+## Adhkar reminder tap deep-link + 14-day horizon (2026-07-16, JS-only)
+
+Two gaps closed: (1) tapping a sabah/masaa reminder notification only opened the app — no
+handler existed. NEW `features/prayer-times/hooks/use-azkar-notification-router.ts` (mounted
+in `_layout` as `<AzkarNotificationRouter />`): `addNotificationResponseReceivedListener`
+(warm tap) + one-shot `getLastNotificationResponseAsync` (cold start — the launching tap is
+NOT delivered to the live listener), routes `data.kind === "azkar-reminder"` →
+`router.push(/adhkar/<slug>)`; dedupe key = `identifier:notification.date` (identifier alone
+recurs across reschedules). First notification-tap router in the repo — extend per-`kind`
+here if azan taps ever need routing. (2) `use-azkar-reminders.ts` horizon 2 → `HORIZON_DAYS`
+= 14 (10 on iOS: azan reserves `IOS_MAX_AZAN=40` of the hard 64 pending-notification cap,
+10×2=20 keeps total 60<64). `jest.setup.js` expo-notifications mock gained the two response
+fns; NEW `__tests__/azkar-notification-router.test.tsx` (4 cases). Extension counterpart:
+notification click now opens the built-in new-tab reader (root APP_CONTEXT). Ships via OTA;
+**tap-routing + multi-day firing device-verify pending (A72)**.
