@@ -19,6 +19,7 @@ import { InstallPrompt } from "@/features/pwa/components/install-prompt";
 import { AdhanController } from "@/features/prayer-times/components/adhan-controller";
 import { AzkarReminderController } from "@/features/prayer-times/components/azkar-reminder-controller";
 import { LocaleAlternatesProvider } from "@/features/layout/locale-alternates-context";
+import { BUILD_VERSION } from "@/lib/build-version";
 import { routing } from "@/i18n/routing";
 import { defaultOpenGraph, defaultTwitter } from "@/lib/seo";
 import { JsonLd } from "@/features/seo/components/json-ld";
@@ -121,6 +122,10 @@ export default async function LocaleLayout({
       dir={isRtl ? "rtl" : "ltr"}
       // Dark is the default theme; ThemeToggle overrides from localStorage on mount.
       data-theme="dark"
+      // The build this HTML was rendered from. ServiceWorkerRegister compares it
+      // against a live /api/health poll to detect a stale long-lived tab still
+      // running old JS after a deploy, and hard-reloads it. See build-version.ts.
+      data-build={BUILD_VERSION}
       className={cn(fontSans.variable, fontDisplay.variable, fontArabic.variable)}
       // For Arabic, point the shared `--font-sans` token at the Arabic face so
       // every `font-sans` element renders Arabic text correctly.

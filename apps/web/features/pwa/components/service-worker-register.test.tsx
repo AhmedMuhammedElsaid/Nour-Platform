@@ -12,39 +12,49 @@ function setVisibility(state: DocumentVisibilityState): void {
   });
 }
 
-function dispatchVisibilityChange(): void {
-  document.dispatchEvent(new Event("visibilitychange"));
+function setRunningBuild(build: string | undefined): void {
+  if (build === undefined) delete document.documentElement.dataset.build;
+  else document.documentElement.dataset.build = build;
 }
 
-// register() runs either immediately (readyState === "complete") or on the
-// window 'load' event. jsdom's readyState is usually already "complete", but
-// dispatching 'load' unconditionally is harmless (no listener is attached in
-// the immediate-run case) and keeps this robust either way.
-function ensureRegistered(): void {
-  window.dispatchEvent(new Event("load"));
+// /api/health returns the currently-DEPLOYED build.
+function mockHealth(version: string | undefined): void {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, version }),
+    }),
+  );
 }
 
 describe("ServiceWorkerRegister", () => {
+  let reload: ReturnType<typeof vi.fn>;
   let update: ReturnType<typeof vi.fn>;
-  let register: ReturnType<typeof vi.fn>;
   let now: number;
 
   beforeEach(() => {
     // Component early-returns unless NODE_ENV === "production" — vitest runs
-    // with NODE_ENV="test", so without this stub the whole suite would
-    // render a no-op and pass vacuously.
+    // with NODE_ENV="test", so without this stub the whole suite would render a
+    // no-op and pass vacuously.
     vi.stubEnv("NODE_ENV", "production");
 
     now = new Date("2026-01-01T00:00:00.000Z").getTime();
     vi.spyOn(Date, "now").mockImplementation(() => now);
 
-    update = vi.fn().mockResolvedValue(undefined);
-    register = vi.fn().mockResolvedValue({ update });
+    // jsdom's window.location.reload throws "Not implemented" — replace it.
+    reload = vi.fn();
+    Object.defineProperty(window, "location", {
+      value: { ...window.location, reload },
+      configurable: true,
+      writable: true,
+    });
 
     // jsdom doesn't implement navigator.serviceWorker at all.
+    update = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "serviceWorker", {
       value: {
-        register,
+        register: vi.fn().mockResolvedValue({ update }),
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
         controller: null,
@@ -53,67 +63,100 @@ describe("ServiceWorkerRegister", () => {
       writable: true,
     });
 
+    sessionStorage.clear();
     setVisibility("visible");
+    setRunningBuild("aaa1111");
   });
 
   afterEach(() => {
-    // NOTE: do not delete navigator.serviceWorker here. This afterEach runs
-    // BEFORE vitest.setup.ts's global `cleanup()` (afterEach hooks run in
-    // reverse registration order), so the still-mounted component's effect
-    // teardown needs navigator.serviceWorker.removeEventListener to still
-    // exist. The next test's beforeEach redefines the property anyway.
+    // NOTE: do not delete navigator.serviceWorker here — this afterEach runs
+    // BEFORE vitest.setup.ts's global cleanup() (afterEach hooks run in reverse
+    // registration order), so the still-mounted component's teardown needs
+    // navigator.serviceWorker.removeEventListener to still exist.
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
   });
 
-  it("calls reg.update() again once the 60-minute throttle window has elapsed", async () => {
+  it("hard-reloads on mount when the deployed build differs from the running build", async () => {
+    mockHealth("bbb2222");
     render(<ServiceWorkerRegister />);
-    ensureRegistered();
-
-    await waitFor(() => expect(register).toHaveBeenCalledTimes(1));
-    // register() itself triggers one seed update() — clear it so the
-    // assertion below is only about the visibility-driven call.
-    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
-    update.mockClear();
-
-    now += ONE_HOUR_MS + 1000;
-    dispatchVisibilityChange();
-
-    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+    // Records the target build so a later check can't reload-loop for it.
+    expect(sessionStorage.getItem("nour.build.reloadedFor")).toBe("bbb2222");
   });
 
-  it("does NOT call reg.update() again when the tab regains visibility inside the throttle window", async () => {
+  it("does NOT reload when the deployed build matches the running build", async () => {
+    mockHealth("aaa1111");
     render(<ServiceWorkerRegister />);
-    ensureRegistered();
-
-    await waitFor(() => expect(register).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
-    update.mockClear();
-
-    // Still well inside the 60-minute window.
-    now += 5 * 60 * 1000;
-    dispatchVisibilityChange();
-
-    // Nothing async left to await for a call that should never happen, but
-    // give a pending microtask a turn before asserting.
+    // Give the async health check a couple of microtask turns to resolve.
     await Promise.resolve();
-    expect(update).not.toHaveBeenCalled();
+    await Promise.resolve();
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("does NOT reload again for a build it has already reloaded for (loop guard)", async () => {
+    sessionStorage.setItem("nour.build.reloadedFor", "bbb2222");
+    mockHealth("bbb2222");
+    render(<ServiceWorkerRegister />);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("does NOT reload when the running build is unknown/dev (no data-build stamp)", async () => {
+    setRunningBuild(undefined);
+    mockHealth("bbb2222");
+    render(<ServiceWorkerRegister />);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("re-checks and reloads on visibility gain once the throttle window has elapsed", async () => {
+    // Start matched so the mount check does not reload.
+    mockHealth("aaa1111");
+    render(<ServiceWorkerRegister />);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(reload).not.toHaveBeenCalled();
+
+    // A new build deploys; the tab regains visibility after the throttle window.
+    mockHealth("bbb2222");
+    now += ONE_HOUR_MS;
+    document.dispatchEvent(new Event("visibilitychange"));
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+  });
+
+  it("does NOT re-check on visibility gain inside the throttle window", async () => {
+    mockHealth("aaa1111");
+    render(<ServiceWorkerRegister />);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // New build deploys, but only 5 min pass — inside the 30-min throttle.
+    mockHealth("bbb2222");
+    now += 5 * 60 * 1000;
+    document.dispatchEvent(new Event("visibilitychange"));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(reload).not.toHaveBeenCalled();
   });
 
   it("removes the visibilitychange listener on unmount", async () => {
+    mockHealth("aaa1111");
     const { unmount } = render(<ServiceWorkerRegister />);
-    ensureRegistered();
-
-    await waitFor(() => expect(register).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
-    update.mockClear();
+    await Promise.resolve();
+    await Promise.resolve();
 
     unmount();
 
-    now += ONE_HOUR_MS + 1000;
-    dispatchVisibilityChange();
-
+    // A stale build now deploys, but the unmounted component must not react.
+    mockHealth("bbb2222");
+    now += ONE_HOUR_MS;
+    document.dispatchEvent(new Event("visibilitychange"));
     await Promise.resolve();
-    expect(update).not.toHaveBeenCalled();
+    await Promise.resolve();
+    expect(reload).not.toHaveBeenCalled();
   });
 });
