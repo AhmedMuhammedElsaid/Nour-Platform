@@ -12,7 +12,7 @@ import { readRecentStations, recordRecentStation } from "../lib/radio-recent";
 import { useNowPlaying } from "../hooks/use-now-playing";
 import { StationCard } from "./station-card";
 
-const RECENT_VISIBLE_COUNT = 4;
+const RECENT_VISIBLE_COUNT = 3;
 
 export function RadioPage({ stations }: { stations: StationView[] }) {
   const t = useTranslations("radio");
