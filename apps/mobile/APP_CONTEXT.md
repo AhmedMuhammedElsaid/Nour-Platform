@@ -1311,3 +1311,10 @@ before trusting that label. New `__tests__/adhkar-preview-shelf.test.tsx` (4 cas
 Full mobile suite 29/29 green after the fix. **Owner must run `pnpm seed:adhkar`
 against Atlas** for the shelf to show the intended 5 sets (Sabah/Masaa/Sleep/Wake/Salah,
 Mosque excluded) — see root `APP_CONTEXT.md` for the seed-order fix.
+
+**Follow-up 2026-07-17 (pushed `f04d621`)**: Waking Adhkar now also hidden from THIS shelf
+specifically (owner request) — `.slice(...)` swapped for `buildAdhkarPreview(sets,
+{excludeWake:true})` (shared-core), shelf now shows 4 cards, no backfill. The full
+`/adhkar` list screen (`app/adhkar/index.tsx`) is untouched — Wake-up still shows there.
+Extension's home shelf deliberately kept at 5 (root `APP_CONTEXT.md` has the full
+cross-surface writeup + the icon-shift gotcha this filter had to avoid).
