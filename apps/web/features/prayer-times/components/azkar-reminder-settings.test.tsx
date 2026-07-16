@@ -17,21 +17,19 @@ function renderUI() {
 describe("AzkarReminderSettings", () => {
   beforeEach(() => localStorage.clear());
 
-  it("is opt-in (off by default) and persists when enabled", async () => {
+  it("is on by default and persists an opt-out", async () => {
     const user = userEvent.setup();
     renderUI();
     const toggle = await screen.findByLabelText(en.prayer.azkar.enable);
-    expect(toggle).not.toBeChecked();
-    await user.click(toggle);
     expect(toggle).toBeChecked();
-    expect(JSON.parse(localStorage.getItem("nour.azkar.reminder")!).enabled).toBe(true);
+    await user.click(toggle);
+    expect(toggle).not.toBeChecked();
+    expect(JSON.parse(localStorage.getItem("nour.azkar.reminder")!).enabled).toBe(false);
   });
 
-  it("reveals the schedule hint once enabled", async () => {
-    const user = userEvent.setup();
+  it("shows the schedule hint while enabled (the default)", async () => {
     renderUI();
-    const toggle = await screen.findByLabelText(en.prayer.azkar.enable);
-    await user.click(toggle);
+    await screen.findByLabelText(en.prayer.azkar.enable);
     // Either the background hint or the foreground-only fallback is shown.
     const hint = screen.queryByText(en.prayer.azkar.hint) ?? screen.queryByText(en.prayer.azkar.foregroundOnly);
     expect(hint).not.toBeNull();

@@ -189,6 +189,7 @@ describe("isWithinAdhanWindow", () => {
 // ── nextAzkarReminderEvent ────────────────────────────────────────────────────
 
 const enabled = { ...DEFAULT_AZKAR_REMINDER_SETTINGS, enabled: true };
+const disabled = { ...DEFAULT_AZKAR_REMINDER_SETTINGS, enabled: false };
 
 describe("nextAzkarReminderEvent", () => {
   it("fires sabah 15 min after Fajr", () => {
@@ -211,7 +212,7 @@ describe("nextAzkarReminderEvent", () => {
 
   it("returns null when disabled", () => {
     expect(
-      nextAzkarReminderEvent(instants(), DEFAULT_AZKAR_REMINDER_SETTINGS, new Date(2026, 5, 7, 3, 0)),
+      nextAzkarReminderEvent(instants(), disabled, new Date(2026, 5, 7, 3, 0)),
     ).toBeNull();
   });
 
@@ -237,7 +238,7 @@ describe("recentlyMissedAzkarReminder", () => {
 
   it("returns null when disabled", () => {
     expect(
-      recentlyMissedAzkarReminder(instants(), DEFAULT_AZKAR_REMINDER_SETTINGS, new Date(2026, 5, 7, 4, 16), GRACE),
+      recentlyMissedAzkarReminder(instants(), disabled, new Date(2026, 5, 7, 4, 16), GRACE),
     ).toBeNull();
   });
 

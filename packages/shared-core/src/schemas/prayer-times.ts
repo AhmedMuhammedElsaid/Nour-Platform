@@ -89,8 +89,11 @@ const azkarSlugLocaleSchema = z.object({
 
 // Azkar al-Sabah/al-Masaa reminder, fired `offsetMinutes` after Fajr/Asr.
 // Device-local only (localStorage), independent of the adhan toggle.
+// On by default (owner decision 2026-07-16): every user gets the daily
+// reminders without touching settings — delivery still gates on the OS/browser
+// notification permission per surface.
 export const azkarReminderSettingsSchema = z.object({
-  enabled: z.boolean().default(false),
+  enabled: z.boolean().default(true),
   offsetMinutes: z.number().int().min(0).max(120).default(15),
   sabah: azkarSlugLocaleSchema.default({ ar: "أذكار-الصباح", en: "morning-adhkar" }),
   masaa: azkarSlugLocaleSchema.default({ ar: "أذكار-المساء", en: "evening-adhkar" }),
