@@ -11,6 +11,7 @@
     "./schemas/media": "./src/schemas/media.ts",
     "./schemas/category": "./src/schemas/category.ts",
     "./schemas/azkar": "./src/schemas/azkar.ts",
+    "./adhkar/preview": "./src/adhkar/preview.ts",
     "./schemas/prayer-times": "./src/schemas/prayer-times.ts",
     "./schemas/quran": "./src/schemas/quran.ts",
     "./schemas/radio": "./src/schemas/radio.ts",
