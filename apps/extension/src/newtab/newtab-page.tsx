@@ -330,6 +330,7 @@ export function NewtabPage() {
       <div className="min-h-screen bg-bg text-text" dir="rtl">
         {headerEl}
         <QuranLanding />
+        <BrandedFooter withNav />
         <PlayerBar state={playerState} send={send} />
       </div>
     );
@@ -339,6 +340,7 @@ export function NewtabPage() {
       <div className="min-h-screen bg-bg text-text" dir="rtl">
         {headerEl}
         <QuranReader surah={route.surah} autoplay={route.autoplay} state={playerState} send={send} />
+        <BrandedFooter withNav />
         <PlayerBar state={playerState} send={send} />
       </div>
     );
@@ -348,6 +350,7 @@ export function NewtabPage() {
       <div className="min-h-screen bg-bg text-text" dir="rtl">
         {headerEl}
         <BookmarksList />
+        <BrandedFooter withNav />
         <PlayerBar state={playerState} send={send} />
       </div>
     );
@@ -357,6 +360,7 @@ export function NewtabPage() {
       <div className="min-h-screen bg-bg text-text" dir="rtl">
         {headerEl}
         <AdhkarLanding />
+        <BrandedFooter withNav />
         <PlayerBar state={playerState} send={send} />
       </div>
     );
@@ -366,6 +370,7 @@ export function NewtabPage() {
       <div className="min-h-screen bg-bg text-text" dir="rtl">
         {headerEl}
         <AdhkarReader slug={route.slug} />
+        <BrandedFooter withNav />
         <PlayerBar state={playerState} send={send} />
       </div>
     );
@@ -375,6 +380,7 @@ export function NewtabPage() {
       <div className="min-h-screen bg-bg text-text" dir="rtl">
         {headerEl}
         <PrayerPage />
+        <BrandedFooter withNav />
         <PlayerBar state={playerState} send={send} />
       </div>
     );
@@ -384,6 +390,7 @@ export function NewtabPage() {
       <div className="min-h-screen bg-bg text-text" dir="rtl">
         {headerEl}
         <RadioPage state={playerState} send={send} />
+        <BrandedFooter withNav />
         <PlayerBar state={playerState} send={send} />
       </div>
     );
@@ -393,6 +400,7 @@ export function NewtabPage() {
       <div className="min-h-screen bg-bg text-text" dir="rtl">
         {headerEl}
         <SearchView initialQ={route.q} state={playerState} send={send} />
+        <BrandedFooter withNav />
         <PlayerBar state={playerState} send={send} />
       </div>
     );
@@ -408,6 +416,7 @@ export function NewtabPage() {
           send={send}
           categories={categories}
         />
+        <BrandedFooter withNav />
         <PlayerBar state={playerState} send={send} />
       </div>
     );
