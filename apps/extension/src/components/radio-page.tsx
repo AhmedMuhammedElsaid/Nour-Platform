@@ -114,7 +114,7 @@ export function RadioPage({
               <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-text-2">
                 {t("radio.recentlyPlayed")}
               </h2>
-              <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">{recentStations.map(renderCard)}</ul>
+              <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3">{recentStations.map(renderCard)}</ul>
             </section>
           )}
 
@@ -122,7 +122,7 @@ export function RadioPage({
             <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-text-2">
               {t("radio.allStations")}
             </h2>
-            <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">{sorted.map(renderCard)}</ul>
+            <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3">{sorted.map(renderCard)}</ul>
           </section>
         </>
       )}

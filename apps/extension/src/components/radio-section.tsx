@@ -74,7 +74,7 @@ export function RadioSection({
           {t("home.radioExplore")}
         </button>
       </div>
-      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <ul className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {preview.map((station) => {
           const isCurrent = currentId === `radio:${station.slug}`;
           return (
