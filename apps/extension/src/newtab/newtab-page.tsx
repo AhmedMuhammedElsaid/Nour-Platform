@@ -16,6 +16,7 @@ import { getLastRead } from "../lib/quran-progress";
 import { usePlayer } from "../lib/use-player";
 import {
   buildPlaylistQueue,
+  fetchAlFatihaQueue,
   fetchCategories,
   fetchPlaylists,
   recordRecent,
@@ -309,12 +310,15 @@ export function NewtabPage() {
     await recordRecent(recent);
   }
 
-  // Set the tapped reader as the active reader voice, then open Al-Fatiha in that
-  // voice with playback auto-started (the reader reads the reciter from prefs).
+  // Set the tapped reader as the active voice, play Al-Fatiha in that voice
+  // via the shared player (background — survives navigation), and open the
+  // surah list so the user can pick any surah to read/play instead.
   async function selectReader(slug: string): Promise<void> {
     const prefs = await get("nour.quran.prefs");
     await set("nour.quran.prefs", { ...prefs, reciterSlug: slug });
-    navigate({ view: "quran-read", surah: "1", autoplay: true });
+    const queue = await fetchAlFatihaQueue(slug).catch(() => []);
+    if (queue.length > 0) send({ type: "load", queue, index: 0 });
+    navigate({ view: "quran" });
   }
 
   // Dispatch non-home views (stubs until their phases land).

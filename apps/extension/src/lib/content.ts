@@ -154,6 +154,23 @@ export async function fetchReciters(): Promise<QuranReciter[]> {
   }));
 }
 
+// Al-Fatiha (surah 1) as a playable queue in a given reciter's voice — used by
+// the home Readers shelf so tapping a reciter plays Al-Fatiha in the background
+// (via the shared player) while the surah list stays open to pick anything else.
+export async function fetchAlFatihaQueue(reciterSlug: string): Promise<QueueItem[]> {
+  const reader = await getJson<{ ayahs: { ayahInSurah: number; audioUrl: string | null }[] }>(
+    "/quran/surah/1",
+    { reciter: reciterSlug },
+  );
+  return reader.ayahs
+    .filter((a): a is { ayahInSurah: number; audioUrl: string } => a.audioUrl != null)
+    .map((a) => ({
+      id: `quran:1:${a.ayahInSurah}`,
+      url: a.audioUrl,
+      title: `Al-Fatiha · ${a.ayahInSurah}`,
+    }));
+}
+
 export type TafsirData = { editionName: string; dir: "rtl" | "ltr"; html: string };
 
 export async function fetchTafsir(numberGlobal: number): Promise<TafsirData> {
