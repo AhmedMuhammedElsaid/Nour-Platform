@@ -12,6 +12,8 @@ import { readRecentStations, recordRecentStation } from "../lib/radio-recent";
 import { useNowPlaying } from "../hooks/use-now-playing";
 import { StationCard } from "./station-card";
 
+const RECENT_VISIBLE_COUNT = 4;
+
 export function RadioPage({ stations }: { stations: StationView[] }) {
   const t = useTranslations("radio");
   const { loadQueue, currentTrack, isPlaying, toggle } = usePlayer();
@@ -53,9 +55,15 @@ export function RadioPage({ stations }: { stations: StationView[] }) {
     );
   }, [stations, favorites]);
 
+  // `recent` is MRU-ordered (recordRecentStation unshifts), so the first
+  // RECENT_VISIBLE_COUNT entries are the most recently played — the rest
+  // stay stored (device-local history) but aren't rendered.
   const recentStations = useMemo(() => {
     const bySlug = new Map(stations.map((s) => [s.slug, s]));
-    return recent.map((slug) => bySlug.get(slug)).filter((s): s is StationView => s != null);
+    return recent
+      .map((slug) => bySlug.get(slug))
+      .filter((s): s is StationView => s != null)
+      .slice(0, RECENT_VISIBLE_COUNT);
   }, [recent, stations]);
 
   const renderCard = (station: StationView) => (
