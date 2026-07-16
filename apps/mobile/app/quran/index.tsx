@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
-import { SurahRow } from "@/features/quran/components/surah-index";
+import { SurahCard } from "@/features/quran/components/surah-index";
 import { SurahJuzTabs, type ReaderTab } from "@/features/quran/components/surah-juz-tabs";
+import { getQuranLastRead } from "@/lib/device-local";
 import { quranSurahsQuery } from "@/lib/queries";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
 
@@ -20,6 +21,20 @@ export default function QuranIndexScreen() {
   const dockSpacing = useDockSpacing();
   const [tab, setTab] = useState<ReaderTab>("surah");
   const surahs = useQuery(quranSurahsQuery());
+  const lastRead = useQuery({
+    queryKey: ["quran-last-read"] as const,
+    queryFn: getQuranLastRead,
+    staleTime: 0,
+  });
+
+  // Only one surah can carry a progress ring — the device only stores a
+  // single last-read pointer, not per-surah history (mirrors the web grid).
+  const progress = useMemo(() => {
+    const ref = lastRead.data;
+    const surah = ref && surahs.data?.find((s) => s.number === ref.surah);
+    if (!ref || !surah) return null;
+    return { surah: ref.surah, pct: Math.min(100, Math.round((ref.ayahInSurah / surah.ayahCount) * 100)) };
+  }, [lastRead.data, surahs.data]);
 
   const header = (
     <View className="gap-4 pb-2">
@@ -60,10 +75,17 @@ export default function QuranIndexScreen() {
         <FlatList<QuranSurah>
           className="flex-1 bg-bg px-4 pt-16"
           data={surahs.data}
+          numColumns={2}
+          columnWrapperStyle={{ gap: 12 }}
           keyExtractor={(s) => String(s.number)}
           contentContainerStyle={{ paddingBottom: dockSpacing }}
           ListHeaderComponent={header}
-          renderItem={({ item }) => <SurahRow surah={item} />}
+          renderItem={({ item }) => (
+            <SurahCard
+              surah={item}
+              progressPct={progress?.surah === item.number ? progress.pct : null}
+            />
+          )}
         />
       ) : (
         <View className="flex-1 bg-bg px-4 pt-16">
