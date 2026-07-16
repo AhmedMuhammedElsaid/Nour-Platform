@@ -179,12 +179,14 @@ export async function SiteFooter() {
 
         <nav aria-label={t("contact")} className="flex flex-col gap-2.5">
           <h2 className={COLUMN_HEADING_CLASS}>{t("contact")}</h2>
-          <ul className="flex flex-col gap-2">
+          {/* Icon-only row below md — labels stay for screen readers via sr-only;
+              md+ reverts to the labelled column list. */}
+          <ul className="flex flex-row flex-wrap items-center gap-3 md:flex-col md:gap-2">
             {contactLinks.map(({ href, label, Icon, external }) => (
               <li key={href}>
                 <a
                   href={href}
-                  className={`group ${LIST_LINK_CLASS}`}
+                  className="group -m-1 flex items-center gap-2 p-1 text-text-2 transition-colors hover:text-primary focus-visible:text-primary"
                   {...(external
                     ? { target: "_blank", rel: "noopener noreferrer" }
                     : {})}
@@ -192,7 +194,7 @@ export async function SiteFooter() {
                   <span className="text-muted transition-colors group-hover:text-primary">
                     <Icon />
                   </span>
-                  {label}
+                  <span className="sr-only text-sm md:not-sr-only">{label}</span>
                 </a>
               </li>
             ))}

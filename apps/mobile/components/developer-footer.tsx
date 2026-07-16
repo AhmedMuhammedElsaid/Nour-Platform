@@ -57,7 +57,9 @@ export function DeveloperFooter() {
         <Text variant="label" className="text-text-2">
           {t("footer.contact")}
         </Text>
-        <View className="gap-2">
+        {/* Icon-only row — no visible labels; accessibilityLabel still carries
+            the name to screen readers. */}
+        <View className="flex-row flex-wrap gap-4">
           {links.map(({ key, url, Icon }) => (
             <Pressable
               key={key}
@@ -65,10 +67,8 @@ export function DeveloperFooter() {
               accessibilityRole="link"
               accessibilityLabel={t(`footer.${key}`)}
               hitSlop={8}
-              className="flex-row items-center gap-2"
             >
-              <Icon color={iconColor} size={16} />
-              <Text variant="muted">{t(`footer.${key}`)}</Text>
+              <Icon color={iconColor} size={18} />
             </Pressable>
           ))}
         </View>
