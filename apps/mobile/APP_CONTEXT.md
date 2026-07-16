@@ -1293,3 +1293,21 @@ notification click now opens the built-in new-tab reader (root APP_CONTEXT). Shi
 ## Quran surah list — mirrored web's illuminated grid + progress ring (2026-07-16, JS-only)
 
 Mirrors the web redesign (root `APP_CONTEXT.md` + memory). `features/quran/components/surah-index.tsx`: `SurahRow` (single-column `FlatList` row) → `SurahCard`; `app/quran/index.tsx`'s `FlatList` switched to a 2-col grid (`numColumns={2}`, `columnWrapperStyle={{gap:12}}`, each card `flex-1 mb-3`). RN has no CSS `conic-gradient`, so the reading-progress ring is a `react-native-svg` `Circle` with `strokeDasharray`/`strokeDashoffset` (same "SVG stands in for a missing CSS feature" pattern as `sun-arc.tsx` / `station-card.tsx`'s `GlowHalo`), colors hardcoded to `--color-primary`/`--color-border` (dark) — same precedent as `station-card.tsx`'s `GOLD` constant. Corner-bracket ornament is two absolutely-positioned plain `View`s (RN has no pseudo-elements). Progress is read ONCE at the screen level via the same `["quran-last-read"]` query key `ContinueReading` already uses (`getQuranLastRead`), matched against `surahs.data` to compute one surah's `ayahInSurah/ayahCount` percentage — every other card gets `progressPct=null` (plain badge), not a fabricated 0%, same rule as web. NEW `__tests__/surah-card.test.tsx` (2 cases). Existing `__tests__/quran.test.tsx` untouched, still green. Full mobile suite 30/30 (`home-screen.test.tsx` flake reconfirmed pre-existing under full-monorepo-gate load, passes 4/4 in isolation — not a regression). **Visual layout NOT device/simulator-verified this session** — only unit tests + typecheck/lint confirmed; verify on A72 before treating this as fully shipped. Extension mirror still pending (root APP_CONTEXT tracks it).
+
+## Adhkar home preview shelf (2026-07-16, pushed `6b9b9d9`, JS-only/OTA-eligible)
+
+Mirrors web/extension (root `APP_CONTEXT.md` has the full cross-surface writeup). NEW
+`features/home/components/adhkar-preview-shelf.tsx`: `useQuery(adhkarListQuery())`,
+`.slice(0, ADHKAR_PREVIEW_COUNT)` from `@repo/shared-core/adhkar/preview`, icon by array
+position (not per-set), `router.push` to `/adhkar/[slug]` on card tap / `/adhkar` on
+Explore more. Wired into `app/index.tsx` after `<RadioPreviewShelf />`, before
+`{libraryBar}`. **Caught a real regression via `home-screen.test.tsx`** (not the documented
+flake — reproduced in isolation both before and after the fix): `mockApi()`'s catch-all
+`return Promise.resolve(playlists)` now also answered the new shelf's `/adhkar` fetch,
+so the playlist fixture's "Apple"/"أب" text rendered twice and broke `getByText`. Fixed
+by adding an `/adhkar` → `[]` guard alongside the existing `/quran/reciters`/`/radio`
+ones. **Lesson reconfirmed**: always re-run a "known flaky" mobile test in isolation
+before trusting that label. New `__tests__/adhkar-preview-shelf.test.tsx` (4 cases).
+Full mobile suite 29/29 green after the fix. **Owner must run `pnpm seed:adhkar`
+against Atlas** for the shelf to show the intended 5 sets (Sabah/Masaa/Sleep/Wake/Salah,
+Mosque excluded) — see root `APP_CONTEXT.md` for the seed-order fix.
