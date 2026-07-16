@@ -46,11 +46,15 @@ function renderCard(overrides?: Partial<Parameters<typeof StationCard>[0]>) {
 }
 
 describe("StationCard", () => {
-  it("renders the station name, description and a LIVE badge", () => {
+  it("renders the station name and a LIVE badge", () => {
     renderCard();
     expect(screen.getByText("Holy Quran Radio")).toBeInTheDocument();
-    expect(screen.getByText("24/7 live broadcast.")).toBeInTheDocument();
     expect(screen.getByText("LIVE")).toBeInTheDocument();
+  });
+
+  it("renders a now-playing line when provided", () => {
+    renderCard({ isCurrent: true, nowPlaying: "Surah Al-Baqarah" });
+    expect(screen.getByText("Surah Al-Baqarah")).toBeInTheDocument();
   });
 
   it("clicking play calls onPlay with the station", async () => {
