@@ -11,7 +11,8 @@ import { getJson } from "../lib/api";
 import { usePrayerTimes } from "../lib/use-prayer-times";
 import { useLocation } from "../options/use-settings";
 import { get, set } from "../lib/storage";
-import type { RecentItem } from "../lib/storage";
+import type { AyahRef, RecentItem } from "../lib/storage";
+import { getLastRead } from "../lib/quran-progress";
 import { usePlayer } from "../lib/use-player";
 import {
   buildPlaylistQueue,
@@ -193,6 +194,38 @@ function ContinueListeningShelf({
           );
         })}
       </ul>
+    </section>
+  );
+}
+
+// Device-local Quran "continue reading" resume card — reads the same
+// nour.quran.lastread key the reader writes (see quran-landing.tsx's own
+// banner, which this mirrors) so Home can resume the last-read ayah too.
+function ContinueReadingCard() {
+  const { t } = useI18n();
+  const [lastRead, setLastRead] = useState<AyahRef | null>(null);
+
+  useEffect(() => {
+    void getLastRead().then(setLastRead);
+  }, []);
+
+  if (!lastRead) return null;
+
+  return (
+    <section className="space-y-3">
+      <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-text-2">
+        {t("home.continueReading")}
+      </h2>
+      <button
+        type="button"
+        onClick={() => navigate({ view: "quran-read", surah: String(lastRead.surah) })}
+        className="flex w-full items-center justify-between rounded-xl border border-border bg-surface p-4 text-start transition-colors hover:border-primary"
+      >
+        <span className="font-medium text-text">
+          {lastRead.surahName ?? `Surah ${lastRead.surah}`} · {lastRead.ayah}
+        </span>
+        <span className="text-primary rtl:scale-x-[-1]">→</span>
+      </button>
     </section>
   );
 }
@@ -457,12 +490,6 @@ export function NewtabPage() {
         {/* ── Readers (Quran reciters) ─────────────────────────────────── */}
         <ReadersShelf onSelect={(slug) => void selectReader(slug)} />
 
-        {/* ── Continue listening ────────────────────────────────────────── */}
-        <ContinueListeningShelf
-          onPlay={(slug) => void playBySlug(slug)}
-          onOpen={(slug, trackId) => navigate({ view: "playlist", slug, trackId })}
-        />
-
         {/* ── Radio (live stations) ────────────────────────────────────── */}
         <RadioSection state={playerState} send={send} />
 
@@ -472,6 +499,15 @@ export function NewtabPage() {
           onOpen={(slug) => navigate({ view: "playlist", slug })}
           categories={categories}
         />
+
+        {/* ── Continue listening ────────────────────────────────────────── */}
+        <ContinueListeningShelf
+          onPlay={(slug) => void playBySlug(slug)}
+          onOpen={(slug, trackId) => navigate({ view: "playlist", slug, trackId })}
+        />
+
+        {/* ── Continue reading ─────────────────────────────────────────── */}
+        <ContinueReadingCard />
 
         <BrandedFooter withNav />
 
