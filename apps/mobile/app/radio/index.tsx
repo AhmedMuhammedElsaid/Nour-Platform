@@ -25,7 +25,10 @@ import {
 } from "@/lib/device-local";
 import { StationCard } from "@/features/radio/components/station-card";
 import { stationToQueueTrack } from "@/features/radio/lib/station-to-queue";
+import { toStationView } from "@/features/radio/lib/station-view";
 import type { StationView } from "@/features/radio/types";
+
+const RECENT_VISIBLE_COUNT = 4;
 
 export default function RadioScreen() {
   const { t } = useTranslation();
@@ -46,22 +49,12 @@ export default function RadioScreen() {
 
   const livePrefix = t("radio.livePrefix");
 
-  // Resolve DTOs → locale-aware views, tolerating a row missing the active
-  // locale (falls back to the other locale) so one bad row can't blank the list.
-  const stations = useMemo<StationView[]>(() => {
-    return (stationsQuery.data ?? []).map((s) => {
-      const loc = s[locale] ?? s.ar ?? s.en;
-      return {
-        slug: s.slug,
-        name: loc?.name ?? "",
-        ...(loc?.description ? { description: loc.description } : {}),
-        ...(s.city ? { city: s.city } : {}),
-        ...(s.image ? { image: s.image } : {}),
-        streamUrl: s.streamUrl,
-        isFeatured: s.isFeatured,
-      };
-    });
-  }, [stationsQuery.data, locale]);
+  // Resolve DTOs → locale-aware views (toStationView tolerates a row missing
+  // the active locale so one bad row can't blank the list).
+  const stations = useMemo<StationView[]>(
+    () => (stationsQuery.data ?? []).map((s) => toStationView(s, locale)),
+    [stationsQuery.data, locale],
+  );
 
   const handlePlay = useCallback(
     (station: StationView) => {
@@ -85,21 +78,28 @@ export default function RadioScreen() {
     return [...stations].sort((a, b) => Number(fav.has(b.slug)) - Number(fav.has(a.slug)));
   }, [stations, favorites]);
 
+  // `recent` is MRU-ordered (recordRecentStation unshifts), so the first
+  // RECENT_VISIBLE_COUNT entries are the most recently played — the rest stay
+  // stored (device-local history) but aren't rendered. Mirrors the web cap.
   const recentStations = useMemo(() => {
     const bySlug = new Map(stations.map((s) => [s.slug, s]));
-    return recent.map((slug) => bySlug.get(slug)).filter((s): s is StationView => s != null);
+    return recent
+      .map((slug) => bySlug.get(slug))
+      .filter((s): s is StationView => s != null)
+      .slice(0, RECENT_VISIBLE_COUNT);
   }, [recent, stations]);
 
   const renderCard = (station: StationView) => (
-    <StationCard
-      key={station.slug}
-      station={station}
-      isCurrent={currentTrack?.id === `radio:${station.slug}`}
-      isPlaying={isPlaying}
-      isFavorite={favorites.includes(station.slug)}
-      onPlay={handlePlay}
-      onToggleFavorite={handleToggleFavorite}
-    />
+    <View key={station.slug} className="w-[48%]">
+      <StationCard
+        station={station}
+        isCurrent={currentTrack?.id === `radio:${station.slug}`}
+        isPlaying={isPlaying}
+        isFavorite={favorites.includes(station.slug)}
+        onPlay={handlePlay}
+        onToggleFavorite={handleToggleFavorite}
+      />
+    </View>
   );
 
   return (
@@ -138,12 +138,12 @@ export default function RadioScreen() {
           {recentStations.length > 0 && (
             <View className="gap-3">
               <Text variant="label">{t("radio.recentlyPlayed")}</Text>
-              {recentStations.map(renderCard)}
+              <View className="flex-row flex-wrap gap-3">{recentStations.map(renderCard)}</View>
             </View>
           )}
           <View className="gap-3">
             <Text variant="label">{t("radio.allStations")}</Text>
-            {sorted.map(renderCard)}
+            <View className="flex-row flex-wrap gap-3">{sorted.map(renderCard)}</View>
           </View>
         </>
       )}
