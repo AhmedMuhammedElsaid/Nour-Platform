@@ -6,9 +6,11 @@ import { useI18n } from "../lib/i18n";
 import { ThemeToggle } from "./theme-toggle";
 import { BookOpen, Clock, Globe, Home, Search } from "./ui/icons";
 
-type NavItem = { route: Route; labelKey: string; Icon: ComponentType<{ className?: string }> };
+export type NavItem = { route: Route; labelKey: string; Icon: ComponentType<{ className?: string }> };
 
-const NAV: NavItem[] = [
+// Exported so BrandedFooter's Explore column stays in lockstep with the header —
+// same routes, same labels, one place to add/remove a destination.
+export const NAV: NavItem[] = [
   { route: { view: "home" }, labelKey: "nav.home", Icon: Home },
   { route: { view: "quran" }, labelKey: "nav.quran", Icon: BookOpen },
   { route: { view: "adhkar" }, labelKey: "nav.adhkar", Icon: Globe },

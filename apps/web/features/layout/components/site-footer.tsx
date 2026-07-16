@@ -181,7 +181,7 @@ export async function SiteFooter() {
           <h2 className={COLUMN_HEADING_CLASS}>{t("contact")}</h2>
           {/* Icon-only row below md — labels stay for screen readers via sr-only;
               md+ reverts to the labelled column list. */}
-          <ul className="flex flex-row flex-wrap items-center gap-3 md:flex-col md:gap-2">
+          <ul className="flex flex-row flex-wrap items-center gap-3 md:flex-col md:items-start md:gap-2">
             {contactLinks.map(({ href, label, Icon, external }) => (
               <li key={href}>
                 <a

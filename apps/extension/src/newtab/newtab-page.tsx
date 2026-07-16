@@ -463,7 +463,7 @@ export function NewtabPage() {
           categories={categories}
         />
 
-        <BrandedFooter />
+        <BrandedFooter withNav />
 
         <div className="h-28" aria-hidden="true" />
       </main>
