@@ -3,6 +3,7 @@ import browser from "webextension-polyfill";
 import type { AdhanPrayerKey } from "@repo/shared-core/schemas/prayer-times";
 import type { AzkarReminderKind } from "@repo/shared-core/prayer-times/schedule";
 
+import { routeToHash } from "./router";
 import { get } from "./storage";
 
 const PRAYER_AR: Record<AdhanPrayerKey, string> = {
@@ -51,7 +52,9 @@ export async function handleNotificationClick(id: string): Promise<void> {
     const kind = id.slice(AZKAR_NID_PREFIX.length) as AzkarReminderKind;
     const settings = await get("nour.azkar.reminder");
     const slug = kind === "sabah" ? settings.sabah.ar : settings.masaa.ar;
-    url = `${SITE}/ar/adhkar/${encodeURIComponent(slug)}`;
+    // Open the extension's own new-tab reader (not the website) so the dhikr
+    // is readable immediately, offline-capable, and stays in-extension.
+    url = `${browser.runtime.getURL("src/newtab/index.html")}#${routeToHash({ view: "adhkar-read", slug })}`;
   }
   await browser.tabs.create({ url });
   await browser.notifications.clear(id);
