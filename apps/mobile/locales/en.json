@@ -73,6 +73,8 @@
     "continueListening": "Continue listening",
     "continueReading": "Continue reading",
     "reciters": "Readers",
+    "radio": "Radio",
+    "radioExplore": "Explore more",
     "surah": "Surah",
     "ayah": "Ayah {{number}}",
     "sort": {
@@ -242,7 +244,6 @@
   "radio": {
     "title": "Radio",
     "subtitle": "Live Islamic radio stations, streaming around the clock.",
-    "homeCardSubtitle": "Listen to live 24/7 broadcasts",
     "live": "LIVE",
     "livePrefix": "🔴 Live",
     "favorite": "Add to favorites",

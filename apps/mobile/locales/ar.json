@@ -98,6 +98,8 @@
     "continueListening": "متابعة الاستماع",
     "continueReading": "متابعة القراءة",
     "reciters": "القرّاء",
+    "radio": "الإذاعة",
+    "radioExplore": "استكشف المزيد",
     "surah": "سورة",
     "ayah": "الآية {{number}}",
     "sort": {
@@ -242,7 +244,6 @@
   "radio": {
     "title": "الإذاعة",
     "subtitle": "بث مباشر للإذاعات الإسلامية على مدار الساعة.",
-    "homeCardSubtitle": "استمع إلى بث مباشر على مدار الساعة",
     "live": "مباشر",
     "livePrefix": "🔴 بث مباشر",
     "favorite": "أضف إلى المفضلة",

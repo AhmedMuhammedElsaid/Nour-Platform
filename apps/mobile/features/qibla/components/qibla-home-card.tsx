@@ -5,8 +5,8 @@ import { useRouter } from "expo-router";
 import { Text } from "@/components/ui/text";
 
 // Home entry point for the Qibla compass — a tappable card that opens the full
-// /qibla screen (mirrors RadioHomeCard). Makes the compass discoverable from
-// Home, matching the web's nav link, in addition to the prayer-times banner.
+// /qibla screen. Makes the compass discoverable from Home, matching the web's
+// nav link, in addition to the prayer-times banner.
 export function QiblaHomeCard() {
   const { t } = useTranslation();
   const router = useRouter();
