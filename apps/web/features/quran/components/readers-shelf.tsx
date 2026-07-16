@@ -7,9 +7,11 @@ import { useTranslations } from "next-intl";
 import type { QuranReciter } from "@repo/api/schemas/quran";
 import type { Locale } from "@repo/api/schemas/locale";
 import { reciterGradient, reciterInitials } from "@repo/shared-core/quran/reciter-avatar";
+import { usePlayer } from "@repo/ui/blocks/player-context";
 
 import { useRouter } from "@/i18n/navigation";
 import { loadPrefs, savePrefs } from "@/features/quran/lib/quran-prefs";
+import { fetchAlFatihaQueue } from "@/features/quran/lib/al-fatiha-queue";
 
 // Home "Readers" shelf — a horizontal row of Quran reciters. Tapping a reader
 // sets it as the active reader voice (nour.quran.prefs) AND opens Al-Fatiha in
@@ -26,12 +28,17 @@ export function ReadersShelf({
 }) {
   const t = useTranslations("home");
   const router = useRouter();
+  const { loadQueue } = usePlayer();
 
   if (reciters.length === 0) return null;
 
-  const selectReader = (slug: string): void => {
+  // Plays Al-Fatiha in that reciter's voice via the shared player (background —
+  // survives navigation) and opens the surah list to pick anything else.
+  const selectReader = async (slug: string): Promise<void> => {
     savePrefs({ ...loadPrefs(), reciterSlug: slug });
-    router.push(`/quran/1?reciter=${encodeURIComponent(slug)}&autoplay=1`);
+    const queue = await fetchAlFatihaQueue(slug).catch(() => []);
+    if (queue.length > 0) loadQueue(queue, 0);
+    router.push("/quran");
   };
 
   return (
@@ -48,7 +55,7 @@ export function ReadersShelf({
             <li key={reciter.slug} className="shrink-0 w-28">
               <button
                 type="button"
-                onClick={() => selectReader(reciter.slug)}
+                onClick={() => void selectReader(reciter.slug)}
                 aria-label={displayName}
                 className="group flex w-full flex-col items-center gap-2 rounded-2xl p-2 text-center transition-all duration-200 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
