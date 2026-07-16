@@ -78,9 +78,11 @@ export function BrandedFooter({ withNav = false }: BrandedFooterProps) {
   // `md:items-start` matters: without it, `items-center` (needed for the
   // icon-only mobile row) also centers each row once the list becomes a
   // column at md — that's what threw "Contact" out of alignment with its
-  // own list before this fix.
-  const contactColumn = (
-    <nav aria-label={t("footer.contact")} className="flex flex-col gap-2.5">
+  // own list before this fix. `columnClassName` lets the nav variant give
+  // Contact its own full-width row below md without affecting the options
+  // page's condensed 2-col layout.
+  const renderContactColumn = (columnClassName = "flex flex-col gap-2.5") => (
+    <nav aria-label={t("footer.contact")} className={columnClassName}>
       <h2 className={COLUMN_HEADING_CLASS}>{t("footer.contact")}</h2>
       <ul className="flex flex-row flex-wrap items-center gap-3 md:flex-col md:items-start md:gap-2">
         {contactLinks.map(({ href, label, Icon, external }) => (
@@ -106,7 +108,7 @@ export function BrandedFooter({ withNav = false }: BrandedFooterProps) {
       <footer className="border-t border-border px-4 py-8 text-sm text-text-2">
         <div className="mx-auto grid max-w-3xl grid-cols-1 gap-6 sm:grid-cols-2">
           {creditBlock}
-          {contactColumn}
+          {renderContactColumn()}
         </div>
       </footer>
     );
@@ -115,7 +117,7 @@ export function BrandedFooter({ withNav = false }: BrandedFooterProps) {
   return (
     <footer className="border-t border-border">
       <div className="mx-auto grid max-w-5xl grid-cols-2 gap-x-6 gap-y-8 px-4 py-12 md:grid-cols-[1.3fr_1fr_1fr] md:gap-8">
-        <div className="col-span-2 flex flex-col gap-2.5 md:col-span-1">
+        <div className="flex flex-col gap-2.5">
           <button
             type="button"
             onClick={() => navigate({ view: "home" })}
@@ -140,7 +142,7 @@ export function BrandedFooter({ withNav = false }: BrandedFooterProps) {
           </ul>
         </nav>
 
-        {contactColumn}
+        {renderContactColumn("col-span-2 flex flex-col gap-2.5 md:col-span-1")}
       </div>
     </footer>
   );

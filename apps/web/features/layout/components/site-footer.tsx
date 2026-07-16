@@ -145,7 +145,7 @@ export async function SiteFooter() {
   return (
     <footer className="border-t border-border">
       <div className="mx-auto grid max-w-5xl grid-cols-2 gap-x-6 gap-y-8 px-4 py-12 sm:px-6 md:grid-cols-[1.3fr_1fr_1fr] md:gap-8">
-        <div className="col-span-2 flex flex-col gap-2.5 md:col-span-1">
+        <div className="flex flex-col gap-2.5">
           <Link
             href="/"
             className="w-fit font-display text-xl font-bold leading-none text-primary transition-colors hover:text-primary/80"
@@ -177,7 +177,7 @@ export async function SiteFooter() {
           </ul>
         </nav>
 
-        <nav aria-label={t("contact")} className="flex flex-col gap-2.5">
+        <nav aria-label={t("contact")} className="col-span-2 flex flex-col gap-2.5 md:col-span-1">
           <h2 className={COLUMN_HEADING_CLASS}>{t("contact")}</h2>
           {/* Icon-only row below md — labels stay for screen readers via sr-only;
               md+ reverts to the labelled column list. */}
