@@ -18,6 +18,10 @@ import {
 // content seed). Other sets created in the admin are untouched. The four "other"
 // sets are localized (ar + en titles); each item carries Arabic (required) plus
 // an English translation where applicable.
+//
+// Order matters: the first 5 (by this array position) drive the home "Adhkar"
+// preview shelf (packages/shared-core/src/adhkar/preview.ts). Mosque is placed
+// last so it's excluded from that shelf.
 const SETS = [
   {
     kind: "morning" as const,
@@ -45,15 +49,15 @@ const SETS = [
   },
   {
     kind: "other" as const,
-    ar: { title: "اذكار المسجد" },
-    en: { title: "Mosque Adhkar" },
-    items: MASJID_ITEMS,
-  },
-  {
-    kind: "other" as const,
     ar: { title: "أذكار الصلاة" },
     en: { title: "Prayer Adhkar" },
     items: PRAYER_ITEMS,
+  },
+  {
+    kind: "other" as const,
+    ar: { title: "اذكار المسجد" },
+    en: { title: "Mosque Adhkar" },
+    items: MASJID_ITEMS,
   },
 ];
 
@@ -64,12 +68,15 @@ async function main(): Promise<void> {
     const existing = await AzkarModel.findOne({ "ar.slug": arSlug });
     if (existing) {
       // Upsert: replace items + titles via dot-paths so the locale subdocs merge,
-      // preserving existing slugs. Does not touch `status`/`order`.
+      // preserving existing slugs. Does not touch `status`, but DOES write `order`
+      // (mirroring the radio seed fix) so a re-run applies the curated SETS order
+      // above to already-seeded docs — needed for the home preview shelf.
       await AzkarModel.updateOne(
         { _id: existing._id },
         {
           $set: {
             kind: set.kind,
+            order: index,
             "ar.title": set.ar.title,
             "en.title": set.en.title,
             items: set.items,
