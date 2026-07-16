@@ -5,6 +5,7 @@ import { getPublishedPlaylists } from "@repo/api/services/playlist";
 import { listCategories } from "@repo/api/services/category";
 import { listReciters } from "@repo/api/services/quran";
 import { listStations } from "@repo/api/services/radio";
+import { getPublishedAzkar } from "@repo/api/services/azkar";
 import { LOCALES, type Locale } from "@repo/api/schemas/locale";
 import type { Playlist } from "@repo/api/schemas/playlist";
 import { localeAlternates, defaultOpenGraph, defaultTwitter } from "@/lib/seo";
@@ -21,6 +22,7 @@ import { PlaylistSortSelect } from "@/features/playlists/components/playlist-sor
 import { PrayerTimesWidget } from "@/features/prayer-times/components/prayer-times-widget";
 import { ReadersShelf } from "@/features/quran/components/readers-shelf";
 import { RadioPreviewShelf } from "@/features/radio/components/radio-preview-shelf";
+import { AdhkarPreviewShelf } from "@/features/adhkar/components/adhkar-preview-shelf";
 import { toStationView } from "@/features/radio/lib/station-view";
 import type { SerializedPlaylist } from "@/features/playlists/types";
 
@@ -79,6 +81,9 @@ export default async function HomePage({
   const stations = await listStations();
   const stationViews = stations.map((s) => toStationView(s, locale));
 
+  // First few curated adhkar sets for the home "Adhkar" preview shelf.
+  const azkarSets = await getPublishedAzkar();
+
   // Match the ?category= slug against the locale-specific slug field.
   const matchedCategory =
     category != null ? categories.find((c) => c[locale].slug === category) : undefined;
@@ -134,6 +139,14 @@ export default async function HomePage({
 
       {/* Radio preview shelf */}
       <RadioPreviewShelf stations={stationViews} />
+
+      {/* Adhkar preview shelf */}
+      <AdhkarPreviewShelf
+        sets={azkarSets}
+        locale={locale}
+        heading={t("adhkar")}
+        exploreLabel={t("adhkarExplore")}
+      />
 
       {/* Category filter pills */}
       <CategoryFilterBar categories={categoryPills} activeSlug={category} />
