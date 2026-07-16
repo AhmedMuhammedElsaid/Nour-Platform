@@ -95,6 +95,8 @@ const SCHEMA_MAP: {
   "nour.quran.prefs": SchemaEntry<QuranPrefs>;
   "nour.quran.lastread": SchemaEntry<AyahRef | null>;
   "nour.quran.bookmarks": SchemaEntry<AyahRef[]>;
+  "nour.radio.favorites": SchemaEntry<string[]>;
+  "nour.radio.recent": SchemaEntry<string[]>;
 } = {
   "nour.prayer.location": {
     schema: prayerLocationSchema,
@@ -180,6 +182,10 @@ const SCHEMA_MAP: {
     ),
     fallback: [],
   },
+  // Device-local radio favorites + recently-played — same keys/shape as web +
+  // mobile (nour.radio.favorites / nour.radio.recent, flat slug arrays, MRU).
+  "nour.radio.favorites": { schema: z.array(z.string()), fallback: [] },
+  "nour.radio.recent": { schema: z.array(z.string()).max(12), fallback: [] },
 };
 
 export type StorageKey = keyof typeof SCHEMA_MAP;

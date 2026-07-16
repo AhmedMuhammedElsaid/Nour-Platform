@@ -39,6 +39,7 @@ describe("routeToHash ↔ parseHash round-trip", () => {
     { view: "quran-read", surah: "114" },
     { view: "bookmarks" },
     { view: "prayer-times" },
+    { view: "radio" },
   ];
 
   it("survives a serialise → parse cycle", () => {

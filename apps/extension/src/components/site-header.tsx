@@ -4,7 +4,7 @@ import { navigate } from "../lib/router";
 import type { Route } from "../lib/router";
 import { useI18n } from "../lib/i18n";
 import { ThemeToggle } from "./theme-toggle";
-import { BookOpen, Clock, Globe, Home, Search } from "./ui/icons";
+import { BookOpen, Clock, Globe, Home, Radio, Search } from "./ui/icons";
 
 export type NavItem = { route: Route; labelKey: string; Icon: ComponentType<{ className?: string }> };
 
@@ -13,6 +13,7 @@ export type NavItem = { route: Route; labelKey: string; Icon: ComponentType<{ cl
 export const NAV: NavItem[] = [
   { route: { view: "home" }, labelKey: "nav.home", Icon: Home },
   { route: { view: "quran" }, labelKey: "nav.quran", Icon: BookOpen },
+  { route: { view: "radio" }, labelKey: "nav.radio", Icon: Radio },
   { route: { view: "adhkar" }, labelKey: "nav.adhkar", Icon: Globe },
   { route: { view: "prayer-times" }, labelKey: "nav.prayer", Icon: Clock },
 ];

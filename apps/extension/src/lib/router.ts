@@ -13,7 +13,8 @@ export type Route =
   | { view: "quran" }
   | { view: "quran-read"; surah: string; autoplay?: boolean }
   | { view: "bookmarks" }
-  | { view: "prayer-times" };
+  | { view: "prayer-times" }
+  | { view: "radio" };
 
 export const HOME: Route = { view: "home" };
 
@@ -39,6 +40,8 @@ export function routeToHash(route: Route): string {
       return "/bookmarks";
     case "prayer-times":
       return "/prayer-times";
+    case "radio":
+      return "/radio";
   }
 }
 
@@ -73,6 +76,8 @@ export function parseHash(hash: string): Route {
       return { view: "bookmarks" };
     case "prayer-times":
       return { view: "prayer-times" };
+    case "radio":
+      return { view: "radio" };
     default:
       return HOME;
   }

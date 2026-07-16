@@ -205,6 +205,16 @@ export function BookOpen({ className }: IconProps) {
   );
 }
 
+export function Radio({ className }: IconProps) {
+  return (
+    <Stroke className={className}>
+      <path d="M3.5 8.5 18 3M6 8.5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z" />
+      <circle cx="8" cy="14" r="3" />
+      <path d="M16 12.5h2M16 15.5h2" />
+    </Stroke>
+  );
+}
+
 export function Clock({ className }: IconProps) {
   return (
     <Stroke className={className}>

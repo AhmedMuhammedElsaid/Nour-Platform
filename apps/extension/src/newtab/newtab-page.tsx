@@ -28,6 +28,7 @@ import type { SortMode } from "../components/category-filter";
 import { CategoryFilter } from "../components/category-filter";
 import { PlaylistCard } from "../components/playlist-card";
 import { RadioSection } from "../components/radio-section";
+import { RadioPage } from "../components/radio-page";
 import { ReadersShelf } from "../components/readers-shelf";
 import { AdhkarLanding } from "../components/adhkar-landing";
 import { PrayerPage } from "../components/prayer-page";
@@ -337,6 +338,15 @@ export function NewtabPage() {
       <div className="min-h-screen bg-bg text-text" dir="rtl">
         {headerEl}
         <PrayerPage />
+        <PlayerBar state={playerState} send={send} />
+      </div>
+    );
+  }
+  if (view === "radio") {
+    return (
+      <div className="min-h-screen bg-bg text-text" dir="rtl">
+        {headerEl}
+        <RadioPage state={playerState} send={send} />
         <PlayerBar state={playerState} send={send} />
       </div>
     );
