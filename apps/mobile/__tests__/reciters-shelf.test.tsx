@@ -23,6 +23,8 @@ jest.mock("@/lib/device-local", () => ({
     fontScale: 1,
   },
 }));
+const mockLoadQueue = jest.fn();
+jest.mock("@/lib/player-context", () => ({ usePlayer: () => ({ loadQueue: mockLoadQueue }) }));
 
 const reciter = (over: Partial<QuranReciter> & Pick<QuranReciter, "slug" | "name">): QuranReciter =>
   ({ audioBase: "https://everyayah.com/x/", ...over }) as QuranReciter;
@@ -40,6 +42,7 @@ describe("RecitersShelf", () => {
   beforeEach(() => {
     jest.mocked(getJson).mockReset();
     mockPush.mockReset();
+    mockLoadQueue.mockReset();
     jest.mocked(setQuranPrefs).mockReset().mockResolvedValue(undefined);
     jest.mocked(getQuranPrefs).mockReset().mockResolvedValue(DEFAULT_QURAN_PREFS);
   });
@@ -54,8 +57,15 @@ describe("RecitersShelf", () => {
     expect(screen.getByText("Abdurrahman Al-Sudais")).toBeTruthy();
   });
 
-  it("writes the tapped reciter to prefs and opens Al-Fatiha with autoplay", async () => {
-    jest.mocked(getJson).mockResolvedValue([reciter({ slug: "sudais", name: "Al-Sudais" })]);
+  it("writes the tapped reciter to prefs, plays Al-Fatiha in the background, and opens the surah list", async () => {
+    jest.mocked(getJson).mockImplementation((path: string) => {
+      if (path === "/quran/surah/1") {
+        return Promise.resolve({
+          ayahs: [{ ayahInSurah: 1, audioUrl: "https://everyayah.com/1.mp3" }],
+        });
+      }
+      return Promise.resolve([reciter({ slug: "sudais", name: "Al-Sudais" })]);
+    });
     renderShelf();
     const item = await screen.findByText("Al-Sudais");
     fireEvent.press(item);
@@ -64,6 +74,13 @@ describe("RecitersShelf", () => {
         expect.objectContaining({ reciterSlug: "sudais" }),
       ),
     );
-    expect(mockPush).toHaveBeenCalledWith("/quran/1?autoplay=1");
+    await waitFor(() =>
+      expect(mockLoadQueue).toHaveBeenCalledWith(
+        [expect.objectContaining({ id: "quran:1:1", mediaUrl: "https://everyayah.com/1.mp3" })],
+        0,
+      ),
+    );
+    // No autoplay query param — playback comes from the shared player, not the reader.
+    expect(mockPush).toHaveBeenCalledWith("/quran");
   });
 });

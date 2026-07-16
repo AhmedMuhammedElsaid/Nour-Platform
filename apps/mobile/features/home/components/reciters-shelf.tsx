@@ -11,7 +11,9 @@ import { Text } from "@/components/ui/text";
 import { assetUrl } from "@/lib/api";
 import { getQuranPrefs, setQuranPrefs } from "@/lib/device-local";
 import { initialLocale } from "@/lib/i18n";
+import { usePlayer } from "@/lib/player-context";
 import { quranRecitersQuery } from "@/lib/queries";
+import { fetchAlFatihaQueue } from "@/features/quran/lib/al-fatiha-queue";
 
 // Home "Readers" shelf — a horizontal row of Quran reciters. Tapping a reader
 // sets it as the active reader voice (nour.quran.prefs) and opens Al-Fatiha,
@@ -21,6 +23,7 @@ export function RecitersShelf() {
   const router = useRouter();
   const locale = initialLocale;
   const { data } = useQuery(quranRecitersQuery());
+  const { loadQueue } = usePlayer();
 
   // Guard the always-visible home surface: drop any row without a usable slug/name
   // so a malformed API response can never white-screen the whole screen (a reciter
@@ -30,12 +33,14 @@ export function RecitersShelf() {
   );
   if (reciters.length === 0) return null;
 
+  // Plays Al-Fatiha in that reciter's voice via the shared player (background —
+  // survives navigation) and opens the surah list to pick anything else.
   const selectReader = async (slug: string): Promise<void> => {
     const prefs = await getQuranPrefs();
     await setQuranPrefs({ ...prefs, reciterSlug: slug });
-    // Open Al-Fatiha in that voice and auto-start playback (the reader reads the
-    // reciter from the prefs we just wrote); ?autoplay=1 triggers the playback.
-    router.push("/quran/1?autoplay=1");
+    const queue = await fetchAlFatihaQueue(slug).catch(() => []);
+    if (queue.length > 0) loadQueue(queue, 0);
+    router.push("/quran");
   };
 
   return (
