@@ -1,10 +1,11 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useState } from "react";
 
 import { Link } from "@/i18n/navigation";
 
-type NavItem = { href: string; label: string };
+type NavItem = { href: string; label: string; icon: ReactNode };
 
 // Mobile-only nav: on phones the inline tab row would exceed the viewport width
 // and give the whole page a horizontal scroll, so the tabs collapse behind a
@@ -72,8 +73,9 @@ export function MobileNav({
                 key={item.href}
                 href={item.href}
                 onClick={() => setOpen(false)}
-                className="block px-4 py-2 text-sm font-medium text-text-2 transition-colors hover:bg-surface-2 hover:text-primary"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-text-2 transition-colors hover:bg-surface-2 hover:text-primary"
               >
+                {item.icon}
                 {item.label}
               </Link>
             ))}
