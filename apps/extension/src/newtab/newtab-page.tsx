@@ -524,7 +524,6 @@ export function NewtabPage() {
 
         <BrandedFooter withNav />
 
-        <div className="h-28" aria-hidden="true" />
       </main>
 
       <PlayerBar state={playerState} send={send} />
