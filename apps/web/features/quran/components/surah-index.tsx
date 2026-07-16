@@ -43,7 +43,7 @@ export function SurahIndex({ surahs }: { surahs: QuranSurah[] }) {
                 {s.number}
               </span>
             )}
-            <span dir="rtl" className="font-quran text-primary text-2xl">
+            <span dir="rtl" className="font-quran text-primary mb-1.5 text-2xl leading-relaxed">
               {s.name.ar}
             </span>
             <span className="text-text text-sm font-medium">{s.name.en}</span>
