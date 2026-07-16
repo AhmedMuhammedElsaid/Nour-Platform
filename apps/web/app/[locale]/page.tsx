@@ -23,6 +23,7 @@ import { PrayerTimesWidget } from "@/features/prayer-times/components/prayer-tim
 import { ReadersShelf } from "@/features/quran/components/readers-shelf";
 import { RadioPreviewShelf } from "@/features/radio/components/radio-preview-shelf";
 import { AdhkarPreviewShelf } from "@/features/adhkar/components/adhkar-preview-shelf";
+import { DhikrOfTheDayCard } from "@/features/adhkar/components/dhikr-of-the-day-card";
 import { toStationView } from "@/features/radio/lib/station-view";
 import type { SerializedPlaylist } from "@/features/playlists/types";
 
@@ -139,6 +140,9 @@ export default async function HomePage({
 
       {/* Radio preview shelf */}
       <RadioPreviewShelf stations={stationViews} />
+
+      {/* Dhikr of the day */}
+      <DhikrOfTheDayCard sets={azkarSets} locale={locale} />
 
       {/* Adhkar preview shelf */}
       <AdhkarPreviewShelf
