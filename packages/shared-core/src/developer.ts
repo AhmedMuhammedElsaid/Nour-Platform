@@ -13,7 +13,7 @@ export const DEVELOPER_CONTACT = {
   links: {
     linkedin: "https://www.linkedin.com/in/ahmedmuhammedelsaid",
     github: "https://github.com/AhmedMuhammedElsaid",
-    portfolio: "https://ahmed-muhammed-elsaid.netlify.app",
+    portfolio: "https://ahmed-muhammed-elsaid.vercel.app",
   },
 } as const;
 
