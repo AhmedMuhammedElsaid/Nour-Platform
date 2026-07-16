@@ -5,7 +5,7 @@ import { LOCALES, type Locale } from "@repo/api/schemas/locale";
 import { listStations } from "@repo/api/services/radio";
 import { localeAlternates, defaultOpenGraph, defaultTwitter } from "@/lib/seo";
 import { RadioPage } from "@/features/radio/components/radio-page";
-import type { StationView } from "@/features/radio/types";
+import { toStationView } from "@/features/radio/lib/station-view";
 
 export const dynamic = "force-dynamic";
 
@@ -38,17 +38,7 @@ export default async function RadioRoute({
   setRequestLocale(locale);
 
   const stations = await listStations();
-  const views: StationView[] = stations.map((s) => ({
-    id: s.id,
-    slug: s.slug,
-    name: s[locale].name,
-    ...(s[locale].description ? { description: s[locale].description } : {}),
-    country: s.country,
-    ...(s.city ? { city: s.city } : {}),
-    ...(s.image ? { image: s.image } : {}),
-    streamUrl: s.streamUrl,
-    isFeatured: s.isFeatured,
-  }));
+  const views = stations.map((s) => toStationView(s, locale));
 
   return <RadioPage stations={views} />;
 }
