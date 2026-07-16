@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { Pressable, View } from "react-native";
 
 import type { Azkar } from "@repo/shared-core/schemas/azkar";
-import { ADHKAR_PREVIEW_COUNT, previewAdhkarIcon } from "@repo/shared-core/adhkar/preview";
+import { buildAdhkarPreview } from "@repo/shared-core/adhkar/preview";
 
 import { Text } from "@/components/ui/text";
 import { initialLocale } from "@/lib/i18n";
@@ -13,14 +13,16 @@ import { adhkarListQuery } from "@/lib/queries";
 // Home "Adhkar" shelf — a short preview of the /adhkar catalog (first
 // ADHKAR_PREVIEW_COUNT sets, curated via seed order — see scripts/seed-adhkar.ts).
 // Minimal cards (icon + title, no progress bar). Mirrors web AdhkarPreviewShelf
-// and the Radio/Readers shelves already on Home.
+// and the Radio/Readers shelves already on Home. Waking Adhkar is hidden here
+// specifically (owner request, 2026-07-17) — it still shows on the full
+// /adhkar screen, and the extension's home shelf is deliberately unchanged.
 export function AdhkarPreviewShelf() {
   const { t } = useTranslation();
   const router = useRouter();
   const locale = initialLocale;
   const { data } = useQuery(adhkarListQuery());
 
-  const preview = ((data ?? []) as Azkar[]).slice(0, ADHKAR_PREVIEW_COUNT);
+  const preview = buildAdhkarPreview((data ?? []) as Azkar[], { excludeWake: true });
   if (preview.length === 0) return null;
 
   return (
@@ -39,7 +41,7 @@ export function AdhkarPreviewShelf() {
       </View>
 
       <View className="flex-row flex-wrap gap-3">
-        {preview.map((set, index) => {
+        {preview.map(({ set, icon }) => {
           const display = set[locale] ?? set.ar;
           return (
             <View key={set.id} className="w-[48%]">
@@ -49,7 +51,7 @@ export function AdhkarPreviewShelf() {
                 className="items-center gap-2 rounded-2xl border border-border bg-surface p-4"
               >
                 <View className="size-12 items-center justify-center rounded-xl bg-primary/10">
-                  <Text className="text-2xl">{previewAdhkarIcon(index)}</Text>
+                  <Text className="text-2xl">{icon}</Text>
                 </View>
                 <Text variant="body" numberOfLines={2} className="text-center text-sm font-medium">
                   {display.title}
