@@ -12,16 +12,17 @@ vi.mock("@/i18n/navigation", () => ({
 }));
 
 import { AdhkarPreviewShelf } from "./adhkar-preview-shelf";
+import { ADHKAR_WAKE_EN_SLUG } from "@repo/shared-core/adhkar/preview";
 import type { Azkar } from "@repo/api/schemas/azkar";
 
-function set(id: string, kind: Azkar["kind"], arTitle: string, enTitle: string): Azkar {
+function set(id: string, kind: Azkar["kind"], arTitle: string, enTitle: string, enSlug = `${id}-en`): Azkar {
   return {
     id,
     kind,
     status: "published",
     order: 0,
     ar: { title: arTitle, slug: `${id}-ar` },
-    en: { title: enTitle, slug: `${id}-en` },
+    en: { title: enTitle, slug: enSlug },
     items: [{ ar: "ذكر", repeat: 3 }],
   } as Azkar;
 }
@@ -30,15 +31,16 @@ const sixSets: Azkar[] = [
   set("1", "morning", "أذكار الصباح", "Morning Adhkar"),
   set("2", "evening", "أذكار المساء", "Evening Adhkar"),
   set("3", "other", "أذكار النوم", "Sleep Adhkar"),
-  set("4", "other", "أذكار الإستيقاظ", "Waking Adhkar"),
+  set("4", "other", "أذكار الإستيقاظ", "Waking Adhkar", ADHKAR_WAKE_EN_SLUG),
   set("5", "other", "أذكار الصلاة", "Prayer Adhkar"),
   set("6", "other", "اذكار المسجد", "Mosque Adhkar"),
 ];
 
 describe("AdhkarPreviewShelf", () => {
-  it("renders only the first ADHKAR_PREVIEW_COUNT sets", () => {
+  it("renders the first ADHKAR_PREVIEW_COUNT sets minus Wake-up (4 cards)", () => {
     render(<AdhkarPreviewShelf sets={sixSets} locale="en" heading="Adhkar" exploreLabel="Explore more" />);
     expect(screen.getByText("Prayer Adhkar")).toBeInTheDocument();
+    expect(screen.queryByText("Waking Adhkar")).not.toBeInTheDocument();
     expect(screen.queryByText("Mosque Adhkar")).not.toBeInTheDocument();
   });
 
