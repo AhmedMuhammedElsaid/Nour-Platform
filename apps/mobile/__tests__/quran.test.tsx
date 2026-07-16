@@ -104,6 +104,15 @@ describe("QuranIndexScreen", () => {
     renderWith(<QuranIndexScreen />);
     await waitFor(() => expect(screen.getByText("Something went wrong.")).toBeTruthy());
   });
+
+  it("groups surahs by juz on the Juz tab", async () => {
+    mockApi();
+    renderWith(<QuranIndexScreen />);
+    await waitFor(() => expect(screen.getByText("Al-Fatihah")).toBeTruthy());
+    fireEvent.press(screen.getByText("Juz"));
+    await waitFor(() => expect(screen.getByText("Juz 1")).toBeTruthy());
+    expect(screen.getByText("Al-Fatihah")).toBeTruthy();
+  });
 });
 
 describe("QuranReaderScreen", () => {

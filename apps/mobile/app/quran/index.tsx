@@ -2,13 +2,15 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
-import { FlatList, Pressable, View } from "react-native";
+import { FlatList, Pressable, SectionList, View } from "react-native";
+import { JUZ_BOUNDARIES, surahsInJuz } from "@repo/shared-core/quran/juz";
 import type { QuranSurah } from "@repo/shared-core/schemas/quran";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
+import { JuzRow } from "@/features/quran/components/juz-shelf";
 import { SurahCard } from "@/features/quran/components/surah-index";
 import { SurahJuzTabs, type ReaderTab } from "@/features/quran/components/surah-juz-tabs";
 import { getQuranLastRead } from "@/lib/device-local";
@@ -35,6 +37,17 @@ export default function QuranIndexScreen() {
     if (!ref || !surah) return null;
     return { surah: ref.surah, pct: Math.min(100, Math.round((ref.ayahInSurah / surah.ayahCount) * 100)) };
   }, [lastRead.data, surahs.data]);
+
+  const surahByNumber = useMemo(
+    () => new Map((surahs.data ?? []).map((s) => [s.number, s])),
+    [surahs.data],
+  );
+  // The 30 juz boundaries are fixed/universal (packages/shared-core), so no
+  // extra fetch — surahsInJuz() just slices the already-fetched surah list.
+  const juzSections = useMemo(
+    () => JUZ_BOUNDARIES.map((b) => ({ title: `Juz ${b.juz}`, data: surahsInJuz(b.juz, surahs.data ?? []) })),
+    [surahs.data],
+  );
 
   const header = (
     <View className="gap-4 pb-2">
@@ -88,12 +101,20 @@ export default function QuranIndexScreen() {
           )}
         />
       ) : (
-        <View className="flex-1 bg-bg px-4 pt-16">
-          {header}
-          <Text variant="muted" className="py-8 text-center">
-            {t("quran.juzPlaceholder")}
-          </Text>
-        </View>
+        <SectionList
+          className="flex-1 bg-bg px-4 pt-16"
+          sections={juzSections}
+          keyExtractor={(entry, index) => `${entry.number}-${index}`}
+          contentContainerStyle={{ paddingBottom: dockSpacing }}
+          ListHeaderComponent={header}
+          renderSectionHeader={({ section }) => (
+            <Text className="font-display mt-3 mb-1 text-lg text-primary">{section.title}</Text>
+          )}
+          renderItem={({ item }) => {
+            const surah = surahByNumber.get(item.number);
+            return surah ? <JuzRow entry={item} surah={surah} /> : null;
+          }}
+        />
       )}
     </>
   );

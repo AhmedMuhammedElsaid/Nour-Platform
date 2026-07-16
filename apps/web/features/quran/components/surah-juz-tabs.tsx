@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { QuranSurah } from "@repo/api/schemas/quran";
+import { JuzShelf } from "./juz-shelf";
 import { SurahIndex } from "./surah-index";
 
 export function SurahJuzTabs({ surahs }: { surahs: QuranSurah[] }) {
@@ -24,23 +25,7 @@ export function SurahJuzTabs({ surahs }: { surahs: QuranSurah[] }) {
           </button>
         ))}
       </div>
-      {tab === "surah" ? (
-        <SurahIndex surahs={surahs} />
-      ) : (
-        <div className="grid grid-cols-5 gap-2">
-          {Array.from({ length: 30 }, (_, i) => i + 1).map((j) => (
-            <span
-              key={j}
-              className="border-border text-text-2 rounded border px-3 py-4 text-center text-sm"
-            >
-              {j}
-            </span>
-          ))}
-          <p className="text-text-2 col-span-5 mt-2 text-xs">
-            Juz navigation arrives in the next update.
-          </p>
-        </div>
-      )}
+      {tab === "surah" ? <SurahIndex surahs={surahs} /> : <JuzShelf surahs={surahs} />}
     </div>
   );
 }
