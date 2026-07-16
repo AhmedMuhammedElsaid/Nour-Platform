@@ -1318,3 +1318,7 @@ specifically (owner request) — `.slice(...)` swapped for `buildAdhkarPreview(s
 `/adhkar` list screen (`app/adhkar/index.tsx`) is untouched — Wake-up still shows there.
 Extension's home shelf deliberately kept at 5 (root `APP_CONTEXT.md` has the full
 cross-surface writeup + the icon-shift gotcha this filter had to avoid).
+
+## Quran Juz tab — Juz Shelf, first SectionList in the app (2026-07-17, `e9f12fc`, JS-only)
+
+Mirrors web (root `APP_CONTEXT.md` has the full write-up + the juz-boundary data source rationale). `app/quran/index.tsx`'s Juz branch was a static non-scrolling placeholder `View` (`quran.juzPlaceholder` text) — now a real `SectionList` (`sections` built from `JUZ_BOUNDARIES.map(b => ({title:`Juz ${b.juz}`, data: surahsInJuz(b.juz, surahs.data)}))`, from NEW `@repo/shared-core/quran/juz`). NEW `features/quran/components/juz-shelf.tsx` exports `JuzRow` (number badge, english+arabic name, ayah range — full count or partial `ayahs X-Y` when a juz splits the surah). Orphaned `quran.juzPlaceholder` key removed from both locale catalogs. NEW `__tests__/juz-row.test.tsx` (3 cases) + a 4th case added to existing `__tests__/quran.test.tsx` (tab switch renders "Juz 1" + its surah). Full mobile suite green (`home-screen.test.tsx` flake reconfirmed pre-existing, not a regression). **Visual layout not device-verified this session** — same caveat as the surah grid above.
