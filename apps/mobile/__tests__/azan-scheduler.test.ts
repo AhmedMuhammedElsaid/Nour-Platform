@@ -111,6 +111,22 @@ describe("buildAdhanInstants", () => {
       "nour-azan-1-isha",
     ]);
   });
+
+  it("steps through 60 distinct, consecutive calendar dates (noon anchor)", async () => {
+    await buildAdhanInstants(location, prefs, perPrayer);
+
+    // getPrayerDay is called once per dayOffset regardless of instant count —
+    // its `date` arg (5th positional) is the noon-anchored stepping date.
+    const dateArgs = jest.mocked(getPrayerDay).mock.calls.map((c) => c[4]);
+    expect(dateArgs).toHaveLength(60);
+
+    const keys = dateArgs.map((d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
+    expect(new Set(keys).size).toBe(60); // no duplicate calendar date
+
+    for (let i = 1; i < dateArgs.length; i++) {
+      expect(dateArgs[i]!.getTime()).toBeGreaterThan(dateArgs[i - 1]!.getTime());
+    }
+  });
 });
 
 describe("scheduleAzanNotifications — platform dispatch", () => {

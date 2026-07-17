@@ -66,8 +66,14 @@ export async function buildAdhanInstants(
   const DAY_MS = 24 * 60 * 60 * 1000;
   const out: AdhanInstant[] = [];
 
+  // Anchor day-stepping at noon (not `now`) so a DST fall-back hour near
+  // midnight can't land two consecutive dayOffsets on the same calendar date
+  // (which would arm the same instant under two ids).
+  const base = new Date(now);
+  base.setHours(12, 0, 0, 0);
+
   for (let dayOffset = 0; dayOffset < HORIZON_DAYS; dayOffset++) {
-    const date = new Date(now + dayOffset * DAY_MS);
+    const date = new Date(base.getTime() + dayOffset * DAY_MS);
     const day = await getPrayerDay(location.lat, location.lng, prefs.method, prefs.madhab, date);
 
     for (const instant of day.instants) {
