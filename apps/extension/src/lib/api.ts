@@ -1,5 +1,7 @@
 // Extension equivalent of apps/mobile/lib/api.ts. Uses __API_BASE_URL__ (Vite
 // define) so the extension never reads process.env outside @repo/config.
+import { beginRequest, endRequest } from "./network-activity";
+
 const API_ORIGIN = __API_BASE_URL__;
 const API_BASE = `${API_ORIGIN}/api/v1`;
 
@@ -35,10 +37,15 @@ export async function getJson<T>(
   for (const [key, value] of Object.entries(params ?? {})) {
     if (value != null) url.searchParams.set(key, value);
   }
-  const res = await fetch(url.toString(), { headers: { Accept: "application/json" } });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as ErrorBody;
-    throw new ApiError(res.status, body.error ?? "INTERNAL", body.message ?? "Request failed.");
+  beginRequest();
+  try {
+    const res = await fetch(url.toString(), { headers: { Accept: "application/json" } });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as ErrorBody;
+      throw new ApiError(res.status, body.error ?? "INTERNAL", body.message ?? "Request failed.");
+    }
+    return (await res.json()) as T;
+  } finally {
+    endRequest();
   }
-  return (await res.json()) as T;
 }
