@@ -126,10 +126,10 @@ export default async function HomePage({
     <section className="mx-auto max-w-6xl px-6 py-16">
       {/* Hero */}
       <div className="mb-8">
-        <h1 className="font-display text-4xl font-bold tracking-tight text-text">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-text sm:text-4xl md:text-5xl">
           {t("heroTitle")}
         </h1>
-        <p className="mt-2 text-sm text-text-2">{pickHeroTextOfTheDay(locale)}</p>
+        <p className="mt-2 text-base text-text-2 sm:text-lg">{pickHeroTextOfTheDay(locale)}</p>
       </div>
 
       <PrayerTimesWidget locale={locale} />

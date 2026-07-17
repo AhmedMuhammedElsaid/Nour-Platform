@@ -114,10 +114,10 @@ export default function HomeScreen() {
       </View>
 
       <View>
-        <Text variant="display" className="text-4xl">
+        <Text variant="display" className="text-3xl sm:text-4xl">
           {t("home.heroTitle")}
         </Text>
-        <Text variant="muted" className="mt-2">
+        <Text variant="muted" className="mt-2 text-base sm:text-lg">
           {heroSubtitle}
         </Text>
       </View>
