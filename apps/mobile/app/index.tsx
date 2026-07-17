@@ -16,6 +16,7 @@ import { ContinueReading } from "@/features/home/components/continue-reading";
 import { RecitersShelf } from "@/features/home/components/reciters-shelf";
 import { RadioPreviewShelf } from "@/features/radio/components/radio-preview-shelf";
 import { AdhkarPreviewShelf } from "@/features/home/components/adhkar-preview-shelf";
+import { DhikrOfTheDayCard } from "@/features/home/components/dhikr-of-the-day-card";
 import { QiblaHomeCard } from "@/features/qibla/components/qibla-home-card";
 import { SortSelect, type SortOption } from "@/features/home/components/sort-select";
 import { PlaylistCard } from "@/features/playlists/components/playlist-card";
@@ -192,6 +193,7 @@ export default function HomeScreen() {
         </View>
         <RecitersShelf />
         <RadioPreviewShelf />
+        <DhikrOfTheDayCard />
         <AdhkarPreviewShelf />
         {libraryBar}
         {visible.length === 0 ? (
