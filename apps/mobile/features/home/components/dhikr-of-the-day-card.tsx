@@ -85,16 +85,16 @@ export function DhikrOfTheDayCard() {
           <Text variant="display" className="text-center text-xl leading-relaxed">
             {item.ar}
           </Text>
-          {item.en != null && (
+          {item.en ? (
             <Text variant="muted" className="text-center">
               {item.en}
             </Text>
-          )}
-          {virtue != null && (
+          ) : null}
+          {virtue ? (
             <Text variant="muted" className="text-center text-xs">
               {virtue}
             </Text>
-          )}
+          ) : null}
         </Pressable>
 
         <Pressable

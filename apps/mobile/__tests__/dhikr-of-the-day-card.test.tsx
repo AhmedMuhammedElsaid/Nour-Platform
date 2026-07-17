@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import type { Azkar } from "@repo/shared-core/schemas/azkar";
@@ -32,9 +33,10 @@ function renderCard() {
 }
 
 describe("DhikrOfTheDayCard", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.mocked(getJson).mockReset();
     mockPush.mockReset();
+    await AsyncStorage.clear();
   });
 
   it("renders nothing while there are no adhkar items", async () => {
@@ -60,13 +62,17 @@ describe("DhikrOfTheDayCard", () => {
     expect(mockPush).toHaveBeenCalledWith("/adhkar/morning-en");
   });
 
-  it("increments the counter on tap", async () => {
+  it("increments the counter on tap and persists to nour.adhkar.progress", async () => {
     jest.mocked(getJson).mockResolvedValue([oneItemSet]);
     renderCard();
     const counter = await screen.findByLabelText(/Count this dhikr|عُدّ هذا الذكر/);
 
     fireEvent.press(counter);
     await waitFor(() => expect(screen.getByText("1")).toBeTruthy());
+
+    // Verify persistence to AsyncStorage
+    const stored = await AsyncStorage.getItem("nour.adhkar.progress");
+    expect(JSON.parse(stored!).sets.set1["0"]).toBe(1);
   });
 
   it("clamps at the item's repeat count and shows the completed mark", async () => {
@@ -79,6 +85,17 @@ describe("DhikrOfTheDayCard", () => {
     fireEvent.press(counter);
     fireEvent.press(counter); // ignored — already at repeat=3
 
+    await waitFor(() => expect(screen.getByLabelText(/Done|تم/)).toBeTruthy());
+  });
+
+  it("resumes an already-completed item from the store without re-prompting from zero", async () => {
+    const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
+    await AsyncStorage.setItem(
+      "nour.adhkar.progress",
+      JSON.stringify({ date: todayStr, sets: { set1: { "0": 3 } } }),
+    );
+    jest.mocked(getJson).mockResolvedValue([oneItemSet]);
+    renderCard();
     await waitFor(() => expect(screen.getByLabelText(/Done|تم/)).toBeTruthy());
   });
 });
