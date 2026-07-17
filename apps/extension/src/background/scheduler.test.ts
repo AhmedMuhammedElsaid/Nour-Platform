@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // Mock the boundaries so the test exercises tick()'s orchestration, not the
 // pure predicates (covered by shared-core/prayer-times/schedule.test.ts) nor
 // the chrome.* plumbing.
-vi.mock("@repo/shared-core/prayer-times/compute", () => ({
-  computePrayerTimes: vi.fn(() => ({ date: new Date(), instants: [] })),
+vi.mock("../lib/aladhan", () => ({
+  resolvePrayerDay: vi.fn(async () => ({ date: new Date(), instants: [] })),
 }));
 vi.mock("@repo/shared-core/prayer-times/schedule", () => ({
   recentlyMissedAdhan: vi.fn(() => null),
@@ -25,6 +25,7 @@ import {
   nextAdhanEvent,
   recentlyMissedAdhan,
 } from "@repo/shared-core/prayer-times/schedule";
+import { resolvePrayerDay } from "../lib/aladhan";
 import { playAdhan } from "../lib/audio-router";
 import { claimFiredEvent } from "../lib/fired-claim";
 import { notifyAdhan } from "../lib/notify";
@@ -107,6 +108,20 @@ describe("tick", () => {
     await tick();
 
     expect(alarms.create).toHaveBeenCalledWith(ALARM_ADHAN, { when: at.getTime() });
+  });
+
+  it("derives the day from the Aladhan-first resolver (one time source with the UI)", async () => {
+    mockStorage(ADHAN_ON, AZKAR_OFF);
+    const instants = [{ key: "fajr" as const, time: new Date() }];
+    vi.mocked(resolvePrayerDay).mockResolvedValue({ date: new Date(), instants });
+
+    await tick();
+
+    expect(resolvePrayerDay).toHaveBeenCalledWith(
+      expect.objectContaining({ lat: 30, lng: 31, method: "Egyptian", madhab: "standard" }),
+    );
+    // The resolver's day (not a second computePrayerTimes source) feeds arming.
+    expect(nextAdhanEvent).toHaveBeenCalledWith(instants, expect.anything(), expect.anything());
   });
 
   it("clears the precise adhan alarm when no event remains today", async () => {

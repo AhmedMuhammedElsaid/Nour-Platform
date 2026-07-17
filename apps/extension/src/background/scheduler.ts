@@ -1,6 +1,6 @@
 import browser from "webextension-polyfill";
 
-import { computePrayerTimes } from "@repo/shared-core/prayer-times/compute";
+import type { PrayerDay } from "@repo/shared-core/prayer-times/compute";
 import {
   type AdhanEvent,
   type AzkarReminderEvent,
@@ -10,6 +10,7 @@ import {
   recentlyMissedAzkarReminder,
 } from "@repo/shared-core/prayer-times/schedule";
 
+import { resolvePrayerDay } from "../lib/aladhan";
 import { playAdhan } from "../lib/audio-router";
 import {
   ADHAN_FIRED_KEY,
@@ -83,7 +84,10 @@ export async function tick(): Promise<void> {
   }
 
   const now = new Date();
-  const day = computePrayerTimes({
+  // Aladhan official minute when the month cache is warm (fetch is backoff-
+  // gated inside), adhan-js otherwise. Same source the newtab/popup UI resolves
+  // from — scheduler and display must never disagree on a prayer instant.
+  const day = await resolvePrayerDay({
     lat: inputs.location.lat,
     lng: inputs.location.lng,
     date: now,
@@ -103,7 +107,7 @@ export async function tick(): Promise<void> {
   await rearm(inputs, day, now);
 }
 
-async function rearm(inputs: Inputs, day: ReturnType<typeof computePrayerTimes>, now: Date): Promise<void> {
+async function rearm(inputs: Inputs, day: PrayerDay, now: Date): Promise<void> {
   await ensureTick();
   await armPrecise(
     ALARM_ADHAN,
