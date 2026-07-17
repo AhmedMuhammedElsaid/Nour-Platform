@@ -67,7 +67,7 @@ export default function QuranReaderScreen() {
     );
   }
 
-  if (reader.isError || !reader.data) {
+  if (reader.isError && !reader.data) {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
@@ -81,6 +81,10 @@ export default function QuranReaderScreen() {
       </>
     );
   }
+
+  // Unreachable once isPending/isError-without-data are both handled above —
+  // kept only so TS narrows `reader.data` to non-null below.
+  if (!reader.data) return null;
 
   return (
     <>

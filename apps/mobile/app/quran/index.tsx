@@ -72,7 +72,7 @@ export default function QuranIndexScreen() {
     );
   }
 
-  if (surahs.isError) {
+  if (surahs.isError && !surahs.data) {
     return (
       <View className="flex-1 items-center justify-center gap-3 bg-bg px-4">
         <Text className="text-danger">{t("common.error")}</Text>

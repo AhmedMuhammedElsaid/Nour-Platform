@@ -160,7 +160,7 @@ export default function HomeScreen() {
     );
   }
 
-  if (playlists.isError) {
+  if (playlists.isError && !playlists.data) {
     return (
       <View className="bg-bg flex-1 items-center justify-center gap-3 px-4">
         <Text className="text-danger">{t("common.error")}</Text>

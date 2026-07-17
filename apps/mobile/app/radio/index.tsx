@@ -126,7 +126,7 @@ export default function RadioScreen() {
 
       {stationsQuery.isPending ? (
         <Text variant="muted">{t("common.loading")}</Text>
-      ) : stationsQuery.isError ? (
+      ) : stationsQuery.isError && !stationsQuery.data ? (
         <View className="items-center gap-3">
           <Text className="text-danger">{t("common.error")}</Text>
           <Button label={t("common.retry")} variant="outline" onPress={() => void stationsQuery.refetch()} />

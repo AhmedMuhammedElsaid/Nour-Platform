@@ -112,7 +112,7 @@ export default function AdhkarReaderScreen() {
     );
   }
 
-  if (detail.isError || azkar == null) {
+  if (detail.isError && !detail.data) {
     return (
       <View className="flex-1 items-center justify-center gap-3 bg-bg px-4">
         <Text className="text-danger">{t("common.error")}</Text>
@@ -120,6 +120,10 @@ export default function AdhkarReaderScreen() {
       </View>
     );
   }
+
+  // Unreachable once isPending/isError-without-data are both handled above —
+  // kept only so TS narrows `azkar` to non-null below.
+  if (azkar == null) return null;
 
   const display = azkar[locale] ?? azkar.ar ?? azkar.en;
   const progressValue = total > 0 ? (done / total) * 100 : 0;

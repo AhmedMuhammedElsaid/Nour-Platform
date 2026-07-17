@@ -60,7 +60,7 @@ export default function AdhkarListScreen() {
     );
   }
 
-  if (azkar.isError) {
+  if (azkar.isError && !azkar.data) {
     return (
       <View className="flex-1 items-center justify-center gap-3 bg-bg px-4">
         <Text className="text-danger">{t("common.error")}</Text>

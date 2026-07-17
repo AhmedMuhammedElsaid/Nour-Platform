@@ -127,7 +127,7 @@ export default function PlaylistDetailScreen() {
     );
   }
 
-  if (detail.isError || !detail.data) {
+  if (detail.isError && !detail.data) {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
@@ -141,6 +141,10 @@ export default function PlaylistDetailScreen() {
       </>
     );
   }
+
+  // Unreachable once isPending/isError-without-data are both handled above —
+  // kept only so TS narrows `detail.data` to non-null below.
+  if (!detail.data) return null;
 
   const { playlist, tracks } = detail.data;
   const display = playlist[locale] ?? playlist.ar ?? playlist.en;

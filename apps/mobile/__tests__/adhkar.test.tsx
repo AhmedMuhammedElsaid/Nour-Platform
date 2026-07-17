@@ -55,6 +55,28 @@ describe("AdhkarListScreen", () => {
       expect(screen.getByText(/Something went wrong\.|حدث خطأ ما\./)).toBeTruthy(),
     );
   });
+
+  it("renders cached data instead of the error state when a refetch fails (offline-first)", async () => {
+    // Seed the query cache exactly as a prior successful fetch would have —
+    // same key as adhkarListQuery() (["adhkar"]) — then make the query
+    // function reject, simulating an offline refetch against data that's
+    // already persisted/cached. The data-first error gate (isError && !data)
+    // should keep rendering the cached list instead of the error screen.
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(["adhkar"], [azkarSet]);
+    jest.mocked(getJson).mockRejectedValue(new Error("network"));
+
+    render(
+      <QueryClientProvider client={client}>
+        <PlayerProvider>
+          <AdhkarListScreen />
+        </PlayerProvider>
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText(/Morning Adhkar|أذكار الصباح/)).toBeTruthy());
+    expect(screen.queryByText(/Something went wrong\.|حدث خطأ ما\./)).toBeNull();
+  });
 });
 
 describe("AdhkarReaderScreen", () => {
