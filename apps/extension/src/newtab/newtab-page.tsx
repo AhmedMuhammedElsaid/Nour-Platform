@@ -6,6 +6,7 @@ import {
   formatCountdownClock,
   hijriDate,
 } from "@repo/shared-core/prayer-times/format";
+import { pickHeroTextOfTheDay } from "@repo/shared-core/hero-text";
 
 import { getJson } from "../lib/api";
 import { usePrayerTimes } from "../lib/use-prayer-times";
@@ -297,6 +298,7 @@ export function NewtabPage() {
   const { state: playerState, send } = usePlayer();
   const { t, locale } = useI18n();
   const [categories, setCategories] = useState<CategorySummary[]>([]);
+  const heroSubtitle = useMemo(() => pickHeroTextOfTheDay(locale), [locale]);
 
   useEffect(() => {
     void fetchCategories()
@@ -433,6 +435,14 @@ export function NewtabPage() {
       {headerEl}
 
       <main className="mx-auto max-w-5xl space-y-10 px-4 py-8">
+        {/* ── Hero ─────────────────────────────────────────────────────── */}
+        <div>
+          <h1 className="font-display text-4xl font-bold tracking-tight text-text">
+            {t("home.heroTitle")}
+          </h1>
+          <p className="mt-2 text-sm text-text-2">{heroSubtitle}</p>
+        </div>
+
         {/* ── Prayer widget ────────────────────────────────────────────── */}
         {loading ? (
           <div className="flex h-48 items-center justify-center">

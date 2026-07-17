@@ -8,6 +8,7 @@ import { listStations } from "@repo/api/services/radio";
 import { getPublishedAzkar } from "@repo/api/services/azkar";
 import { LOCALES, type Locale } from "@repo/api/schemas/locale";
 import type { Playlist } from "@repo/api/schemas/playlist";
+import { pickHeroTextOfTheDay } from "@repo/shared-core/hero-text";
 import { localeAlternates, defaultOpenGraph, defaultTwitter } from "@/lib/seo";
 
 // Opt out of static prerendering. proxy.ts sets a per-request CSP nonce,
@@ -128,7 +129,7 @@ export default async function HomePage({
         <h1 className="font-display text-4xl font-bold tracking-tight text-text">
           {t("heroTitle")}
         </h1>
-        <p className="mt-2 text-sm text-text-2">{t("heroSubtitle")}</p>
+        <p className="mt-2 text-sm text-text-2">{pickHeroTextOfTheDay(locale)}</p>
       </div>
 
       <PrayerTimesWidget locale={locale} />

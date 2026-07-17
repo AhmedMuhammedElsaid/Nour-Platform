@@ -22,6 +22,7 @@ import { SortSelect, type SortOption } from "@/features/home/components/sort-sel
 import { PlaylistCard } from "@/features/playlists/components/playlist-card";
 import { PrayerTimesWidget } from "@/features/prayer-times/components/prayer-times-widget";
 import type { Playlist } from "@repo/shared-core/schemas/playlist";
+import { pickHeroTextOfTheDay } from "@repo/shared-core/hero-text";
 import { initialLocale } from "@/lib/i18n";
 import { categoriesQuery, playlistsQuery } from "@/lib/queries";
 import type { CategoryChip } from "@/lib/types";
@@ -36,6 +37,7 @@ export default function HomeScreen() {
 
   const playlists = useQuery(playlistsQuery(locale));
   const categories = useQuery(categoriesQuery());
+  const heroSubtitle = useMemo(() => pickHeroTextOfTheDay(locale), [locale]);
 
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   // Default to "all": render every playlist in its original order on first load.
@@ -116,7 +118,7 @@ export default function HomeScreen() {
           {t("home.heroTitle")}
         </Text>
         <Text variant="muted" className="mt-2">
-          {t("home.heroSubtitle")}
+          {heroSubtitle}
         </Text>
       </View>
 
