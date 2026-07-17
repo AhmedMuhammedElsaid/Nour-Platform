@@ -1361,3 +1361,13 @@ OTA**: `version` 1.0.0→1.1.0 + `versionCode` 8→9 (runtimeVersion=appVersion 
 **Device-verify pending (A72)** on the next preview build: long-press → 2 Arabic items →
 pin → tap cold+warm → correct reader; also check label truncation (fallback: shorten titles
 to "الصباح"/"المساء").
+
+## Global top progress bar (2026-07-17, `25fc77a`)
+
+`components/navigation-progress.tsx` mounted next to `<Stack>` in `_layout.tsx` — thin
+`bg-primary` bar at `insets.top` driven by `useIsFetching()` (expo-router nav is instant;
+the perceived home-card delay is the destination screen's queries). 150ms show-debounce,
+plain `Animated` trickle to 0.85, snap-to-1 + fade when fetches settle. JS-only → OTA-eligible
+(not yet OTA'd). Test `__tests__/navigation-progress.test.tsx` (4 cases) — ⚠️ RTL v13 hides
+`accessibilityElementsHidden` elements from all queries incl. `testID`; pass
+`{ includeHiddenElements: true }`. Visual device-verify pending (A72).
