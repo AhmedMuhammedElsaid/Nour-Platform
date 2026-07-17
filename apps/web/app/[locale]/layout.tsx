@@ -13,6 +13,7 @@ import { PlayerProvider } from "@repo/ui/blocks/player-context";
 import { type Locale } from "@repo/api/schemas/locale";
 import { SiteFooter } from "@/features/layout/components/site-footer";
 import { SiteHeader } from "@/features/layout/components/site-header";
+import { NavigationProgress } from "@/features/layout/components/navigation-progress";
 import { PlaybackPersistence } from "@/features/player/components/playback-persistence";
 import { ServiceWorkerRegister } from "@/features/pwa/components/service-worker-register";
 import { InstallPrompt } from "@/features/pwa/components/install-prompt";
@@ -145,6 +146,7 @@ export default async function LocaleLayout({
               >
                 {t("skipToContent")}
               </a>
+              <NavigationProgress />
               <SiteHeader />
               <main id="main-content" className="flex-1">
                 {children}

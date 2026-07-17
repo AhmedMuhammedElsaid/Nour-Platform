@@ -10,6 +10,7 @@ import { reciterGradient, reciterInitials } from "@repo/shared-core/quran/recite
 import { usePlayer } from "@repo/ui/blocks/player-context";
 
 import { useRouter } from "@/i18n/navigation";
+import { startNavigationProgress } from "@/features/layout/components/navigation-progress";
 import { loadPrefs, savePrefs } from "@/features/quran/lib/quran-prefs";
 import { fetchAlFatihaQueue } from "@/features/quran/lib/al-fatiha-queue";
 
@@ -35,6 +36,8 @@ export function ReadersShelf({
   // Plays Al-Fatiha in that reciter's voice via the shared player (background —
   // survives navigation) and opens the surah list to pick anything else.
   const selectReader = async (slug: string): Promise<void> => {
+    // Imperative navigation — the global click listener only sees <a> tags.
+    startNavigationProgress();
     savePrefs({ ...loadPrefs(), reciterSlug: slug });
     const queue = await fetchAlFatihaQueue(slug).catch(() => []);
     if (queue.length > 0) loadQueue(queue, 0);
