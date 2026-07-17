@@ -1,11 +1,14 @@
 import "@/global.css";
 import "@/lib/notifications"; // installs the foreground notification handler
-import { hydrateLocale } from "@/lib/i18n";
+import { hydrateLocale, initialLocale } from "@/lib/i18n";
 
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFonts } from "expo-font";
 import { Stack, type ErrorBoundaryProps } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -26,6 +29,19 @@ import { useForegroundAdhan } from "@/features/prayer-times/hooks/use-foreground
 import { ThemeProvider } from "@/lib/theme-context";
 import { PlayerProvider } from "@/lib/player-context";
 import { playbackService } from "@/lib/playback-service";
+import { runOfflinePrefetch } from "@/lib/offline-prefetch";
+import appJson from "@/app.json";
+
+// One month — how long a persisted query stays eligible for restore on cold
+// start, and (as QueryClient's default gcTime below) how long an in-memory
+// query survives without an active observer. gcTime must stay >= maxAge or
+// the persisted cache could restore entries the in-memory client would have
+// already garbage-collected.
+const CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+// Post-boot delay before background prefetch starts, so it never competes
+// with first paint / the animated splash for the JS thread or the network.
+const PREFETCH_DELAY_MS = 3000;
 
 // Register the RNTP playback service once at module scope.
 TrackPlayer.registerPlaybackService(() => playbackService);
@@ -34,7 +50,28 @@ TrackPlayer.registerPlaybackService(() => playbackService);
 void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            // Keep unmounted queries alive in memory at least as long as the
+            // persisted cache is allowed to restore them (see CACHE_MAX_AGE_MS).
+            gcTime: CACHE_MAX_AGE_MS,
+          },
+        },
+      }),
+  );
+  // AsyncStorage-backed persister for the query cache. Key is a MOBILE-ONLY
+  // cache bucket (versioned so a future shape change can bump it) — it is NOT
+  // one of the cross-surface `nour.*` device-local contracts (CLAUDE.md §5),
+  // it never needs to match web localStorage or the extension's storage.
+  const [persister] = useState(() =>
+    createAsyncStoragePersister({
+      storage: AsyncStorage,
+      key: "nour.query.cache.v1",
+    }),
+  );
   // Animated brand splash overlays the app on cold start, then unmounts itself.
   const [splashDone, setSplashDone] = useState(false);
   // Hold the app tree until the persisted locale is applied, so the first render
@@ -61,7 +98,17 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{
+          persister,
+          maxAge: CACHE_MAX_AGE_MS,
+          // Invalidates the persisted cache on an app version bump, so a data
+          // shape change ships with a guaranteed-clean cache instead of a
+          // stale/incompatible restore.
+          buster: appJson.expo.version,
+        }}
+      >
         <ThemeProvider>
           <PlayerProvider>
             {localeReady && (
@@ -70,6 +117,7 @@ export default function RootLayout() {
                 <AzkarNotificationRouter />
                 <AdhkarQuickActions />
                 <AzanScheduler />
+                <OfflinePrefetchRunner queryClient={queryClient} />
                 <Stack screenOptions={{ headerShown: false }} />
                 <BottomDock />
                 {onboarding.hydrated && !onboarding.done && (
@@ -80,7 +128,7 @@ export default function RootLayout() {
           </PlayerProvider>
         </ThemeProvider>
         {!splashDone && <AnimatedSplash onFinish={() => setSplashDone(true)} />}
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </SafeAreaProvider>
   );
 }
@@ -103,6 +151,25 @@ function AzkarNotificationRouter() {
 // their taps to the adhkar reader.
 function AdhkarQuickActions() {
   useAdhkarQuickActions();
+  return null;
+}
+
+// Renders nothing — kicks off the background Quran/adhkar offline prefetch a
+// few seconds after boot (see PREFETCH_DELAY_MS), once per mount of this
+// component (i.e. once per localeReady flip, which only happens on cold
+// start). runOfflinePrefetch itself no-ops immediately if the completion
+// marker already matches the current locale/reader prefs.
+function OfflinePrefetchRunner({ queryClient }: { queryClient: QueryClient }) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void runOfflinePrefetch(queryClient, initialLocale);
+    }, PREFETCH_DELAY_MS);
+    return () => clearTimeout(timer);
+    // queryClient is a stable ref from useState(() => ...) in the parent
+    // (included below only to satisfy exhaustive-deps); initialLocale is a
+    // module-level snapshot already resolved by hydrateLocale() before this
+    // mounts (localeReady gate), so it's intentionally not a dep.
+  }, [queryClient]);
   return null;
 }
 
