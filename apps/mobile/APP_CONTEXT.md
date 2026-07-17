@@ -1322,3 +1322,21 @@ cross-surface writeup + the icon-shift gotcha this filter had to avoid).
 ## Quran Juz tab — Juz Shelf, first SectionList in the app (2026-07-17, `e9f12fc`, JS-only)
 
 Mirrors web (root `APP_CONTEXT.md` has the full write-up + the juz-boundary data source rationale). `app/quran/index.tsx`'s Juz branch was a static non-scrolling placeholder `View` (`quran.juzPlaceholder` text) — now a real `SectionList` (`sections` built from `JUZ_BOUNDARIES.map(b => ({title:`Juz ${b.juz}`, data: surahsInJuz(b.juz, surahs.data)}))`, from NEW `@repo/shared-core/quran/juz`). NEW `features/quran/components/juz-shelf.tsx` exports `JuzRow` (number badge, english+arabic name, ayah range — full count or partial `ayahs X-Y` when a juz splits the surah). Orphaned `quran.juzPlaceholder` key removed from both locale catalogs. NEW `__tests__/juz-row.test.tsx` (3 cases) + a 4th case added to existing `__tests__/quran.test.tsx` (tab switch renders "Juz 1" + its surah). Full mobile suite green (`home-screen.test.tsx` flake reconfirmed pre-existing, not a regression). **Visual layout not device-verified this session** — same caveat as the surah grid above.
+
+## Prayer-times: Aladhan iso8601 absolute instants + noon-anchored stepping (2026-07-17, `f2e5146`+`3f1d646`, JS-only → OTA-eligible)
+
+`lib/aladhan.ts` is now thin AsyncStorage glue over NEW `@repo/shared-core/prayer-times/aladhan` —
+timings requested with `iso8601=true` and parsed as ABSOLUTE instants carrying the CITY's per-date
+offset (was: device-local parse, wrong when device tz ≠ selected city tz or the device tz database
+disagrees with the official source about Egypt's DST switch date). Cache key now
+`nour.prayer.calendar.v2.…` (stale v1 months orphaned deliberately). `getPrayerDay` signature
+unchanged — `use-prayer-day.ts`, `use-azan-notifications.ts`, and the `azan-scheduler.test.ts` mock
+all untouched by the swap. Day-stepping in `buildAdhanInstants` + `use-azkar-reminders.ts` is now
+NOON-anchored: on a 25h DST fall-back day an app-open near midnight could land two dayOffsets on the
+same calendar date → the same prayer instant armed under two distinct ids (double adhan). Native pool
+self-corrects on the first app open after OTA (`AdhanScheduler.kt` clearPersisted-then-persist — full
+replace, no flush migration needed). NEW `__tests__/aladhan.test.ts` (3 cases) + a 60-distinct-dates
+invariant in `azan-scheduler.test.ts`. ⚠️ `__tests__/aladhan.test.ts` flaked once under full-suite
+load while a concurrent session was mid-edit (passes 3/3 in isolation) — apply the home-screen
+re-run-in-isolation rule before treating it as a regression. **Device-verify pending (A72)**: adhan
+fires on the Aladhan minute after OTA + one app open.
