@@ -1229,7 +1229,9 @@ window rolls forward WITHOUT reopening; reboot re-arms.
 ## Pre-release review → release plan (2026-07-15, review-only session, no code)
 
 Full Android/Play release plan at repo-root **`review_mobile_report_fable.md`** (untracked/
-local; supersedes mobile §3 of `fable_review_for_apps.md`). Rulings: THE gate = one
+local; supersedes mobile §3 of the now-deleted `fable_review_for_apps.md` — its iOS section
+(§4) was redundant with "iOS release readiness" above and wasn't preserved separately,
+2026-07-17 doc cleanup). Rulings: THE gate = one
 `eas build --profile preview` + A72 verify (adhan re-arm Kotlin + nour-compass K2 fix never
 compiled/run; checklist in report §3); register Play Console IMMEDIATELY (personal acct =
 14-day/20-tester closed test = the bottleneck); `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`
@@ -1340,3 +1342,22 @@ invariant in `azan-scheduler.test.ts`. ⚠️ `__tests__/aladhan.test.ts` flaked
 load while a concurrent session was mid-edit (passes 3/3 in isolation) — apply the home-screen
 re-run-in-isolation rule before treating it as a regression. **Device-verify pending (A72)**: adhan
 fires on the Aladhan minute after OTA + one app open.
+
+## Sabah/Masaa launcher quick actions (2026-07-17, REBUILD-GATED)
+
+Home-screen entry point for the adhkar readers: long-press the Nour launcher icon →
+"أذكار الصباح" / "أذكار المساء" items (user drags either onto the home screen as a
+standalone icon); tap opens the app on `/adhkar/<slug>` (warm + cold start). NEW dep
+**`expo-quick-actions@6.0.2`** (ADR 0012, SDK-56 pairing). NEW
+`features/prayer-times/hooks/use-adhkar-quick-actions.ts` (mounted as `<AdhkarQuickActions />`
+in `_layout` next to the notification router): `useQuickActionRouting()` + `setItems` of 2
+stable-id items (`sabah`/`masaa`) once `useAzkarReminderSettings` hydrates — slugs come from
+the same settings the reminders use, hrefs `encodeURIComponent`-wrapped (the
+`use-azkar-notification-router.ts:41` precedent). Android shortcut icon = plugin-baked
+`shortcut_adhkar` drawable from the monochrome ن (`app.json` plugin entry); icon omitted on
+iOS via `Platform.select`. `jest.setup.js` mocks both module + `/router` subpath; NEW
+`__tests__/adhkar-quick-actions.test.tsx` (3 cases). **Native module ⇒ rebuild-gated, NOT
+OTA**: `version` 1.0.0→1.1.0 + `versionCode` 8→9 (runtimeVersion=appVersion isolation).
+**Device-verify pending (A72)** on the next preview build: long-press → 2 Arabic items →
+pin → tap cold+warm → correct reader; also check label truncation (fallback: shorten titles
+to "الصباح"/"المساء").

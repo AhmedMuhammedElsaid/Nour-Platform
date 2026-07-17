@@ -20,6 +20,7 @@ import { AzanScheduler } from "@/components/azan-scheduler";
 import { BottomDock } from "@/components/bottom-dock";
 import { OnboardingGate } from "@/features/onboarding/components/onboarding-gate";
 import { useOnboarding } from "@/features/onboarding/hooks/use-onboarding";
+import { useAdhkarQuickActions } from "@/features/prayer-times/hooks/use-adhkar-quick-actions";
 import { useAzkarNotificationRouter } from "@/features/prayer-times/hooks/use-azkar-notification-router";
 import { useForegroundAdhan } from "@/features/prayer-times/hooks/use-foreground-adhan";
 import { ThemeProvider } from "@/lib/theme-context";
@@ -67,6 +68,7 @@ export default function RootLayout() {
               <>
                 <ForegroundAdhan />
                 <AzkarNotificationRouter />
+                <AdhkarQuickActions />
                 <AzanScheduler />
                 <Stack screenOptions={{ headerShown: false }} />
                 <BottomDock />
@@ -94,6 +96,13 @@ function ForegroundAdhan() {
 // cold start) to the adhkar reader screen.
 function AzkarNotificationRouter() {
   useAzkarNotificationRouter();
+  return null;
+}
+
+// Renders nothing — registers the Sabah/Masaa launcher shortcuts and routes
+// their taps to the adhkar reader.
+function AdhkarQuickActions() {
+  useAdhkarQuickActions();
   return null;
 }
 

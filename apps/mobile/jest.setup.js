@@ -174,6 +174,16 @@ jest.mock("expo-notifications", () => ({
   AndroidImportance: { HIGH: 4, DEFAULT: 3 },
 }));
 
+// expo-quick-actions mock (launcher shortcuts) — factory mocks so jest never
+// loads the real native module.
+jest.mock("expo-quick-actions", () => ({
+  setItems: jest.fn().mockResolvedValue(undefined),
+  initial: undefined,
+}));
+jest.mock("expo-quick-actions/router", () => ({
+  useQuickActionRouting: jest.fn(),
+}));
+
 // expo-audio (Quran reciter playback) — stable player object so the reader's
 // useCallback deps don't churn under test.
 jest.mock("expo-audio", () => {
