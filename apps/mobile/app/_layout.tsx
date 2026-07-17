@@ -21,6 +21,7 @@ import { Text } from "@/components/ui/text";
 import { AnimatedSplash } from "@/components/animated-splash";
 import { AzanScheduler } from "@/components/azan-scheduler";
 import { BottomDock } from "@/components/bottom-dock";
+import { NavigationProgress } from "@/components/navigation-progress";
 import { OnboardingGate } from "@/features/onboarding/components/onboarding-gate";
 import { useOnboarding } from "@/features/onboarding/hooks/use-onboarding";
 import { useAdhkarQuickActions } from "@/features/prayer-times/hooks/use-adhkar-quick-actions";
@@ -119,6 +120,7 @@ export default function RootLayout() {
                 <AzanScheduler />
                 <OfflinePrefetchRunner queryClient={queryClient} />
                 <Stack screenOptions={{ headerShown: false }} />
+                <NavigationProgress />
                 <BottomDock />
                 {onboarding.hydrated && !onboarding.done && (
                   <OnboardingGate onComplete={onboarding.complete} />
