@@ -8,7 +8,9 @@ import { useEffect, useMemo, useState } from "react";
 import { AppState } from "react-native";
 import { useTranslation } from "react-i18next";
 import * as Notifications from "expo-notifications";
+import { requestWidgetUpdate } from "react-native-android-widget";
 
+import { renderNourHomeWidget } from "@/features/home/widget/render-nour-home-widget";
 import { useAdhanSettings } from "@/features/prayer-times/hooks/use-adhan-settings";
 import { useAzanNotifications } from "@/features/prayer-times/hooks/use-azan-notifications";
 import {
@@ -69,6 +71,21 @@ export function AzanScheduler() {
     adhan.volume,
     hydrated && adhanHydrated,
   );
+
+  // Instant "NourHome" launcher-widget refresh on a city/method/madhab change
+  // (home_widget_plan.md §5.10), so the prayer row doesn't wait for the
+  // 30-min updatePeriodMillis cycle. Radio/adhkar rows have no equivalent
+  // "settings changed" trigger — they still refresh only on the 30-min cycle.
+  // Android-only (this hook already only mounts what the Android widget
+  // config plugin scaffolds — see ADR 0014, "Android only").
+  useEffect(() => {
+    if (!hydrated) return;
+    void requestWidgetUpdate({
+      widgetName: "NourHome",
+      renderWidget: (widgetInfo) => renderNourHomeWidget(widgetInfo),
+      widgetNotFound: () => {},
+    });
+  }, [location, prefs, hydrated]);
 
   // Reminders are always delivered in Arabic (Arabic dhikr) regardless of UI
   // language — matches the prayer-times screen / web makeAzkarReminderBuilder.

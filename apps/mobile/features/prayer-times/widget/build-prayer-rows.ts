@@ -75,7 +75,7 @@ export function buildPrayerRows(
       key,
       label: PRAYER_LABELS[key][locale],
       time: formatClock(inst, locale),
-      isNext: key === nextKey && key !== "sunrise",
+      isNext: key === nextKey,
     };
   });
 
