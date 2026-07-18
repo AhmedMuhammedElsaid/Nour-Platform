@@ -5,6 +5,12 @@ import { useCallback, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { emitSettingsChanged, onSettingsChanged } from "@/lib/settings-bus";
+import {
+  LOCATION_KEY,
+  PREFS_KEY,
+  readLocation,
+  readPrefs,
+} from "@/features/prayer-times/lib/prayer-settings-store";
 
 import {
   type CalculationMethodId,
@@ -14,40 +20,7 @@ import {
   DEFAULT_LOCATION,
   DEFAULT_MADHAB,
   DEFAULT_METHOD,
-  calculationMethodSchema,
-  madhabSchema,
-  prayerLocationSchema,
 } from "@repo/shared-core/schemas/prayer-times";
-
-const LOCATION_KEY = "nour.prayer.location";
-const PREFS_KEY = "nour.prayer.prefs";
-
-async function readLocation(): Promise<PrayerLocation> {
-  try {
-    const raw = await AsyncStorage.getItem(LOCATION_KEY);
-    if (!raw) return DEFAULT_LOCATION;
-    const parsed = prayerLocationSchema.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data : DEFAULT_LOCATION;
-  } catch {
-    return DEFAULT_LOCATION;
-  }
-}
-
-async function readPrefs(): Promise<PrayerPreferences> {
-  try {
-    const raw = await AsyncStorage.getItem(PREFS_KEY);
-    if (!raw) return { method: DEFAULT_METHOD, madhab: DEFAULT_MADHAB };
-    const obj = JSON.parse(raw) as Record<string, unknown>;
-    const method = calculationMethodSchema.safeParse(obj.method);
-    const madhab = madhabSchema.safeParse(obj.madhab);
-    return {
-      method: method.success ? method.data : DEFAULT_METHOD,
-      madhab: madhab.success ? madhab.data : DEFAULT_MADHAB,
-    };
-  } catch {
-    return { method: DEFAULT_METHOD, madhab: DEFAULT_MADHAB };
-  }
-}
 
 export type PrayerSettings = {
   location: PrayerLocation;
