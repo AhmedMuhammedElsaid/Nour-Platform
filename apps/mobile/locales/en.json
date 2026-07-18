@@ -77,6 +77,9 @@
     "adhkar": "Adhkar",
     "adhkarExplore": "Explore more",
     "dhikrOfTheDay": "Dhikr of the day",
+    "kahfTitle": "Surah Al-Kahf",
+    "kahfBody": "It's Friday — tap to read",
+    "kahfDismiss": "Dismiss Surah Al-Kahf reminder",
     "surah": "Surah",
     "ayah": "Ayah {{number}}",
     "sort": {
@@ -187,6 +190,13 @@
         "title": "Adhkar al-Masaa",
         "body": "Time for the evening adhkar — tap to read."
       }
+    },
+    "kahf": {
+      "title": "Friday Surah Al-Kahf",
+      "enable": "Remind me to read Surah Al-Kahf on Friday",
+      "hint": "Every Friday at 12:00 PM — tapping the reminder opens the Quran at Surah Al-Kahf.",
+      "notifTitle": "Surah Al-Kahf",
+      "notifBody": "It's Friday — tap to read Surah Al-Kahf."
     }
   },
   "playlist": {

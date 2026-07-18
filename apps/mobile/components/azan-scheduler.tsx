@@ -16,6 +16,8 @@ import {
   useAzkarReminders,
 } from "@/features/prayer-times/hooks/use-azkar-reminders";
 import { useAzkarReminderSettings } from "@/features/prayer-times/hooks/use-azkar-reminder-settings";
+import { useKahfReminder } from "@/features/quran/hooks/use-kahf-reminder";
+import { useKahfReminderSettings } from "@/features/quran/hooks/use-kahf-reminder-settings";
 import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-settings";
 import { onSettingsChanged } from "@/lib/settings-bus";
 import type { PrayerKey } from "@repo/shared-core/prayer-times/compute";
@@ -94,6 +96,18 @@ export function AzanScheduler() {
     azkarContent,
     hydrated && azkarHydrated,
   );
+
+  // Friday Surah Al-Kahf — Arabic delivery, same convention as the azkar
+  // reminders above.
+  const { settings: kahf, hydrated: kahfHydrated } = useKahfReminderSettings();
+  const kahfContent = useMemo(
+    () => ({
+      title: t("prayer.kahf.notifTitle", { lng: "ar" }),
+      body: t("prayer.kahf.notifBody", { lng: "ar" }),
+    }),
+    [t],
+  );
+  useKahfReminder(kahf.enabled && notifGranted, kahfContent, kahfHydrated);
 
   return null;
 }

@@ -58,6 +58,17 @@ describe("useAzkarNotificationRouter", () => {
     );
   });
 
+  it("routes a kahf-reminder tap to the Quran reader at Surah Al-Kahf", async () => {
+    render(<Harness />);
+    await flush();
+
+    act(() =>
+      getListener()(response("nour-kahf-weekly", { kind: "kahf-reminder" })),
+    );
+
+    expect(router.push).toHaveBeenCalledWith("/quran/18");
+  });
+
   it("ignores taps on other notifications (azan)", async () => {
     render(<Harness />);
     await flush();

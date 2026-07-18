@@ -1,24 +1,30 @@
-// Routes an azkar-reminder notification tap to the adhkar reader. The reminders
-// (use-azkar-reminders.ts) carry `data: { kind: "azkar-reminder", slug }`; this
-// hook is the missing receiving end — without it a tap just opens the app.
+// Routes reminder-notification taps to their reader screens, per `data.kind`:
+// `azkar-reminder` (use-azkar-reminders.ts, carries a `slug`) → adhkar reader;
+// `kahf-reminder` (use-kahf-reminder.ts) → Quran reader at Surah Al-Kahf.
 // Covers warm/background taps (live listener) and cold starts (the launching tap
 // is only delivered via getLastNotificationResponseAsync, not the listener).
-// Azan taps are deliberately ignored (narrow `kind` check) — extend per-kind if
+// Azan taps are deliberately ignored (narrow `kind` checks) — extend per-kind if
 // other notifications ever need routing.
 
 import { useEffect, useRef } from "react";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 
-function azkarSlugOf(
+import { KAHF_SURAH } from "@repo/shared-core/prayer-times/schedule";
+
+function hrefOf(
   response: Notifications.NotificationResponse,
 ): string | null {
   const data = response.notification.request.content.data as
     | Record<string, unknown>
     | null
     | undefined;
-  if (!data || data.kind !== "azkar-reminder") return null;
-  return typeof data.slug === "string" && data.slug ? data.slug : null;
+  if (!data) return null;
+  if (data.kind === "kahf-reminder") return `/quran/${KAHF_SURAH}`;
+  if (data.kind !== "azkar-reminder") return null;
+  return typeof data.slug === "string" && data.slug
+    ? `/adhkar/${encodeURIComponent(data.slug)}`
+    : null;
 }
 
 // A response can arrive twice on cold start (listener + last-response replay).
@@ -33,12 +39,12 @@ export function useAzkarNotificationRouter(): void {
 
   useEffect(() => {
     const handle = (response: Notifications.NotificationResponse) => {
-      const slug = azkarSlugOf(response);
-      if (!slug) return;
+      const href = hrefOf(response);
+      if (!href) return;
       const key = responseKey(response);
       if (handledRef.current === key) return;
       handledRef.current = key;
-      router.push(`/adhkar/${encodeURIComponent(slug)}`);
+      router.push(href);
     };
 
     const sub = Notifications.addNotificationResponseReceivedListener(handle);

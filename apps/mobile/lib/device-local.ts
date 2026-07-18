@@ -237,6 +237,26 @@ export function azkarCompletedCount(progress: AzkarProgress, setId: string, repe
 }
 
 // ---------------------------------------------------------------------------
+// Friday Surah Al-Kahf card dismissal — `nour.kahf.dismissed`. Local YYYY-MM-DD
+// of the Friday the home card was dismissed; cross-surface contract with the
+// extension's browser.storage key of the same name.
+// ---------------------------------------------------------------------------
+
+const KAHF_DISMISSED_KEY = "nour.kahf.dismissed";
+
+export async function getKahfDismissedDate(): Promise<string | null> {
+  return read<string>(KAHF_DISMISSED_KEY, (v) => typeof v === "string");
+}
+
+export async function setKahfDismissedDate(date: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KAHF_DISMISSED_KEY, JSON.stringify(date));
+  } catch {
+    /* storage unavailable — non-fatal */
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Radio favorites + recently-played — `nour.radio.favorites` / `nour.radio.recent`.
 // Flat lists of station slugs. Same keys/shape the web radio feature uses
 // (apps/web/features/radio/lib/radio-favorites.ts + radio-recent.ts) so device

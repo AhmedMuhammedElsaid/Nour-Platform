@@ -17,6 +17,7 @@ import { RecitersShelf } from "@/features/home/components/reciters-shelf";
 import { RadioPreviewShelf } from "@/features/radio/components/radio-preview-shelf";
 import { AdhkarPreviewShelf } from "@/features/home/components/adhkar-preview-shelf";
 import { DhikrOfTheDayCard } from "@/features/home/components/dhikr-of-the-day-card";
+import { KahfFridayCard } from "@/features/home/components/kahf-friday-card";
 import { QiblaHomeCard } from "@/features/qibla/components/qibla-home-card";
 import { SortSelect, type SortOption } from "@/features/home/components/sort-select";
 import { PlaylistCard } from "@/features/playlists/components/playlist-card";
@@ -189,6 +190,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {header}
+        <KahfFridayCard />
         {/* Readers shelf sits above the Library section (user request). */}
         <View className="mt-3">
           <QiblaHomeCard />

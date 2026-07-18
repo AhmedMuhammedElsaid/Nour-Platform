@@ -22,6 +22,7 @@ import {
   scheduleTestAzan,
 } from "@/features/prayer-times/hooks/use-azan-notifications";
 import { useAzkarReminderSettings } from "@/features/prayer-times/hooks/use-azkar-reminder-settings";
+import { useKahfReminderSettings } from "@/features/quran/hooks/use-kahf-reminder-settings";
 import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-settings";
 import { cityLabel } from "@/features/prayer-times/data/cities";
 import { initialLocale } from "@/lib/i18n";
@@ -47,6 +48,8 @@ export default function PrayerTimesScreen() {
     usePrayerSettings();
   const { settings: azkar, setEnabled: setAzkarEnabled } =
     useAzkarReminderSettings();
+  const { settings: kahf, setEnabled: setKahfEnabled } =
+    useKahfReminderSettings();
   const { settings: adhan, setEnabled: setAdhanEnabled } = useAdhanSettings();
 
   const [now, setNow] = useState(() => new Date());
@@ -119,6 +122,16 @@ export default function PrayerTimesScreen() {
       }
     },
     [setAzkarEnabled, notifGranted],
+  );
+
+  const toggleKahf = useCallback(
+    (next: boolean) => {
+      setKahfEnabled(next);
+      if (next && !notifGranted) {
+        void requestNotificationPermission().then(setNotifGranted);
+      }
+    },
+    [setKahfEnabled, notifGranted],
   );
 
   // Verify the closed-app adhan without waiting for a real prayer: schedules a
@@ -275,6 +288,32 @@ export default function PrayerTimesScreen() {
           {azkar.enabled ? (
             <Text variant="muted" className="text-xs">
               {notifGranted ? t("prayer.azkar.hint") : t("prayer.azkar.foregroundOnly")}
+            </Text>
+          ) : null}
+        </View>
+
+        {/* Friday Surah Al-Kahf reminder toggle — fixed Friday 12:00 local */}
+        <View className="gap-3 rounded-lg border border-border bg-surface p-4">
+          <Text variant="label">{t("prayer.kahf.title")}</Text>
+          <View className="flex-row items-center justify-between">
+            <Text variant="body" className="flex-1 pe-3">
+              {t("prayer.kahf.enable")}
+            </Text>
+            <Pressable
+              accessibilityRole="switch"
+              accessibilityState={{ checked: kahf.enabled }}
+              accessibilityLabel={t("prayer.kahf.enable")}
+              onPress={() => toggleKahf(!kahf.enabled)}
+              className={`h-7 w-12 rounded-full ${kahf.enabled ? "bg-primary" : "bg-surface-2"}`}
+            >
+              <View
+                className={`size-5 rounded-full bg-white shadow m-1 ${kahf.enabled ? "ms-auto" : ""}`}
+              />
+            </Pressable>
+          </View>
+          {kahf.enabled ? (
+            <Text variant="muted" className="text-xs">
+              {t("prayer.kahf.hint")}
             </Text>
           ) : null}
         </View>
