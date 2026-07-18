@@ -7,6 +7,8 @@ import {
   hijriDate,
 } from "@repo/shared-core/prayer-times/format";
 import { pickHeroTextOfTheDay } from "@repo/shared-core/hero-text";
+import { isKahfIconWindow } from "@repo/shared-core/prayer-times/schedule";
+import { localKeyForDate } from "@repo/shared-core/prayer-times/aladhan";
 
 import { getJson } from "../lib/api";
 import { usePrayerTimes } from "../lib/use-prayer-times";
@@ -228,6 +230,67 @@ function ContinueReadingCard() {
           {lastRead.surahName ?? `Surah ${lastRead.surah}`} · {lastRead.ayah}
         </span>
         <span className="text-primary rtl:scale-x-[-1]">→</span>
+      </button>
+    </section>
+  );
+}
+
+// Friday Surah Al-Kahf reminder card — visible Friday 12:00 → midnight unless
+// dismissed for the day (`nour.kahf.dismissed` = local YYYY-MM-DD, a
+// cross-surface contract with mobile). Clicking through also dismisses — the
+// card's job is done once the reader opens. 60s clock so it appears at 12:00
+// on an already-open new tab without a reload.
+function KahfFridayCard() {
+  const { t } = useI18n();
+  const [now, setNow] = useState(() => new Date());
+  const [dismissedOn, setDismissedOn] = useState<string | null>(null);
+
+  useEffect(() => {
+    void get("nour.kahf.dismissed").then(setDismissedOn);
+    const id = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const today = localKeyForDate(now);
+  if (dismissedOn === null) return null; // storage not hydrated yet
+  if (!isKahfIconWindow(now) || dismissedOn === today) return null;
+
+  const dismiss = () => {
+    setDismissedOn(today);
+    void set("nour.kahf.dismissed", today);
+  };
+
+  return (
+    <section className="relative">
+      <button
+        type="button"
+        onClick={() => {
+          dismiss();
+          navigate({ view: "quran-read", surah: "18" });
+        }}
+        className="flex w-full items-center gap-4 rounded-xl border border-primary/40 bg-surface p-4 text-start transition-colors hover:border-primary"
+      >
+        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+          <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 5.5C10.5 4 8 3.5 5.5 3.5c-.8 0-1.5.1-2 .2v14.6c.5-.1 1.2-.2 2-.2 2.5 0 5 .5 6.5 2 1.5-1.5 4-2 6.5-2 .8 0 1.5.1 2 .2V3.7c-.5-.1-1.2-.2-2-.2-2.5 0-5 .5-6.5 2Z" />
+            <path d="M12 5.5v14.6" />
+          </svg>
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold text-text">{t("home.kahfTitle")}</span>
+          <span className="mt-0.5 block text-sm text-text-2">{t("home.kahfBody")}</span>
+        </span>
+        <span className="text-primary rtl:scale-x-[-1]">→</span>
+      </button>
+      <button
+        type="button"
+        onClick={dismiss}
+        aria-label={t("home.kahfDismiss")}
+        className="absolute -top-2 -end-2 grid size-6 place-items-center rounded-full border border-border bg-surface text-text-2 transition-colors hover:text-text"
+      >
+        <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
       </button>
     </section>
   );
@@ -507,6 +570,9 @@ export function NewtabPage() {
             </section>
           );
         })()}
+
+        {/* ── Friday Surah Al-Kahf reminder ────────────────────────────── */}
+        <KahfFridayCard />
 
         {/* ── Daily dhikr ──────────────────────────────────────────────── */}
         {pt ? <DhikrWidget now={pt.now} /> : null}

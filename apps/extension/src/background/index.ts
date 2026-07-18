@@ -12,11 +12,12 @@ import {
   isStorageGet,
   isStorageSet,
 } from "../offscreen/protocol";
-import { ALARM_ADHAN, ALARM_AZKAR, ALARM_TICK, tick } from "./scheduler";
+import { ALARM_ADHAN, ALARM_AZKAR, ALARM_KAHF, ALARM_TICK, tick } from "./scheduler";
 
 const REARM_KEYS = [
   "nour.prayer.adhan",
   "nour.azkar.reminder",
+  "nour.kahf.reminder",
   "nour.prayer.location",
   "nour.prayer.prefs",
 ];
@@ -35,7 +36,8 @@ browser.alarms.onAlarm.addListener((alarm) => {
   if (
     alarm.name === ALARM_TICK ||
     alarm.name === ALARM_ADHAN ||
-    alarm.name === ALARM_AZKAR
+    alarm.name === ALARM_AZKAR ||
+    alarm.name === ALARM_KAHF
   ) {
     void tick();
   }

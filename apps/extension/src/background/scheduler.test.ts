@@ -11,26 +11,35 @@ vi.mock("@repo/shared-core/prayer-times/schedule", () => ({
   nextAdhanEvent: vi.fn(() => null),
   recentlyMissedAzkarReminder: vi.fn(() => null),
   nextAzkarReminderEvent: vi.fn(() => null),
+  missedKahfReminder: vi.fn(() => null),
+  nextKahfReminderTime: vi.fn(() => new Date(0)),
 }));
 vi.mock("../lib/storage", () => ({ get: vi.fn() }));
-vi.mock("../lib/notify", () => ({ notifyAdhan: vi.fn(), notifyAzkar: vi.fn() }));
+vi.mock("../lib/notify", () => ({
+  notifyAdhan: vi.fn(),
+  notifyAzkar: vi.fn(),
+  notifyKahf: vi.fn(),
+}));
 vi.mock("../lib/audio-router", () => ({ playAdhan: vi.fn() }));
 vi.mock("../lib/fired-claim", () => ({
   ADHAN_FIRED_KEY: "nour.prayer.adhan.fired",
   AZKAR_REMINDER_FIRED_KEY: "nour.azkar.reminder.fired",
+  KAHF_FIRED_KEY: "nour.kahf.reminder.fired",
   claimFiredEvent: vi.fn(() => Promise.resolve(true)),
 }));
 
 import {
+  missedKahfReminder,
   nextAdhanEvent,
+  nextKahfReminderTime,
   recentlyMissedAdhan,
 } from "@repo/shared-core/prayer-times/schedule";
 import { resolvePrayerDay } from "../lib/aladhan";
 import { playAdhan } from "../lib/audio-router";
 import { claimFiredEvent } from "../lib/fired-claim";
-import { notifyAdhan } from "../lib/notify";
+import { notifyAdhan, notifyKahf } from "../lib/notify";
 import { get } from "../lib/storage";
-import { ALARM_ADHAN, ALARM_TICK, tick } from "./scheduler";
+import { ALARM_ADHAN, ALARM_KAHF, ALARM_TICK, tick } from "./scheduler";
 
 const alarms = {
   get: vi.fn(async () => undefined),
@@ -43,13 +52,16 @@ vi.stubGlobal("chrome", { alarms });
 const ADHAN_ON = { enabled: true, perPrayer: {}, volume: 0.8 };
 const ADHAN_OFF = { enabled: false, perPrayer: {}, volume: 0.8 };
 const AZKAR_OFF = { enabled: false, offsetMinutes: 15 };
+const KAHF_ON = { enabled: true };
+const KAHF_OFF = { enabled: false };
 const LOCATION = { lat: 30, lng: 31, label: "Cairo" };
 const PREFS = { method: "Egyptian", madhab: "standard" };
 
-function mockStorage(adhan: unknown, azkar: unknown) {
+function mockStorage(adhan: unknown, azkar: unknown, kahf: unknown = KAHF_OFF) {
   vi.mocked(get).mockImplementation((key: string) => {
     if (key === "nour.prayer.adhan") return Promise.resolve(adhan) as never;
     if (key === "nour.azkar.reminder") return Promise.resolve(azkar) as never;
+    if (key === "nour.kahf.reminder") return Promise.resolve(kahf) as never;
     if (key === "nour.prayer.location") return Promise.resolve(LOCATION) as never;
     return Promise.resolve(PREFS) as never;
   });
@@ -62,14 +74,59 @@ describe("tick", () => {
     vi.mocked(claimFiredEvent).mockResolvedValue(true);
     vi.mocked(recentlyMissedAdhan).mockReturnValue(null);
     vi.mocked(nextAdhanEvent).mockReturnValue(null);
+    vi.mocked(missedKahfReminder).mockReturnValue(null);
   });
 
-  it("clears all alarms and fires nothing when adhan + azkar are both disabled", async () => {
-    mockStorage(ADHAN_OFF, AZKAR_OFF);
+  it("clears all alarms and fires nothing when adhan + azkar + kahf are all disabled", async () => {
+    mockStorage(ADHAN_OFF, AZKAR_OFF, KAHF_OFF);
     await tick();
     expect(alarms.clearAll).toHaveBeenCalledOnce();
     expect(notifyAdhan).not.toHaveBeenCalled();
     expect(alarms.create).not.toHaveBeenCalled();
+  });
+
+  it("keeps ticking and arms the kahf alarm when ONLY kahf is enabled (no clearAll starvation)", async () => {
+    mockStorage(ADHAN_OFF, AZKAR_OFF, KAHF_ON);
+    const at = new Date(Date.now() + 86_400_000);
+    vi.mocked(nextKahfReminderTime).mockReturnValue(at);
+
+    await tick();
+
+    expect(alarms.clearAll).not.toHaveBeenCalled();
+    expect(alarms.create).toHaveBeenCalledWith(ALARM_KAHF, { when: at.getTime() });
+  });
+
+  it("fires the kahf reminder once inside the Friday window (claim + notify)", async () => {
+    mockStorage(ADHAN_OFF, AZKAR_OFF, KAHF_ON);
+    const noon = new Date(2026, 0, 2, 12, 0, 0, 0);
+    vi.mocked(missedKahfReminder).mockReturnValue({ time: noon });
+
+    await tick();
+
+    expect(claimFiredEvent).toHaveBeenCalledWith(
+      "nour.kahf.reminder.fired",
+      noon.toISOString(),
+    );
+    expect(notifyKahf).toHaveBeenCalledOnce();
+  });
+
+  it("does not notify kahf when the fired-claim is lost to another context", async () => {
+    mockStorage(ADHAN_OFF, AZKAR_OFF, KAHF_ON);
+    vi.mocked(missedKahfReminder).mockReturnValue({ time: new Date() });
+    vi.mocked(claimFiredEvent).mockResolvedValue(false);
+
+    await tick();
+
+    expect(notifyKahf).not.toHaveBeenCalled();
+  });
+
+  it("clears the kahf alarm when kahf is disabled but adhan still runs", async () => {
+    mockStorage(ADHAN_ON, AZKAR_OFF, KAHF_OFF);
+
+    await tick();
+
+    expect(alarms.clear).toHaveBeenCalledWith(ALARM_KAHF);
+    expect(notifyKahf).not.toHaveBeenCalled();
   });
 
   it("fires a due adhan (notify + play) and arms the heartbeat", async () => {

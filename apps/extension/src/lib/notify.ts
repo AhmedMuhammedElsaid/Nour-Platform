@@ -24,6 +24,9 @@ const ICON = "icons/icon-192.png";
 
 const ADHAN_NID = "nour:adhan";
 const AZKAR_NID_PREFIX = "nour:azkar:";
+// Exact id — must never prefix-collide with the azkar ids, or the click
+// handler would misroute it to the adhkar reader.
+const KAHF_NID = "nour:kahf:reminder";
 
 export async function notifyAdhan(key: AdhanPrayerKey): Promise<void> {
   await browser.notifications.create(ADHAN_NID, {
@@ -46,9 +49,22 @@ export async function notifyAzkar(kind: AzkarReminderKind): Promise<void> {
   });
 }
 
+export async function notifyKahf(): Promise<void> {
+  await browser.notifications.create(KAHF_NID, {
+    type: "basic",
+    iconUrl: browser.runtime.getURL(ICON),
+    title: "سورة الكهف",
+    message: "يوم الجمعة — اضغط لقراءة سورة الكهف.",
+    priority: 2,
+  });
+}
+
 export async function handleNotificationClick(id: string): Promise<void> {
   let url = SITE;
-  if (id.startsWith(AZKAR_NID_PREFIX)) {
+  if (id === KAHF_NID) {
+    // Open the extension's own new-tab Quran reader at Al-Kahf (no autoplay).
+    url = `${browser.runtime.getURL("src/newtab/index.html")}#${routeToHash({ view: "quran-read", surah: "18" })}`;
+  } else if (id.startsWith(AZKAR_NID_PREFIX)) {
     const kind = id.slice(AZKAR_NID_PREFIX.length) as AzkarReminderKind;
     const settings = await get("nour.azkar.reminder");
     const slug = kind === "sabah" ? settings.sabah.ar : settings.masaa.ar;

@@ -44,6 +44,14 @@ describe("handleNotificationClick", () => {
     });
   });
 
+  it("opens the built-in Quran reader at Surah Al-Kahf for the kahf reminder", async () => {
+    await handleNotificationClick("nour:kahf:reminder");
+    expect(tabs.create).toHaveBeenCalledWith({
+      url: "chrome-extension://abc/src/newtab/index.html#/quran/18",
+    });
+    expect(notifications.clear).toHaveBeenCalledWith("nour:kahf:reminder");
+  });
+
   it("still opens the website for the adhan notification", async () => {
     await handleNotificationClick("nour:adhan");
     expect(tabs.create).toHaveBeenCalledWith({ url: "https://site.test" });

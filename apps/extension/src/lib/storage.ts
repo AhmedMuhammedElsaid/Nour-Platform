@@ -4,11 +4,14 @@ import {
   azkarReminderSettingsSchema,
   DEFAULT_ADHAN_SETTINGS,
   DEFAULT_AZKAR_REMINDER_SETTINGS,
+  DEFAULT_KAHF_REMINDER_SETTINGS,
   DEFAULT_LOCATION,
+  kahfReminderSettingsSchema,
   prayerLocationSchema,
   prayerPreferencesSchema,
   type AdhanSettings,
   type AzkarReminderSettings,
+  type KahfReminderSettings,
   type PrayerLocation,
   type PrayerPreferences,
 } from "@repo/shared-core/schemas/prayer-times";
@@ -86,6 +89,8 @@ const SCHEMA_MAP: {
   "nour.prayer.prefs": SchemaEntry<PrayerPreferences>;
   "nour.prayer.adhan": SchemaEntry<AdhanSettings>;
   "nour.azkar.reminder": SchemaEntry<AzkarReminderSettings>;
+  "nour.kahf.reminder": SchemaEntry<KahfReminderSettings>;
+  "nour.kahf.dismissed": SchemaEntry<string>;
   "nour.player.recent": SchemaEntry<RecentItem[]>;
   "nour.player.positions": SchemaEntry<PlayerPositions>;
   "nour.player.prefs": SchemaEntry<PlayerPrefs>;
@@ -114,6 +119,12 @@ const SCHEMA_MAP: {
     schema: azkarReminderSettingsSchema,
     fallback: DEFAULT_AZKAR_REMINDER_SETTINGS,
   },
+  "nour.kahf.reminder": {
+    schema: kahfReminderSettingsSchema,
+    fallback: DEFAULT_KAHF_REMINDER_SETTINGS,
+  },
+  // Local YYYY-MM-DD of the Friday the home Kahf card was dismissed ("" = never).
+  "nour.kahf.dismissed": { schema: z.string(), fallback: "" },
   "nour.player.recent": {
     schema: z.array(
       z.object({

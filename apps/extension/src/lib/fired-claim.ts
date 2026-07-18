@@ -47,3 +47,4 @@ export async function claimFiredEvent(
 
 export const ADHAN_FIRED_KEY = "nour.prayer.adhan.fired";
 export const AZKAR_REMINDER_FIRED_KEY = "nour.azkar.reminder.fired";
+export const KAHF_FIRED_KEY = "nour.kahf.reminder.fired";

@@ -6,6 +6,7 @@ import { LocationPicker } from "./location-picker";
 import {
   useAdhanSettings,
   useAzkarSettings,
+  useKahfSettings,
   useLocation,
   usePrefs,
 } from "./use-settings";
@@ -49,9 +50,10 @@ export function OptionsPage() {
   const { prefs, setPrefs } = usePrefs();
   const { adhan, setAdhan } = useAdhanSettings();
   const { azkar, setAzkar } = useAzkarSettings();
+  const { kahf, setKahf } = useKahfSettings();
 
-  // Loading state: all four keys must be hydrated before rendering controls.
-  if (!location || !prefs || !adhan || !azkar) {
+  // Loading state: all keys must be hydrated before rendering controls.
+  if (!location || !prefs || !adhan || !azkar || !kahf) {
     return (
       <main className="min-h-screen bg-bg p-6 text-text">
         <p className="text-sm text-text-2">Loading…</p>
@@ -208,6 +210,27 @@ export function OptionsPage() {
                 />
               </label>
             </>
+          )}
+        </Section>
+
+        {/* ── Friday Surah Al-Kahf ─────────────────────────────────────── */}
+        <Section title="Friday Surah Al-Kahf">
+          <label className="flex items-center justify-between gap-3">
+            <span className="text-sm text-text">
+              Reminder every Friday at 12:00 PM
+            </span>
+            <input
+              type="checkbox"
+              checked={kahf.enabled}
+              onChange={(e) => void setKahf({ enabled: e.target.checked })}
+              className="size-4 accent-[var(--color-primary)]"
+            />
+          </label>
+          {kahf.enabled && (
+            <p className="text-xs text-text-2">
+              A notification and a home-page card open the Quran reader at Surah
+              Al-Kahf.
+            </p>
           )}
         </Section>
 

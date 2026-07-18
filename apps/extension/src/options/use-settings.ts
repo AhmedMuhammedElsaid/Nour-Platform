@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import browser from "webextension-polyfill";
 
-import type { AdhanSettings, AzkarReminderSettings, PrayerLocation, PrayerPreferences } from "@repo/shared-core/schemas/prayer-times";
+import type { AdhanSettings, AzkarReminderSettings, KahfReminderSettings, PrayerLocation, PrayerPreferences } from "@repo/shared-core/schemas/prayer-times";
 
 import { get, set, watch } from "../lib/storage";
 import { nearestCity } from "../lib/cities";
@@ -46,7 +46,7 @@ async function maybeAutoDetectLocation(
 }
 
 // Generic hook factory: loads a storage key on mount, stays live via watch().
-function useStorageKey<K extends "nour.prayer.location" | "nour.prayer.prefs" | "nour.prayer.adhan" | "nour.azkar.reminder">(
+function useStorageKey<K extends "nour.prayer.location" | "nour.prayer.prefs" | "nour.prayer.adhan" | "nour.azkar.reminder" | "nour.kahf.reminder">(
   key: K,
 ) {
   type V = K extends "nour.prayer.location"
@@ -55,7 +55,9 @@ function useStorageKey<K extends "nour.prayer.location" | "nour.prayer.prefs" | 
       ? PrayerPreferences
       : K extends "nour.prayer.adhan"
         ? AdhanSettings
-        : AzkarReminderSettings;
+        : K extends "nour.azkar.reminder"
+          ? AzkarReminderSettings
+          : KahfReminderSettings;
 
   const [value, setValue] = useState<V | null>(null);
 
@@ -98,4 +100,9 @@ export function useAdhanSettings() {
 export function useAzkarSettings() {
   const { value, update } = useStorageKey("nour.azkar.reminder");
   return { azkar: value, setAzkar: update };
+}
+
+export function useKahfSettings() {
+  const { value, update } = useStorageKey("nour.kahf.reminder");
+  return { kahf: value, setKahf: update };
 }

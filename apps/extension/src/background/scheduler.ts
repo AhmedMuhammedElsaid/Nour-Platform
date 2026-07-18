@@ -4,8 +4,11 @@ import type { PrayerDay } from "@repo/shared-core/prayer-times/compute";
 import {
   type AdhanEvent,
   type AzkarReminderEvent,
+  type KahfReminderEvent,
+  missedKahfReminder,
   nextAdhanEvent,
   nextAzkarReminderEvent,
+  nextKahfReminderTime,
   recentlyMissedAdhan,
   recentlyMissedAzkarReminder,
 } from "@repo/shared-core/prayer-times/schedule";
@@ -15,14 +18,16 @@ import { playAdhan } from "../lib/audio-router";
 import {
   ADHAN_FIRED_KEY,
   AZKAR_REMINDER_FIRED_KEY,
+  KAHF_FIRED_KEY,
   claimFiredEvent,
 } from "../lib/fired-claim";
-import { notifyAdhan, notifyAzkar } from "../lib/notify";
+import { notifyAdhan, notifyAzkar, notifyKahf } from "../lib/notify";
 import { get } from "../lib/storage";
 
 export const ALARM_TICK = "nour:tick";
 export const ALARM_ADHAN = "nour:adhan";
 export const ALARM_AZKAR = "nour:azkar";
+export const ALARM_KAHF = "nour:kahf";
 
 const TICK_PERIOD_MIN = 1;
 
@@ -34,13 +39,14 @@ const CATCH_UP_MS = 2 * 60_000;
 type Inputs = Awaited<ReturnType<typeof loadInputs>>;
 
 async function loadInputs() {
-  const [adhan, azkar, location, prefs] = await Promise.all([
+  const [adhan, azkar, kahf, location, prefs] = await Promise.all([
     get("nour.prayer.adhan"),
     get("nour.azkar.reminder"),
+    get("nour.kahf.reminder"),
     get("nour.prayer.location"),
     get("nour.prayer.prefs"),
   ]);
-  return { adhan, azkar, location, prefs };
+  return { adhan, azkar, kahf, location, prefs };
 }
 
 async function fireAdhan(event: AdhanEvent, volume: number): Promise<void> {
@@ -57,6 +63,14 @@ async function fireAzkar(event: AzkarReminderEvent): Promise<void> {
   );
   if (!owned) return;
   await notifyAzkar(event.kind);
+}
+
+// The claimed iso is the Friday-12:00 instant — stable for the whole Friday,
+// so however late in the day the browser first ticks, it fires exactly once.
+async function fireKahf(event: KahfReminderEvent): Promise<void> {
+  const owned = await claimFiredEvent(KAHF_FIRED_KEY, event.time.toISOString());
+  if (!owned) return;
+  await notifyKahf();
 }
 
 async function ensureTick(): Promise<void> {
@@ -76,14 +90,22 @@ async function armPrecise(
 
 export async function tick(): Promise<void> {
   const inputs = await loadInputs();
-  const { adhan, azkar } = inputs;
+  const { adhan, azkar, kahf } = inputs;
 
-  if (!adhan.enabled && !azkar.enabled) {
+  if (!adhan.enabled && !azkar.enabled && !kahf.enabled) {
     await browser.alarms.clearAll();
     return;
   }
 
   const now = new Date();
+
+  // Kahf is calendar-only — runs before (and independent of) the prayer-time
+  // resolution below. Its catch-up window is the rest of Friday.
+  if (kahf.enabled) {
+    const missedKahf = missedKahfReminder(now);
+    if (missedKahf) await fireKahf(missedKahf);
+  }
+
   // Aladhan official minute when the month cache is warm (fetch is backoff-
   // gated inside), adhan-js otherwise. Same source the newtab/popup UI resolves
   // from — scheduler and display must never disagree on a prayer instant.
@@ -118,5 +140,9 @@ async function rearm(inputs: Inputs, day: PrayerDay, now: Date): Promise<void> {
     inputs.azkar.enabled
       ? nextAzkarReminderEvent(day.instants, inputs.azkar, now)
       : null,
+  );
+  await armPrecise(
+    ALARM_KAHF,
+    inputs.kahf.enabled ? { time: nextKahfReminderTime(now) } : null,
   );
 }
