@@ -54,6 +54,24 @@
             }
           }
         }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "NourHome",
+              "label": "Nour — Prayer, Radio & Adhkar",
+              "description": "مواقيت الصلاة، الإذاعة، والأذكار",
+              "minWidth": "300dp",
+              "minHeight": "180dp",
+              "targetCellWidth": 5,
+              "targetCellHeight": 3,
+              "previewImage": "./assets/widget-preview/nour-home.png",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
       ]
     ],
     "ios": {
