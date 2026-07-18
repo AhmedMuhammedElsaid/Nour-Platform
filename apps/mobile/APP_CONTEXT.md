@@ -1411,3 +1411,19 @@ Prayer times (Aladhan cache + compute fallback) and Qibla were already offline; 
 - **Device-verify pending (A72, needs the vC9 build)**: online first-launch → let prefetch finish
   (~114 fetches) → airplane mode → force-close → cold start → unvisited surah + adhkar reader + prayer
   times + qibla all render; also confirm `quran-offline/` file count = 114.
+
+## Friday Surah Al-Kahf reminder (2026-07-18, `a5d039a`)
+
+- Weekly Friday-12:00 notification = ONE repeating `WEEKLY` expo trigger (id `nour-kahf-weekly`,
+  `features/quran/hooks/use-kahf-reminder.ts`). ⚠️ expo weekday convention: Friday = **6** (1=Sunday),
+  not Date#getDay's 5. Costs 1 iOS pending slot (vs ~14 for a DATE-pool clone). If A72 verify shows
+  Android dropping the weekly repeat, fallback = small Friday DATE pool (see the hook header).
+- Settings `nour.kahf.reminder` `{enabled}` default ON (`use-kahf-reminder-settings.ts`, settings-bus,
+  shared-core schema); toggle on the prayer-times screen below the adhkar one. Wired in
+  `components/azan-scheduler.tsx` (Arabic delivery via `t(..., {lng:"ar"})`, gated on notif permission).
+- Tap routing: `use-azkar-notification-router.ts` generalized per-kind — `kind:"kahf-reminder"` →
+  `/quran/18`. Home card `features/home/components/kahf-friday-card.tsx` (visible Friday 12:00→midnight,
+  X or click-through writes `nour.kahf.dismissed` = local YYYY-MM-DD via `lib/device-local.ts`; 60s clock;
+  sibling-Pressables convention; `localKeyForDate` from shared-core aladhan).
+- **Device-verify pending (A72)**: set clock Fri 11:59 → notif at 12:00 → tap opens `/quran/18`; card
+  appears/dismisses; verify the WEEKLY trigger survives a week without app opens. JS-only → OTA-eligible.
