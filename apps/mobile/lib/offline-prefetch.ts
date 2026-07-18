@@ -9,6 +9,7 @@ import {
   quranSurahReaderQuery,
   quranSurahsQuery,
 } from "@/lib/queries";
+import { pruneStaleSurahs, writeSurah } from "@/lib/quran-offline-store";
 
 // Completion marker — mobile-only cache bookkeeping key, NOT one of the
 // cross-surface `nour.*` device-local contracts (CLAUDE.md §5). Only ever
@@ -20,6 +21,12 @@ type OfflineMarker = {
   locale: Locale;
   translation: string;
   reciter: string;
+  // App version the marker was written under (same string as _layout.tsx's
+  // persisted-cache `buster`). Without this, an app update that wipes the
+  // persisted query cache (buster mismatch) would still leave this marker
+  // matching current prefs, so runOfflinePrefetch would early-return forever
+  // and the offline set would never be rebuilt post-update.
+  version: string;
 };
 
 function isOfflineMarker(value: unknown): value is OfflineMarker {
@@ -28,7 +35,8 @@ function isOfflineMarker(value: unknown): value is OfflineMarker {
     value !== null &&
     typeof (value as OfflineMarker).locale === "string" &&
     typeof (value as OfflineMarker).translation === "string" &&
-    typeof (value as OfflineMarker).reciter === "string"
+    typeof (value as OfflineMarker).reciter === "string" &&
+    typeof (value as OfflineMarker).version === "string"
   );
 }
 
@@ -94,9 +102,13 @@ async function runWithConcurrency<T>(
 //
 // On ANY fetch failure this stops silently and leaves the completion marker
 // unset (or stale), so the next app launch's call retries the whole pass.
+//
+// appVersion must be the SAME string passed as _layout.tsx's persisted-cache
+// `buster` (app.json expo.version) — see the OfflineMarker.version comment.
 export async function runOfflinePrefetch(
   queryClient: QueryClient,
   locale: Locale,
+  appVersion: string,
 ): Promise<void> {
   const prefs = await getQuranPrefs();
   const marker = await readMarker();
@@ -104,10 +116,20 @@ export async function runOfflinePrefetch(
     marker != null &&
     marker.locale === locale &&
     marker.translation === prefs.translationSlug &&
-    marker.reciter === prefs.reciterSlug;
+    marker.reciter === prefs.reciterSlug &&
+    marker.version === appVersion;
   if (upToDate) return;
 
   try {
+    // Drop surah files from a previous translation/reciter (or a completely
+    // different marker state) before writing the new set, so a prefs switch
+    // doesn't leak orphaned files.
+    await pruneStaleSurahs({
+      locale,
+      translationSlug: prefs.translationSlug,
+      reciterSlug: prefs.reciterSlug,
+    });
+
     const adhkarList = await queryClient.fetchQuery(adhkarListQuery());
     await runWithConcurrency(adhkarList, CONCURRENCY, async (item) => {
       const display = item[locale] ?? item.ar ?? item.en;
@@ -117,12 +139,25 @@ export async function runOfflinePrefetch(
 
     const surahs = await queryClient.fetchQuery(quranSurahsQuery());
     await runWithConcurrency(surahs, CONCURRENCY, async (surah) => {
-      await queryClient.fetchQuery(
+      const data = await queryClient.fetchQuery(
         quranSurahReaderQuery(surah.number, locale, prefs.translationSlug, prefs.reciterSlug),
+      );
+      // Surah payloads are excluded from the persisted AsyncStorage blob
+      // (see _layout.tsx shouldDehydrateQuery) — write them to the per-surah
+      // file store instead, so they survive a restart without inflating the
+      // single dehydrated-cache value past Android's CursorWindow row limit.
+      await writeSurah(
+        { surah: surah.number, locale, translationSlug: prefs.translationSlug, reciterSlug: prefs.reciterSlug },
+        data,
       );
     });
 
-    await writeMarker({ locale, translation: prefs.translationSlug, reciter: prefs.reciterSlug });
+    await writeMarker({
+      locale,
+      translation: prefs.translationSlug,
+      reciter: prefs.reciterSlug,
+      version: appVersion,
+    });
   } catch {
     // Network/API failure mid-run — marker stays unset (or stale from a
     // previous prefs combo), so the next launch retries from scratch.

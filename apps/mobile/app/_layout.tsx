@@ -5,7 +5,7 @@ import { hydrateLocale, initialLocale } from "@/lib/i18n";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, defaultShouldDehydrateQuery } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -43,6 +43,18 @@ const CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 // Post-boot delay before background prefetch starts, so it never competes
 // with first paint / the animated splash for the JS thread or the network.
 const PREFETCH_DELAY_MS = 3000;
+
+// Quran surah reader payloads are deliberately excluded from the persisted
+// AsyncStorage blob (see shouldDehydrateQuery below) — they round-trip
+// through lib/quran-offline-store.ts's per-surah files instead. With all 114
+// surahs embedded, the single dehydrated-cache blob plausibly exceeds
+// Android AsyncStorage's ~2MB CursorWindow per-row read limit: the write
+// would succeed but the restore would throw, and PersistQueryClientProvider
+// treats a throwing restore as "no cache" — silently killing offline-first
+// at full-Quran scale.
+function isQuranSurahQueryKey(key: readonly unknown[]): boolean {
+  return key[0] === "quran" && key[1] === "surah";
+}
 
 // Register the RNTP playback service once at module scope.
 TrackPlayer.registerPlaybackService(() => playbackService);
@@ -108,6 +120,14 @@ export default function RootLayout() {
           // shape change ships with a guaranteed-clean cache instead of a
           // stale/incompatible restore.
           buster: appJson.expo.version,
+          dehydrateOptions: {
+            // Keep TanStack's own success-only predicate for everything else;
+            // only add the Quran-surah exclusion on top (see
+            // isQuranSurahQueryKey above) rather than reimplementing the
+            // default from scratch.
+            shouldDehydrateQuery: (query) =>
+              defaultShouldDehydrateQuery(query) && !isQuranSurahQueryKey(query.queryKey),
+          },
         }}
       >
         <ThemeProvider>
@@ -164,13 +184,18 @@ function AdhkarQuickActions() {
 function OfflinePrefetchRunner({ queryClient }: { queryClient: QueryClient }) {
   useEffect(() => {
     const timer = setTimeout(() => {
-      void runOfflinePrefetch(queryClient, initialLocale);
+      // Same version string as the persisted-cache `buster` above — stamped
+      // into the completion marker so an app update (new surah/adhkar data
+      // shape, wiped persisted cache) re-triggers a full prefetch instead of
+      // the marker silently matching forever.
+      void runOfflinePrefetch(queryClient, initialLocale, appJson.expo.version);
     }, PREFETCH_DELAY_MS);
     return () => clearTimeout(timer);
     // queryClient is a stable ref from useState(() => ...) in the parent
-    // (included below only to satisfy exhaustive-deps); initialLocale is a
-    // module-level snapshot already resolved by hydrateLocale() before this
-    // mounts (localeReady gate), so it's intentionally not a dep.
+    // (included below only to satisfy exhaustive-deps); initialLocale and
+    // appJson.expo.version are module-level snapshots (the former already
+    // resolved by hydrateLocale() before this mounts, via the localeReady
+    // gate), so neither is a reactive dep.
   }, [queryClient]);
   return null;
 }

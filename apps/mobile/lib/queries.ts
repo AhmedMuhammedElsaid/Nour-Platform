@@ -12,6 +12,7 @@ import type {
 import type { RadioStation } from "@repo/shared-core/schemas/radio";
 
 import { getJson } from "@/lib/api";
+import { readSurah } from "@/lib/quran-offline-store";
 import type { PlaylistDetailResponse } from "@/lib/types";
 
 export const playlistsQuery = (locale: Locale) =>
@@ -92,12 +93,23 @@ export const quranSurahReaderQuery = (
   queryOptions({
     queryKey: ["quran", "surah", surah, locale, translationSlug, reciterSlug] as const,
     staleTime: Infinity,
-    queryFn: () =>
-      getJson<SurahReader>(`/quran/surah/${surah}`, {
-        locale,
-        // Empty translationSlug ⇒ omit the param so the server resolves the
-        // locale default (ar.muyassar / en.sahih).
-        ...(translationSlug ? { translation: translationSlug } : {}),
-        reciter: reciterSlug,
-      }),
+    queryFn: async () => {
+      try {
+        return await getJson<SurahReader>(`/quran/surah/${surah}`, {
+          locale,
+          // Empty translationSlug ⇒ omit the param so the server resolves the
+          // locale default (ar.muyassar / en.sahih).
+          ...(translationSlug ? { translation: translationSlug } : {}),
+          reciter: reciterSlug,
+        });
+      } catch (err) {
+        // Offline fallback: surah payloads are persisted per-file, not in the
+        // AsyncStorage query-cache blob (see lib/quran-offline-store.ts), so
+        // a network failure can still resolve from the last successful
+        // prefetch for this exact identity before giving up.
+        const cached = await readSurah({ surah, locale, translationSlug, reciterSlug });
+        if (cached) return cached;
+        throw err;
+      }
+    },
   });

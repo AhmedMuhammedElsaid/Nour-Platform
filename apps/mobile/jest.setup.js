@@ -69,39 +69,92 @@ jest.mock("expo-font", () => ({
 }));
 
 // expo-file-system@56 uses a class-based API. Provide stable mocks so tests
-// don't hit native modules.
+// don't hit native modules. Backed by a small in-memory virtual filesystem
+// (scoped to this jest.mock factory closure, so it's fresh per test FILE but
+// shared across `it()` blocks within one file — same lifetime as the real
+// filesystem would have across a test file's renders) so write()/text()/
+// list() round-trip for real (needed by lib/quran-offline-store.ts), not just
+// the exists/size download-tracking the downloads feature originally needed.
 jest.mock("expo-file-system", () => {
   const DOC_URI = "file:///test/document/";
+  const fileStore = new Map(); // uri -> { content?: string, size: number }
+  const dirStore = new Set([DOC_URI]);
 
-  class MockDirectory {
-    uri = DOC_URI;
-    exists = false; // default: not present so create() is exercised
-    constructor(...uris) {
-      this.uri = uris
+  function joinUri(...uris) {
+    return (
+      uris
         .map((u) => (typeof u === "string" ? u : u?.uri ?? ""))
         .join("")
-        .replace(/\/+$/, "") + "/";
+        .replace(/\/+$/, "")
+    );
+  }
+  function nameOf(uri) {
+    const trimmed = uri.replace(/\/+$/, "");
+    return trimmed.slice(trimmed.lastIndexOf("/") + 1);
+  }
+
+  class MockDirectory {
+    constructor(...uris) {
+      this.uri = joinUri(...uris) + "/";
     }
-    create() {}
-    delete() {}
+    get exists() {
+      return dirStore.has(this.uri);
+    }
+    get name() {
+      return nameOf(this.uri);
+    }
+    create() {
+      dirStore.add(this.uri);
+    }
+    delete() {
+      dirStore.delete(this.uri);
+      for (const key of fileStore.keys()) {
+        if (key.startsWith(this.uri)) fileStore.delete(key);
+      }
+    }
+    list() {
+      const entries = [];
+      for (const key of fileStore.keys()) {
+        if (key.startsWith(this.uri) && !key.slice(this.uri.length).includes("/")) {
+          entries.push(new MockFile(key));
+        }
+      }
+      return entries;
+    }
   }
 
   class MockFile {
-    uri = "";
-    exists = false;
-    size = 0;
     constructor(...uris) {
-      this.uri = uris
-        .map((u) => (typeof u === "string" ? u : u?.uri ?? ""))
-        .join("")
-        .replace(/\/+$/, "");
+      this.uri = joinUri(...uris);
     }
-    delete() {}
+    get exists() {
+      return fileStore.has(this.uri);
+    }
+    get name() {
+      return nameOf(this.uri);
+    }
+    get size() {
+      return fileStore.get(this.uri)?.size ?? 0;
+    }
+    create() {
+      if (!fileStore.has(this.uri)) fileStore.set(this.uri, { content: "", size: 0 });
+    }
+    write(content) {
+      const str = String(content);
+      fileStore.set(this.uri, { content: str, size: str.length });
+    }
+    text() {
+      const entry = fileStore.get(this.uri);
+      if (!entry) return Promise.reject(new Error(`ENOENT: ${this.uri}`));
+      return Promise.resolve(entry.content ?? "");
+    }
+    delete() {
+      fileStore.delete(this.uri);
+    }
   }
   MockFile.downloadFileAsync = jest.fn().mockImplementation((_url, dest) => {
-    const f = new MockFile(dest.uri);
-    f.exists = true;
-    f.size = 1024 * 512;
+    const f = new MockFile(dest.uri ?? dest);
+    fileStore.set(f.uri, { size: 1024 * 512 });
     return Promise.resolve(f);
   });
 
