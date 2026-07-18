@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { QuranReciter, ReaderAyah, SurahReader } from "@repo/api/schemas/quran";
 import { usePlayer } from "@repo/ui/blocks/player-context";
 import { AyahRow } from "./ayah-row";
+import { MushafPage } from "./mushaf-page";
 import { ReaderSettingsSheet } from "./reader-settings-sheet";
 import { TafsirSheet } from "./tafsir-sheet";
 import { useAyahAudio } from "../hooks/use-ayah-audio";
+import { groupAyahsByPage } from "../lib/page-groups";
 import { loadPrefs, type QuranPrefs } from "../lib/quran-prefs";
 import {
   getBookmarks,
@@ -117,6 +119,10 @@ export function Reader({
 
   const editions = data.translationEdition ? [data.translationEdition] : [];
 
+  // Mushaf (Safha) page layout — groups the same ayahs by their `page` field
+  // (1-604, already on every ReaderAyah) instead of one row per ayah.
+  const pageGroups = useMemo(() => groupAyahsByPage(data.ayahs), [data.ayahs]);
+
   // Font scale applies to the Arabic ayah column via a CSS var the rows inherit.
   return (
     <div style={{ ["--quran-scale" as string]: prefs.fontScale }}>
@@ -128,24 +134,36 @@ export function Reader({
           reciters={reciters}
         />
       </div>
-      {data.ayahs.map((ayah) => (
-        <AyahRow
-          key={ayah.numberGlobal}
-          ayah={ayah}
-          showTranslation={prefs.showTranslation}
-          translationDir={translationDir}
-          showWordByWord={prefs.showWordByWord}
-          isCurrent={audio.currentGlobal === ayah.numberGlobal}
-          isPlaying={audio.isPlaying}
-          isBookmarked={isBookmarked(ayah)}
-          onPlay={onPlayToggle}
-          onToggleBookmark={onToggleBookmark}
-          onOpenTafsir={(ng) => {
-            const a = data.ayahs.find((x) => x.numberGlobal === ng);
-            if (a) setTafsirAyah({ numberGlobal: ng, ref: `${a.surah}:${a.ayahInSurah}` });
-          }}
-        />
-      ))}
+      {prefs.layout === "mushaf" ? (
+        pageGroups.map((group) => (
+          <MushafPage
+            key={group.page}
+            group={group}
+            activeGlobal={audio.currentGlobal}
+            isPlaying={audio.isPlaying}
+            onPlay={onPlayToggle}
+          />
+        ))
+      ) : (
+        data.ayahs.map((ayah) => (
+          <AyahRow
+            key={ayah.numberGlobal}
+            ayah={ayah}
+            showTranslation={prefs.showTranslation}
+            translationDir={translationDir}
+            showWordByWord={prefs.showWordByWord}
+            isCurrent={audio.currentGlobal === ayah.numberGlobal}
+            isPlaying={audio.isPlaying}
+            isBookmarked={isBookmarked(ayah)}
+            onPlay={onPlayToggle}
+            onToggleBookmark={onToggleBookmark}
+            onOpenTafsir={(ng) => {
+              const a = data.ayahs.find((x) => x.numberGlobal === ng);
+              if (a) setTafsirAyah({ numberGlobal: ng, ref: `${a.surah}:${a.ayahInSurah}` });
+            }}
+          />
+        ))
+      )}
       <TafsirSheet ayah={tafsirAyah} locale={locale} onClose={() => setTafsirAyah(null)} />
     </div>
   );

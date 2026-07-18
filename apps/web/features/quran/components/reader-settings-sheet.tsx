@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter, usePathname } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import type { QuranEdition, QuranReciter } from "@repo/api/schemas/quran";
-import { savePrefs, type QuranPrefs } from "../lib/quran-prefs";
+import { savePrefs, type QuranPrefs, type ReaderLayout } from "../lib/quran-prefs";
 
 export interface ReaderSettingsSheetProps {
   prefs: QuranPrefs;
@@ -25,6 +26,7 @@ export function ReaderSettingsSheet({
   editions,
   reciters,
 }: ReaderSettingsSheetProps) {
+  const t = useTranslations("quran");
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -121,6 +123,27 @@ export function ReaderSettingsSheet({
               onChange={(e) => update({ fontScale: Number(e.target.value) })}
             />
           </label>
+
+          <div className="flex items-center justify-between gap-3">
+            <span>{t("layout")}</span>
+            <div className="flex items-center gap-1.5" role="group" aria-label={t("layout")}>
+              {(["list", "mushaf"] as ReaderLayout[]).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={prefs.layout === option}
+                  onClick={() => update({ layout: option })}
+                  className={`rounded-full border px-3 py-1 text-sm ${
+                    prefs.layout === option
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-text-2"
+                  }`}
+                >
+                  {option === "list" ? t("layoutList") : t("layoutMushaf")}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {editions.length > 0 ? (
             <label className="flex items-center justify-between gap-3">

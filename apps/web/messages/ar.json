@@ -173,7 +173,12 @@
     "tafsirError": "التفسير غير متوفر لهذه الآية.",
     "bookmarks": "المحفوظات",
     "bookmarksEmpty": "لا توجد محفوظات بعد.",
-    "removeBookmark": "إزالة الإشارة"
+    "removeBookmark": "إزالة الإشارة",
+    "layout": "طريقة العرض",
+    "layoutList": "قائمة",
+    "layoutMushaf": "مصحف",
+    "pageN": "صفحة {number}",
+    "juzN": "جزء {number}"
   },
   "privacy": {
     "title": "سياسة الخصوصية",

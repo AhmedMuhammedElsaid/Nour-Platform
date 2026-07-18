@@ -10,6 +10,11 @@ vi.mock("@/i18n/navigation", () => ({
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
+// Translations echo the key so we can assert against stable text (mirrors
+// readers-shelf.test.tsx).
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string) => key,
+}));
 
 import { ReaderSettingsSheet } from "./reader-settings-sheet";
 import { DEFAULT_PREFS } from "../lib/quran-prefs";

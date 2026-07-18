@@ -173,7 +173,12 @@
     "tafsirError": "Tafsir unavailable for this ayah.",
     "bookmarks": "Bookmarks",
     "bookmarksEmpty": "No bookmarks yet.",
-    "removeBookmark": "Remove bookmark"
+    "removeBookmark": "Remove bookmark",
+    "layout": "Layout",
+    "layoutList": "List",
+    "layoutMushaf": "Mushaf",
+    "pageN": "Page {number}",
+    "juzN": "Juz {number}"
   },
   "privacy": {
     "title": "Privacy Policy",
