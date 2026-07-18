@@ -227,6 +227,17 @@ jest.mock("expo-notifications", () => ({
   AndroidImportance: { HIGH: 4, DEFAULT: 3 },
 }));
 
+// react-native-android-widget mock (OS home-screen widget) — factory mock so
+// jest never touches the real TurboModule (components/azan-scheduler.tsx
+// imports requestWidgetUpdate at module scope for the instant-refresh call;
+// any test that transitively renders it needs this).
+jest.mock("react-native-android-widget", () => ({
+  requestWidgetUpdate: jest.fn(),
+  registerWidgetTaskHandler: jest.fn(),
+  FlexWidget: "FlexWidget",
+  TextWidget: "TextWidget",
+}));
+
 // expo-quick-actions mock (launcher shortcuts) — factory mocks so jest never
 // loads the real native module.
 jest.mock("expo-quick-actions", () => ({
