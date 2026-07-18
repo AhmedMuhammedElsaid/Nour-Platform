@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   fetchEditions,
@@ -15,15 +15,22 @@ import {
   setLastRead,
   toggleBookmark,
 } from "../lib/quran-progress";
+import { groupAyahsByPage } from "../lib/quran-page-groups";
 import { useAyahAudio } from "../lib/use-ayah-audio";
 import { get, set, DEFAULT_QURAN_PREFS, type AyahRef, type QuranPrefs } from "../lib/storage";
 import type { PlayerCommand, PlayerState } from "../lib/player-state";
 import { useI18n } from "../lib/i18n";
 import { navigate } from "../lib/router";
 import { AyahRow } from "./ayah-row";
+import { MushafPage } from "./mushaf-page";
 import { TafsirSheet } from "./tafsir-sheet";
 import { Sheet } from "./ui/sheet";
 import { Settings, SkipBack } from "./ui/icons";
+
+const layoutActive =
+  "rounded-md border border-primary/40 bg-primary/15 px-2.5 py-1 text-xs font-semibold text-primary";
+const layoutInactive =
+  "rounded-md border border-border px-2.5 py-1 text-xs text-text-2 hover:text-text transition-colors";
 
 type Props = {
   surah: string;
@@ -77,6 +84,10 @@ export function QuranReader({ surah, autoplay, state, send }: Props) {
       .then(setData)
       .catch(() => setError(true));
   }, [hydrated, surahNumber, prefs.translationSlug, prefs.reciterSlug]);
+
+  // Mushaf (Safha) page layout — groups the same ayahs by their `page` field
+  // (1-604, already on every ReaderAyah) instead of one row per ayah.
+  const pageGroups = useMemo(() => (data ? groupAyahsByPage(data.ayahs) : []), [data]);
 
   const audio = useAyahAudio(
     data?.ayahs.map((a) => ({ numberGlobal: a.numberGlobal, audioUrl: a.audioUrl })) ?? [],
@@ -199,25 +210,40 @@ export function QuranReader({ surah, autoplay, state, send }: Props) {
       </div>
 
       {/* Ayahs */}
-      <div>
-        {data.ayahs.map((ayah) => (
-          <AyahRow
-            key={ayah.numberGlobal}
-            ayah={ayah}
-            showTranslation={prefs.showTranslation}
-            translationDir={data.translationDir}
-            showWordByWord={prefs.showWordByWord}
-            isCurrent={audio.currentGlobal === ayah.numberGlobal}
-            isPlaying={audio.isPlaying}
-            isBookmarked={isBookmarkedIn(bookmarks, { surah: ayah.surah, ayah: ayah.ayahInSurah })}
-            onPlay={onPlayToggle}
-            onToggleBookmark={(a) => void onToggleBookmark(a)}
-            onOpenTafsir={(a) =>
-              setTafsirAyah({ numberGlobal: a.numberGlobal, ref: `${a.surah}:${a.ayahInSurah}` })
-            }
-          />
-        ))}
-      </div>
+      {prefs.layout === "mushaf" ? (
+        <div>
+          {pageGroups.map((group, index) => (
+            <MushafPage
+              key={group.page}
+              group={group}
+              showBismillah={index === 0 && data.bismillahPre && surahNumber !== 1}
+              activeGlobal={audio.currentGlobal}
+              isPlaying={audio.isPlaying}
+              onPlay={onPlayToggle}
+            />
+          ))}
+        </div>
+      ) : (
+        <div>
+          {data.ayahs.map((ayah) => (
+            <AyahRow
+              key={ayah.numberGlobal}
+              ayah={ayah}
+              showTranslation={prefs.showTranslation}
+              translationDir={data.translationDir}
+              showWordByWord={prefs.showWordByWord}
+              isCurrent={audio.currentGlobal === ayah.numberGlobal}
+              isPlaying={audio.isPlaying}
+              isBookmarked={isBookmarkedIn(bookmarks, { surah: ayah.surah, ayah: ayah.ayahInSurah })}
+              onPlay={onPlayToggle}
+              onToggleBookmark={(a) => void onToggleBookmark(a)}
+              onOpenTafsir={(a) =>
+                setTafsirAyah({ numberGlobal: a.numberGlobal, ref: `${a.surah}:${a.ayahInSurah}` })
+              }
+            />
+          ))}
+        </div>
+      )}
 
       {/* Settings sheet */}
       <Sheet open={settingsOpen} onClose={() => setSettingsOpen(false)} title={t("quran.settings")}>
@@ -264,6 +290,28 @@ export function QuranReader({ surah, autoplay, state, send }: Props) {
               className="size-4 accent-[var(--color-primary)]"
             />
           </label>
+
+          <div className="flex items-center justify-between gap-3 text-sm text-text">
+            {t("quran.layout")}
+            <div className="flex items-center gap-1.5" role="group" aria-label={t("quran.layout")}>
+              <button
+                type="button"
+                aria-pressed={prefs.layout === "list"}
+                onClick={() => updatePrefs({ layout: "list" })}
+                className={prefs.layout === "list" ? layoutActive : layoutInactive}
+              >
+                {t("quran.layoutList")}
+              </button>
+              <button
+                type="button"
+                aria-pressed={prefs.layout === "mushaf"}
+                onClick={() => updatePrefs({ layout: "mushaf" })}
+                className={prefs.layout === "mushaf" ? layoutActive : layoutInactive}
+              >
+                {t("quran.layoutMushaf")}
+              </button>
+            </div>
+          </div>
 
           {editions.length > 0 ? (
             <label className="flex flex-col gap-1.5 text-sm text-text">

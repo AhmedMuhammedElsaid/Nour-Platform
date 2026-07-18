@@ -81,6 +81,11 @@ export type ReaderAyah = {
   words: QuranWord[];
   translation: string | null;
   audioUrl: string | null;
+  // Madani mushaf page (1-604) + juz (1-30) — already on every ayah the API
+  // returns (packages/shared-core/src/schemas/quran.ts readerAyahSchema), just
+  // not previously declared on this local view type. Drives Mushaf layout mode.
+  page: number;
+  juz: number;
 };
 
 export type SurahReaderData = {
@@ -89,6 +94,9 @@ export type SurahReaderData = {
   nameEn: string;
   ayahs: ReaderAyah[];
   translationDir: "rtl" | "ltr";
+  // false only for At-Tawbah (9) — gates the Mushaf layout's per-page Bismillah
+  // (packages/shared-core/src/schemas/quran.ts quranSurahSchema.bismillahPre).
+  bismillahPre: boolean;
 };
 
 export type QuranReciter = {
@@ -107,7 +115,7 @@ type RawSurah = {
   ayahCount: number;
 };
 type RawSurahReader = {
-  surah: { number: number; name: { ar: string; en: string } };
+  surah: { number: number; name: { ar: string; en: string }; bismillahPre: boolean };
   ayahs: ReaderAyah[];
   translationEdition: { dir: "rtl" | "ltr" } | null;
 };
@@ -139,6 +147,7 @@ export async function fetchSurahReader(
     nameEn: r.surah.name.en,
     ayahs: r.ayahs,
     translationDir: r.translationEdition?.dir ?? "ltr",
+    bismillahPre: r.surah.bismillahPre,
   };
 }
 

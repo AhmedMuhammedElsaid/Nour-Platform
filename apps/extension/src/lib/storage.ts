@@ -57,12 +57,15 @@ export type AzkarProgress = {
 
 // ── Quran device-local (identical keys to web nour.quran.*) ──────────────────
 
+export type ReaderLayout = "list" | "mushaf";
+
 export type QuranPrefs = {
   translationSlug: string;
   reciterSlug: string;
   showTranslation: boolean;
   showWordByWord: boolean;
   fontScale: number; // clamped 0.8..1.6 by the settings UI
+  layout: ReaderLayout;
 };
 
 export const DEFAULT_QURAN_PREFS: QuranPrefs = {
@@ -71,6 +74,7 @@ export const DEFAULT_QURAN_PREFS: QuranPrefs = {
   showTranslation: true,
   showWordByWord: false,
   fontScale: 1,
+  layout: "list",
 };
 
 export type AyahRef = {
@@ -168,6 +172,7 @@ const SCHEMA_MAP: {
       showTranslation: z.boolean(),
       showWordByWord: z.boolean(),
       fontScale: z.number(),
+      layout: z.enum(["list", "mushaf"]).default("list"),
     }),
     fallback: DEFAULT_QURAN_PREFS,
   },
