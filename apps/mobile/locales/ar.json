@@ -228,7 +228,12 @@
     "removeBookmark": "إزالة الإشارة",
     "tafsir": "التفسير",
     "loading": "جارٍ التحميل…",
-    "tafsirError": "التفسير غير متوفر لهذه الآية."
+    "tafsirError": "التفسير غير متوفر لهذه الآية.",
+    "layout": "تخطيط القراءة",
+    "layoutList": "قائمة",
+    "layoutMushaf": "مصحف",
+    "pageN": "صفحة {{number}}",
+    "juzN": "الجزء {{number}}"
   },
   "qibla": {
     "title": "اتجاه القبلة",

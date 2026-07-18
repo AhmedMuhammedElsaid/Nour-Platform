@@ -131,6 +131,22 @@ export function ReaderSettingsSheet({
               </View>
             </View>
 
+            <View className="gap-2">
+              <Text variant="muted">{t("quran.layout")}</Text>
+              <View className="flex-row flex-wrap gap-2">
+                <Selectable
+                  label={t("quran.layoutList")}
+                  selected={draft.layout === "list"}
+                  onPress={() => update({ layout: "list" })}
+                />
+                <Selectable
+                  label={t("quran.layoutMushaf")}
+                  selected={draft.layout === "mushaf"}
+                  onPress={() => update({ layout: "mushaf" })}
+                />
+              </View>
+            </View>
+
             {editions.length > 0 ? (
               <View className="gap-2">
                 <Text variant="muted">{t("quran.translation")}</Text>

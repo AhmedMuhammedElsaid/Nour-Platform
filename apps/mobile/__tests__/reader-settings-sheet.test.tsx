@@ -44,3 +44,27 @@ describe("ReaderSettingsSheet — Save/Cancel staging (point 16)", () => {
     expect(onClose).toHaveBeenCalled();
   });
 });
+
+describe("ReaderSettingsSheet — Layout toggle (Mushaf page view)", () => {
+  it("does NOT apply the Mushaf layout pill until Save is pressed", () => {
+    const { onChange } = renderSheet();
+
+    fireEvent.press(screen.getByText("Mushaf"));
+    expect(onChange).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByText("Save"));
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ layout: "mushaf" }),
+    );
+  });
+
+  it("discards a staged Mushaf pill on Cancel", () => {
+    const { onChange, onClose } = renderSheet();
+
+    fireEvent.press(screen.getByText("Mushaf"));
+    fireEvent.press(screen.getByText("Cancel"));
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
+  });
+});

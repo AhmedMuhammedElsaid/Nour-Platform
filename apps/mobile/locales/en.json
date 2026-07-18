@@ -228,7 +228,12 @@
     "removeBookmark": "Remove bookmark",
     "tafsir": "Tafsir",
     "loading": "Loading…",
-    "tafsirError": "Tafsir unavailable for this ayah."
+    "tafsirError": "Tafsir unavailable for this ayah.",
+    "layout": "Layout",
+    "layoutList": "List",
+    "layoutMushaf": "Mushaf",
+    "pageN": "Page {{number}}",
+    "juzN": "Juz {{number}}"
   },
   "qibla": {
     "title": "Qibla Direction",

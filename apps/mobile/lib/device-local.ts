@@ -78,12 +78,14 @@ export async function setQuranLastRead(ref: AyahRef): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Quran reader prefs — `nour.quran.prefs`. Mirrors the web shape
-// (apps/web/features/quran/lib/quran-prefs.ts) minus the `layout` field
-// (mushaf-page toggle is deferred). `translationSlug: ""` means "let the
-// server resolve the locale default" (ar.muyassar / en.sahih); a non-empty
-// value is an explicit user override passed as the ?translation= param.
+// Quran reader prefs — `nour.quran.prefs`. Shape fully mirrors the web app
+// (apps/web/features/quran/lib/quran-prefs.ts). `translationSlug: ""` means
+// "let the server resolve the locale default" (ar.muyassar / en.sahih); a
+// non-empty value is an explicit user override passed as the ?translation=
+// param.
 // ---------------------------------------------------------------------------
+
+export type ReaderLayout = "list" | "mushaf";
 
 export type QuranPrefs = {
   translationSlug: string;
@@ -91,6 +93,7 @@ export type QuranPrefs = {
   showTranslation: boolean;
   showWordByWord: boolean;
   fontScale: number; // 1 = base; clamped 0.8..1.6 by the settings UI
+  layout: ReaderLayout;
 };
 
 export const DEFAULT_QURAN_PREFS: QuranPrefs = {
@@ -99,6 +102,7 @@ export const DEFAULT_QURAN_PREFS: QuranPrefs = {
   showTranslation: true,
   showWordByWord: false,
   fontScale: 1,
+  layout: "list",
 };
 
 function isQuranPrefs(value: unknown): value is Partial<QuranPrefs> {

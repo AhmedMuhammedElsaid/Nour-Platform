@@ -1372,6 +1372,34 @@ plain `Animated` trickle to 0.85, snap-to-1 + fade when fetches settle. JS-only 
 `accessibilityElementsHidden` elements from all queries incl. `testID`; pass
 `{ includeHiddenElements: true }`. Visual device-verify pending (A72).
 
+## Mushaf (Safha) page layout — Quran reader (2026-07-18, JS-only → OTA-eligible, not yet pushed)
+
+Optional page-flow reading mode alongside the existing one-ayah-per-row list. `lib/device-local.ts`
+`QuranPrefs` gained `layout: ReaderLayout` (`"list" | "mushaf"`, default `"list"`) — shape now
+fully mirrors web's `apps/web/features/quran/lib/quran-prefs.ts` (same key `nour.quran.prefs`,
+old stored blobs hydrate fine via the existing default-spread). NEW pure helper
+`features/quran/lib/page-groups.ts`: `groupAyahsByPage` (splits the surah's `ReaderAyah[]` on
+`page` change, no new API call — `page`/`juz` already ship on every ayah), `toArabicIndicDigits`,
+`ayahMarker` (U+06DD + Arabic-Indic digits, upgrading list mode's Western-digit badge). NEW
+`features/quran/components/mushaf-page.tsx`: one justified `font-quran` paragraph per mushaf
+page, inline per-ayah `onPress` spans (`testID="mushaf-ayah-<numberGlobal>"` — nested-Text
+`fireEvent.press` needs the exact pressable node, not just text match), Bismillah shown only on
+the page's first group when `surah.bismillahPre && surah.number !== 1` (literal Uthmani string,
+not i18n — same text as `apps/web/app/[locale]/quran/[surah]/page.tsx:84`), Page/Juz footer.
+`reader.tsx` branches its `FlatList` on `prefs.layout` (list-mode FlatList untouched byte-for-
+byte) with a second `mushafRef`; the scroll-to-playing effect now branches too (mushaf scrolls to
+the page group containing `activeGlobal`). Selection state (`selectedGlobal`) is v1-only —
+tap toggles a `bg-surface-2` highlight; play/bookmark/tafsir stay list-mode-only (nested-Text
+longPress is flaky on Android). `reader-settings-sheet.tsx` gained a Layout section (List/Mushaf
+`Selectable` pills, existing staged Save/Cancel semantics apply). NEW `quran.layout`/
+`layoutList`/`layoutMushaf`/`pageN`/`juzN` locale keys (en+ar). NEW `__tests__/page-groups.test.ts`
+(7 cases) + `__tests__/mushaf-page.test.tsx` (5 cases); extended `__tests__/reader-settings-sheet.test.tsx`
+(+2 cases, Mushaf pill staging). Full gate green. **Justify rendering + tap targets = device-verify
+pending** (Android `textAlign:"justify"` needs API 26+; `writingDirection` is iOS-only, same
+Android-resolves-RTL-from-first-strong-char caveat as `ayah-row.tsx`). Follow-ups out of scope:
+mirror to web (its `layout` pref is already declared, unconsumed) + extension; tafsir/actions
+from mushaf mode; true global 604-page browsing.
+
 ## Offline-first pass #1 (2026-07-18, `b0c25eb`+`6b6f4cd`+`d97583b`+`ef31715`+fix `f4a0903`, pushed + OTA'd runtime 1.1.0)
 
 Prayer times (Aladhan cache + compute fallback) and Qibla were already offline; this pass covers

@@ -21,7 +21,9 @@ import {
 import { usePlayer } from "@/lib/player-context";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
 import { ayahTrackId, buildAyahQueue, parseAyahTrackId } from "../lib/ayah-queue";
+import { groupAyahsByPage, type AyahPageGroup } from "../lib/page-groups";
 import { AyahRow } from "./ayah-row";
+import { MushafPage } from "./mushaf-page";
 import { ReaderSettingsSheet } from "./reader-settings-sheet";
 import { TafsirSheet } from "./tafsir-sheet";
 
@@ -50,7 +52,16 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs,
   const [bookmarks, setBookmarks] = useState<AyahRef[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tafsirAyah, setTafsirAyah] = useState<{ numberGlobal: number; ref: string } | null>(null);
+  const [selectedGlobal, setSelectedGlobal] = useState<number | null>(null);
   const listRef = useRef<FlatList<ReaderAyah>>(null);
+  const mushafRef = useRef<FlatList<AyahPageGroup>>(null);
+
+  // Mushaf (Safha) page layout — groups the same ayahs by their `page` field
+  // (1-604, already on every ReaderAyah) instead of one row per ayah.
+  const pageGroups = useMemo(() => groupAyahsByPage(data.ayahs), [data.ayahs]);
+  const onSelectAyah = useCallback((numberGlobal: number) => {
+    setSelectedGlobal((cur) => (cur === numberGlobal ? null : numberGlobal));
+  }, []);
 
   // Quran recitation plays through the site-wide RNTP player (one engine), so it
   // gets the mini-player + lock-screen controls and keeps playing when you leave
@@ -95,14 +106,22 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs,
     }
   }, [data.ayahs, surahNameEn]);
 
-  // Scroll the currently-playing ayah into view.
+  // Scroll the currently-playing ayah into view — list mode scrolls to the
+  // ayah's own row; mushaf mode scrolls to the page group that contains it.
   useEffect(() => {
     if (activeGlobal === null) return;
+    if (prefs.layout === "mushaf") {
+      const idx = pageGroups.findIndex((g) => g.ayahs.some((a) => a.numberGlobal === activeGlobal));
+      if (idx >= 0) {
+        mushafRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.1 });
+      }
+      return;
+    }
     const idx = data.ayahs.findIndex((a) => a.numberGlobal === activeGlobal);
     if (idx >= 0) {
       listRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.3 });
     }
-  }, [activeGlobal, data.ayahs]);
+  }, [activeGlobal, data.ayahs, prefs.layout, pageGroups]);
 
   const onToggleBookmark = useCallback(
     (ayah: ReaderAyah) => {
@@ -175,6 +194,27 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs,
           SafeAreaView), so without this the surah title collided with the clock/
           battery icons and ayahs bled under them on scroll — same fix as Home. */}
       <View className="flex-1 bg-bg">
+      {prefs.layout === "mushaf" ? (
+      <FlatList<AyahPageGroup>
+        ref={mushafRef}
+        className="flex-1 bg-bg px-4"
+        data={pageGroups}
+        keyExtractor={(g) => String(g.page)}
+        ListHeaderComponent={header}
+        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: dockSpacing }}
+        onScrollToIndexFailed={() => undefined}
+        renderItem={({ item, index }) => (
+          <MushafPage
+            group={item}
+            fontScale={prefs.fontScale}
+            showBismillah={index === 0 && data.surah.bismillahPre && data.surah.number !== 1}
+            activeGlobal={activeGlobal}
+            selectedGlobal={selectedGlobal}
+            onSelectAyah={onSelectAyah}
+          />
+        )}
+      />
+      ) : (
       <FlatList<ReaderAyah>
         ref={listRef}
         className="flex-1 bg-bg px-4"
@@ -205,6 +245,7 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs,
           />
         )}
       />
+      )}
         {/* Opaque scrim over the status-bar area — hides ayahs scrolled up behind
             the transparent status bar (mirrors app/index.tsx). */}
         <View
