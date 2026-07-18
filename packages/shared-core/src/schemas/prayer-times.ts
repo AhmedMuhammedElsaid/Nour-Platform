@@ -102,3 +102,15 @@ export type AzkarReminderSettings = z.infer<typeof azkarReminderSettingsSchema>;
 
 export const DEFAULT_AZKAR_REMINDER_SETTINGS: AzkarReminderSettings =
   azkarReminderSettingsSchema.parse({});
+
+// Friday Surah Al-Kahf reminder — fixed 12:00 local, not configurable.
+// Device-local contract `nour.kahf.reminder` (mobile AsyncStorage · extension
+// browser.storage). On by default like the azkar reminders; delivery still
+// gates on the OS/browser notification permission per surface.
+export const kahfReminderSettingsSchema = z.object({
+  enabled: z.boolean().default(true),
+});
+export type KahfReminderSettings = z.infer<typeof kahfReminderSettingsSchema>;
+
+export const DEFAULT_KAHF_REMINDER_SETTINGS: KahfReminderSettings =
+  kahfReminderSettingsSchema.parse({});

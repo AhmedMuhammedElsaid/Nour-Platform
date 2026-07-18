@@ -139,6 +139,48 @@ export function nextAzkarReminderEvent(
   return best;
 }
 
+// ── Friday Surah Al-Kahf reminder ────────────────────────────────────────────
+// Calendar-only (fixed Friday 12:00 local) — deliberately independent of
+// prayer-time inputs/location, unlike the adhan/azkar events above.
+
+export const KAHF_SURAH = 18;
+export type KahfReminderEvent = { time: Date };
+
+const KAHF_HOUR = 12;
+const FRIDAY = 5; // Date#getDay convention (0 = Sunday)
+
+function kahfTimeOn(day: Date): Date {
+  const d = new Date(day);
+  d.setHours(KAHF_HOUR, 0, 0, 0);
+  return d;
+}
+
+// Next Friday 12:00 local strictly after `now`. Built from local calendar
+// fields (setDate/setHours) so a DST shift between now and that Friday cannot
+// skew the hour. Pure — no DOM/Date.now.
+export function nextKahfReminderTime(now: Date): Date {
+  let daysAhead = (FRIDAY - now.getDay() + 7) % 7;
+  if (daysAhead === 0 && kahfTimeOn(now).getTime() <= now.getTime()) {
+    daysAhead = 7;
+  }
+  const target = new Date(now);
+  target.setDate(target.getDate() + daysAhead);
+  return kahfTimeOn(target);
+}
+
+// The window the home-screen Kahf icon is visible: Friday 12:00 → midnight.
+// Pure — no DOM/Date.now.
+export function isKahfIconWindow(now: Date): boolean {
+  return now.getDay() === FRIDAY && now.getHours() >= KAHF_HOUR;
+}
+
+// The Friday-12:00 event when `now` is inside the icon window, else null.
+// Grace is the rest of Friday — a browser first opened at 15:00 still reminds
+// once; callers dedup on the event time, which is stable all day. Pure.
+export function missedKahfReminder(now: Date): KahfReminderEvent | null {
+  return isKahfIconWindow(now) ? { time: kahfTimeOn(now) } : null;
+}
+
 // True when a reminder's scheduled instant is more than `graceMs` in the past
 // at `now` — i.e. its timer resolved long after it was armed. Mirrors the
 // adhan scheduler's freshness guard. Pure — no DOM/Date.now.

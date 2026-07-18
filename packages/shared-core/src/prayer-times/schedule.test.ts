@@ -8,9 +8,12 @@ import type { PrayerInstant } from "./compute";
 import {
   isAdhanEventStale,
   isAzkarReminderEventStale,
+  isKahfIconWindow,
   isWithinAdhanWindow,
+  missedKahfReminder,
   nextAdhanEvent,
   nextAzkarReminderEvent,
+  nextKahfReminderTime,
   recentlyMissedAdhan,
   recentlyMissedAzkarReminder,
 } from "./schedule";
@@ -270,5 +273,62 @@ describe("isAzkarReminderEventStale", () => {
 
   it("is not stale when the timer fires slightly early", () => {
     expect(isAzkarReminderEventStale(ev(4, 15), new Date(2026, 5, 7, 4, 14, 59), GRACE)).toBe(false);
+  });
+});
+
+// ── Friday Surah Al-Kahf reminder ─────────────────────────────────────────────
+// 2026-01-02 is a Friday.
+
+describe("nextKahfReminderTime", () => {
+  it("returns this Friday 12:00 from a midweek instant", () => {
+    // Wednesday 2025-12-31 → Friday 2026-01-02 12:00
+    expect(nextKahfReminderTime(new Date(2025, 11, 31, 9, 0))).toEqual(
+      new Date(2026, 0, 2, 12, 0, 0, 0),
+    );
+  });
+
+  it("returns today 12:00 on Friday morning", () => {
+    expect(nextKahfReminderTime(new Date(2026, 0, 2, 11, 59))).toEqual(
+      new Date(2026, 0, 2, 12, 0, 0, 0),
+    );
+  });
+
+  it("skips to next Friday when it is exactly 12:00 (strictly after)", () => {
+    expect(nextKahfReminderTime(new Date(2026, 0, 2, 12, 0, 0, 0))).toEqual(
+      new Date(2026, 0, 9, 12, 0, 0, 0),
+    );
+  });
+
+  it("skips to next Friday on Friday afternoon, across a month boundary", () => {
+    // Friday 2026-01-30 13:00 → Friday 2026-02-06
+    expect(nextKahfReminderTime(new Date(2026, 0, 30, 13, 0))).toEqual(
+      new Date(2026, 1, 6, 12, 0, 0, 0),
+    );
+  });
+});
+
+describe("isKahfIconWindow", () => {
+  it("is closed before Friday noon and on adjacent days", () => {
+    expect(isKahfIconWindow(new Date(2026, 0, 1, 23, 59))).toBe(false); // Thu
+    expect(isKahfIconWindow(new Date(2026, 0, 2, 11, 59))).toBe(false); // Fri am
+    expect(isKahfIconWindow(new Date(2026, 0, 3, 0, 0))).toBe(false); // Sat
+  });
+
+  it("is open from Friday 12:00 through end of Friday", () => {
+    expect(isKahfIconWindow(new Date(2026, 0, 2, 12, 0))).toBe(true);
+    expect(isKahfIconWindow(new Date(2026, 0, 2, 23, 59))).toBe(true);
+  });
+});
+
+describe("missedKahfReminder", () => {
+  it("returns the stable Friday-12:00 event all Friday afternoon", () => {
+    expect(missedKahfReminder(new Date(2026, 0, 2, 15, 0))?.time).toEqual(
+      new Date(2026, 0, 2, 12, 0, 0, 0),
+    );
+  });
+
+  it("returns null outside the window", () => {
+    expect(missedKahfReminder(new Date(2026, 0, 2, 11, 0))).toBeNull();
+    expect(missedKahfReminder(new Date(2026, 0, 3, 15, 0))).toBeNull();
   });
 });
