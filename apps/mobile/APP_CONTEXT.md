@@ -1371,3 +1371,43 @@ plain `Animated` trickle to 0.85, snap-to-1 + fade when fetches settle. JS-only 
 (not yet OTA'd). Test `__tests__/navigation-progress.test.tsx` (4 cases) — ⚠️ RTL v13 hides
 `accessibilityElementsHidden` elements from all queries incl. `testID`; pass
 `{ includeHiddenElements: true }`. Visual device-verify pending (A72).
+
+## Offline-first pass #1 (2026-07-18, `b0c25eb`+`6b6f4cd`+`d97583b`+`ef31715`+fix `f4a0903`, pushed + OTA'd runtime 1.1.0)
+
+Prayer times (Aladhan cache + compute fallback) and Qibla were already offline; this pass covers
+**adhkar + Quran reading**. Implemented Sonnet, reviewed Opus (verdict SHIP AFTER FIXES; both fixed).
+
+- **Query-cache persistence** (`_layout.tsx`): `PersistQueryClientProvider` + `createAsyncStoragePersister`
+  (deps `@tanstack/react-query-persist-client` + `query-async-storage-persister`, exact-pinned `5.101.0`
+  to match react-query — ADR 0013). Key `nour.query.cache.v1` (**mobile-only, NOT a cross-surface
+  `nour.*` contract**), maxAge = default gcTime = 30d, `buster` = `app.json` `expo.version`.
+  ⚠️ `dehydrateOptions.shouldDehydrateQuery` EXCLUDES `["quran","surah"]` keys — the whole cache
+  persists as ONE AsyncStorage value, and 114 surah payloads would plausibly blow Android's ~2MB
+  CursorWindow per-row READ limit (write succeeds, restore throws, provider treats it as no-cache).
+  Never re-add big payloads to the blob; give them a file store instead.
+- **Per-surah file store** (NEW `lib/quran-offline-store.ts`): one JSON file per
+  (surah, locale, translation|"default", reciter) under `documentDirectory/quran-offline/`
+  (expo-file-system modern `Directory`/`File`/`Paths` API); `writeSurah`/`readSurah`/`pruneStaleSurahs`
+  (prunes non-current-identity files each prefetch run). `quranSurahReaderQuery` queryFn (`lib/queries.ts`)
+  tries network first, falls back to the file on failure, else rethrows.
+- **Background prefetch** (NEW `lib/offline-prefetch.ts`, mounted in `_layout` 3s post-`localeReady`):
+  all adhkar details + all 114 surahs via the `lib/queries.ts` factories (keys match), concurrency 3,
+  `fetchQuery` NOT `prefetchQuery` (prefetchQuery swallows errors → failure would be unobservable).
+  Completion marker `nour.quran.offline.v1` = `{locale, translation, reciter, version}` — `version`
+  MUST stay in the marker: the buster wipes the persisted cache on app update, and a version-blind
+  marker would early-return forever leaving offline empty (Opus CONFIRMED finding). Any fetch failure →
+  stop silently, marker unset, retry next launch. Accepted: 3s delay could race a slow cache restore
+  (wasteful refetch, never corrupting); no run-lock (fetchQuery dedup suffices).
+- **Data-first error gates** (7 screens: home, adhkar list/reader, playlist detail, quran index/reader,
+  radio): `isError` → `isError && !data` so cached data renders when an offline refetch fails. Pattern
+  for new screens: never gate on `isError` alone. TS narrowing needs an explicit `if (!data) return null`
+  after the gate (the old `isError || !data` narrowed for free; `isError && !data` doesn't).
+- **jest.setup.js**: expo-file-system mock is now a small in-memory virtual FS (live `exists`/`size`,
+  `write`/`text`/`list`/`delete`) — backward-compatible with the downloads tests. Tests:
+  `__tests__/offline-prefetch.test.tsx` (marker semantics, file-store write, queryFn fallback) + an
+  adhkar-list cached-data-despite-error case.
+- ⚠️ **STALE gotcha correction**: `react-hooks/exhaustive-deps` IS configured now (warn +
+  `--max-warnings 0`) — the old "rule not found" note above is obsolete; satisfy the rule, don't disable.
+- **Device-verify pending (A72, needs the vC9 build)**: online first-launch → let prefetch finish
+  (~114 fetches) → airplane mode → force-close → cold start → unvisited surah + adhkar reader + prayer
+  times + qibla all render; also confirm `quran-offline/` file count = 114.
