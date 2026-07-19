@@ -1626,3 +1626,20 @@ in-app Home screen. **NOT yet built/pushed to origin** — owner triggers both s
   (row-in-a-row-not-column, RTL order, icon count) entirely from that preview before any device build.
 - **Next**: owner builds (`eas build`) + pushes; then the plan's on-device checklist (widget add/resize,
   arc position sanity at different times of day, all tap targets, radio/adhkar offline degrade).
+
+### Bottom-dock spacing bug: doubled padding on every scrollable screen (2026-07-20, `14874dd`)
+
+Owner shared a Home screenshot showing a large empty gap between the footer and the bottom dock
+(tab bar + mini-player). Root cause: `lib/use-dock-spacing.ts` re-added the dock's height
+(`TAB_BAR_HEIGHT` + `MINI_PLAYER_HEIGHT` + `insets.bottom`) as scroll `paddingBottom`, on the
+premise the dock is an absolutely-positioned overlay. **It never was** — `components/bottom-dock.tsx`
+has been a plain flex-column sibling of `<Stack/>` in `app/_layout.tsx` since its original
+introduction (`31767dd`), no `position: "absolute"` anywhere, so the Stack navigator's `flex:1` area
+is already sized by flexbox to exclude the dock's full rendered height. The padding was pure
+double-counting — affected **all 9 screens** using the hook (Home, Quran reader/index, Adhkar
+list/reader, Playlist detail, Radio, Qibla, Prayer times), not just Home.
+Fix: `useDockSpacing()` now returns a small constant breathing-room gap only (no dock-height math).
+Single-file change (`lib/use-dock-spacing.ts`); all 9 call sites unchanged. Full gate green (mobile
+43/43 suites, typecheck/lint clean except the same pre-existing unrelated error noted above).
+**Gotcha for future sessions**: if `BottomDock` is ever made a genuine overlay (`position:
+"absolute"`), `useDockSpacing()` needs its dock-height math added back — the two must stay in sync.
