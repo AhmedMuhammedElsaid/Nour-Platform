@@ -16,12 +16,16 @@ import type { PrayerRowsResult } from "@/features/prayer-times/widget/build-pray
 import type { RadioRowResult } from "@/features/radio/widget/build-radio-row";
 import type { AdhkarRowResult } from "@/features/adhkar/widget/build-adhkar-row";
 
-const BG = "#0f0d0a"; // --color-bg
+// bg-surface, not the darker app-bg — the widget itself IS the card, same as
+// the in-app PrayerTimesWidget's own bg-surface card (home_widget_plan.md §5.8).
+const BG = "#1c1915"; // --color-surface
 const GOLD = "#c8a050"; // --color-primary / brand gold
+const SUN = "#e4c57e"; // --color-sun — next-prayer time tint (prayer-times-widget.tsx:154)
 const TEXT = "#f0e6cc"; // --color-text (dark theme)
 const MUTED = "#8a7a62"; // --color-text-2 (dark theme)
 const ROW_HIGHLIGHT_BG = "#252018"; // --color-surface-2
 const DIVIDER = "rgba(200, 160, 80, 0.15)"; // --color-border (dark theme)
+const ICON_CHIP_BG = "rgba(200, 160, 80, 0.10)"; // --color-primary/10 — adhkar-preview-shelf.tsx icon chip
 
 export type NourHomeWidgetProps = {
   width: number;
@@ -89,7 +93,7 @@ export function NourHomeWidget({ width, height, locale, prayer, radio, adhkar }:
               <TextWidget
                 text={row.time}
                 style={{
-                  color: TEXT,
+                  color: row.isNext ? SUN : TEXT,
                   fontSize: 11,
                   fontWeight: row.isNext ? "bold" : "normal",
                   marginTop: 2,
@@ -118,7 +122,20 @@ export function NourHomeWidget({ width, height, locale, prayer, radio, adhkar }:
           flex: 1,
         }}
       >
-        <TextWidget text={radioIcon} style={{ fontSize: 15, marginRight: 8, marginLeft: 8 }} />
+        <FlexWidget
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 10,
+            backgroundColor: ICON_CHIP_BG,
+            alignItems: "center",
+            justifyContent: "center",
+            marginRight: 10,
+            marginLeft: 10,
+          }}
+        >
+          <TextWidget text={radioIcon} style={{ fontSize: 14 }} />
+        </FlexWidget>
         <TextWidget text={radioText} style={{ color: TEXT, fontSize: 12 }} truncate="END" maxLines={1} />
       </FlexWidget>
 
@@ -140,7 +157,20 @@ export function NourHomeWidget({ width, height, locale, prayer, radio, adhkar }:
           flex: 1,
         }}
       >
-        <TextWidget text={adhkarIcon} style={{ fontSize: 15, marginRight: 8, marginLeft: 8 }} />
+        <FlexWidget
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 10,
+            backgroundColor: ICON_CHIP_BG,
+            alignItems: "center",
+            justifyContent: "center",
+            marginRight: 10,
+            marginLeft: 10,
+          }}
+        >
+          <TextWidget text={adhkarIcon} style={{ fontSize: 14 }} />
+        </FlexWidget>
         <TextWidget text={adhkar.label} style={{ color: TEXT, fontSize: 12 }} />
       </FlexWidget>
     </FlexWidget>
