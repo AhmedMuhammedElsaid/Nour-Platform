@@ -1,32 +1,20 @@
-// Computes the bottom padding a scrollable screen needs so its content never
-// hides behind the bottom dock (BottomTabBar + MiniPlayer, see
-// components/bottom-dock.tsx). The tab bar is always shown and carries the
-// safe-area inset; the mini-player stacks above it when a queue is loaded.
-
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-import { usePlayer } from "@/lib/player-context";
-
-// Rendered heights (icon/text rows + paddings) from bottom-tab-bar.tsx and
-// mini-player.tsx — trimmed to the actual content height (the dock is an opaque
-// overlay, so content only needs to clear it, not float well above it).
-const TAB_BAR_HEIGHT = 52;
-const MINI_PLAYER_HEIGHT = 60;
-// Small breathing room below the last item, independent of the dock.
+// Small breathing room below a scrollable screen's last item.
+//
+// The bottom dock (BottomTabBar + MiniPlayer, see components/bottom-dock.tsx)
+// is NOT an overlay — confirmed from its original introduction (`31767dd`)
+// onward, it has always been a plain sibling of <Stack/> in app/_layout.tsx's
+// flex-column tree, with no `position: "absolute"` anywhere. That means the
+// Stack navigator (and therefore every screen's own flex:1 area) is ALREADY
+// sized by flexbox to exclude the dock's full rendered height, tab bar +
+// mini-player + their own safe-area padding included — a screen's content
+// can never render behind it. A previous version of this hook re-added the
+// dock's height (TAB_BAR_HEIGHT + MINI_PLAYER_HEIGHT + insets.bottom) on top
+// of that, which just double-reserved the same space twice, showing up as a
+// large empty gap between a screen's last item and the dock (reported
+// 2026-07-20). Kept as a hook (not inlined per call site) so a future screen
+// that genuinely needs extra clearance has one place to add it back.
 const BASE_GAP = 8;
 
-// NOTE: deliberately does NOT read usePathname(). Every screen that calls this
-// hook stays MOUNTED in the expo-router stack, so subscribing to the pathname
-// re-rendered all of them on every navigation (JS-thread storm → janky tab
-// switches). The only thing the path was used for was collapsing the pad on the
-// /player modal — but this hook is never called there, and those background
-// screens are invisible behind the full-screen modal, so the pad is moot.
 export function useDockSpacing(): number {
-  const insets = useSafeAreaInsets();
-  const { hasQueue } = usePlayer();
-
-  let dock = TAB_BAR_HEIGHT + insets.bottom;
-  if (hasQueue) dock += MINI_PLAYER_HEIGHT;
-
-  return dock + BASE_GAP;
+  return BASE_GAP;
 }
