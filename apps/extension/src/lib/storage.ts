@@ -74,7 +74,7 @@ export const DEFAULT_QURAN_PREFS: QuranPrefs = {
   showTranslation: true,
   showWordByWord: false,
   fontScale: 1,
-  layout: "list",
+  layout: "mushaf",
 };
 
 export type AyahRef = {
@@ -172,7 +172,7 @@ const SCHEMA_MAP: {
       showTranslation: z.boolean(),
       showWordByWord: z.boolean(),
       fontScale: z.number(),
-      layout: z.enum(["list", "mushaf"]).default("list"),
+      layout: z.enum(["list", "mushaf"]).default("mushaf"),
     }),
     fallback: DEFAULT_QURAN_PREFS,
   },

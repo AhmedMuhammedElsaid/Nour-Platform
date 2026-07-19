@@ -65,6 +65,10 @@ export type QuranSurahSummary = {
   meaning: string;
   ayahCount: number;
   revelationPlace: "meccan" | "medinan";
+  // Madani mushaf page (1-604) the surah's first ayah falls on — lets Mushaf
+  // mode land on the right page for a surah-number entry point without an
+  // extra fetch (packages/api/src/schemas/quran.ts quranSurahSchema.pageStart).
+  pageStart: number;
 };
 
 export type QuranWord = {
@@ -113,10 +117,50 @@ type RawSurah = {
   meaning: string;
   revelationPlace: "meccan" | "medinan";
   ayahCount: number;
+  pageStart: number;
 };
 type RawSurahReader = {
   surah: { number: number; name: { ar: string; en: string }; bismillahPre: boolean };
   ayahs: ReaderAyah[];
+  translationEdition: { dir: "rtl" | "ltr" } | null;
+};
+
+// ── Quran — Mushaf (Safha) page mode ────────────────────────────────────────
+// GET /api/v1/quran/page/:n returns one Madani mushaf page (1-604), split into
+// 1+ per-surah segments (2+ when short surahs share a page, common in juz 30).
+// Local view types only — the extension never imports @repo/api.
+
+export type PageSegment = {
+  surahNumber: number;
+  surahNameAr: string;
+  surahNameEn: string;
+  bismillahPre: boolean;
+  // True iff this segment opens a new surah on the page AND that surah has a
+  // Bismillah preface AND it isn't At-Tawbah (9) — computed server-side.
+  showBismillah: boolean;
+  ayahs: ReaderAyah[];
+};
+
+export type PageReaderData = {
+  page: number;
+  juz: number;
+  prevPage: number | null;
+  nextPage: number | null;
+  segments: PageSegment[];
+  translationDir: "rtl" | "ltr";
+};
+
+type RawPageSegment = {
+  surah: { number: number; name: { ar: string; en: string }; meaning: string; bismillahPre: boolean };
+  showBismillah: boolean;
+  ayahs: ReaderAyah[];
+};
+type RawPageReader = {
+  page: number;
+  juz: number;
+  prevPage: number | null;
+  nextPage: number | null;
+  segments: RawPageSegment[];
   translationEdition: { dir: "rtl" | "ltr" } | null;
 };
 
@@ -129,6 +173,7 @@ export async function fetchSurahs(): Promise<QuranSurahSummary[]> {
     meaning: s.meaning,
     ayahCount: s.ayahCount,
     revelationPlace: s.revelationPlace,
+    pageStart: s.pageStart,
   }));
 }
 
@@ -148,6 +193,32 @@ export async function fetchSurahReader(
     ayahs: r.ayahs,
     translationDir: r.translationEdition?.dir ?? "ltr",
     bismillahPre: r.surah.bismillahPre,
+  };
+}
+
+export async function fetchPageReader(
+  page: number,
+  opts: { translation?: string; reciter?: string } = {},
+): Promise<PageReaderData> {
+  const r = await getJson<RawPageReader>(`/quran/page/${page}`, {
+    locale: LOCALE,
+    translation: opts.translation,
+    reciter: opts.reciter,
+  });
+  return {
+    page: r.page,
+    juz: r.juz,
+    prevPage: r.prevPage,
+    nextPage: r.nextPage,
+    translationDir: r.translationEdition?.dir ?? "ltr",
+    segments: r.segments.map((s) => ({
+      surahNumber: s.surah.number,
+      surahNameAr: s.surah.name.ar,
+      surahNameEn: s.surah.name.en,
+      bismillahPre: s.surah.bismillahPre,
+      showBismillah: s.showBismillah,
+      ayahs: s.ayahs,
+    })),
   };
 }
 

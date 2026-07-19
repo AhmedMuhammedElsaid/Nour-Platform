@@ -9,6 +9,8 @@ describe("DEFAULT_QURAN_PREFS", () => {
     expect(DEFAULT_QURAN_PREFS.showTranslation).toBe(true);
     expect(DEFAULT_QURAN_PREFS.showWordByWord).toBe(false);
     expect(DEFAULT_QURAN_PREFS.fontScale).toBe(1);
+    // Mushaf (Safha) layout is now the default reading mode (was "list").
+    expect(DEFAULT_QURAN_PREFS.layout).toBe("mushaf");
   });
 
   it("fontScale is within the allowed range [0.8, 1.6]", () => {
