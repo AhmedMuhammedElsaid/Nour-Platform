@@ -1372,7 +1372,12 @@ plain `Animated` trickle to 0.85, snap-to-1 + fade when fetches settle. JS-only 
 `accessibilityElementsHidden` elements from all queries incl. `testID`; pass
 `{ includeHiddenElements: true }`. Visual device-verify pending (A72).
 
-## Mushaf (Safha) page layout — Quran reader (2026-07-18, JS-only → OTA-eligible, not yet pushed)
+## Mushaf (Safha) page layout — Quran reader (2026-07-18, JS-only → OTA-eligible, pushed `d0901ff`)
+
+> ⚠️ **SUPERSEDED 2026-07-19 — see the entry below.** This v1 was within-surah-only and
+> defaulted to `"list"`. Cross-surah page browsing + swipe + the default flip to `"mushaf"`
+> landed in `80aa271`/`b9aa0ba`. Kept below for history/gotcha reference (still accurate for
+> what it describes), but don't treat "default: list" or "within-surah only" as current.
 
 Optional page-flow reading mode alongside the existing one-ayah-per-row list. `lib/device-local.ts`
 `QuranPrefs` gained `layout: ReaderLayout` (`"list" | "mushaf"`, default `"list"`) — shape now
@@ -1399,6 +1404,40 @@ pending** (Android `textAlign:"justify"` needs API 26+; `writingDirection` is iO
 Android-resolves-RTL-from-first-strong-char caveat as `ayah-row.tsx`). Follow-ups out of scope:
 mirror to web (its `layout` pref is already declared, unconsumed) + extension; tafsir/actions
 from mushaf mode; true global 604-page browsing.
+
+## Mushaf cross-surah page browsing + swipe + default flip (2026-07-19, `80aa271`+`b9aa0ba`, pushed)
+
+Evolves the v1 above: Mushaf is now the **DEFAULT** layout (`DEFAULT_QURAN_PREFS.layout: "mushaf"`,
+was `"list"`; explicit stored `"list"` prefs are preserved). Mode now fetches by PAGE, not surah —
+new `lib/queries.ts` `quranPageReaderQuery(page, locale, translationSlug, reciterSlug)` →
+`GET /quran/page/:n` (new backend endpoint, `packages/api` commit `d56de14`, `PageReader`/
+`PageSegment` in `packages/shared-core/src/schemas/quran.ts`), which can span 2 surahs (short
+surahs sharing a page, common in juz 30). `app/quran/[surah].tsx` resolves the entry surah's
+`pageStart` from the cached `quranSurahsQuery` (immutable ref data) once, then browses by page from
+there — every existing entry point (surah list, bookmarks, search, continue-reading, Readers shelf)
+still links by surah number, unchanged. `features/quran/components/mushaf-page.tsx`'s `MushafPage`
+→ `MushafSegment` (renders one `PageSegment`: EN/AR surah banner + its own `showBismillah` gate,
+now computed server-side, not client-derived). `reader.tsx` takes dual `data`/`pageData` props;
+Prev/Next header buttons (`onChangePage`) plus **swipe-to-turn-page** (`b9aa0ba`, same commit series):
+left-to-right drag = forward/next page, right-to-left = backward/prev, fixed regardless of AR/EN
+locale — pure `resolveSwipeDirection()` in NEW `features/quran/lib/swipe.ts` (unit tested), wired via
+RN core `PanResponder` (no `react-native-gesture-handler` in this workspace — verified before
+building, so no new dependency; same `PanResponder` precedent as `components/ui/slider.tsx`).
+`onStartShouldSetPanResponder` always `false` + a `|dx|>|dy| && |dx|>32px` threshold in
+`onMoveShouldSetPanResponder` so ayah taps and in-page vertical scroll pass through untouched.
+`pageData`/`onChangePage` read through refs (not closure-captured at `PanResponder.create()`, which
+only runs once via `useRef`) so the gesture never acts on a stale first-page snapshot. Audio queue
+spans a page's segments via NEW `buildPageQueue()` in `features/quran/lib/ayah-queue.ts`
+(concatenates one per-segment `buildAyahQueue()` call); autoplay resolves to the entry surah's own
+segment on the landing page (not always track 0). Last-read sources from the page's first segment's
+first ayah in Mushaf mode. Old `groupAyahsByPage`/`AyahPageGroup` removed from
+`features/quran/lib/page-groups.ts` (dead once page-fetch replaced client-side grouping); kept
+`toArabicIndicDigits`/`ayahMarker`. **Known gap, not fixed**: no offline caching for page mode — the
+per-surah offline store (`lib/quran-offline-store.ts`) is keyed by surah, not page, so Mushaf reading
+needs network even for a previously-cached surah. Mirrored same-day on web (`06f3070`) and extension
+(`bbf90fd`) — web/ext are buttons-only (no swipe), per explicit owner scoping. Full gate green
+(mobile 42 suites/168 tests); full monorepo gate's only failure remains the pre-existing, unrelated
+`use-azkar-notification-router.ts` typecheck error. Visual/gesture behavior = device-verify pending.
 
 ## Offline-first pass #1 (2026-07-18, `b0c25eb`+`6b6f4cd`+`d97583b`+`ef31715`+fix `f4a0903`, pushed + OTA'd runtime 1.1.0)
 
