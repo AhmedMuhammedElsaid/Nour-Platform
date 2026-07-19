@@ -1553,3 +1553,18 @@ Prayer times (Aladhan cache + compute fallback) and Qibla were already offline; 
   §5.11's stated scope). **Lesson**: one review pass on a large first-of-kind diff is not guaranteed to
   cover everything the plan flagged as a risk area — it took 2 independent passes to close both the
   reliability risk (§9) and the styling risk (§5.8) the plan called out.
+- **2026-07-19 "Maghrib didn't fire" investigation (A72, live adb, versionCode 9/1.1.0)**: NOT a
+  scheduling/quota/native bug — `dumpsys alarm` + `logcat` proved the alarm fired exactly on time,
+  full 128s FGS playback, correct `AudioTrack` frames delivered, no DND/Bluetooth interference.
+  Real root cause: Android's Alarm-stream volume curve maps slider position 5/15 to only **~6.3%
+  linear gain** (`APM_AudioPolicyManager: checkAndSetVolume ... volume 0.063096`), not the ~33%
+  raw-position estimate — combined with the app's own gain, genuinely near-inaudible. Confirmed by
+  re-test at Isha (21:26 same day): fired identically, user raised phone volume, heard it fine.
+  **Real code bug found along the way (fixed, commit `f342981`, NOT pushed)**: `NourAdhanModule.kt`
+  `playTest` hardcoded `volume=1.0`, while the real scheduled fire correctly used the saved setting
+  (measured `0.8` live) — so the in-app "Test adhan" button was always louder than reality, giving
+  false confidence. Fixed by threading the real `settings.volume` through
+  `use-azan-notifications.ts` → `adhan-native.ts` → native `playTest(delayMs, volume)`. Native
+  signature change → version bumped 1.1.0→1.1.1, versionCode 9→10 (rebuild-gated, cannot OTA).
+  **Not yet built/pushed** — owner will trigger `eas build` separately. Gates green (typecheck/lint/
+  jest, same pre-existing unrelated `use-azkar-notification-router.ts` error noted above).
