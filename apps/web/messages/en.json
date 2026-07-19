@@ -178,7 +178,11 @@
     "layoutList": "List",
     "layoutMushaf": "Mushaf",
     "pageN": "Page {number}",
-    "juzN": "Juz {number}"
+    "juzN": "Juz {number}",
+    "prevPage": "Previous page",
+    "nextPage": "Next page",
+    "pageLoadError": "Couldn't load this page.",
+    "retry": "Retry"
   },
   "privacy": {
     "title": "Privacy Policy",

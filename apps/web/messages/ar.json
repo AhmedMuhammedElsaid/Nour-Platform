@@ -178,7 +178,11 @@
     "layoutList": "قائمة",
     "layoutMushaf": "مصحف",
     "pageN": "صفحة {number}",
-    "juzN": "جزء {number}"
+    "juzN": "جزء {number}",
+    "prevPage": "الصفحة السابقة",
+    "nextPage": "الصفحة التالية",
+    "pageLoadError": "تعذّر تحميل هذه الصفحة.",
+    "retry": "إعادة المحاولة"
   },
   "privacy": {
     "title": "سياسة الخصوصية",

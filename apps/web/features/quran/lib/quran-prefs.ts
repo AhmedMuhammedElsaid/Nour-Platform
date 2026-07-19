@@ -17,7 +17,7 @@ export const DEFAULT_PREFS: QuranPrefs = {
   showTranslation: true,
   showWordByWord: false,
   fontScale: 1,
-  layout: "list",
+  layout: "mushaf",
 };
 
 export function loadPrefs(): QuranPrefs {
