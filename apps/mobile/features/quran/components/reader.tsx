@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Pressable, View } from "react-native";
+import { Animated, FlatList, PanResponder, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import type {
@@ -24,6 +24,7 @@ import { cn } from "@/lib/cn";
 import { usePlayer } from "@/lib/player-context";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
 import { ayahTrackId, buildAyahQueue, buildPageQueue, parseAyahTrackId } from "../lib/ayah-queue";
+import { MUSHAF_SWIPE_THRESHOLD, resolveSwipeDirection } from "../lib/swipe";
 import { AyahRow } from "./ayah-row";
 import { MushafSegment } from "./mushaf-page";
 import { ReaderSettingsSheet } from "./reader-settings-sheet";
@@ -80,6 +81,50 @@ export function Reader({
   const [selectedGlobal, setSelectedGlobal] = useState<number | null>(null);
   const listRef = useRef<FlatList<ReaderAyah>>(null);
   const mushafRef = useRef<FlatList<PageSegment>>(null);
+
+  // Swipe-to-turn-page (Mushaf mode only) — additive to the header Prev/Next
+  // buttons, same onChangePage target. Built on RN core's PanResponder (no
+  // react-native-gesture-handler in this workspace; see slider.tsx for the
+  // existing PanResponder precedent). The responder + its handlers are
+  // created once and read pageData/onChangePage through refs so a page swap
+  // doesn't require rebuilding the gesture instance mid-lifecycle.
+  const pageDataRef = useRef(pageData);
+  pageDataRef.current = pageData;
+  const onChangePageRef = useRef(onChangePage);
+  onChangePageRef.current = onChangePage;
+  const pageOpacity = useRef(new Animated.Value(1)).current;
+  const mushafPanResponder = useRef(
+    PanResponder.create({
+      // Never claim on touch-start — only once the drag proves itself
+      // horizontal, so taps (ayah selection) and vertical scrolls (a page
+      // whose 2 segments overflow the viewport) are left untouched.
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_evt, gesture) =>
+        Math.abs(gesture.dx) > Math.abs(gesture.dy) && Math.abs(gesture.dx) > MUSHAF_SWIPE_THRESHOLD,
+      onPanResponderRelease: (_evt, gesture) => {
+        const direction = resolveSwipeDirection(gesture.dx, gesture.dy);
+        const pd = pageDataRef.current;
+        if (!direction || !pd) return;
+        // Left-to-right drag (positive dx) = forward = next page; right-to-left
+        // (negative dx) = backward = prev page — fixed regardless of AR/EN
+        // locale (see lib/swipe.ts). null at the mushaf's ends = no-op, same
+        // boundary the header buttons' `disabled` already respects.
+        if (direction === "forward" && pd.nextPage !== null) {
+          onChangePageRef.current(pd.nextPage);
+        } else if (direction === "backward" && pd.prevPage !== null) {
+          onChangePageRef.current(pd.prevPage);
+        }
+      },
+    }),
+  ).current;
+
+  // Brief fade-in whenever the page changes (swipe or button) — cheap visual
+  // continuity cue, not required for correctness.
+  useEffect(() => {
+    if (!isMushaf) return;
+    pageOpacity.setValue(0);
+    Animated.timing(pageOpacity, { toValue: 1, duration: 160, useNativeDriver: true }).start();
+  }, [pageData?.page, isMushaf, pageOpacity]);
 
   const onSelectAyah = useCallback((numberGlobal: number) => {
     setSelectedGlobal((cur) => (cur === numberGlobal ? null : numberGlobal));
@@ -300,31 +345,33 @@ export function Reader({
       <View className="flex-1 bg-bg">
         {isMushaf ? (
           pageData ? (
-            <FlatList<PageSegment>
-              ref={mushafRef}
-              className="flex-1 bg-bg px-4"
-              data={pageData.segments}
-              keyExtractor={(s) => `${pageData.page}-${s.surah.number}`}
-              ListHeaderComponent={mushafHeader}
-              ListFooterComponent={
-                <View className="mt-2 items-center border-t border-border pb-6 pt-3">
-                  <Text variant="muted">
-                    {t("quran.pageN", { number: pageData.page })} · {t("quran.juzN", { number: pageData.juz })}
-                  </Text>
-                </View>
-              }
-              contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: dockSpacing }}
-              onScrollToIndexFailed={() => undefined}
-              renderItem={({ item }) => (
-                <MushafSegment
-                  segment={item}
-                  fontScale={prefs.fontScale}
-                  activeGlobal={activeGlobal}
-                  selectedGlobal={selectedGlobal}
-                  onSelectAyah={onSelectAyah}
-                />
-              )}
-            />
+            <Animated.View style={{ flex: 1, opacity: pageOpacity }} {...mushafPanResponder.panHandlers}>
+              <FlatList<PageSegment>
+                ref={mushafRef}
+                className="flex-1 bg-bg px-4"
+                data={pageData.segments}
+                keyExtractor={(s) => `${pageData.page}-${s.surah.number}`}
+                ListHeaderComponent={mushafHeader}
+                ListFooterComponent={
+                  <View className="mt-2 items-center border-t border-border pb-6 pt-3">
+                    <Text variant="muted">
+                      {t("quran.pageN", { number: pageData.page })} · {t("quran.juzN", { number: pageData.juz })}
+                    </Text>
+                  </View>
+                }
+                contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: dockSpacing }}
+                onScrollToIndexFailed={() => undefined}
+                renderItem={({ item }) => (
+                  <MushafSegment
+                    segment={item}
+                    fontScale={prefs.fontScale}
+                    activeGlobal={activeGlobal}
+                    selectedGlobal={selectedGlobal}
+                    onSelectAyah={onSelectAyah}
+                  />
+                )}
+              />
+            </Animated.View>
           ) : null
         ) : data ? (
           <FlatList<ReaderAyah>
