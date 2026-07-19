@@ -1455,3 +1455,44 @@ Prayer times (Aladhan cache + compute fallback) and Qibla were already offline; 
   sibling-Pressables convention; `localKeyForDate` from shared-core aladhan).
 - **Device-verify pending (A72)**: set clock Fri 11:59 → notif at 12:00 → tap opens `/quran/18`; card
   appears/dismisses; verify the WEEKLY trigger survives a week without app opens. JS-only → OTA-eligible.
+
+## Android home-screen widget — prayer/radio/adhkar (2026-07-18, `3022e32`+`fa50c80`+`9ae187c`+`6bdb717`)
+
+- New OS launcher widget **`NourHome`** (`react-native-android-widget@0.21.0`, ADR 0014) — 3
+  independently-clickable rows (prayer times + next-prayer highlight, last-played/favorite radio station
+  name, static Adhkar label), each `clickAction="OPEN_URI"` → `nour:///prayer-times` / `/radio` / `/adhkar`.
+  Config plugin entry in `app.json` (`updatePeriodMillis:1800000`, 5×3 target cells, PIL placeholder
+  preview PNG).
+- New entry point `index.ts` (`registerWidgetTaskHandler` before `expo-router/entry`; `package.json`
+  `"main"` flipped from `"expo-router/entry"`). `widget-task-handler.tsx` handles
+  WIDGET_ADDED/UPDATE/RESIZED (no-op on DELETED/CLICK — OPEN_URI runs natively, no JS round-trip).
+- Row builders (pure/testable): `features/prayer-times/widget/build-prayer-rows.ts` (reuses
+  `@repo/shared-core/prayer-times/compute` directly, NOT the Aladhan-cached `usePrayerDay` hook — accepted
+  ~1min edge-case drift vs the in-app screen, keeps the builder sync; rolls the highlight to Fajr after
+  Isha, same visual precedent as the existing in-app `PrayerTimesWidget`), `features/radio/widget/
+  build-radio-row.ts` (recent-then-favorite slug → `/radio` name resolution, try/catch → NEW cache key
+  `nour.widget.radioNameCache` fallback, **never throws** — a radio failure can't blank the other rows),
+  `features/adhkar/widget/build-adhkar-row.ts` (static label, no I/O). Extracted
+  `features/prayer-times/lib/prayer-settings-store.ts` (readLocation/readPrefs out of
+  `use-prayer-settings.ts`, zero hook behavior change, + new `readLocale()` mirroring `lib/i18n.ts`'s
+  device-locale fallback WITHOUT importing it — avoids running i18next init inside the headless task).
+- `features/home/widget/nour-home-widget.tsx` (dumb RNAW FlexWidget/TextWidget tree, hardcoded hex vs
+  `tokens.css` dark theme — same precedent as `sun-arc.tsx`'s `PALETTES`) + `render-nour-home-widget.tsx`
+  (shared composition, used by BOTH the task handler and `components/azan-scheduler.tsx`'s new instant-
+  refresh-on-settings-change effect via `requestWidgetUpdate`).
+- ⚠️ RNAW gotchas: renders to a rasterized **image** (not native RemoteViews text) — some launchers may
+  report a size ≠ actual, minor cropping possible; `updatePeriodMillis` has **no safe default (0 = never
+  updates)** — must be set explicitly; the task handler runs INSIDE the app process as a headless JS task
+  (AsyncStorage/fetch all work) but deliberately imports NO `lib/i18n`, NO player/RNTP, NO TanStack.
+- **Rebuild-gated, NOT OTA** — the config plugin's generated `AppWidgetProvider`/manifest + the new JS
+  entry point are both native-shell changes `eas update` cannot reach. Rides the next batched preview
+  build; left `version`/`versionCode` at `1.1.0`/`9` (assumed vC9 NOT yet built — the "needs the vC9
+  build" device-verify notes elsewhere in this file predate this session). **Re-check `eas build:list`
+  before building**; bump `versionCode`→10 + `version`→1.2.0 if vC9 already shipped without this.
+- Verified this session (no `eas build` run — quota-preserving): `expo prebuild --platform android`
+  scaffolds the `NourHome` receiver + `widgetprovider_nourhome.xml` correctly (splash untouched);
+  `expo export --platform android` bundles `index.ts` clean (2093 modules, 0 errors); jest-expo
+  `__tests__/build-{prayer-rows,radio-row,adhkar-row}.test.tsx` (20 cases) + full mobile suite green
+  (41/41 suites). **Device-verify pending (A72)** — plan §6 step 5's full on-device checklist (widget
+  add/resize, tap-through all 3 rows, radio degrade in airplane mode, instant refresh on settings change,
+  overnight + force-closed survival) awaits the next EAS build.
