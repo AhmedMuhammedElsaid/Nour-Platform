@@ -11,6 +11,7 @@
 
 import {
   computePrayerTimes,
+  getArcPosition,
   getNextPrayer,
   type PrayerDay,
   type PrayerKey,
@@ -20,9 +21,10 @@ import {
   type MadhabId,
   type PrayerLocation,
 } from "@repo/shared-core/schemas/prayer-times";
-import { formatClock } from "@repo/shared-core/prayer-times/format";
+import { formatClock, formatRemainingHM } from "@repo/shared-core/prayer-times/format";
 
 import { cityLabel } from "@/features/prayer-times/data/cities";
+import { buildArcDots, type ArcDot } from "@/features/prayer-times/lib/arc-dots";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -39,6 +41,11 @@ const PRAYER_LABELS: Record<PrayerKey, { ar: string; en: string }> = {
   isha: { ar: "العشاء", en: "Isha" },
 };
 
+const NEXT_PRAYER_TITLE: Record<"ar" | "en", string> = {
+  ar: "الصلاة القادمة",
+  en: "Next prayer",
+};
+
 export type PrayerRow = {
   key: PrayerKey;
   label: string;
@@ -46,9 +53,34 @@ export type PrayerRow = {
   isNext: boolean;
 };
 
+// Active-body position for the widget's sun/moon arc (build-arc-svg.ts). Same
+// shape getArcPosition returns in-app (SunArc props) — see
+// prayer-times-widget.tsx:98-105 for the mirrored call pattern.
+export type PrayerArc = {
+  fraction: number;
+  isNight: boolean;
+  onNightBand: boolean;
+};
+
+// Static (non-ticking — the widget bitmap can't animate) "time remaining"
+// readout, shown between the arc and the prayer row. Hours:minutes only, via
+// formatRemainingHM — never the live seconds-ticking formatCountdownClock the
+// in-app PrayerCountdown leaf uses. null only in the degenerate case where
+// neither today's remaining prayers nor a rolled-over tomorrow resolve (e.g.
+// high-latitude no-Fajr edge in rollToTomorrow) — the widget simply omits the
+// block that refresh.
+export type NextPrayerInfo = {
+  title: string; // "Next prayer" / "الصلاة القادمة"
+  name: string; // localized prayer name, e.g. "Fajr" / "الفجر"
+  remaining: string; // "H:MM", localized digits
+};
+
 export type PrayerRowsResult = {
   city: string;
   rows: PrayerRow[];
+  next: NextPrayerInfo | null;
+  arc: PrayerArc;
+  dots: ArcDot[];
 };
 
 export function buildPrayerRows(
@@ -79,7 +111,26 @@ export function buildPrayerRows(
     };
   });
 
-  return { city: cityLabel(location, locale), rows };
+  // Arc position + dots for the widget's sun/moon arc SVG (build-arc-svg.ts).
+  // Deliberately local adhan-js throughout (matches this builder's existing
+  // choice, see file header) — resolveDay just recomputes for any date
+  // getArcPosition asks for (tomorrow's Fajr after Isha, yesterday's Isha
+  // pre-Fajr), no Aladhan-day special-casing needed since everything here is
+  // already local.
+  const arc = getArcPosition((date) => computePrayerTimes({ ...input, date }), now);
+  const dots = buildArcDots(day, nextKey);
+
+  const nextInst = nextKey ? (day.instants.find((i) => i.key === nextKey)?.time ?? null) : null;
+  const nextInfo: NextPrayerInfo | null =
+    nextKey && nextInst
+      ? {
+          title: NEXT_PRAYER_TITLE[locale],
+          name: PRAYER_LABELS[nextKey][locale],
+          remaining: formatRemainingHM(nextInst.getTime() - now.getTime(), locale),
+        }
+      : null;
+
+  return { city: cityLabel(location, locale), rows, next: nextInfo, arc, dots };
 }
 
 // After Isha, returns tomorrow's computed day so the rolled Fajr highlight

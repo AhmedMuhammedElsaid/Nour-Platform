@@ -29,6 +29,10 @@ describe("buildPrayerRows", () => {
     for (const row of result.rows) {
       expect(row.time).not.toBe("—");
     }
+    // Static H:MM remaining-time block matches the highlighted row.
+    expect(result.next).not.toBeNull();
+    expect(result.next!.name).toBe("Dhuhr");
+    expect(result.next!.remaining).toMatch(/^\d+:\d{2}$/);
   });
 
   it("after Isha: rolls both the highlight AND the displayed time to tomorrow's Fajr", () => {
@@ -45,6 +49,10 @@ describe("buildPrayerRows", () => {
     // The displayed Fajr time must match tomorrow's actual Fajr — not
     // today's already-elapsed instant re-displayed under the highlight.
     expect(highlighted[0]!.time).toBe(tomorrowOnly.rows.find((r) => r.key === "fajr")!.time);
+    // Remaining-time block rolls to tomorrow's Fajr too, and stays positive.
+    expect(result.next).not.toBeNull();
+    expect(result.next!.name).toBe("Fajr");
+    expect(result.next!.remaining).toMatch(/^\d+:\d{2}$/);
   });
 
   it("locale ar vs en: labels switch, city label switches", () => {
@@ -59,11 +67,36 @@ describe("buildPrayerRows", () => {
     expect(ar.city).toBe("القاهرة");
     expect(ar.rows.find((r) => r.key === "fajr")?.label).toBe("الفجر");
     expect(ar.rows.find((r) => r.key === "maghrib")?.label).toBe("المغرب");
+
+    // Next-prayer block's title/name localize too.
+    expect(en.next!.title).toBe("Next prayer");
+    expect(ar.next!.title).toBe("الصلاة القادمة");
+    expect(ar.next!.name).toBe("الظهر");
   });
 
   it("storage-empty readLocation() falls back to Cairo DEFAULT_LOCATION", async () => {
     // AsyncStorage is the official jest mock (empty by default, no prior setItem).
     const loc = await readLocation();
     expect(loc).toEqual(DEFAULT_LOCATION);
+  });
+
+  it("arc + dots are populated and the next-prayer dot matches the highlighted row", () => {
+    // 2026-06-26 10:00 local — same mid-day case as the first test (next = dhuhr).
+    const now = new Date(2026, 5, 26, 10, 0, 0);
+    const result = buildPrayerRows(location, prefs, now, "en");
+
+    expect(result.dots.length).toBeGreaterThan(0);
+    expect(result.dots.every((d) => d.fraction >= 0 && d.fraction <= 1)).toBe(true);
+    const nextDot = result.dots.filter((d) => d.isNext);
+    expect(nextDot).toHaveLength(1);
+    const highlightedRow = result.rows.find((r) => r.isNext);
+    expect(nextDot[0]!.key).toBe(highlightedRow!.key);
+
+    expect(typeof result.arc.fraction).toBe("number");
+    expect(result.arc.fraction).toBeGreaterThanOrEqual(0);
+    expect(result.arc.fraction).toBeLessThanOrEqual(1);
+    // Mid-morning, after Sunrise before Maghrib -> daytime, sun is up.
+    expect(result.arc.isNight).toBe(false);
+    expect(result.arc.onNightBand).toBe(false);
   });
 });

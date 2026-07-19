@@ -38,6 +38,13 @@ function station(overrides: Partial<RadioStation> = {}): RadioStation {
   };
 }
 
+const STATIONS: RadioStation[] = [
+  station({ id: "1".padStart(24, "0"), slug: "quran-radio", ar: { name: "إذاعة القرآن" }, en: { name: "Quran Radio" } }),
+  station({ id: "2".padStart(24, "0"), slug: "sunnah-radio", ar: { name: "إذاعة السنة" }, en: { name: "Sunnah Radio" } }),
+  station({ id: "3".padStart(24, "0"), slug: "seerah-radio", ar: { name: "إذاعة السيرة" }, en: { name: "Seerah Radio" } }),
+  station({ id: "4".padStart(24, "0"), slug: "nasheed-radio", ar: { name: "إذاعة الأناشيد" }, en: { name: "Nasheed Radio" } }),
+];
+
 describe("buildRadioRow", () => {
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -46,60 +53,79 @@ describe("buildRadioRow", () => {
     mockGetRadioFavorites.mockResolvedValue([]);
   });
 
-  it("no station ever played -> generic label, stationName null", async () => {
+  it("no station ever played -> generic label, empty stations, no fetch", async () => {
     const result = await buildRadioRow("en");
-    expect(result).toEqual({ label: "Radio", stationName: null });
+    expect(result).toEqual({ label: "Radio", stations: [] });
     expect(mockGetJson).not.toHaveBeenCalled();
   });
 
-  it("recent-station slug resolves via getJson -> correct name, writes the cache", async () => {
+  it("recent-then-favorite merge, deduped, capped at 3, recent first", async () => {
+    mockGetRecentStations.mockResolvedValue(["quran-radio", "sunnah-radio"]);
+    mockGetRadioFavorites.mockResolvedValue(["sunnah-radio", "seerah-radio", "nasheed-radio"]);
+    mockGetJson.mockResolvedValue(STATIONS);
+
+    const result = await buildRadioRow("en");
+    // Dedupe keeps "sunnah-radio" at its first (recent) position; capped to 3.
+    expect(result).toEqual({ label: "Radio", stations: ["Quran Radio", "Sunnah Radio", "Seerah Radio"] });
+    expect(mockGetJson).toHaveBeenCalledWith("/radio");
+    await expect(AsyncStorage.getItem(RADIO_NAME_CACHE_KEY)).resolves.toBe(
+      JSON.stringify(["Quran Radio", "Sunnah Radio", "Seerah Radio"]),
+    );
+  });
+
+  it("recent only, fewer than 3 -> that many names, locale-resolved", async () => {
     mockGetRecentStations.mockResolvedValue(["quran-radio"]);
-    mockGetJson.mockResolvedValue([station()]);
+    mockGetJson.mockResolvedValue(STATIONS);
 
     const result = await buildRadioRow("ar");
-    expect(result).toEqual({ label: "إذاعة", stationName: "إذاعة القرآن الكريم" });
-    expect(mockGetJson).toHaveBeenCalledWith("/radio");
-    await expect(AsyncStorage.getItem(RADIO_NAME_CACHE_KEY)).resolves.toBe("إذاعة القرآن الكريم");
+    expect(result).toEqual({ label: "إذاعة", stations: ["إذاعة القرآن"] });
   });
 
-  it("no recent -> falls back to first favorite slug", async () => {
-    mockGetRecentStations.mockResolvedValue([]);
-    mockGetRadioFavorites.mockResolvedValue(["quran-radio"]);
-    mockGetJson.mockResolvedValue([station()]);
+  it("favorites only (no recent) -> resolves from favorites", async () => {
+    mockGetRadioFavorites.mockResolvedValue(["seerah-radio"]);
+    mockGetJson.mockResolvedValue(STATIONS);
 
     const result = await buildRadioRow("en");
-    expect(result).toEqual({ label: "Radio", stationName: "Quran Radio" });
+    expect(result).toEqual({ label: "Radio", stations: ["Seerah Radio"] });
   });
 
-  it("network failure with a prior cached name -> falls back to the cache", async () => {
+  it("network failure with a prior cached list -> falls back to the cache", async () => {
     mockGetRecentStations.mockResolvedValue(["quran-radio"]);
-    await AsyncStorage.setItem(RADIO_NAME_CACHE_KEY, "Quran Radio");
+    await AsyncStorage.setItem(RADIO_NAME_CACHE_KEY, JSON.stringify(["Quran Radio", "Sunnah Radio"]));
     mockGetJson.mockRejectedValue(new Error("network down"));
 
     const result = await buildRadioRow("en");
-    expect(result).toEqual({ label: "Radio", stationName: "Quran Radio" });
+    expect(result).toEqual({ label: "Radio", stations: ["Quran Radio", "Sunnah Radio"] });
   });
 
-  it("network failure with no cache -> stationName null, generic label", async () => {
+  it("network failure with no cache -> empty stations, generic label", async () => {
     mockGetRecentStations.mockResolvedValue(["quran-radio"]);
     mockGetJson.mockRejectedValue(new Error("network down"));
 
     const result = await buildRadioRow("en");
-    expect(result).toEqual({ label: "Radio", stationName: null });
+    expect(result).toEqual({ label: "Radio", stations: [] });
   });
 
-  it("slug not found in the station list -> falls back to cache/null, never throws", async () => {
+  it("slugs not found in the station list -> empty stations, never throws", async () => {
     mockGetRecentStations.mockResolvedValue(["missing-slug"]);
-    mockGetJson.mockResolvedValue([station()]); // list doesn't contain "missing-slug"
+    mockGetJson.mockResolvedValue(STATIONS); // list doesn't contain "missing-slug"
 
     const result = await buildRadioRow("en");
-    expect(result).toEqual({ label: "Radio", stationName: null });
+    expect(result).toEqual({ label: "Radio", stations: [] });
   });
 
   it("never throws even when device-local reads themselves reject", async () => {
     mockGetRecentStations.mockRejectedValue(new Error("storage unavailable"));
     mockGetRadioFavorites.mockRejectedValue(new Error("storage unavailable"));
 
-    await expect(buildRadioRow("en")).resolves.toEqual({ label: "Radio", stationName: null });
+    await expect(buildRadioRow("en")).resolves.toEqual({ label: "Radio", stations: [] });
+  });
+
+  it("never throws when the AsyncStorage cache read itself rejects", async () => {
+    mockGetRecentStations.mockResolvedValue(["quran-radio"]);
+    mockGetJson.mockRejectedValue(new Error("network down"));
+    jest.spyOn(AsyncStorage, "getItem").mockRejectedValueOnce(new Error("storage unavailable"));
+
+    await expect(buildRadioRow("en")).resolves.toEqual({ label: "Radio", stations: [] });
   });
 });

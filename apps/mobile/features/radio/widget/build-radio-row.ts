@@ -1,8 +1,12 @@
-// Radio row builder for the OS home-screen widget (home_widget_plan.md §5.6).
+// Radio row builder for the OS home-screen widget (home_widget_plan.md §4).
 // Runs inside the headless widget task (registerWidgetTaskHandler), so it can
 // use AsyncStorage + fetch (via lib/api.ts's getJson) directly — but it MUST
 // NEVER throw: a radio-row failure (offline, timeout, 5xx, slug not found)
 // must not blank the prayer/adhkar rows rendered in the same widget update.
+//
+// Multi-pill rewrite: merges recently-played + favorite station slugs
+// (recent first), dedupes, and resolves up to RADIO_STATIONS_MAX names via
+// one /radio fetch — was previously a single station name.
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -46,37 +50,42 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 
 export type RadioRowResult = {
   label: string;
-  stationName: string | null;
+  stations: string[]; // up to RADIO_STATIONS_MAX resolved names
 };
+
+const RADIO_STATIONS_MAX = 3;
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((v) => typeof v === "string");
+}
 
 export async function buildRadioRow(locale: "ar" | "en"): Promise<RadioRowResult> {
   const label = RADIO_LABEL[locale];
 
-  let slug: string | null = null;
+  let slugs: string[] = [];
   try {
     const recent = await getRecentStations();
-    slug = recent[0] ?? null;
-    if (!slug) {
-      const favorites = await getRadioFavorites();
-      slug = favorites[0] ?? null;
-    }
+    const favorites = await getRadioFavorites();
+    slugs = [...new Set([...recent, ...favorites])].slice(0, RADIO_STATIONS_MAX);
   } catch {
-    slug = null;
+    slugs = [];
   }
 
-  if (!slug) return { label, stationName: null };
+  if (slugs.length === 0) return { label, stations: [] };
 
   try {
     const stations = await withTimeout(getJson<RadioStation[]>("/radio"), RADIO_FETCH_TIMEOUT_MS);
-    const match = stations.find((s) => s.slug === slug);
-    if (match) {
-      const name = toStationView(match, locale).name;
+    const names = slugs
+      .map((slug) => stations.find((s) => s.slug === slug))
+      .filter((s): s is RadioStation => s != null)
+      .map((s) => toStationView(s, locale).name);
+    if (names.length > 0) {
       try {
-        await AsyncStorage.setItem(RADIO_NAME_CACHE_KEY, name);
+        await AsyncStorage.setItem(RADIO_NAME_CACHE_KEY, JSON.stringify(names));
       } catch {
-        // Cache write failure is non-fatal — the name still renders this cycle.
+        // Cache write failure is non-fatal — names still render this cycle.
       }
-      return { label, stationName: name };
+      return { label, stations: names };
     }
   } catch {
     // Network failure, timeout, or non-2xx — fall through to the cache below.
@@ -84,8 +93,12 @@ export async function buildRadioRow(locale: "ar" | "en"): Promise<RadioRowResult
 
   try {
     const cached = await AsyncStorage.getItem(RADIO_NAME_CACHE_KEY);
-    return { label, stationName: cached };
+    if (cached) {
+      const parsed: unknown = JSON.parse(cached);
+      if (isStringArray(parsed)) return { label, stations: parsed };
+    }
+    return { label, stations: [] };
   } catch {
-    return { label, stationName: null };
+    return { label, stations: [] };
   }
 }

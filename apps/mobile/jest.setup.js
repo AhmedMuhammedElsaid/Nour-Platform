@@ -236,6 +236,7 @@ jest.mock("react-native-android-widget", () => ({
   registerWidgetTaskHandler: jest.fn(),
   FlexWidget: "FlexWidget",
   TextWidget: "TextWidget",
+  SvgWidget: "SvgWidget",
 }));
 
 // expo-quick-actions mock (launcher shortcuts) — factory mocks so jest never

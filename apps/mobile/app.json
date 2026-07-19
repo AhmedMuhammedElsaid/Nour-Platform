@@ -64,9 +64,9 @@
               "label": "Nour — Prayer, Radio & Adhkar",
               "description": "مواقيت الصلاة، الإذاعة، والأذكار",
               "minWidth": "300dp",
-              "minHeight": "180dp",
+              "minHeight": "240dp",
               "targetCellWidth": 5,
-              "targetCellHeight": 3,
+              "targetCellHeight": 4,
               "previewImage": "./assets/widget-preview/nour-home.png",
               "updatePeriodMillis": 1800000
             }
