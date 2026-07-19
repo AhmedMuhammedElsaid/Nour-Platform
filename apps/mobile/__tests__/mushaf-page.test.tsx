@@ -29,10 +29,11 @@ function renderSegment(overrides: Partial<React.ComponentProps<typeof MushafSegm
 }
 
 describe("MushafSegment", () => {
-  it("renders the surah-name banner (EN/AR pairing)", () => {
+  it("renders the centered surah-name banner (Arabic title + EN subtitle)", () => {
     renderSegment();
     expect(screen.getByText("Al-Fatihah")).toBeTruthy();
-    expect(screen.getByText("الفاتحة")).toBeTruthy();
+    // Arabic name is flanked by ornamental bracket glyphs within one Text node.
+    expect(screen.getByText(/﴾ الفاتحة ﴿/)).toBeTruthy();
   });
 
   it("renders each ayah's text and inline Arabic-Indic marker", () => {

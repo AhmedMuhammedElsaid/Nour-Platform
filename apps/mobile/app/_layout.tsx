@@ -93,10 +93,11 @@ export default function RootLayout() {
   const [localeReady, setLocaleReady] = useState(false);
   const onboarding = useOnboarding();
 
-  // Load custom fonts. Falls back to system fonts if the .ttf assets are not
-  // bundled (acceptable in development; add @expo-google-fonts packages for a
-  // production EAS build or bundle the .ttf files under assets/fonts/).
-  const [fontsLoaded] = useFonts({});
+  // Load custom fonts. UthmanicHafs (KFGQPC Uthmanic Script HAFS) is the Quran
+  // reader's calligraphic font — bundled under assets/fonts/, mapped to
+  // font-quran in tailwind.config.js.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const [fontsLoaded] = useFonts({ UthmanicHafs: require("../assets/fonts/UthmanicHafs.ttf") });
 
   useEffect(() => {
     void hydrateLocale().then(() => setLocaleReady(true));

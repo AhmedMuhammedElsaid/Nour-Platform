@@ -14,6 +14,13 @@ export function toArabicIndicDigits(n: number): string {
     .join("");
 }
 
+// Locale-aware numeral formatting for the Mushaf page/juz strip: Arabic-Indic
+// digits in Arabic, plain Western digits otherwise (i18next `{{number}}`
+// interpolates a string fine either way).
+export function localizeDigits(n: number, locale: string): string {
+  return locale.startsWith("ar") ? toArabicIndicDigits(n) : String(n);
+}
+
 // Inline ayah-end marker for Mushaf mode: U+06DD (Quranic end-of-ayah
 // ornament) followed by the ayah's in-surah number in Arabic-Indic digits,
 // e.g. ayahMarker(7) === "۝٧". Upgrades list mode's Western-digit badge

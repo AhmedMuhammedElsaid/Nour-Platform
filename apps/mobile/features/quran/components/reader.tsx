@@ -24,6 +24,7 @@ import { cn } from "@/lib/cn";
 import { usePlayer } from "@/lib/player-context";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
 import { ayahTrackId, buildAyahQueue, buildPageQueue, parseAyahTrackId } from "../lib/ayah-queue";
+import { localizeDigits } from "../lib/page-groups";
 import { MUSHAF_SWIPE_THRESHOLD, resolveSwipeDirection } from "../lib/swipe";
 import { AyahRow } from "./ayah-row";
 import { MushafSegment } from "./mushaf-page";
@@ -71,7 +72,7 @@ export function Reader({
   onBack,
   autoStart,
 }: ReaderProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const dockSpacing = useDockSpacing();
   const insets = useSafeAreaInsets();
   const isMushaf = prefs.layout === "mushaf";
@@ -321,7 +322,8 @@ export function Reader({
           <Text className="text-2xl text-text">‹</Text>
         </Pressable>
         <Text variant="label">
-          {t("quran.pageN", { number: pageData.page })} · {t("quran.juzN", { number: pageData.juz })}
+          {t("quran.pageN", { number: localizeDigits(pageData.page, i18n.language) })} ·{" "}
+          {t("quran.juzN", { number: localizeDigits(pageData.juz, i18n.language) })}
         </Text>
         <Pressable
           accessibilityRole="button"
@@ -355,7 +357,8 @@ export function Reader({
                 ListFooterComponent={
                   <View className="mt-2 items-center border-t border-border pb-6 pt-3">
                     <Text variant="muted">
-                      {t("quran.pageN", { number: pageData.page })} · {t("quran.juzN", { number: pageData.juz })}
+                      {t("quran.pageN", { number: localizeDigits(pageData.page, i18n.language) })} ·{" "}
+                      {t("quran.juzN", { number: localizeDigits(pageData.juz, i18n.language) })}
                     </Text>
                   </View>
                 }

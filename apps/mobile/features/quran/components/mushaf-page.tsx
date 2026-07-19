@@ -35,19 +35,27 @@ export function MushafSegment({
 }: MushafSegmentProps) {
   return (
     <View className="gap-4 border-b border-border pb-6 pt-4">
-      <View className="flex-row items-baseline justify-between gap-4">
-        <Text variant="display" className="text-2xl text-primary">
-          {segment.surah.name.en}
-        </Text>
-        <Text className="font-quran text-2xl text-text" style={{ writingDirection: "rtl" }}>
+      {/* Centered ornamental surah banner: gilded Arabic name flanked by plain
+          bracket glyphs (﴾ ﴿), EN name as a small muted subtitle beneath. No
+          SVG artwork — Text/CSS only, per the mushaf-redesign decision. */}
+      <View className="items-center gap-1">
+        <Text
+          className="text-center font-quran text-3xl text-primary"
+          style={{ writingDirection: "rtl" }}
+        >
+          {"﴾ "}
           {segment.surah.name.ar}
+          {" ﴿"}
+        </Text>
+        <Text variant="muted" className="text-center">
+          {segment.surah.name.en}
         </Text>
       </View>
 
       {segment.showBismillah ? (
         <Text
-          className="text-center font-quran text-text"
-          style={{ fontSize: 24 * fontScale, writingDirection: "rtl" }}
+          className="text-center font-quran text-primary"
+          style={{ fontSize: 26 * fontScale, writingDirection: "rtl" }}
         >
           {BISMILLAH}
         </Text>
