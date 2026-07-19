@@ -1505,3 +1505,12 @@ Prayer times (Aladhan cache + compute fallback) and Qibla were already offline; 
   gate re-verified green after the fix; full monorepo gate's only failure is a **pre-existing, unrelated**
   `mobile#typecheck` error in `use-azkar-notification-router.ts` (from `a5d039a`, not touched by this
   feature) — flagged, not fixed here (out of scope).
+- **A SECOND independent fresh-context Opus review (`6734947`)**, run in parallel by a different
+  concurrent session unaware of the first, caught what the first pass missed: `nour-home-widget.tsx`
+  still shipped the pre-§5.8 superseded dark palette instead of the owner's locked design-match values
+  (root bg used `--color-bg` not `--color-surface`; next-prayer time never picked up the `--color-sun`
+  tint; radio/adhkar icons were bare emoji instead of the Adhkar-shelf icon-chip motif). Fixed; verified
+  via `tsc --noEmit` + `eslint` on the touched file (no RTL test exists for RNAW JSX trees — matches plan
+  §5.11's stated scope). **Lesson**: one review pass on a large first-of-kind diff is not guaranteed to
+  cover everything the plan flagged as a risk area — it took 2 independent passes to close both the
+  reliability risk (§9) and the styling risk (§5.8) the plan called out.
