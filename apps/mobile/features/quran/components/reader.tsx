@@ -3,6 +3,8 @@ import { FlatList, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import type {
+  PageReader,
+  PageSegment,
   QuranEdition,
   QuranReciter,
   ReaderAyah,
@@ -18,17 +20,25 @@ import {
   type AyahRef,
   type QuranPrefs,
 } from "@/lib/device-local";
+import { cn } from "@/lib/cn";
 import { usePlayer } from "@/lib/player-context";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
-import { ayahTrackId, buildAyahQueue, parseAyahTrackId } from "../lib/ayah-queue";
-import { groupAyahsByPage, type AyahPageGroup } from "../lib/page-groups";
+import { ayahTrackId, buildAyahQueue, buildPageQueue, parseAyahTrackId } from "../lib/ayah-queue";
 import { AyahRow } from "./ayah-row";
-import { MushafPage } from "./mushaf-page";
+import { MushafSegment } from "./mushaf-page";
 import { ReaderSettingsSheet } from "./reader-settings-sheet";
 import { TafsirSheet } from "./tafsir-sheet";
 
 export interface ReaderProps {
-  data: SurahReader;
+  // List mode payload — non-null iff prefs.layout === "list" (screen only
+  // mounts <Reader> once its active query has data).
+  data: SurahReader | null;
+  // Mushaf/page mode payload — non-null iff prefs.layout === "mushaf".
+  pageData: PageReader | null;
+  // The surah number this reader was opened from (route param) — used to pick
+  // the right autoplay offset within a page that spans multiple surahs.
+  entrySurah: number;
+  onChangePage: (page: number) => void;
   editions: QuranEdition[];
   reciters: QuranReciter[];
   locale: string;
@@ -36,43 +46,85 @@ export interface ReaderProps {
   onChangePrefs: (next: QuranPrefs) => void;
   onBack: () => void;
   // Auto-start playback from the first ayah on mount (home Readers shelf →
-  // Al-Fatiha in the tapped reciter's voice).
+  // Al-Fatiha in the tapped reciter's voice; surah/juz taps → autoplay=1).
   autoStart?: boolean;
 }
 
 // RN port of apps/web/features/quran/components/reader.tsx. The screen owns
-// prefs (translation/reciter are part of its fetch key); this component owns
-// bookmarks, ayah audio, the settings + tafsir sheets, and current-ayah scroll.
-// It also owns the single themed header (back + title + settings/repeat) —
-// the Stack header is hidden to avoid the duplicate-title white bar (point 25).
-export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs, onBack, autoStart }: ReaderProps) {
+// prefs + which query is active (list = one surah; mushaf = one Madani mushaf
+// page, GET /quran/page/:n, which may span multiple surahs). This component
+// owns bookmarks, ayah audio, the settings + tafsir sheets, and current-ayah
+// scroll for BOTH modes. It also owns the single themed header (back + title
+// + settings/repeat) — the Stack header is hidden to avoid the duplicate-title
+// white bar (point 25).
+export function Reader({
+  data,
+  pageData,
+  entrySurah,
+  onChangePage,
+  editions,
+  reciters,
+  locale,
+  prefs,
+  onChangePrefs,
+  onBack,
+  autoStart,
+}: ReaderProps) {
   const { t } = useTranslation();
   const dockSpacing = useDockSpacing();
   const insets = useSafeAreaInsets();
+  const isMushaf = prefs.layout === "mushaf";
   const [bookmarks, setBookmarks] = useState<AyahRef[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tafsirAyah, setTafsirAyah] = useState<{ numberGlobal: number; ref: string } | null>(null);
   const [selectedGlobal, setSelectedGlobal] = useState<number | null>(null);
   const listRef = useRef<FlatList<ReaderAyah>>(null);
-  const mushafRef = useRef<FlatList<AyahPageGroup>>(null);
+  const mushafRef = useRef<FlatList<PageSegment>>(null);
 
-  // Mushaf (Safha) page layout — groups the same ayahs by their `page` field
-  // (1-604, already on every ReaderAyah) instead of one row per ayah.
-  const pageGroups = useMemo(() => groupAyahsByPage(data.ayahs), [data.ayahs]);
   const onSelectAyah = useCallback((numberGlobal: number) => {
     setSelectedGlobal((cur) => (cur === numberGlobal ? null : numberGlobal));
   }, []);
+
+  // Reset the ayah highlight when the page changes underneath it (a stale
+  // selection would otherwise never clear itself, since numberGlobal ids are
+  // never reused across pages).
+  useEffect(() => {
+    setSelectedGlobal(null);
+  }, [pageData?.page]);
 
   // Quran recitation plays through the site-wide RNTP player (one engine), so it
   // gets the mini-player + lock-screen controls and keeps playing when you leave
   // the reader. The reader builds a per-ayah queue and reads back the active ayah
   // from player.currentTrack for highlight + scroll.
   const player = usePlayer();
-  const queue = useMemo(
-    () => buildAyahQueue(data.surah, data.ayahs, data.reciter, locale),
-    [data.surah, data.ayahs, data.reciter, locale],
+
+  // List mode: one surah's queue (unchanged).
+  const listQueue = useMemo(
+    () => (data ? buildAyahQueue(data.surah, data.ayahs, data.reciter, locale) : []),
+    [data, locale],
   );
+  // Mushaf/page mode: a page can hold 2+ segments (short surahs sharing a
+  // page, common in juz 30) — buildPageQueue concatenates one per-segment
+  // queue per page so playback flows across the segment boundary.
+  const pageQueue = useMemo(
+    () => (pageData ? buildPageQueue(pageData.segments, pageData.reciter, locale) : []),
+    [pageData, locale],
+  );
+  const queue = isMushaf ? pageQueue : listQueue;
   const activeGlobal = parseAyahTrackId(player.currentTrack?.id);
+
+  // Where autoStart should begin: list mode always starts at the surah's first
+  // ayah (index 0). Mushaf mode's page may open mid-surah or lead with the
+  // tail of a preceding surah, so autoplay must find the entry surah's own
+  // segment on this page rather than always starting at track 0.
+  const autoStartIndex = useMemo(() => {
+    if (!isMushaf || !pageData) return 0;
+    const segment = pageData.segments.find((s) => s.surah.number === entrySurah);
+    const firstAyah = segment?.ayahs[0];
+    if (!firstAyah) return 0;
+    const idx = queue.findIndex((tk) => tk.id === ayahTrackId(firstAyah.numberGlobal));
+    return idx >= 0 ? idx : 0;
+  }, [isMushaf, pageData, entrySurah, queue]);
 
   // Autostart from the first ayah when arriving with autoStart (Readers shelf →
   // Al-Fatiha in the tapped voice). Fires once; RN has no autoplay gesture gate.
@@ -81,47 +133,52 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs,
   useEffect(() => {
     if (!autoStart || didAutoStart.current || queue.length === 0) return;
     didAutoStart.current = true;
-    loadQueue(queue, 0);
-  }, [autoStart, queue, loadQueue]);
+    loadQueue(queue, autoStartIndex);
+  }, [autoStart, queue, autoStartIndex, loadQueue]);
 
-  const surahNameEn = data.surah.name.en;
-  const translationDir = data.translationEdition?.dir ?? (locale === "ar" ? "rtl" : "ltr");
+  // Reference ayah for "last read" (drives the Home "Continue reading" shelf):
+  // list mode = the surah's first ayah; mushaf mode = the current page's first
+  // segment's first ayah (best "where you are" reference for a page that may
+  // open mid-surah).
+  const referenceAyah = isMushaf ? pageData?.segments[0]?.ayahs[0] : data?.ayahs[0];
+  const referenceSurahName = isMushaf ? pageData?.segments[0]?.surah.name.en : data?.surah.name.en;
+  useEffect(() => {
+    if (!referenceAyah) return;
+    void setQuranLastRead({
+      surah: referenceAyah.surah,
+      ayahInSurah: referenceAyah.ayahInSurah,
+      numberGlobal: referenceAyah.numberGlobal,
+      surahName: referenceSurahName,
+    });
+  }, [referenceAyah, referenceSurahName]);
+
+  const translationDir =
+    (isMushaf ? pageData?.translationEdition?.dir : data?.translationEdition?.dir) ??
+    (locale === "ar" ? "rtl" : "ltr");
 
   // Hydrate bookmarks once.
   useEffect(() => {
     void getQuranBookmarks().then(setBookmarks);
   }, []);
 
-  // Record last-read = first ayah of this surah on mount (drives the Home
-  // "Continue reading" shelf).
-  useEffect(() => {
-    const first = data.ayahs[0];
-    if (first) {
-      void setQuranLastRead({
-        surah: first.surah,
-        ayahInSurah: first.ayahInSurah,
-        numberGlobal: first.numberGlobal,
-        surahName: surahNameEn,
-      });
-    }
-  }, [data.ayahs, surahNameEn]);
-
   // Scroll the currently-playing ayah into view — list mode scrolls to the
-  // ayah's own row; mushaf mode scrolls to the page group that contains it.
+  // ayah's own row; mushaf mode scrolls to the segment that contains it.
   useEffect(() => {
     if (activeGlobal === null) return;
-    if (prefs.layout === "mushaf") {
-      const idx = pageGroups.findIndex((g) => g.ayahs.some((a) => a.numberGlobal === activeGlobal));
+    if (isMushaf) {
+      if (!pageData) return;
+      const idx = pageData.segments.findIndex((s) => s.ayahs.some((a) => a.numberGlobal === activeGlobal));
       if (idx >= 0) {
         mushafRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.1 });
       }
       return;
     }
+    if (!data) return;
     const idx = data.ayahs.findIndex((a) => a.numberGlobal === activeGlobal);
     if (idx >= 0) {
       listRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.3 });
     }
-  }, [activeGlobal, data.ayahs, prefs.layout, pageGroups]);
+  }, [activeGlobal, isMushaf, data, pageData]);
 
   const onToggleBookmark = useCallback(
     (ayah: ReaderAyah) => {
@@ -129,10 +186,10 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs,
         surah: ayah.surah,
         ayahInSurah: ayah.ayahInSurah,
         numberGlobal: ayah.numberGlobal,
-        surahName: surahNameEn,
+        surahName: data?.surah.name.en,
       }).then(setBookmarks);
     },
-    [surahNameEn],
+    [data],
   );
 
   // Same ayah toggles play/pause; a different ayah (re)loads the queue at it.
@@ -149,9 +206,7 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs,
     [activeGlobal, queue, player],
   );
 
-  const display = data.surah.name;
-
-  const header = (
+  const listHeader = data ? (
     <View className="gap-3 pb-4">
       <View className="flex-row items-center gap-2">
         <Pressable
@@ -164,10 +219,10 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs,
         </Pressable>
         <View className="flex-1 flex-row items-baseline justify-between gap-4">
           <Text variant="display" className="text-2xl text-primary">
-            {display.en}
+            {data.surah.name.en}
           </Text>
           <Text className="font-quran text-2xl text-text" style={{ writingDirection: "rtl" }}>
-            {display.ar}
+            {data.surah.name.ar}
           </Text>
         </View>
       </View>
@@ -185,7 +240,56 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs,
         </Pressable>
       </View>
     </View>
-  );
+  ) : null;
+
+  const mushafHeader = pageData ? (
+    <View className="gap-3 pb-4">
+      <View className="flex-row items-center gap-2">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("common.back")}
+          onPress={onBack}
+          className="-ms-2 size-9 items-center justify-center"
+        >
+          <Text className="text-2xl text-text">‹</Text>
+        </Pressable>
+        <Text variant="display" className="flex-1 text-lg text-text-2">
+          {t("quran.title")}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("quran.settings")}
+          onPress={() => setSettingsOpen(true)}
+          className="rounded-md border border-border px-3 py-1.5"
+        >
+          <Text className="text-sm text-text-2">⚙ {t("quran.settings")}</Text>
+        </Pressable>
+      </View>
+      <View className="flex-row items-center justify-center gap-4">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("quran.prevPage")}
+          disabled={pageData.prevPage === null}
+          onPress={() => pageData.prevPage !== null && onChangePage(pageData.prevPage)}
+          className={cn("size-9 items-center justify-center", pageData.prevPage === null && "opacity-30")}
+        >
+          <Text className="text-2xl text-text">‹</Text>
+        </Pressable>
+        <Text variant="label">
+          {t("quran.pageN", { number: pageData.page })} · {t("quran.juzN", { number: pageData.juz })}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("quran.nextPage")}
+          disabled={pageData.nextPage === null}
+          onPress={() => pageData.nextPage !== null && onChangePage(pageData.nextPage)}
+          className={cn("size-9 items-center justify-center", pageData.nextPage === null && "opacity-30")}
+        >
+          <Text className="text-2xl text-text">›</Text>
+        </Pressable>
+      </View>
+    </View>
+  ) : null;
 
   return (
     <>
@@ -194,58 +298,66 @@ export function Reader({ data, editions, reciters, locale, prefs, onChangePrefs,
           SafeAreaView), so without this the surah title collided with the clock/
           battery icons and ayahs bled under them on scroll — same fix as Home. */}
       <View className="flex-1 bg-bg">
-      {prefs.layout === "mushaf" ? (
-      <FlatList<AyahPageGroup>
-        ref={mushafRef}
-        className="flex-1 bg-bg px-4"
-        data={pageGroups}
-        keyExtractor={(g) => String(g.page)}
-        ListHeaderComponent={header}
-        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: dockSpacing }}
-        onScrollToIndexFailed={() => undefined}
-        renderItem={({ item, index }) => (
-          <MushafPage
-            group={item}
-            fontScale={prefs.fontScale}
-            showBismillah={index === 0 && data.surah.bismillahPre && data.surah.number !== 1}
-            activeGlobal={activeGlobal}
-            selectedGlobal={selectedGlobal}
-            onSelectAyah={onSelectAyah}
+        {isMushaf ? (
+          pageData ? (
+            <FlatList<PageSegment>
+              ref={mushafRef}
+              className="flex-1 bg-bg px-4"
+              data={pageData.segments}
+              keyExtractor={(s) => `${pageData.page}-${s.surah.number}`}
+              ListHeaderComponent={mushafHeader}
+              ListFooterComponent={
+                <View className="mt-2 items-center border-t border-border pb-6 pt-3">
+                  <Text variant="muted">
+                    {t("quran.pageN", { number: pageData.page })} · {t("quran.juzN", { number: pageData.juz })}
+                  </Text>
+                </View>
+              }
+              contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: dockSpacing }}
+              onScrollToIndexFailed={() => undefined}
+              renderItem={({ item }) => (
+                <MushafSegment
+                  segment={item}
+                  fontScale={prefs.fontScale}
+                  activeGlobal={activeGlobal}
+                  selectedGlobal={selectedGlobal}
+                  onSelectAyah={onSelectAyah}
+                />
+              )}
+            />
+          ) : null
+        ) : data ? (
+          <FlatList<ReaderAyah>
+            ref={listRef}
+            className="flex-1 bg-bg px-4"
+            data={data.ayahs}
+            keyExtractor={(a) => String(a.numberGlobal)}
+            ListHeaderComponent={listHeader}
+            contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: dockSpacing }}
+            onScrollToIndexFailed={() => undefined}
+            renderItem={({ item }) => (
+              <AyahRow
+                ayah={item}
+                showTranslation={prefs.showTranslation}
+                translationDir={translationDir}
+                showWordByWord={prefs.showWordByWord}
+                fontScale={prefs.fontScale}
+                isCurrent={activeGlobal === item.numberGlobal}
+                isPlaying={player.isPlaying && activeGlobal === item.numberGlobal}
+                isBookmarked={isAyahBookmarked(bookmarks, {
+                  surah: item.surah,
+                  ayahInSurah: item.ayahInSurah,
+                })}
+                onPlay={onPlayToggle}
+                onToggleBookmark={onToggleBookmark}
+                onOpenTafsir={(ng) => {
+                  const a = data.ayahs.find((x) => x.numberGlobal === ng);
+                  if (a) setTafsirAyah({ numberGlobal: ng, ref: `${a.surah}:${a.ayahInSurah}` });
+                }}
+              />
+            )}
           />
-        )}
-      />
-      ) : (
-      <FlatList<ReaderAyah>
-        ref={listRef}
-        className="flex-1 bg-bg px-4"
-        data={data.ayahs}
-        keyExtractor={(a) => String(a.numberGlobal)}
-        ListHeaderComponent={header}
-        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: dockSpacing }}
-        onScrollToIndexFailed={() => undefined}
-        renderItem={({ item }) => (
-          <AyahRow
-            ayah={item}
-            showTranslation={prefs.showTranslation}
-            translationDir={translationDir}
-            showWordByWord={prefs.showWordByWord}
-            fontScale={prefs.fontScale}
-            isCurrent={activeGlobal === item.numberGlobal}
-            isPlaying={player.isPlaying && activeGlobal === item.numberGlobal}
-            isBookmarked={isAyahBookmarked(bookmarks, {
-              surah: item.surah,
-              ayahInSurah: item.ayahInSurah,
-            })}
-            onPlay={onPlayToggle}
-            onToggleBookmark={onToggleBookmark}
-            onOpenTafsir={(ng) => {
-              const a = data.ayahs.find((x) => x.numberGlobal === ng);
-              if (a) setTafsirAyah({ numberGlobal: ng, ref: `${a.surah}:${a.ayahInSurah}` });
-            }}
-          />
-        )}
-      />
-      )}
+        ) : null}
         {/* Opaque scrim over the status-bar area — hides ayahs scrolled up behind
             the transparent status bar (mirrors app/index.tsx). */}
         <View

@@ -233,7 +233,9 @@
     "layoutList": "قائمة",
     "layoutMushaf": "مصحف",
     "pageN": "صفحة {{number}}",
-    "juzN": "الجزء {{number}}"
+    "juzN": "الجزء {{number}}",
+    "prevPage": "الصفحة السابقة",
+    "nextPage": "الصفحة التالية"
   },
   "qibla": {
     "title": "اتجاه القبلة",

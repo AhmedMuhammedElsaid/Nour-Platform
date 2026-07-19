@@ -1,10 +1,15 @@
 import { assetUrl } from "@/lib/api";
 import type { QueueTrack } from "@/lib/player-context";
 import type {
+  PageSegment,
   QuranReciter,
   ReaderAyah,
-  SurahReader,
 } from "@repo/shared-core/schemas/quran";
+
+// Minimal surah shape the queue builder needs — satisfied by both
+// SurahReader["surah"] (list mode) and PageSegment["surah"] (mushaf/page mode,
+// which carries a reduced surah shape without revelationPlace/ayahCount/pages).
+type QueueSurah = { name: { ar: string; en: string } };
 
 // Namespaced track id so the Reader can tell an ayah track apart from a playlist
 // track and map it back to the ayah's global number (for highlight + scroll).
@@ -25,7 +30,7 @@ export function parseAyahTrackId(id: string | null | undefined): number | null {
 // index is NOT the same as the data.ayahs index — callers must locate a track by
 // id, not by position.
 export function buildAyahQueue(
-  surah: SurahReader["surah"],
+  surah: QueueSurah,
   ayahs: ReaderAyah[],
   reciter: QuranReciter | null,
   locale: string,
@@ -50,4 +55,17 @@ export function buildAyahQueue(
     });
   }
   return tracks;
+}
+
+// Mushaf (Safha) page mode: a page can hold 2+ segments when short surahs
+// share it (common in juz 30), so the RNTP queue must span all of them — one
+// per-segment queue (each keyed to its own surah for title/name), concatenated
+// in page order. Track ids stay globally unique (ayahTrackId(numberGlobal)),
+// so playback/highlight lookups work unchanged across a segment boundary.
+export function buildPageQueue(
+  segments: PageSegment[],
+  reciter: QuranReciter | null,
+  locale: string,
+): QueueTrack[] {
+  return segments.flatMap((segment) => buildAyahQueue(segment.surah, segment.ayahs, reciter, locale));
 }

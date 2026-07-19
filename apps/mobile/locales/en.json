@@ -233,7 +233,9 @@
     "layoutList": "List",
     "layoutMushaf": "Mushaf",
     "pageN": "Page {{number}}",
-    "juzN": "Juz {{number}}"
+    "juzN": "Juz {{number}}",
+    "prevPage": "Previous page",
+    "nextPage": "Next page"
   },
   "qibla": {
     "title": "Qibla Direction",

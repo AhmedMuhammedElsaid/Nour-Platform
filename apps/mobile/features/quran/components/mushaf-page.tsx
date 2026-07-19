@@ -1,44 +1,52 @@
 import { View } from "react-native";
-import { useTranslation } from "react-i18next";
 
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
-import { ayahMarker, type AyahPageGroup } from "../lib/page-groups";
+import { ayahMarker } from "../lib/page-groups";
+import type { PageSegment } from "@repo/shared-core/schemas/quran";
 
 // Uthmani Bismillah — Quranic text, not a UI string, so it lives as a module
 // constant rather than an i18n key (same literal apps/web/app/[locale]/quran/
 // [surah]/page.tsx:84 renders before its Reader).
 const BISMILLAH = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ";
 
-export interface MushafPageProps {
-  group: AyahPageGroup;
+export interface MushafSegmentProps {
+  segment: PageSegment;
   fontScale: number;
-  showBismillah: boolean;
   activeGlobal: number | null;
   selectedGlobal: number | null;
   onSelectAyah: (numberGlobal: number) => void;
 }
 
-// One Mushaf (Safha) page block: the page's ayahs flow as one justified
-// Uthmani paragraph with inline U+06DD end-of-ayah markers (upgrading list
-// mode's Western-digit badge — same nested-Text idiom as ayah-row.tsx:85-91,
-// proven to render there), instead of AyahRow's one-ayah-per-row layout.
-// Mobile-only; no web/extension equivalent yet.
-export function MushafPage({
-  group,
+// One surah-run within a Mushaf (Safha) page: a lightweight EN/AR surah-name
+// banner (same title-pairing treatment as the Reader's own header), the
+// segment's Bismillah when the API says this segment opens a new surah on the
+// page, then its ayahs as one justified Uthmani paragraph with inline U+06DD
+// end-of-ayah markers. A page can hold 2+ segments (short surahs sharing a
+// page, common in juz 30) — features/quran/components/reader.tsx renders one
+// of these per PageReader.segments entry; the Page/Juz footer renders once at
+// the page level, not per segment. Mobile-only; no web/extension equivalent yet.
+export function MushafSegment({
+  segment,
   fontScale,
-  showBismillah,
   activeGlobal,
   selectedGlobal,
   onSelectAyah,
-}: MushafPageProps) {
-  const { t } = useTranslation();
-
+}: MushafSegmentProps) {
   return (
-    <View className="border-b border-border pb-6 pt-4">
-      {showBismillah ? (
+    <View className="gap-4 border-b border-border pb-6 pt-4">
+      <View className="flex-row items-baseline justify-between gap-4">
+        <Text variant="display" className="text-2xl text-primary">
+          {segment.surah.name.en}
+        </Text>
+        <Text className="font-quran text-2xl text-text" style={{ writingDirection: "rtl" }}>
+          {segment.surah.name.ar}
+        </Text>
+      </View>
+
+      {segment.showBismillah ? (
         <Text
-          className="mb-4 text-center font-quran text-text"
+          className="text-center font-quran text-text"
           style={{ fontSize: 24 * fontScale, writingDirection: "rtl" }}
         >
           {BISMILLAH}
@@ -58,7 +66,7 @@ export function MushafPage({
           writingDirection: "rtl",
         }}
       >
-        {group.ayahs.map((ayah) => (
+        {segment.ayahs.map((ayah) => (
           <Text
             key={ayah.numberGlobal}
             testID={`mushaf-ayah-${ayah.numberGlobal}`}
@@ -74,12 +82,6 @@ export function MushafPage({
           </Text>
         ))}
       </Text>
-
-      <View className="mt-4 items-center border-t border-border pt-3">
-        <Text variant="muted">
-          {t("quran.pageN", { number: group.page })} · {t("quran.juzN", { number: group.juz })}
-        </Text>
-      </View>
     </View>
   );
 }

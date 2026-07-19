@@ -1,25 +1,8 @@
-import type { ReaderAyah } from "@repo/shared-core/schemas/quran";
-
-export type AyahPageGroup = { page: number; juz: number; ayahs: ReaderAyah[] };
-
-// Groups a surah's ayahs (already ordered by numberGlobal) into per-mushaf-page
-// blocks using each ayah's `page` field (1-604, already shipped on every
-// ReaderAyah) — no new API call, no change to the offline per-surah store.
-// Single pass, split whenever `page` changes; a group's `juz` is its first
-// ayah's juz (mirrors the physical Madani mushaf, where a page's header juz is
-// the juz its first line belongs to).
-export function groupAyahsByPage(ayahs: ReaderAyah[]): AyahPageGroup[] {
-  const groups: AyahPageGroup[] = [];
-  for (const ayah of ayahs) {
-    const last = groups[groups.length - 1];
-    if (last && last.page === ayah.page) {
-      last.ayahs.push(ayah);
-    } else {
-      groups.push({ page: ayah.page, juz: ayah.juz, ayahs: [ayah] });
-    }
-  }
-  return groups;
-}
+// Digit/marker helpers for the Mushaf (Safha) page-reading mode. Page grouping
+// itself is now server-side (GET /api/v1/quran/page/:n returns a PageReader
+// with segments already split by surah/page) — see
+// features/quran/lib/ayah-queue.ts (buildPageQueue) and
+// features/quran/components/mushaf-page.tsx for the consumers.
 
 const ARABIC_INDIC_DIGITS = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
 

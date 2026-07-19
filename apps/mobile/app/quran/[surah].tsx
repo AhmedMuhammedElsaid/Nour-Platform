@@ -18,8 +18,10 @@ import {
 } from "@/lib/device-local";
 import {
   quranEditionsQuery,
+  quranPageReaderQuery,
   quranRecitersQuery,
   quranSurahReaderQuery,
+  quranSurahsQuery,
 } from "@/lib/queries";
 
 export default function QuranReaderScreen() {
@@ -46,14 +48,35 @@ export default function QuranReaderScreen() {
     void setQuranPrefs(next);
   };
 
-  const reader = useQuery({
+  const isMushaf = prefs.layout === "mushaf";
+
+  // Every entry point (surah list, bookmarks, search, continue-reading, the
+  // Readers shelf) still links by SURAH NUMBER — Mushaf/page mode resolves
+  // the entry surah's starting page from the cached surah index (immutable
+  // reference data, staleTime Infinity) once, then browses by page from there.
+  const surahs = useQuery(quranSurahsQuery());
+  const surahMeta = surahs.data?.find((s) => s.number === surahNumber);
+  const [currentPage, setCurrentPage] = useState<number | null>(null);
+  useEffect(() => {
+    if (currentPage === null && surahMeta) setCurrentPage(surahMeta.pageStart);
+  }, [currentPage, surahMeta]);
+
+  // List mode's fetch is byte-for-byte the same query as before.
+  const surahReader = useQuery({
     ...quranSurahReaderQuery(surahNumber, locale, prefs.translationSlug, prefs.reciterSlug),
-    enabled: hydrated && Number.isInteger(surahNumber),
+    enabled: hydrated && !isMushaf && Number.isInteger(surahNumber),
+  });
+  const pageReader = useQuery({
+    ...quranPageReaderQuery(currentPage ?? 1, locale, prefs.translationSlug, prefs.reciterSlug),
+    enabled: hydrated && isMushaf && currentPage !== null,
   });
   const editions = useQuery(quranEditionsQuery());
   const reciters = useQuery(quranRecitersQuery());
 
-  if (!hydrated || reader.isPending) {
+  const active = isMushaf ? pageReader : surahReader;
+  const resolvingPage = isMushaf && currentPage === null;
+
+  if (!hydrated || resolvingPage || active.isPending) {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
@@ -67,7 +90,7 @@ export default function QuranReaderScreen() {
     );
   }
 
-  if (reader.isError && !reader.data) {
+  if (active.isError && !active.data) {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
@@ -75,7 +98,7 @@ export default function QuranReaderScreen() {
           <BackRow onBack={() => router.back()} label={t("common.back")} />
           <View className="flex-1 items-center justify-center gap-3 px-4">
             <Text className="text-danger">{t("common.error")}</Text>
-            <Button label={t("common.retry")} variant="outline" onPress={() => void reader.refetch()} />
+            <Button label={t("common.retry")} variant="outline" onPress={() => void active.refetch()} />
           </View>
         </View>
       </>
@@ -83,14 +106,17 @@ export default function QuranReaderScreen() {
   }
 
   // Unreachable once isPending/isError-without-data are both handled above —
-  // kept only so TS narrows `reader.data` to non-null below.
-  if (!reader.data) return null;
+  // kept only so TS narrows `active.data` to non-null below.
+  if (!active.data) return null;
 
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <Reader
-        data={reader.data}
+        data={isMushaf ? null : (surahReader.data ?? null)}
+        pageData={isMushaf ? (pageReader.data ?? null) : null}
+        entrySurah={surahNumber}
+        onChangePage={setCurrentPage}
         editions={editions.data ?? []}
         reciters={reciters.data ?? []}
         locale={locale}

@@ -102,7 +102,7 @@ export const DEFAULT_QURAN_PREFS: QuranPrefs = {
   showTranslation: true,
   showWordByWord: false,
   fontScale: 1,
-  layout: "list",
+  layout: "mushaf",
 };
 
 function isQuranPrefs(value: unknown): value is Partial<QuranPrefs> {

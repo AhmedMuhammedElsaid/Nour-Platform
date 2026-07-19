@@ -8,6 +8,7 @@ import type {
   QuranEdition,
   QuranReciter,
   SurahReader,
+  PageReader,
 } from "@repo/shared-core/schemas/quran";
 import type { RadioStation } from "@repo/shared-core/schemas/radio";
 
@@ -112,4 +113,26 @@ export const quranSurahReaderQuery = (
         throw err;
       }
     },
+  });
+
+// Mushaf (Safha) page mode — fetches a whole Madani mushaf page (1-604), which
+// may span multiple surahs (PageReader.segments). No offline fallback: the
+// per-file offline store (lib/quran-offline-store.ts) is keyed by surah, not
+// page — page-mode reading is a known offline gap for v1 (see mobile
+// APP_CONTEXT.md).
+export const quranPageReaderQuery = (
+  page: number,
+  locale: Locale,
+  translationSlug: string,
+  reciterSlug: string,
+) =>
+  queryOptions({
+    queryKey: ["quran", "page", page, locale, translationSlug, reciterSlug] as const,
+    staleTime: Infinity,
+    queryFn: () =>
+      getJson<PageReader>(`/quran/page/${page}`, {
+        locale,
+        ...(translationSlug ? { translation: translationSlug } : {}),
+        reciter: reciterSlug,
+      }),
   });
