@@ -20,6 +20,30 @@ export const RADIO_NAME_CACHE_KEY = "nour.widget.radioNameCache";
 
 const RADIO_LABEL: Record<"ar" | "en", string> = { ar: "إذاعة", en: "Radio" };
 
+// getJson's underlying fetch has no default timeout. Without this, a hung
+// request (captive portal, server accepts then never responds) never rejects,
+// so the catch below never fires and the whole widget render — prayer +
+// adhkar rows included — stalls on this await. Racing against a timeout
+// guarantees buildRadioRow always settles; the abandoned fetch is simply
+// ignored if it resolves later.
+const RADIO_FETCH_TIMEOUT_MS = 6000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("radio row fetch timed out")), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err: unknown) => {
+        clearTimeout(timer);
+        reject(err instanceof Error ? err : new Error(String(err)));
+      },
+    );
+  });
+}
+
 export type RadioRowResult = {
   label: string;
   stationName: string | null;
@@ -43,7 +67,7 @@ export async function buildRadioRow(locale: "ar" | "en"): Promise<RadioRowResult
   if (!slug) return { label, stationName: null };
 
   try {
-    const stations = await getJson<RadioStation[]>("/radio");
+    const stations = await withTimeout(getJson<RadioStation[]>("/radio"), RADIO_FETCH_TIMEOUT_MS);
     const match = stations.find((s) => s.slug === slug);
     if (match) {
       const name = toStationView(match, locale).name;

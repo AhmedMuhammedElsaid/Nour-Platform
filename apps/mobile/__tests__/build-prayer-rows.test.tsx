@@ -31,14 +31,20 @@ describe("buildPrayerRows", () => {
     }
   });
 
-  it("after Isha: rolls the highlight to (today's) Fajr row, matching the in-app widget's precedent", () => {
+  it("after Isha: rolls both the highlight AND the displayed time to tomorrow's Fajr", () => {
     // 2026-06-26 23:30 local — well after Cairo's Isha.
     const now = new Date(2026, 5, 26, 23, 30, 0);
     const result = buildPrayerRows(location, prefs, now, "en");
+    // Independently computed via a same-day mid-morning call (well before
+    // ITS OWN Isha, so this reflects the 27th's own Fajr, not a roll-over).
+    const tomorrowOnly = buildPrayerRows(location, prefs, new Date(2026, 5, 27, 3, 0, 0), "en");
 
     const highlighted = result.rows.filter((r) => r.isNext);
     expect(highlighted).toHaveLength(1);
     expect(highlighted[0]!.key).toBe("fajr");
+    // The displayed Fajr time must match tomorrow's actual Fajr — not
+    // today's already-elapsed instant re-displayed under the highlight.
+    expect(highlighted[0]!.time).toBe(tomorrowOnly.rows.find((r) => r.key === "fajr")!.time);
   });
 
   it("locale ar vs en: labels switch, city label switches", () => {

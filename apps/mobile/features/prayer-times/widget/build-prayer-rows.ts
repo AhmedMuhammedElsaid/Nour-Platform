@@ -60,17 +60,17 @@ export function buildPrayerRows(
   const input = { lat: location.lat, lng: location.lng, method: prefs.method, madhab: prefs.madhab };
   const today = computePrayerTimes({ ...input, date: now });
 
-  // Roll the highlight to tomorrow's Fajr once today's Isha has passed —
-  // getNextPrayer returns null in that case (compute.ts:120).
+  // Once today's Isha has passed, getNextPrayer returns null (compute.ts:120).
+  // Roll the WHOLE row set to tomorrow's schedule (not just the highlight) —
+  // otherwise the highlighted "next prayer" row would display today's
+  // already-elapsed Fajr time instead of tomorrow's.
   const next = getNextPrayer(today, now);
-  const nextKey: PrayerKey | null = next
-    ? next.key
-    : rolledToTomorrowFajr(today, input, now)
-      ? "fajr"
-      : null;
+  const tomorrow = next ? null : rollToTomorrow(today, input, now);
+  const day = tomorrow ?? today;
+  const nextKey: PrayerKey | null = next ? next.key : tomorrow ? "fajr" : null;
 
   const rows: PrayerRow[] = ROW_KEYS.map((key) => {
-    const inst = today.instants.find((i) => i.key === key)?.time ?? null;
+    const inst = day.instants.find((i) => i.key === key)?.time ?? null;
     return {
       key,
       label: PRAYER_LABELS[key][locale],
@@ -82,16 +82,17 @@ export function buildPrayerRows(
   return { city: cityLabel(location, locale), rows };
 }
 
-// After Isha, `getNextPrayer` returns null for today; the highlight rolls to
-// tomorrow's Fajr as long as tomorrow actually computes a Fajr instant
-// (always true outside degenerate high-latitude cases).
-function rolledToTomorrowFajr(
+// After Isha, returns tomorrow's computed day so the rolled Fajr highlight
+// shows tomorrow's time, not today's already-elapsed one — or null if Isha
+// hasn't passed yet, or tomorrow has no Fajr instant (degenerate
+// high-latitude case), in which case the caller keeps today's row set.
+function rollToTomorrow(
   today: PrayerDay,
   input: { lat: number; lng: number; method: CalculationMethodId; madhab: MadhabId },
   now: Date,
-): boolean {
+): PrayerDay | null {
   const isha = today.instants.find((i) => i.key === "isha")?.time ?? null;
-  if (isha == null || now.getTime() < isha.getTime()) return false;
+  if (isha == null || now.getTime() < isha.getTime()) return null;
   const tomorrow = computePrayerTimes({ ...input, date: new Date(now.getTime() + DAY_MS) });
-  return tomorrow.instants.find((i) => i.key === "fajr")?.time != null;
+  return tomorrow.instants.find((i) => i.key === "fajr")?.time != null ? tomorrow : null;
 }

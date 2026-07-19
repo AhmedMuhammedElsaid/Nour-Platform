@@ -34,8 +34,8 @@ export type NourHomeWidgetProps = {
 
 export function NourHomeWidget({ width, height, locale, prayer, radio, adhkar }: NourHomeWidgetProps) {
   const radioText = radio.stationName ?? radio.label;
-  const radioIcon = locale === "ar" ? "🔊" : "🔊";
-  const adhkarIcon = locale === "ar" ? "📿" : "📿";
+  const radioIcon = "🔊";
+  const adhkarIcon = "📿";
 
   return (
     <FlexWidget
