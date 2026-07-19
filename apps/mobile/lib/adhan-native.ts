@@ -17,7 +17,7 @@ export type AdhanNativeItem = {
 type NourAdhanNativeModule = {
   scheduleAll(items: AdhanNativeItem[]): Promise<void>;
   cancelAll(): Promise<void>;
-  playTest(delayMs: number): Promise<void>;
+  playTest(delayMs: number, volume: number): Promise<void>;
   stop(): Promise<void>;
 };
 
@@ -36,8 +36,8 @@ export async function cancelAll(): Promise<void> {
   await native?.cancelAll();
 }
 
-export async function playTest(delayMs: number): Promise<void> {
-  await native?.playTest(delayMs);
+export async function playTest(delayMs: number, volume: number): Promise<void> {
+  await native?.playTest(delayMs, volume);
 }
 
 export async function stop(): Promise<void> {

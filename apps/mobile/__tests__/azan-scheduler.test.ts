@@ -194,7 +194,7 @@ describe("iOS Critical Alerts", () => {
   });
 
   it("schedules the test azan with interruptionLevel:critical and the bundled sound", async () => {
-    await scheduleTestAzan("Test");
+    await scheduleTestAzan("Test", 1.0);
 
     expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledWith(
       expect.objectContaining({

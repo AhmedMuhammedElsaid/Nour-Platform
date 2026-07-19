@@ -31,9 +31,9 @@ class NourAdhanModule : Module() {
       AdhanScheduler.cancelAll(context)
     }
 
-    AsyncFunction("playTest") { delayMs: Double ->
+    AsyncFunction("playTest") { delayMs: Double, volume: Double ->
       val fireAt = System.currentTimeMillis() + delayMs.toLong()
-      AdhanScheduler.scheduleTest(context, AdhanAlarm("test", fireAt, false, 1.0))
+      AdhanScheduler.scheduleTest(context, AdhanAlarm("test", fireAt, false, volume))
     }
 
     AsyncFunction("stop") {

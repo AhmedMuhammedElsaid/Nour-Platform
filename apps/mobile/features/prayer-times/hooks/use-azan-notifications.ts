@@ -183,10 +183,10 @@ export function useAzanNotifications(
 
 // Dev/verify helper: fire one adhan ~60s out via the exact same path as the real
 // schedule, so the user can lock the phone and confirm it sounds on time.
-export async function scheduleTestAzan(title: string): Promise<Date> {
+export async function scheduleTestAzan(title: string, volume: number): Promise<Date> {
   const fireAt = new Date(Date.now() + 60 * 1000);
   if (nativeAdhanActive()) {
-    await AdhanNative.playTest(60 * 1000);
+    await AdhanNative.playTest(60 * 1000, volume);
     return fireAt;
   }
   await Notifications.scheduleNotificationAsync({

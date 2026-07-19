@@ -139,7 +139,7 @@ export default function PrayerTimesScreen() {
   // exact-alarm path the permission fix enables.
   const runTestAdhan = useCallback(async () => {
     try {
-      const fireAt = await scheduleTestAzan(t("prayer.adhan.testTitle"));
+      const fireAt = await scheduleTestAzan(t("prayer.adhan.testTitle"), adhan.volume);
       Alert.alert(
         t("prayer.adhan.testTitle"),
         t("prayer.adhan.testScheduled", { time: formatClock(fireAt, locale) }),
@@ -149,7 +149,7 @@ export default function PrayerTimesScreen() {
       // instead of the promise rejecting silently (user saw "nothing happened").
       Alert.alert(t("prayer.adhan.testTitle"), t("common.error"));
     }
-  }, [t, locale]);
+  }, [t, locale, adhan.volume]);
 
   // Active body (sun by day, moon by night) + its progress, plus the day-arc dot
   // positions. Recomputed each tick so the body glides; both are cheap + pure.
