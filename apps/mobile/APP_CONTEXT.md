@@ -1496,3 +1496,12 @@ Prayer times (Aladhan cache + compute fallback) and Qibla were already offline; 
   (41/41 suites). **Device-verify pending (A72)** — plan §6 step 5's full on-device checklist (widget
   add/resize, tap-through all 3 rows, radio degrade in airplane mode, instant refresh on settings change,
   overnight + force-closed survival) awaits the next EAS build.
+- **Fresh-context Opus review (`66580a8`) found + fixed 1 real bug**: `build-radio-row.ts`'s `/radio`
+  fetch had no timeout — a hung request (captive portal) never rejected, stalling the whole widget render
+  (prayer + adhkar rows too), contrary to the module's own "never blank the other rows" contract. Fixed
+  with a local `withTimeout()` race (6s) around just that call, `getJson` itself untouched. Also fixed:
+  `build-prayer-rows.ts` rolled the highlight to tomorrow's Fajr after Isha but still displayed *today's*
+  already-elapsed Fajr time under it — now rolls the whole row set to tomorrow's computed day. Full mobile
+  gate re-verified green after the fix; full monorepo gate's only failure is a **pre-existing, unrelated**
+  `mobile#typecheck` error in `use-azkar-notification-router.ts` (from `a5d039a`, not touched by this
+  feature) — flagged, not fixed here (out of scope).
