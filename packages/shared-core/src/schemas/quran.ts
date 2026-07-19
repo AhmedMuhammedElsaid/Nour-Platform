@@ -97,6 +97,38 @@ export const surahReaderSchema = z.object({
 });
 export type SurahReader = z.infer<typeof surahReaderSchema>;
 
+// ── Page reader DTOs (cross-surah Madani mushaf page, e.g. GET /quran/page/:n) ─
+export const quranPageNumberSchema = z.number().int().min(1).max(604);
+
+// One contiguous same-surah run of ayahs within a page. A page can hold up to
+// a handful of segments when several short surahs share it (juz 30 pages).
+export const pageSegmentSchema = z.object({
+  surah: z.object({
+    number: z.number().int().min(1).max(114),
+    name: z.object({ ar: z.string().min(1), en: z.string().min(1) }),
+    meaning: z.string().min(1),
+    bismillahPre: z.boolean(),
+  }),
+  // true only when this segment opens a new surah on the page (its first
+  // ayah is ayahInSurah 1) AND that surah has a Bismillah AND it isn't
+  // Al-Fatiha (whose Bismillah is ayah 1 itself, not separate page chrome) —
+  // same gate the within-surah mushaf-page components use.
+  showBismillah: z.boolean(),
+  ayahs: z.array(readerAyahSchema),
+});
+export type PageSegment = z.infer<typeof pageSegmentSchema>;
+
+export const pageReaderSchema = z.object({
+  page: quranPageNumberSchema,
+  juz: z.number().int().min(1).max(30),
+  prevPage: quranPageNumberSchema.nullable(),
+  nextPage: quranPageNumberSchema.nullable(),
+  segments: z.array(pageSegmentSchema),
+  translationEdition: quranEditionSchema.nullable(),
+  reciter: quranReciterSchema.nullable(),
+});
+export type PageReader = z.infer<typeof pageReaderSchema>;
+
 export const quranTafsirSchema = z.object({
   editionSlug: z.string().min(1),
   numberGlobal: z.number().int().min(1).max(6236),

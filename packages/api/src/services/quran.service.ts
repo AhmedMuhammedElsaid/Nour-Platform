@@ -3,6 +3,8 @@ import {
   findSurah,
   findAyahsBySurah,
   findAyahsByJuz,
+  findAyahsByPage,
+  findSurahsByNumbers,
   findTranslationsForGlobalRange,
   findEditions,
   findEditionBySlug,
@@ -18,6 +20,8 @@ import type {
   ReaderAyah,
   SurahReader,
   TafsirResult,
+  PageReader,
+  PageSegment,
 } from "../schemas/quran";
 import type { Locale } from "../schemas/locale";
 import type { QuranSurahDoc } from "../db/models/quran-surah.model";
@@ -36,6 +40,8 @@ const DEFAULT_TRANSLATION_BY_LOCALE: Record<Locale, string> = {
   en: "en.sahih",
 };
 const DEFAULT_RECITER_SLUG = "qatami";
+const MIN_PAGE = 1;
+const MAX_PAGE = 604;
 const DEFAULT_TAFSIR_BY_LOCALE: Record<Locale, string> = {
   ar: "ar.saadi",
   en: "en.ibnkathir",
@@ -214,4 +220,72 @@ export async function getJuzReader(
   );
 
   return ayahDocs.map((a) => ayahToReaderDto(a, translationByGlobal, reciter));
+}
+
+// Cross-surah Madani mushaf page reader: a page's ayahs are pre-filtered by
+// `page` (unlike getSurahReader/getJuzReader, which filter by surah/juz), then
+// split into per-surah PageSegments in a single pass — same consecutive-run
+// grouping idea as the client-side groupAyahsByPage helpers, but keyed on
+// `surah` change instead of `page` change (the input here is already one page).
+export async function getPageReader(
+  page: number,
+  opts: SurahReaderOptions,
+): Promise<PageReader> {
+  if (!Number.isInteger(page) || page < MIN_PAGE || page > MAX_PAGE) {
+    throw AppError.Validation([], "Invalid page number.");
+  }
+
+  const ayahDocs = await findAyahsByPage(page);
+  if (ayahDocs.length === 0) throw AppError.NotFound("Page");
+
+  const { edition, reciter, translationByGlobal } = await resolveEditionAndReciter(
+    ayahDocs,
+    opts,
+  );
+
+  const surahNumbers = Array.from(new Set(ayahDocs.map((a) => a.surah)));
+  const surahDocs = await findSurahsByNumbers(surahNumbers);
+  const surahByNumber = new Map(surahDocs.map((s) => [s.number, s]));
+
+  const segments: PageSegment[] = [];
+  for (const ayahDoc of ayahDocs) {
+    const readerAyah = ayahToReaderDto(ayahDoc, translationByGlobal, reciter);
+    const last = segments[segments.length - 1];
+    if (last && last.surah.number === ayahDoc.surah) {
+      last.ayahs.push(readerAyah);
+      continue;
+    }
+
+    const surahDoc = surahByNumber.get(ayahDoc.surah);
+    if (!surahDoc) {
+      // Data-integrity gap (ayah references a surah row that doesn't exist) —
+      // not a caller input error, so this is a 500, not a 400/404.
+      throw AppError.Internal(`Surah ${ayahDoc.surah} not found for page ${page}.`);
+    }
+
+    segments.push({
+      surah: {
+        number: surahDoc.number,
+        name: {
+          ar: (surahDoc.name as { ar: string }).ar,
+          en: (surahDoc.name as { en: string }).en,
+        },
+        meaning: surahDoc.meaning,
+        bismillahPre: surahDoc.bismillahPre,
+      },
+      showBismillah:
+        ayahDoc.ayahInSurah === 1 && surahDoc.bismillahPre && surahDoc.number !== 1,
+      ayahs: [readerAyah],
+    });
+  }
+
+  return {
+    page,
+    juz: ayahDocs[0]!.juz,
+    prevPage: page > MIN_PAGE ? page - 1 : null,
+    nextPage: page < MAX_PAGE ? page + 1 : null,
+    segments,
+    translationEdition: edition ? editionToDto(edition) : null,
+    reciter: reciter ? reciterToDto(reciter) : null,
+  };
 }

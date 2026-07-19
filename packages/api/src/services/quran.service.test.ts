@@ -5,6 +5,8 @@ vi.mock("../repositories/quran.repo", () => ({
   findSurah: vi.fn(),
   findAyahsBySurah: vi.fn(),
   findAyahsByJuz: vi.fn(),
+  findAyahsByPage: vi.fn(),
+  findSurahsByNumbers: vi.fn(),
   findTranslationsForGlobalRange: vi.fn(),
   findEditions: vi.fn(),
   findEditionBySlug: vi.fn(),
@@ -135,6 +137,106 @@ describe("quran.service", () => {
     it("throws NotFound for an unknown surah", async () => {
       vi.mocked(repo.findSurah).mockResolvedValueOnce(null);
       await expect(service.getSurahReader(999, {})).rejects.toThrow();
+    });
+  });
+
+  describe("getPageReader", () => {
+    it("page 1 is a single Al-Fatiha segment with no bismillah flag, no prev page", async () => {
+      vi.mocked(repo.findAyahsByPage).mockResolvedValueOnce([
+        ayahDoc({ surah: 1, ayahInSurah: 1, numberGlobal: 1, juz: 1, page: 1 }),
+        ayahDoc({
+          surah: 1,
+          ayahInSurah: 2,
+          numberGlobal: 2,
+          juz: 1,
+          page: 1,
+          textUthmani: "ٱلْحَمْدُ لِلَّهِ",
+        }),
+      ]);
+      vi.mocked(repo.findEditionBySlug).mockResolvedValueOnce(null);
+      vi.mocked(repo.findReciterBySlug).mockResolvedValueOnce(null);
+      vi.mocked(repo.findTranslationsForGlobalRange).mockResolvedValueOnce([]);
+      vi.mocked(repo.findSurahsByNumbers).mockResolvedValueOnce([surahDoc({ number: 1 })]);
+
+      const result = await service.getPageReader(1, {});
+
+      expect(result.page).toBe(1);
+      expect(result.juz).toBe(1);
+      expect(result.prevPage).toBeNull();
+      expect(result.nextPage).toBe(2);
+      expect(result.segments).toHaveLength(1);
+      expect(result.segments[0]!.surah.number).toBe(1);
+      expect(result.segments[0]!.showBismillah).toBe(false);
+      expect(result.segments[0]!.ayahs).toHaveLength(2);
+      expect(vi.mocked(repo.findSurahsByNumbers)).toHaveBeenCalledWith([1]);
+    });
+
+    it("splits a page spanning two surahs into two segments; the new surah's bismillah shows", async () => {
+      // Al-Fil (105, 5 ayahs) ends and Quraysh (106, 4 ayahs, has a bismillah)
+      // begins on the same Madani mushaf page — a realistic short-surah pair.
+      vi.mocked(repo.findAyahsByPage).mockResolvedValueOnce([
+        ayahDoc({ surah: 105, ayahInSurah: 5, numberGlobal: 6224, juz: 30, page: 601 }),
+        ayahDoc({ surah: 106, ayahInSurah: 1, numberGlobal: 6225, juz: 30, page: 601 }),
+        ayahDoc({ surah: 106, ayahInSurah: 2, numberGlobal: 6226, juz: 30, page: 601 }),
+      ]);
+      vi.mocked(repo.findEditionBySlug).mockResolvedValueOnce(null);
+      vi.mocked(repo.findReciterBySlug).mockResolvedValueOnce(null);
+      vi.mocked(repo.findTranslationsForGlobalRange).mockResolvedValueOnce([]);
+      vi.mocked(repo.findSurahsByNumbers).mockResolvedValueOnce([
+        surahDoc({ number: 105, meaning: "The Elephant", bismillahPre: true }),
+        surahDoc({ number: 106, meaning: "Quraysh", bismillahPre: true }),
+      ]);
+
+      const result = await service.getPageReader(601, {});
+
+      expect(result.segments).toHaveLength(2);
+      expect(result.segments[0]!.surah.number).toBe(105);
+      expect(result.segments[0]!.showBismillah).toBe(false);
+      expect(result.segments[0]!.ayahs).toHaveLength(1);
+      expect(result.segments[1]!.surah.number).toBe(106);
+      expect(result.segments[1]!.showBismillah).toBe(true);
+      expect(result.segments[1]!.ayahs).toHaveLength(2);
+    });
+
+    it("does not show bismillah for Al-Fatiha even though bismillahPre-like content is ayah 1", async () => {
+      vi.mocked(repo.findAyahsByPage).mockResolvedValueOnce([
+        ayahDoc({ surah: 1, ayahInSurah: 1, numberGlobal: 1, juz: 1, page: 1 }),
+      ]);
+      vi.mocked(repo.findEditionBySlug).mockResolvedValueOnce(null);
+      vi.mocked(repo.findReciterBySlug).mockResolvedValueOnce(null);
+      vi.mocked(repo.findTranslationsForGlobalRange).mockResolvedValueOnce([]);
+      vi.mocked(repo.findSurahsByNumbers).mockResolvedValueOnce([
+        surahDoc({ number: 1, bismillahPre: true }),
+      ]);
+
+      const result = await service.getPageReader(1, {});
+      expect(result.segments[0]!.showBismillah).toBe(false);
+    });
+
+    it("page 604 has no next page", async () => {
+      vi.mocked(repo.findAyahsByPage).mockResolvedValueOnce([
+        ayahDoc({ surah: 114, ayahInSurah: 1, numberGlobal: 6236, juz: 30, page: 604 }),
+      ]);
+      vi.mocked(repo.findEditionBySlug).mockResolvedValueOnce(null);
+      vi.mocked(repo.findReciterBySlug).mockResolvedValueOnce(null);
+      vi.mocked(repo.findTranslationsForGlobalRange).mockResolvedValueOnce([]);
+      vi.mocked(repo.findSurahsByNumbers).mockResolvedValueOnce([
+        surahDoc({ number: 114, bismillahPre: true }),
+      ]);
+
+      const result = await service.getPageReader(604, {});
+      expect(result.nextPage).toBeNull();
+      expect(result.prevPage).toBe(603);
+    });
+
+    it.each([0, 605, 1.5])("throws AppError for invalid page %s", async (page) => {
+      await expect(service.getPageReader(page, {})).rejects.toThrow();
+      expect(vi.mocked(repo.findAyahsByPage)).not.toHaveBeenCalled();
+    });
+
+    it("throws NotFound when the page has no ayahs", async () => {
+      vi.mocked(repo.findAyahsByPage).mockResolvedValueOnce([]);
+      await expect(service.getPageReader(1, {})).rejects.toThrow();
     });
   });
 });

@@ -35,6 +35,16 @@ export async function findAyahsByJuz(juz: number): Promise<QuranAyahDoc[]> {
   return QuranAyahModel.find({ juz }).sort({ numberGlobal: 1 }).lean<QuranAyahDoc[]>();
 }
 
+export async function findAyahsByPage(page: number): Promise<QuranAyahDoc[]> {
+  await getDb();
+  return QuranAyahModel.find({ page }).sort({ numberGlobal: 1 }).lean<QuranAyahDoc[]>();
+}
+
+export async function findSurahsByNumbers(numbers: number[]): Promise<QuranSurahDoc[]> {
+  await getDb();
+  return QuranSurahModel.find({ number: { $in: numbers } }).lean<QuranSurahDoc[]>();
+}
+
 export async function findTranslationsForGlobalRange(
   editionSlug: string,
   numberGlobals: number[],
