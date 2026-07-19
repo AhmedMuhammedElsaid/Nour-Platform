@@ -1568,3 +1568,61 @@ Prayer times (Aladhan cache + compute fallback) and Qibla were already offline; 
   signature change → version bumped 1.1.0→1.1.1, versionCode 9→10 (rebuild-gated, cannot OTA).
   **Not yet built/pushed** — owner will trigger `eas build` separately. Gates green (typecheck/lint/
   jest, same pre-existing unrelated `use-azkar-notification-router.ts` error noted above).
+
+### Widget rich redesign (2026-07-19, `92981e9`+`41a9ecf`)
+
+Owner shared a device screenshot of the v1 widget and disliked it — one prayer row, then a large
+empty void, then two bare single-label rows (`🔊 إذاعة` / `📿 الأذكار`). Redesigned to mirror the
+in-app Home screen. **NOT yet built/pushed to origin** — owner triggers both separately.
+
+- **NEW `features/prayer-times/widget/build-arc-svg.ts`**: generates a raw SVG **string** (not JSX —
+  RNAW's `SvgWidget` hands a string to the native **AndroidSVG (caverock 1.4)** renderer, a completely
+  separate pipeline from `react-native-svg`) reusing the same pure geometry as the in-app `SunArc`
+  (`@repo/shared-core/prayer-times/sun-arc`: `arcPath`/`arcPoint`/`tForFraction`). ⚠️ **AndroidSVG has
+  NO `<filter>`/`<feGaussianBlur>` support** — confirmed via source inspection, no mention anywhere in
+  the library. The in-app arc's Gaussian-blur bloom + reanimated pulse are approximated with stacked
+  semi-transparent `radialGradient` halo circles instead; no animation (static bitmap, regenerated on
+  each 30-min refresh / settings-change instant-refresh). `linearGradient`/`radialGradient`/`mask`
+  (crescent moon) all render fine.
+- `build-prayer-rows.ts` extended: `PrayerRowsResult` now also returns `arc: {fraction, isNight,
+  onNightBand}` (via `getArcPosition`, local `computePrayerTimes` resolver — matches this builder's
+  existing local-adhan-js choice) and `dots: ArcDot[]` (via `buildArcDots`), plus **`next:
+  {title, name, remaining} | null`** — a static (non-ticking) "H:MM until next prayer" readout via the
+  NEW `formatRemainingHM` in `@repo/shared-core/prayer-times/format.ts` (sibling to
+  `formatCountdownClock`, but always shows both segments, no seconds — the widget bitmap can't animate
+  a live tick like the in-app `PrayerCountdown` leaf does).
+- **RTL gotcha (widget-specific)**: `nour-home-widget.tsx`'s next-prayer row order (title → name →
+  remaining) is **manually reversed for `locale === "ar"`**. Confirmed via source inspection that RNAW's
+  `FlexWidget` has **no automatic RTL/layoutDirection handling at all** — unlike a plain RN `<View
+  className="flex-row">`, which gets free RTL mirroring from React Native's layout system (see
+  `prayer-countdown.tsx`'s "label → name → countdown, RTL auto-mirrors" comment). This is empirically
+  confirmed by the pre-existing prayer-time cells row, which has always rendered in fixed chronological
+  left-to-right order in Arabic (never mirrored) — the manual reorder here is the deliberate exception
+  to CLAUDE.md §4.3's "never `flex-row-reverse`" rule, since that rule assumes RN's `dir="rtl"`
+  auto-mirror, which RNAW simply doesn't have. **Any future RTL-sensitive row added to this widget needs
+  the same manual per-locale reorder** — it will NOT auto-mirror like the rest of the app does.
+- `build-adhkar-row.ts` rewritten: multi-icon, deep-links each icon to its own set
+  (`nour:///adhkar/<slug>`, `buildAdhkarPreview` + cached in `nour.widget.adhkarSlugsCache`, static
+  fallback on fetch failure with no cache). **Shows all 5 preview icons (including Wake-up)** — a
+  deliberate deviation from the in-app Home shelf's `excludeWake: true` (owner request, this session,
+  widget-only; don't "fix" this to match the shelf later without re-confirming with the owner).
+- `build-radio-row.ts` extended: `RadioRowResult.stations: string[]` (up to 3, recent+favorite slugs
+  deduped, same never-throws + `nour.widget.radioNameCache` fallback as before, now caching a JSON
+  array). Empty state shows a single generic pill (not a bare label) so the row never renders blank.
+- `nour-home-widget.tsx`: full layout rewrite — header → arc (`SvgWidget`) → next-prayer row → prayer
+  cells → divider → adhkar icons (row itself is the tap target now, not a removed title text) →
+  divider → radio pills. The old `"الأذكار"`/`"إذاعة"` row-title `TextWidget`s were removed per owner
+  request; each row's own `clickAction` still opens its list.
+- `app.json` widget config: `targetCellHeight` 3→**4**, `minHeight` `"180dp"`→**`"240dp"`** (native
+  change, needs a fresh `eas build`). `version`/`versionCode` left at **1.1.1**/**10** — rides the
+  already-bumped next build (see the Maghrib-adhan entry above), no further bump.
+- Full gate verified clean across every package (web/admin build+test+lint, `@repo/api`
+  build+test+lint, extension build+test+lint, shared-core test, mobile lint + full 43-suite/184-test
+  jest run) — turbo's own run stops at the first failure (`mobile#typecheck`), so each cancelled
+  sibling task was re-run directly to confirm. Only failure anywhere: the same pre-existing
+  `use-azkar-notification-router.ts` typecheck error noted above (untouched by this session).
+- A code-accurate HTML preview (arc SVG ported 1:1 from `build-arc-svg.ts`'s algorithm) was used to
+  review the design with the owner before spending an EAS build — iterated through several rounds
+  (row-in-a-row-not-column, RTL order, icon count) entirely from that preview before any device build.
+- **Next**: owner builds (`eas build`) + pushes; then the plan's on-device checklist (widget add/resize,
+  arc position sanity at different times of day, all tap targets, radio/adhkar offline degrade).
