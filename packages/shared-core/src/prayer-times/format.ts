@@ -27,6 +27,23 @@ export function formatCountdownClock(ms: number, locale: Locale = "en"): string 
     : [pad2.format(m), pad2.format(s)].join(":");
 }
 
+// Static (non-ticking) hours:minutes remaining until a prayer — for surfaces
+// that can't animate a live per-second countdown (e.g. a rasterized OS
+// widget bitmap, regenerated on refresh rather than ticking). Always shows
+// both segments (including a zero hours segment) so the shape is fixed and
+// unambiguous, unlike formatCountdownClock's h>0 conditional. Digits
+// localized the same way.
+export function formatRemainingHM(ms: number, locale: Locale = "en"): string {
+  const { h, m } = formatCountdown(ms);
+  const bcp47 = locale === "ar" ? "ar-EG" : "en-US";
+  const pad2 = new Intl.NumberFormat(bcp47, {
+    minimumIntegerDigits: 2,
+    useGrouping: false,
+  });
+  const plain = new Intl.NumberFormat(bcp47, { useGrouping: false });
+  return [plain.format(h), pad2.format(m)].join(":");
+}
+
 // Localized clock; `timeZone` optional (defaults to the viewer's device tz).
 export function formatClock(
   time: Date | null,
