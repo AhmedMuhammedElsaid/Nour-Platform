@@ -38,11 +38,13 @@ Next.js Suspense fallback convention, one per route, each a server component mar
 
 Each file's shape is derived by reading its corresponding `page.tsx` at implementation time (e.g. surah list → grid of surah cards; reader → stacked ayah-line blocks; radio → station grid; qibla → compass circle + status text; prayer-times → row list of 5 prayer rows + countdown header).
 
-### 2. Mobile — wire the existing `<Skeleton>` into 8 screens
+### 2. Mobile — wire the existing `<Skeleton>` into 4 screens
 
-Reuse `apps/mobile/components/ui/skeleton.tsx` as-is (no changes to the component itself). Each screen gates a set of `<Skeleton className="...">` blocks — shaped to that screen's real content — on its existing TanStack Query `isPending`/`isLoading` state, matching the precedent in Home (`apps/mobile/app/index.tsx`) and Playlist Detail (`apps/mobile/app/playlist/[slug].tsx`, which already gates on `detail.isPending`).
+**Corrected during planning** (verified against actual code, not just the "missing `Skeleton` import" grep this spec was originally based on): only **Radio** was a true gap — it showed a plain `"Loading…"` text line. `apps/mobile/app/quran/index.tsx`, `apps/mobile/app/quran/[surah].tsx`, and `apps/mobile/app/adhkar/[slug].tsx` already had an intentional `<Spinner>` (added deliberately per `apps/mobile/APP_CONTEXT.md:53-56`, replacing "Loading…" text) — the owner chose to convert these three to `<Skeleton>` too, for visual consistency with Home. `apps/mobile/app/quran/bookmarks.tsx`, `apps/mobile/app/downloads.tsx`, `apps/mobile/app/qibla/index.tsx`, and `apps/mobile/app/prayer-times/index.tsx` are **excluded** — they read AsyncStorage/device sensors/pure local compute synchronously with no network fetch, so there is no real loading window to skeleton.
 
-Screens to update: `apps/mobile/app/quran/index.tsx`, `apps/mobile/app/quran/[surah].tsx`, `apps/mobile/app/quran/bookmarks.tsx`, `apps/mobile/app/radio/index.tsx`, `apps/mobile/app/qibla/index.tsx`, `apps/mobile/app/prayer-times/index.tsx`, `apps/mobile/app/adhkar/[slug].tsx`, `apps/mobile/app/downloads.tsx`.
+Reuse `apps/mobile/components/ui/skeleton.tsx` as-is (no changes to the component itself). Each of the 4 screens gates a set of `<Skeleton className="...">` blocks — shaped to that screen's real content — on its existing TanStack Query `isPending` state, matching the precedent in Home (`apps/mobile/app/index.tsx`) and Adhkar list (`apps/mobile/app/adhkar/index.tsx`).
+
+Screens to update: `apps/mobile/app/radio/index.tsx` (text → skeleton), `apps/mobile/app/quran/index.tsx`, `apps/mobile/app/quran/[surah].tsx`, `apps/mobile/app/adhkar/[slug].tsx` (all three: `<Spinner>` → `<Skeleton>`).
 
 ### 3. Extension — new `Skeleton` primitive + wiring into newtab views
 
@@ -61,7 +63,7 @@ Wire into the newtab view components that fetch via `getJson` and currently rend
 
 - Web: no new tests (matches existing `loading.tsx` convention — untested static fallbacks).
 - Mobile: jest-expo, extend each touched screen's existing test (if one exists) to assert the skeleton renders while `isPending`/`isLoading` is true and disappears once data resolves. New screens without an existing test file are left as-is (no test-coverage regression, but not required to add one for a presentational-only change per CLAUDE.md §9 — flag as "no new coverage" per file, not blocking).
-- Extension: Vitest unit test for the new `Skeleton` primitive only (pure render, `apps/extension/src/components/skeleton.test.tsx`) — matches CLAUDE.md §9 "Extension logic" bar of testing pure, non-SW pieces. View-level wiring is not independently unit-tested (same rationale as web/mobile: presentational gating on existing, already-tested loading flags).
+- Extension: **no dedicated test for the `Skeleton` primitive** — corrected during planning. The extension's vitest environment is `"node"` (`apps/extension/vitest.config.ts:11`, no jsdom/`@testing-library/react` in this package), so a render-based test isn't feasible, and the component has no logic branches to test as a pure function. Coverage is typecheck + the manual browser-verify pass. Existing pure-function tests (`previewStations`, `sortFavoritesFirst`, `resolveRecentStations`, `previewAdhkarSets`) must stay green untouched. View-level wiring is not independently unit-tested (same rationale as web/mobile: presentational gating on existing, already-tested loading flags).
 
 ### Commit plan (per CLAUDE.md §5.1 — one commit per concern)
 
