@@ -94,4 +94,10 @@ describe("AdhkarReaderScreen", () => {
 
     await waitFor(() => expect(screen.getByText("1")).toBeTruthy());
   });
+
+  it("shows skeleton placeholders while the dhikr set is loading", () => {
+    jest.mocked(getJson).mockReturnValue(new Promise(() => {}));
+    renderWith(<AdhkarReaderScreen />);
+    expect(screen.UNSAFE_getAllByProps({ accessibilityRole: "progressbar" }).length).toBeGreaterThan(0);
+  });
 });

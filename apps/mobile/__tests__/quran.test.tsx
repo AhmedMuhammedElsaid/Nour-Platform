@@ -120,6 +120,12 @@ describe("QuranIndexScreen", () => {
     await waitFor(() => expect(screen.getByText("Something went wrong.")).toBeTruthy());
   });
 
+  it("shows skeleton placeholders while the surah list is loading", () => {
+    (jest.mocked(getJson) as jest.Mock).mockReturnValue(new Promise(() => {}));
+    renderWith(<QuranIndexScreen />);
+    expect(screen.UNSAFE_getAllByProps({ accessibilityRole: "progressbar" }).length).toBeGreaterThan(0);
+  });
+
   it("groups surahs by juz on the Juz tab", async () => {
     mockApi();
     renderWith(<QuranIndexScreen />);
@@ -170,5 +176,11 @@ describe("QuranReaderScreen", () => {
     const [tracks, startIndex] = mockLoadQueue.mock.calls[0]!;
     expect(tracks[0].id).toBe("quran:1");
     expect(startIndex).toBe(0);
+  });
+
+  it("shows skeleton placeholders while the reader data is loading", () => {
+    (jest.mocked(getJson) as jest.Mock).mockReturnValue(new Promise(() => {}));
+    renderWith(<QuranReaderScreen />);
+    expect(screen.UNSAFE_getAllByProps({ accessibilityRole: "progressbar" }).length).toBeGreaterThan(0);
   });
 });

@@ -6,7 +6,7 @@ import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { Reader } from "@/features/quran/components/reader";
 import { initialLocale } from "@/lib/i18n";
@@ -80,10 +80,16 @@ export default function QuranReaderScreen() {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
-        <View className="flex-1 bg-bg" style={{ paddingTop: insets.top }}>
+        <View className="flex-1 gap-4 bg-bg px-4" style={{ paddingTop: insets.top + 8 }}>
           <BackRow onBack={() => router.back()} label={t("common.back")} />
-          <View className="flex-1 items-center justify-center">
-            <Spinner label={t("common.loading")} />
+          <View className="items-center gap-3 border-b border-border pb-4">
+            <Skeleton className="h-9 w-48" />
+            <Skeleton className="h-4 w-40" />
+          </View>
+          <View className="gap-4 pt-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-6 w-full" />
+            ))}
           </View>
         </View>
       </>

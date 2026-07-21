@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { initialLocale } from "@/lib/i18n";
 import { usePlayer } from "@/lib/player-context";
@@ -125,7 +126,14 @@ export default function RadioScreen() {
       </View>
 
       {stationsQuery.isPending ? (
-        <Text variant="muted">{t("common.loading")}</Text>
+        <View className="flex-row flex-wrap gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <View key={i} className="w-[48%] gap-2">
+              <Skeleton className="aspect-square w-full" />
+              <Skeleton className="h-4 w-3/4" />
+            </View>
+          ))}
+        </View>
       ) : stationsQuery.isError && !stationsQuery.data ? (
         <View className="items-center gap-3">
           <Text className="text-danger">{t("common.error")}</Text>

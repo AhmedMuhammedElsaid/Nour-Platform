@@ -8,7 +8,7 @@ import type { DhikrItem } from "@repo/shared-core/schemas/azkar";
 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 import { initialLocale } from "@/lib/i18n";
@@ -106,8 +106,17 @@ export default function AdhkarReaderScreen() {
 
   if (detail.isPending) {
     return (
-      <View className="flex-1 items-center justify-center bg-bg">
-        <Spinner label={t("common.loading")} />
+      <View className="flex-1 gap-4 bg-bg px-4" style={{ paddingTop: insets.top + 8 }}>
+        <View className="flex-row items-center gap-2">
+          <Skeleton className="h-9 w-9 rounded-full" />
+          <Skeleton className="h-6 flex-1" />
+        </View>
+        <Skeleton className="h-2 w-full rounded-full" />
+        <View className="gap-4 pt-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-40 w-full rounded-lg" />
+          ))}
+        </View>
       </View>
     );
   }

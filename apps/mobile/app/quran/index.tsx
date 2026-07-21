@@ -8,7 +8,7 @@ import type { QuranSurah } from "@repo/shared-core/schemas/quran";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { JuzRow } from "@/features/quran/components/juz-shelf";
 import { SurahCard } from "@/features/quran/components/surah-index";
@@ -66,8 +66,20 @@ export default function QuranIndexScreen() {
 
   if (surahs.isPending) {
     return (
-      <View className="flex-1 items-center justify-center bg-bg">
-        <Spinner label={t("common.loading")} />
+      <View className="flex-1 gap-4 bg-bg px-4 pt-16">
+        <Skeleton className="h-9 w-40" />
+        <View className="flex-row flex-wrap gap-3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <View
+              key={i}
+              className="w-[48%] gap-2 rounded-xl border border-border bg-surface p-3"
+            >
+              <Skeleton className="h-11 w-11 rounded-full" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </View>
+          ))}
+        </View>
       </View>
     );
   }
