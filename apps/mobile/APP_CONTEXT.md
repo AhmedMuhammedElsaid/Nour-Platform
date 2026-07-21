@@ -1684,3 +1684,24 @@ function touched.
   touch settings mid-wait.
 - Verified: typecheck/lint/targeted jest (`home-screen`, `kahf`, `azkar` suites) green. Real firing +
   tap-through still needs an A72 on-device check, same as the adhan test button always has.
+
+## Pre-`eas build --profile preview` audit (2026-07-21, no code changes)
+
+Owner asked to verify nothing was missing before firing a new preview build. Findings, all clean —
+no fix was needed:
+- `main`/`origin/main` fully synced, no unpushed commits; all previously-noted "committed NOT
+  pushed" rebuild-gated commits (adhan volume `f342981`, widget redesign `92981e9`/`41a9ecf`,
+  Kotlin K2 fix `29f0599`, session-rehydration `5ac55e0`/`0f3b5c9`, perf-pass `f1399b5`) confirmed
+  as ancestors of `HEAD` via `git merge-base --is-ancestor`.
+- `version`/`versionCode` = `1.1.1`/`10` — already covers every native change landed to date.
+- **Stale-error correction**: the "pre-existing, unrelated `use-azkar-notification-router.ts`
+  typecheck error" noted in the widget/Maghrib/bottom-dock entries above (2026-07-18→20 sessions)
+  is **no longer reproducing** — `pnpm typecheck` is clean. Don't keep citing it as still-present.
+- Full mobile gate re-run fresh (not from memory): `typecheck` clean, `lint` 0 warnings, `test`
+  43/43 suites · 186/186 tests, `expo export --platform android` compiles (2097 modules).
+  `eas.json` preview profile pinned `environment:"preview"`; `eas env:list --environment preview`
+  confirmed `EXPO_PUBLIC_API_BASE_URL=https://nour-platform-web.vercel.app`; `.easignore` present.
+- **Concurrent session detected mid-wrap**: commit `1adfead` ("quran list screen skeleton") landed
+  on `main` during this session, plus uncommitted local changes to
+  `apps/mobile/__tests__/quran.test.tsx` + `apps/mobile/app/quran/[surah].tsx` — NOT touched by
+  this session, left as-is.
