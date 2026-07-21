@@ -340,7 +340,7 @@ describe("RadioScreen", () => {
   it("shows skeleton placeholders while stations are loading", () => {
     (jest.mocked(getJson) as jest.Mock).mockReturnValue(new Promise(() => {}));
     renderRadioScreen();
-    expect(screen.getAllByRole("progressbar").length).toBeGreaterThan(0);
+    expect(screen.UNSAFE_getAllByProps({ accessibilityRole: "progressbar" }).length).toBeGreaterThan(0);
   });
 });
 ```
@@ -421,7 +421,7 @@ In `apps/mobile/__tests__/quran.test.tsx`, add this test inside the existing `de
   it("shows skeleton placeholders while the surah list is loading", () => {
     (jest.mocked(getJson) as jest.Mock).mockReturnValue(new Promise(() => {}));
     renderWith(<QuranIndexScreen />);
-    expect(screen.getAllByRole("progressbar").length).toBeGreaterThan(0);
+    expect(screen.UNSAFE_getAllByProps({ accessibilityRole: "progressbar" }).length).toBeGreaterThan(0);
   });
 ```
 
@@ -506,7 +506,7 @@ In `apps/mobile/__tests__/quran.test.tsx`, add this test inside `describe("Quran
   it("shows skeleton placeholders while the reader data is loading", () => {
     (jest.mocked(getJson) as jest.Mock).mockReturnValue(new Promise(() => {}));
     renderWith(<QuranReaderScreen />);
-    expect(screen.getAllByRole("progressbar").length).toBeGreaterThan(0);
+    expect(screen.UNSAFE_getAllByProps({ accessibilityRole: "progressbar" }).length).toBeGreaterThan(0);
   });
 ```
 
@@ -586,7 +586,7 @@ In `apps/mobile/__tests__/adhkar.test.tsx`, add this test inside `describe("Adhk
   it("shows skeleton placeholders while the dhikr set is loading", () => {
     jest.mocked(getJson).mockReturnValue(new Promise(() => {}));
     renderWith(<AdhkarReaderScreen />);
-    expect(screen.getAllByRole("progressbar").length).toBeGreaterThan(0);
+    expect(screen.UNSAFE_getAllByProps({ accessibilityRole: "progressbar" }).length).toBeGreaterThan(0);
   });
 ```
 
