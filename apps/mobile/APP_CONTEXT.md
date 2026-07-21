@@ -1662,3 +1662,25 @@ so it's a no-op on Android (the effect early-returns off-iOS, `activeKey` never 
 `prayer.adhan.stop` (ar/en). Tests: 2 new cases in `__tests__/foreground-adhan.test.tsx` (activeKey set/
 cleared by stop, cleared by natural `didJustFinish`) — full mobile suite 186/43 green, no flake this run.
 ⚠️ Device-verify pending (iOS only feature, no simulator substitute for expo-audio + notification timing).
+
+## Home-screen test buttons for Kahf + Adhkar reminders (2026-07-21, `f746417`)
+
+Owner asked for on-device verify buttons for the Kahf/Adhkar reminders, mirroring the existing
+"Test adhan (1 min)" button on the prayer-times screen. Pure additions — no existing scheduling
+function touched.
+
+- `scheduleTestKahf()` new export in `features/quran/hooks/use-kahf-reminder.ts`; `scheduleTestAzkar(kind, content)`
+  new export in `features/prayer-times/hooks/use-azkar-reminders.ts`. Both fire a one-off notification
+  ~60s out with the identical `data.kind` tap payload the real notification uses, so
+  `use-azkar-notification-router.ts` routes the tap correctly (Kahf → `/quran/18`, Azkar → adhkar reader).
+- Two ghost buttons on the HOME screen (`app/index.tsx`, not the prayer-times screen), gated on
+  `notifGranted && <reminder>.enabled` — same UX as the adhan test button. Azkar test always fires
+  the "sabah" kind.
+- ⚠️ Test-notification IDs: Kahf test uses a distinct id (`nour-kahf-test`, never collides with the
+  real `nour-kahf-weekly`). Azkar test uses `nour-azkar-test-sabah`, which the real scheduler's
+  `cancelAll()` WILL sweep on its prefix match (`nour-azkar-`) if you change prayer settings while a
+  test ping is pending — harmless (only kills the test notification, real schedule always rebuilds
+  fresh in the same call), just don't be surprised if a test ping silently doesn't fire after you
+  touch settings mid-wait.
+- Verified: typecheck/lint/targeted jest (`home-screen`, `kahf`, `azkar` suites) green. Real firing +
+  tap-through still needs an A72 on-device check, same as the adhan test button always has.
