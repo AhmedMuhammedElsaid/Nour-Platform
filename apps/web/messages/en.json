@@ -119,7 +119,8 @@
       "background": "Enable background notifications",
       "backgroundUnsupported": "Background notifications aren't supported in this browser. The adhan still plays while Nour is open.",
       "autoplayHint": "Keep a Nour tab open. The adhan plays automatically once you've interacted with the page.",
-      "adhanBody": "It's time for prayer."
+      "adhanBody": "It's time for prayer.",
+      "unavailableWeb": "The adhan is temporarily unavailable on the website. It's still available in the Nour mobile app and browser extension."
     },
     "azkar": {
       "title": "Adhkar reminder",

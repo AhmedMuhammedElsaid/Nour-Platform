@@ -17,7 +17,6 @@ import { NavigationProgress } from "@/features/layout/components/navigation-prog
 import { PlaybackPersistence } from "@/features/player/components/playback-persistence";
 import { ServiceWorkerRegister } from "@/features/pwa/components/service-worker-register";
 import { InstallPrompt } from "@/features/pwa/components/install-prompt";
-import { AdhanController } from "@/features/prayer-times/components/adhan-controller";
 import { AzkarReminderController } from "@/features/prayer-times/components/azkar-reminder-controller";
 import { LocaleAlternatesProvider } from "@/features/layout/locale-alternates-context";
 import { BUILD_VERSION } from "@/lib/build-version";
@@ -156,7 +155,9 @@ export default async function LocaleLayout({
               <PlaybackPersistence />
               <InstallPrompt />
               <ServiceWorkerRegister />
-              <AdhanController />
+              {/* Web adhan playback disabled site-wide — inaccurate firing times,
+                  see APP_CONTEXT. AdhanController (scheduler/notifications/audio)
+                  is left in the codebase, just not mounted. */}
               <AzkarReminderController />
               <Analytics />
               <SpeedInsights />
