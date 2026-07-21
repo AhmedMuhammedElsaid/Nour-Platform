@@ -1,15 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./storage", () => ({ get: vi.fn() }));
+vi.mock("./audio-router", () => ({ stop: vi.fn(async () => {}) }));
 
+import { stop } from "./audio-router";
 import { get } from "./storage";
-import { handleNotificationClick } from "./notify";
+import {
+  handleAdhanNotificationButton,
+  handleNotificationClick,
+  notifyAdhan,
+} from "./notify";
 
 const SABAH_SLUG = "أذكار-الصباح";
 const MASAA_SLUG = "أذكار-المساء";
 
 const tabs = { create: vi.fn(async () => ({})) };
-const notifications = { clear: vi.fn(async () => true) };
+const notifications = {
+  clear: vi.fn(async () => true),
+  create: vi.fn(async () => "nour:adhan"),
+};
 const runtime = {
   getURL: vi.fn((path: string) => `chrome-extension://abc/${path}`),
 };
@@ -20,6 +29,8 @@ describe("handleNotificationClick", () => {
   beforeEach(() => {
     tabs.create.mockClear();
     notifications.clear.mockClear();
+    notifications.create.mockClear();
+    vi.mocked(stop).mockClear();
     vi.mocked(get).mockResolvedValue({
       enabled: true,
       offsetMinutes: 20,
@@ -56,5 +67,37 @@ describe("handleNotificationClick", () => {
     await handleNotificationClick("nour:adhan");
     expect(tabs.create).toHaveBeenCalledWith({ url: "https://site.test" });
     expect(notifications.clear).toHaveBeenCalledWith("nour:adhan");
+    expect(stop).not.toHaveBeenCalled();
+  });
+});
+
+describe("adhan stop button", () => {
+  beforeEach(() => {
+    notifications.clear.mockClear();
+    notifications.create.mockClear();
+    vi.mocked(stop).mockClear();
+  });
+
+  it("names the prayer and offers a stop button", async () => {
+    await notifyAdhan("dhuhr");
+    expect(notifications.create).toHaveBeenCalledWith(
+      "nour:adhan",
+      expect.objectContaining({
+        title: "الظهر",
+        buttons: [{ title: "إيقاف الأذان" }],
+      }),
+    );
+  });
+
+  it("stops the adhan and clears the notification when the button is pressed", async () => {
+    await handleAdhanNotificationButton("nour:adhan", 0);
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(notifications.clear).toHaveBeenCalledWith("nour:adhan");
+  });
+
+  it("ignores buttons on other notifications", async () => {
+    await handleAdhanNotificationButton("nour:azkar:sabah", 0);
+    expect(stop).not.toHaveBeenCalled();
+    expect(notifications.clear).not.toHaveBeenCalled();
   });
 });

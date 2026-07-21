@@ -3,6 +3,7 @@ import browser from "webextension-polyfill";
 import type { AdhanPrayerKey } from "@repo/shared-core/schemas/prayer-times";
 import type { AzkarReminderKind } from "@repo/shared-core/prayer-times/schedule";
 
+import { stop } from "./audio-router";
 import { routeToHash } from "./router";
 import { get } from "./storage";
 
@@ -14,6 +15,7 @@ const PRAYER_AR: Record<AdhanPrayerKey, string> = {
   isha: "العشاء",
 };
 const ADHAN_BODY = "حان وقت الصلاة.";
+const ADHAN_STOP_BTN = "إيقاف الأذان";
 const AZKAR_AR: Record<AzkarReminderKind, { title: string; body: string }> = {
   sabah: { title: "أذكار الصباح", body: "حان وقت أذكار الصباح — اضغط للقراءة." },
   masaa: { title: "أذكار المساء", body: "حان وقت أذكار المساء — اضغط للقراءة." },
@@ -35,7 +37,21 @@ export async function notifyAdhan(key: AdhanPrayerKey): Promise<void> {
     title: PRAYER_AR[key],
     message: ADHAN_BODY,
     priority: 2,
+    // Firefox's notifications schema rejects `buttons` outright (the create call
+    // throws), so the stop affordance there is a body click — see
+    // handleNotificationClick. The branch is tree-shaken per target.
+    ...(__BROWSER__ === "firefox" ? {} : { buttons: [{ title: ADHAN_STOP_BTN }] }),
   });
+}
+
+// Chrome only — the adhan notification's single action button stops playback.
+export async function handleAdhanNotificationButton(
+  id: string,
+  buttonIndex: number,
+): Promise<void> {
+  if (id !== ADHAN_NID || buttonIndex !== 0) return;
+  await stop();
+  await browser.notifications.clear(id);
 }
 
 export async function notifyAzkar(kind: AzkarReminderKind): Promise<void> {
@@ -60,6 +76,14 @@ export async function notifyKahf(): Promise<void> {
 }
 
 export async function handleNotificationClick(id: string): Promise<void> {
+  // Firefox has no notification buttons, so the body click is the only stop
+  // affordance there. Chrome keeps the open-the-site behaviour (it has a button).
+  if (id === ADHAN_NID && __BROWSER__ === "firefox") {
+    await stop();
+    await browser.notifications.clear(id);
+    return;
+  }
+
   let url = SITE;
   if (id === KAHF_NID) {
     // Open the extension's own new-tab Quran reader at Al-Kahf (no autoplay).

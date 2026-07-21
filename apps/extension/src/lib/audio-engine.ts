@@ -22,6 +22,9 @@ import { type FromOffscreen, isToOffscreen } from "../offscreen/protocol";
 
 const adhanAudio = new Audio();
 let adhanBlobUrl: string | null = null;
+// Guards finishAdhan against running twice when a manual stop races the
+// element's own `ended` event.
+let adhanActive = false;
 
 async function resolveAdhanSrc(url: string): Promise<{ src: string; blob: boolean }> {
   try {
@@ -115,7 +118,9 @@ browser.runtime.onMessage.addListener((message: unknown) => {
     }
     case "adhan-stop": {
       adhanAudio.pause();
-      revokeAdhanBlob();
+      // Same teardown as a natural end — without it the paused music player
+      // never resumes and the background never tears the audio context down.
+      finishAdhan();
       break;
     }
     case "player": {
@@ -132,6 +137,7 @@ async function playAdhan(url: string, volume: number): Promise<void> {
   adhanAudio.src = src;
   adhanAudio.volume = Math.min(1, Math.max(0, volume));
   adhanAudio.currentTime = 0;
+  adhanActive = true;
   try {
     await adhanAudio.play();
   } catch (err) {
@@ -144,6 +150,8 @@ async function playAdhan(url: string, volume: number): Promise<void> {
 adhanAudio.addEventListener("ended", finishAdhan);
 
 function finishAdhan(): void {
+  if (!adhanActive) return;
+  adhanActive = false;
   revokeAdhanBlob();
   const resumed = resumeAfterAdhan;
   if (resumed) {

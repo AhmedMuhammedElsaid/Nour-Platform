@@ -2,7 +2,7 @@ import browser from "webextension-polyfill";
 
 import { closePlayerTab, routePlayerCommand } from "../lib/audio-router";
 import { warmAdhanCache } from "../lib/cache-manager";
-import { handleNotificationClick } from "../lib/notify";
+import { handleAdhanNotificationButton, handleNotificationClick } from "../lib/notify";
 import { get, seedDefaults, setRaw, type StorageKey } from "../lib/storage";
 import {
   PLAYER_LIVE_KEY,
@@ -50,6 +50,11 @@ browser.storage.onChanged.addListener((changes, area) => {
 
 browser.notifications.onClicked.addListener((id) => {
   void handleNotificationClick(id);
+});
+
+// Firefox exposes onButtonClicked but never fires it (no buttons rendered).
+browser.notifications.onButtonClicked.addListener((id, index) => {
+  void handleAdhanNotificationButton(id, index);
 });
 
 browser.runtime.onMessage.addListener((message) => {
