@@ -1643,3 +1643,22 @@ Single-file change (`lib/use-dock-spacing.ts`); all 9 call sites unchanged. Full
 43/43 suites, typecheck/lint clean except the same pre-existing unrelated error noted above).
 **Gotcha for future sessions**: if `BottomDock` is ever made a genuine overlay (`position:
 "absolute"`), `useDockSpacing()` needs its dock-height math added back — the two must stay in sync.
+
+## 2026-07-21 session — iOS foreground-adhan stop control
+
+Follow-up to the extension's stop-adhan button (same day, `761ccfc`). Owner asked whether mobile already
+had this — **Android did** (`AdhanPlayerService.kt` shows an ongoing "إيقاف · Stop" notification action,
+pre-existing). **iOS had no stop control at all** — `use-foreground-adhan.ts` played the full adhan via
+expo-audio while the app was open, with nothing to silence it.
+
+Fix: `useForegroundAdhan()` (`apps/mobile/features/prayer-times/hooks/use-foreground-adhan.ts`) now
+returns `{ activeKey, stop }` instead of `void` — `activeKey` is the firing `AdhanPrayerKey` while the
+adhan plays, `stop()` pauses the player and runs the same teardown (`finish()`) as a natural finish
+(resume whatever was ducked, clear the card). New `AdhanStopCard`
+(`apps/mobile/features/prayer-times/components/adhan-stop-card.tsx`) is an absolute-positioned card
+(`zIndex: 70`, above `NavigationProgress`'s 60) rendered by `ForegroundAdhan` in `app/_layout.tsx` —
+prayer name + `prayer.adhan.adhanBody` + a `Button` calling `stop()`. Self-gates on `activeKey === null`,
+so it's a no-op on Android (the effect early-returns off-iOS, `activeKey` never sets). New i18n key
+`prayer.adhan.stop` (ar/en). Tests: 2 new cases in `__tests__/foreground-adhan.test.tsx` (activeKey set/
+cleared by stop, cleared by natural `didJustFinish`) — full mobile suite 186/43 green, no flake this run.
+⚠️ Device-verify pending (iOS only feature, no simulator substitute for expo-audio + notification timing).

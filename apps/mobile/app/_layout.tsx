@@ -24,6 +24,7 @@ import { BottomDock } from "@/components/bottom-dock";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { OnboardingGate } from "@/features/onboarding/components/onboarding-gate";
 import { useOnboarding } from "@/features/onboarding/hooks/use-onboarding";
+import { AdhanStopCard } from "@/features/prayer-times/components/adhan-stop-card";
 import { useAdhkarQuickActions } from "@/features/prayer-times/hooks/use-adhkar-quick-actions";
 import { useAzkarNotificationRouter } from "@/features/prayer-times/hooks/use-azkar-notification-router";
 import { useForegroundAdhan } from "@/features/prayer-times/hooks/use-foreground-adhan";
@@ -157,10 +158,12 @@ export default function RootLayout() {
 }
 
 // Mounted inside PlayerProvider so the foreground adhan can duck the RNTP queue.
-// Renders nothing — it only wires the azan notification → full-adhan listener.
+// Wires the azan notification → full-adhan listener and renders the iOS stop
+// card while it's playing (Android's stop control lives on the native
+// foreground-service notification instead — see use-foreground-adhan.ts).
 function ForegroundAdhan() {
-  useForegroundAdhan();
-  return null;
+  const { activeKey, stop } = useForegroundAdhan();
+  return <AdhanStopCard activeKey={activeKey} onStop={stop} />;
 }
 
 // Renders nothing — deep-links an azkar-reminder notification tap (warm or

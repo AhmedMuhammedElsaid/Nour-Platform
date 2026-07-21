@@ -173,6 +173,7 @@
       "backgroundUnsupported": "Notifications aren't supported. The adhan still plays while Nour is open.",
       "autoplayHint": "Keep Nour open. The adhan plays once you've interacted with the app.",
       "adhanBody": "It's time for prayer.",
+      "stop": "Stop adhan",
       "test": "Test adhan (1 min)",
       "testTitle": "Test adhan",
       "testScheduled": "Adhan scheduled for {{time}}. Lock your phone and wait for it to fire."

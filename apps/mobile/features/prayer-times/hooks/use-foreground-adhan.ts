@@ -5,7 +5,7 @@
 // for the playlist queue, so we duck it (pause for the adhan, resume after)
 // rather than clobbering its queue.
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from "expo-audio";
@@ -37,9 +37,17 @@ function prayerKeyFromIdentifier(id: string): AdhanPrayerKey | null {
   return null;
 }
 
-export function useForegroundAdhan(): void {
+// Android's AdhanPlayerService shows a native "Stop" action on its ongoing
+// notification (apps/mobile/modules/nour-adhan); iOS has no notification-button
+// API for a foreground listener, so the stop control here is an in-app card
+// (rendered by the caller from `activeKey`/`stop`) — see adhan-stop-card.tsx.
+export function useForegroundAdhan(): {
+  activeKey: AdhanPrayerKey | null;
+  stop: () => void;
+} {
   const { settings } = useAdhanSettings();
   const player = usePlayer();
+  const [activeKey, setActiveKey] = useState<AdhanPrayerKey | null>(null);
 
   // Keep the latest settings + RNTP handle reachable from the stable listener.
   const settingsRef = useRef(settings);
@@ -51,6 +59,22 @@ export function useForegroundAdhan(): void {
   // whether WE paused the queue, so we only resume what we ducked.
   const adhanRef = useRef<AudioPlayer | null>(null);
   const duckedRef = useRef(false);
+
+  // Shared teardown for both a natural finish and a manual stop — resumes
+  // whatever WE ducked and clears the card. `player.pause()` (used by stop())
+  // does not itself raise `didJustFinish`, so callers must invoke this.
+  const finish = useCallback(() => {
+    if (duckedRef.current) {
+      duckedRef.current = false;
+      playerRef.current.play();
+    }
+    setActiveKey(null);
+  }, []);
+
+  const stop = useCallback(() => {
+    adhanRef.current?.pause();
+    finish();
+  }, [finish]);
 
   useEffect(() => {
     // Android adhan (foreground AND closed-app) is handled natively by the
@@ -73,10 +97,7 @@ export function useForegroundAdhan(): void {
       if (adhanRef.current == null) {
         const p = createAudioPlayer(null);
         p.addListener("playbackStatusUpdate", (status) => {
-          if (status.didJustFinish && duckedRef.current) {
-            duckedRef.current = false;
-            playerRef.current.play();
-          }
+          if (status.didJustFinish) finish();
         });
         adhanRef.current = p;
       }
@@ -91,6 +112,7 @@ export function useForegroundAdhan(): void {
       adhan.replace({ uri: assetUrl(key === "fajr" ? FAJR_ADHAN : REGULAR_ADHAN) });
       adhan.volume = Math.min(1, Math.max(0, s.volume));
       adhan.play();
+      setActiveKey(key);
     });
 
     return () => {
@@ -98,5 +120,7 @@ export function useForegroundAdhan(): void {
       adhanRef.current?.remove();
       adhanRef.current = null;
     };
-  }, []);
+  }, [finish]);
+
+  return { activeKey, stop };
 }

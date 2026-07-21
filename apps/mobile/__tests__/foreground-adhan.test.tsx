@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react-native";
+import { act, render } from "@testing-library/react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as Notifications from "expo-notifications";
 import { createAudioPlayer } from "expo-audio";
@@ -6,8 +6,10 @@ import { createAudioPlayer } from "expo-audio";
 import { useForegroundAdhan } from "@/features/prayer-times/hooks/use-foreground-adhan";
 import { PlayerProvider } from "@/lib/player-context";
 
+let latest: ReturnType<typeof useForegroundAdhan> | null = null;
+
 function Harness() {
-  useForegroundAdhan();
+  latest = useForegroundAdhan();
   return null;
 }
 
@@ -65,5 +67,26 @@ describe("useForegroundAdhan", () => {
     renderHook();
     getListener()(notif("nour-azkar-0-sabah"));
     expect(createAudioPlayer).not.toHaveBeenCalled();
+  });
+
+  it("exposes the firing prayer as activeKey, cleared by stop()", () => {
+    renderHook();
+    act(() => getListener()(notif("nour-azan-0-dhuhr")));
+    expect(latest?.activeKey).toBe("dhuhr");
+
+    const player = jest.mocked(createAudioPlayer).mock.results[0]!.value;
+    act(() => latest!.stop());
+    expect(player.pause).toHaveBeenCalled();
+    expect(latest?.activeKey).toBeNull();
+  });
+
+  it("clears activeKey when the adhan finishes on its own", () => {
+    renderHook();
+    act(() => getListener()(notif("nour-azan-0-dhuhr")));
+
+    const player = jest.mocked(createAudioPlayer).mock.results[0]!.value;
+    const onStatusUpdate = player.addListener.mock.calls[0][1];
+    act(() => onStatusUpdate({ didJustFinish: true }));
+    expect(latest?.activeKey).toBeNull();
   });
 });
