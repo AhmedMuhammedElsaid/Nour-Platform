@@ -165,7 +165,10 @@ export default function HomeScreen() {
       </View>
 
       <View>
-        <Text variant="display" className="text-3xl sm:text-4xl">
+        {/* NativeWind's `sm:` breakpoint is device-width based (640dp) and never
+            triggers on a real phone in portrait — a bare mobile-first size,
+            not a web-style breakpoint chain, is what actually renders. */}
+        <Text variant="display" className="text-3xl">
           {t("home.heroTitle")}
         </Text>
         <Text variant="muted" className="mt-2 text-base sm:text-lg">
