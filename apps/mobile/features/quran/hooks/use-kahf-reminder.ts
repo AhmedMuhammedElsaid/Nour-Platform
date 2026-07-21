@@ -43,6 +43,26 @@ async function scheduleKahf(content: KahfReminderContent): Promise<void> {
   });
 }
 
+const KAHF_TEST_NOTIF_ID = "nour-kahf-test";
+
+// Dev/verify helper: fires the Kahf reminder ~60s out with the identical tap
+// payload as the real weekly notification, so tap-through (→ Quran surah 18)
+// can be confirmed without waiting for Friday 12:00. Mirrors scheduleTestAzan.
+export async function scheduleTestKahf(content: KahfReminderContent): Promise<Date> {
+  const fireAt = new Date(Date.now() + 60 * 1000);
+  await Notifications.scheduleNotificationAsync({
+    identifier: KAHF_TEST_NOTIF_ID,
+    content: {
+      title: content.title,
+      body: content.body,
+      sound: true,
+      data: { kind: "kahf-reminder" },
+    },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: fireAt },
+  });
+  return fireAt;
+}
+
 export function useKahfReminder(
   enabled: boolean,
   content: KahfReminderContent,

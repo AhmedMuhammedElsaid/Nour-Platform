@@ -99,6 +99,27 @@ async function scheduleAzkarReminders(
   }
 }
 
+// Dev/verify helper: fires one azkar reminder ~60s out with the identical tap
+// payload as the real schedule, so tap-through (→ adhkar reader) can be
+// confirmed without waiting for the real Fajr/Asr offset. Mirrors scheduleTestAzan.
+export async function scheduleTestAzkar(
+  kind: AzkarReminderKind,
+  content: { title: string; body: string; slug: string },
+): Promise<Date> {
+  const fireAt = new Date(Date.now() + 60 * 1000);
+  await Notifications.scheduleNotificationAsync({
+    identifier: `${NOTIF_TAG_PREFIX}test-${kind}`,
+    content: {
+      title: content.title,
+      body: content.body,
+      sound: true,
+      data: { kind: "azkar-reminder", slug: content.slug },
+    },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: fireAt },
+  });
+  return fireAt;
+}
+
 export function useAzkarReminders(
   enabled: boolean,
   location: PrayerLocation,

@@ -190,14 +190,20 @@
       "masaa": {
         "title": "Adhkar al-Masaa",
         "body": "Time for the evening adhkar — tap to read."
-      }
+      },
+      "test": "Test Adhkar reminder (1 min)",
+      "testTitle": "Test Adhkar reminder",
+      "testScheduled": "Reminder scheduled for {{time}}. Wait for it to fire, then tap it."
     },
     "kahf": {
       "title": "Friday Surah Al-Kahf",
       "enable": "Remind me to read Surah Al-Kahf on Friday",
       "hint": "Every Friday at 12:00 PM — tapping the reminder opens the Quran at Surah Al-Kahf.",
       "notifTitle": "Surah Al-Kahf",
-      "notifBody": "It's Friday — tap to read Surah Al-Kahf."
+      "notifBody": "It's Friday — tap to read Surah Al-Kahf.",
+      "test": "Test Al-Kahf reminder (1 min)",
+      "testTitle": "Test Al-Kahf reminder",
+      "testScheduled": "Reminder scheduled for {{time}}. Wait for it to fire, then tap it."
     }
   },
   "playlist": {
