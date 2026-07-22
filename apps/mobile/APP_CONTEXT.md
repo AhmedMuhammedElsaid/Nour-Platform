@@ -1737,3 +1737,12 @@ prayer-times screen, one per reminder's own settings card, not stacked on the Ho
 - Verified: mobile `typecheck` + `lint` clean, targeted jest (`home-screen`, `prayer-times`,
   `kahf`, `azkar` suites) 3/3 suites green. Real firing + tap-through still needs an A72
   on-device check, same as before — this was a placement fix only, scheduling logic untouched.
+
+## OTA-only session: Quran Uthmani font delivery gap (2026-07-22)
+
+User reported the Quran reader still showing small/system-font text on-device. Investigation
+found the fix was already code-complete and pushed (`fba0bdb`, see mushaf section above) —
+the gap was that it had never been OTA-published, so devices on `runtimeVersion 1.1.1`
+were still running the pre-fix JS bundle. No code changed. Ran `eas update --branch preview
+--environment preview` from `apps/mobile` → update group `31da7855-eb58-4a44-90e7-91d6b6ae0952`.
+Pending: user to relaunch the app on-device and confirm the Uthmani font now renders.
