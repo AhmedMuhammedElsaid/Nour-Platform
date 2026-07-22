@@ -1746,3 +1746,56 @@ the gap was that it had never been OTA-published, so devices on `runtimeVersion 
 were still running the pre-fix JS bundle. No code changed. Ran `eas update --branch preview
 --environment preview` from `apps/mobile` → update group `31da7855-eb58-4a44-90e7-91d6b6ae0952`.
 Pending: user to relaunch the app on-device and confirm the Uthmani font now renders.
+
+## NourHome widget blank on add — React Fragment crashes RNAW tree builder (2026-07-22, `059018e`, pushed)
+
+**Symptom (owner, on-device A72, vC10 build):** added the widget to home screen — stayed
+blank/invisible (tap-through to the app still worked, since that's a separate default click
+path). Confirmed via live `adb logcat` capture across 3 reproductions (remove+re-add, app-open
+trigger) that the OS's `AppWidgetManager.updateAppWidget()` fired near-instantly with Android's
+own placeholder, but the JS-rendered content never followed.
+
+**Root cause:** `features/home/widget/nour-home-widget.tsx`'s next-prayer row used `<>...</>`
+Fragments to reorder 3 `TextWidget`s for RTL. RNAW's `buildWidgetTree` (node_modules
+`build-widget-tree.ts:41-42`) does `while (!jsxTree.type.__name__) { jsxTree =
+jsxTree.type(jsxTree.props); }` — a Fragment's `type` is `Symbol(react.fragment)`, not callable,
+so it throws `TypeError: ... is not a function` deep in the tree walk. Caught proof in logcat:
+`ReactNativeJS: [TypeError: Symbol(react.fragment) is not a function]` at
+`buildWidgetTree→renderWidget→widgetTaskHandler`. **Critical gotcha for any future RNAW work**:
+this throw happens *inside* the headless widget task, and RN's headless-task-finish machinery
+reports the WorkManager job `SUCCESS` regardless of an internal JS exception (confirmed: "Worker
+result SUCCESS" logged every time, with zero native `drawWidget`/`updateAppWidget` calls
+following) — so a broken widget render produces **no crash, no failed-job log, nothing** at the
+OS level. Never use a Fragment as an RNAW child, even to group a conditionally-reordered run of
+siblings — use a plain keyed array instead (`buildWidgetTree` already flattens arrays via
+`.flat(1)`, same as the existing `{prayer.rows.map(...)}` usage in the same file).
+
+**Fix:** replaced both Fragment branches with keyed arrays. JS-only → shipped via `eas update`,
+no rebuild. New `__tests__/nour-home-widget.test.tsx` runs the REAL `buildWidgetTree` (imported
+via its uncompiled-but-untyped deep path `react-native-android-widget/lib/commonjs/api/
+build-widget-tree`, since it isn't in the package's public exports) against the real
+`NourHomeWidget` component, re-mocking `react-native-android-widget` with `jest.requireActual`
+for just this file — `jest.setup.js`'s global bare-string mock (`FlexWidget: "FlexWidget"`, etc.)
+can never catch this class of bug, and plain `jest.unmock()` does NOT reverse an explicit
+`jest.mock(name, factory)` registered in a setup file (only automocking/`__mocks__` files) — you
+have to re-register the mock with `jest.requireActual` in the test file itself. Test reproduced
+the crash before the fix, passes after. Full gate green: 44 suites/192 tests, typecheck, lint,
+`expo export --platform android`.
+
+**Also investigated same session — user's second report ("onboarding didn't show on first
+open" after a genuine uninstall+reinstall): NOT a code bug.** `android:allowBackup="true"`
+(Expo's default, never overridden here) lets Android's Auto Backup restore app data
+(SharedPreferences/databases — where AsyncStorage's `RKStorage` SQLite db lives) from a cloud
+snapshot on reinstall of the same signed package, silently restoring `nour.onboarding.done`.
+Confirmed `com.nour.mobile` has backup history via `adb shell dumpsys backup`. Investigated
+excluding just that one flag from backup — **not achievable**: AsyncStorage keeps every key in
+ONE shared SQLite file (`ReactDatabaseSupplier.java: DATABASE_NAME = "RKStorage"`), and Android's
+backup-exclusion rules only operate at file granularity, not per-row — excluding it would mean
+moving the flag to its own file + writing the repo's first local Android config plugin +
+another rebuild. **Owner decision: leave `allowBackup` as-is** — real users keep their
+settings/favorites across reinstalls; re-testing onboarding fresh requires clearing app storage
+(Settings → Apps → Nour → Storage → Clear storage), not a real uninstall. No code change.
+Side-effect worth knowing: since onboarding never ran, the battery-optimization exemption prompt
+never fired either — `dumpsys deviceidle whitelist` confirmed `com.nour.mobile` isn't
+exempted, which can still slow (not block, post-fix) the widget's 30-min periodic refresh under
+Doze on this device.
