@@ -12,6 +12,20 @@
 // to the no-inline-hex rule as the PALETTES const in
 // features/prayer-times/components/sun-arc.tsx, since a widget bitmap has no
 // Tailwind/CSS pipeline to draw tokens from.
+//
+// ⚠️ NEVER use a React Fragment (`<>...</>`) as a widget child, even to group
+// a conditionally-reordered run of siblings (e.g. the RTL next-prayer row
+// below). RNAW's buildWidgetTree walks `element.type` and calls it as a
+// function for anything that isn't a real widget descriptor
+// (`while (!jsxTree.type.__name__) { jsxTree = jsxTree.type(jsxTree.props); }`
+// in build-widget-tree.ts) — a Fragment's type is `Symbol(react.fragment)`,
+// which isn't callable, so it throws `TypeError: ... is not a function`
+// deep inside the tree builder. Because that throw happens inside the
+// headless widget task, React Native's task-finish machinery still reports
+// the task as SUCCESSFUL, so nothing ever fails visibly — the widget just
+// stays on whatever it last rendered (blank on first add). Use a plain
+// array of children (with `key`s) instead — buildWidgetTree already
+// flattens arrays via `.flat(1)`. See __tests__/nour-home-widget.test.tsx.
 import { FlexWidget, SvgWidget, TextWidget } from "react-native-android-widget";
 
 import { ARC } from "@repo/shared-core/prayer-times/sun-arc";
@@ -119,19 +133,33 @@ export function NourHomeWidget({
             flexGap: 6,
           }}
         >
-          {locale === "ar" ? (
-            <>
-              <TextWidget text={prayer.next.remaining} style={{ color: SUN, fontSize: 16, fontWeight: "bold" }} />
-              <TextWidget text={prayer.next.name} style={{ color: GOLD, fontSize: 13, fontWeight: "bold" }} />
-              <TextWidget text={prayer.next.title} style={{ color: MUTED, fontSize: 9 }} />
-            </>
-          ) : (
-            <>
-              <TextWidget text={prayer.next.title} style={{ color: MUTED, fontSize: 9 }} />
-              <TextWidget text={prayer.next.name} style={{ color: GOLD, fontSize: 13, fontWeight: "bold" }} />
-              <TextWidget text={prayer.next.remaining} style={{ color: SUN, fontSize: 16, fontWeight: "bold" }} />
-            </>
-          )}
+          {locale === "ar"
+            ? [
+                <TextWidget
+                  key="remaining"
+                  text={prayer.next.remaining}
+                  style={{ color: SUN, fontSize: 16, fontWeight: "bold" }}
+                />,
+                <TextWidget
+                  key="name"
+                  text={prayer.next.name}
+                  style={{ color: GOLD, fontSize: 13, fontWeight: "bold" }}
+                />,
+                <TextWidget key="title" text={prayer.next.title} style={{ color: MUTED, fontSize: 9 }} />,
+              ]
+            : [
+                <TextWidget key="title" text={prayer.next.title} style={{ color: MUTED, fontSize: 9 }} />,
+                <TextWidget
+                  key="name"
+                  text={prayer.next.name}
+                  style={{ color: GOLD, fontSize: 13, fontWeight: "bold" }}
+                />,
+                <TextWidget
+                  key="remaining"
+                  text={prayer.next.remaining}
+                  style={{ color: SUN, fontSize: 16, fontWeight: "bold" }}
+                />,
+              ]}
         </FlexWidget>
       ) : null}
 
