@@ -28,6 +28,7 @@ import { AyahRow } from "./ayah-row";
 import { MushafPage } from "./mushaf-page";
 import { TafsirSheet } from "./tafsir-sheet";
 import { Sheet } from "./ui/sheet";
+import { Skeleton } from "./skeleton";
 import { Settings, SkipBack, SkipForward } from "./ui/icons";
 
 const layoutActive =
@@ -248,8 +249,14 @@ export function QuranReader({ surah, autoplay, state, send }: Props) {
 
   if (prefs.layout === "mushaf" ? !pageData : !data) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <p className="text-sm text-text-2">{t("common.loading")}</p>
+      <div className="mx-auto max-w-2xl space-y-4 px-4 py-8" aria-hidden="true">
+        <Skeleton className="mx-auto h-9 w-48" />
+        <Skeleton className="mx-auto h-4 w-40" />
+        <div className="space-y-3 pt-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-6 w-full" />
+          ))}
+        </div>
       </div>
     );
   }

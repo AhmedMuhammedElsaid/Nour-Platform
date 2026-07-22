@@ -24,6 +24,7 @@ import {
 } from "../options/use-settings";
 import { useI18n } from "../lib/i18n";
 import { SunArc, type ArcDot } from "./sun-arc";
+import { Skeleton } from "./skeleton";
 
 import { CITIES } from "../lib/cities";
 
@@ -91,8 +92,25 @@ export function PrayerPage() {
 
   if (!times || !prefs || !adhan || !azkar || !location) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <p className="text-sm text-text-2">{t("common.loading")}</p>
+      <div className="mx-auto max-w-3xl space-y-6 px-4 py-8" aria-hidden="true">
+        <div className="space-y-1">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+        <Skeleton className="h-40 w-full rounded-xl" />
+        <Skeleton className="h-8 w-48" />
+        <div className="overflow-hidden rounded-lg border border-border bg-surface">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-3.5 border-b border-border px-4 py-3 last:border-b-0"
+            >
+              <Skeleton className="size-8" />
+              <Skeleton className="h-4 flex-1" />
+              <Skeleton className="h-4 w-14" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

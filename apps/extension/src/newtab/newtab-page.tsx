@@ -48,6 +48,7 @@ import { SearchView } from "../components/search-view";
 import { SiteHeader } from "../components/site-header";
 import { SunArc, buildArcDots } from "../components/sun-arc";
 import { BrandedFooter } from "../components/branded-footer";
+import { Skeleton } from "../components/skeleton";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -72,15 +73,25 @@ type AzkarResponse = { items: DhikrItem[] };
 function DhikrWidget({ now }: { now: Date }) {
   const { t } = useI18n();
   const [dhikr, setDhikr] = useState<DhikrItem | null>(null);
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
     void getJson<AzkarResponse>("/adhkar/أذكار-الصباح", { locale: "ar" })
       .then((res) => {
         const items = res.items;
         if (items.length > 0) setDhikr(items[dayOfYear(now) % items.length] ?? null);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  if (loading) {
+    return (
+      <section className="space-y-2">
+        <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-20 w-full rounded-xl" />
+      </section>
+    );
+  }
   if (!dhikr) return null;
   return (
     <section className="space-y-2">

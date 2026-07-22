@@ -5,6 +5,7 @@ import { ADHKAR_PREVIEW_COUNT, previewAdhkarIcon } from "@repo/shared-core/adhka
 import { fetchAdhkarList, type AdhkarSummary } from "../lib/content";
 import { useI18n } from "../lib/i18n";
 import { navigate } from "../lib/router";
+import { Skeleton } from "./skeleton";
 
 // Pure so the slice is testable without rendering (package has no jsdom —
 // see vitest.config.ts `environment: "node"`).
@@ -22,15 +23,17 @@ export function previewAdhkarSets(
 export function AdhkarPreviewShelf() {
   const { t } = useI18n();
   const [sets, setSets] = useState<AdhkarSummary[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     void fetchAdhkarList()
       .then(setSets)
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const preview = previewAdhkarSets(sets);
-  if (preview.length === 0) return null;
+  if (!loading && preview.length === 0) return null;
 
   return (
     <section className="space-y-3">
@@ -44,6 +47,13 @@ export function AdhkarPreviewShelf() {
           {t("home.adhkarExplore")}
         </button>
       </div>
+      {loading ? (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 w-full rounded-2xl" />
+          ))}
+        </div>
+      ) : (
       <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         {preview.map((set, index) => (
           <li key={set.id}>
@@ -64,6 +74,7 @@ export function AdhkarPreviewShelf() {
           </li>
         ))}
       </ul>
+      )}
     </section>
   );
 }

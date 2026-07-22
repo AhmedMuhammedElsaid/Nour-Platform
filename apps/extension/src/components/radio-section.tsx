@@ -6,6 +6,7 @@ import { getRadioFavorites, recordRecentStation, toggleRadioFavorite } from "../
 import { useI18n } from "../lib/i18n";
 import { navigate } from "../lib/router";
 import { StationCard } from "./station-card";
+import { Skeleton } from "./skeleton";
 
 const PREVIEW_COUNT = 4;
 
@@ -34,16 +35,18 @@ export function RadioSection({
   const { t } = useI18n();
   const [stations, setStations] = useState<RadioStationSummary[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     void fetchStations()
       .then(setStations)
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
     void getRadioFavorites().then(setFavorites);
   }, []);
 
   const preview = previewStations(stations);
-  if (preview.length === 0) return null;
+  if (!loading && preview.length === 0) return null;
 
   const currentId = state ? (currentItem(state)?.id ?? null) : null;
   const playing = state?.status === "playing";
@@ -74,6 +77,13 @@ export function RadioSection({
           {t("home.radioExplore")}
         </button>
       </div>
+      {loading ? (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="aspect-square w-full" />
+          ))}
+        </div>
+      ) : (
       <ul className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {preview.map((station) => {
           const isCurrent = currentId === `radio:${station.slug}`;
@@ -91,6 +101,7 @@ export function RadioSection({
           );
         })}
       </ul>
+      )}
     </section>
   );
 }

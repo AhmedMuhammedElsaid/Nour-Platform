@@ -5,6 +5,7 @@ import { loadProgress, saveProgress, today } from "../lib/adhkar-progress";
 import type { AzkarProgress } from "../lib/storage";
 import { useI18n } from "../lib/i18n";
 import { navigate } from "../lib/router";
+import { Skeleton } from "./skeleton";
 import { ArrowUp, Check, RotateCw, SkipBack } from "./ui/icons";
 
 type Props = { slug: string };
@@ -116,8 +117,17 @@ export function AdhkarReader({ slug }: Props) {
 
   if (!detail) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <p className="text-sm text-text-2">{t("common.loading")}</p>
+      <div className="mx-auto max-w-2xl space-y-4 px-4 py-8" aria-hidden="true">
+        <Skeleton className="h-3 w-20" />
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-2/3" />
+          <Skeleton className="h-1.5 w-full rounded-full" />
+        </div>
+        <div className="space-y-3 pt-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-40 w-full rounded-xl" />
+          ))}
+        </div>
       </div>
     );
   }

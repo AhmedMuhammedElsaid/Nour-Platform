@@ -5,6 +5,7 @@ import { completedCount, loadProgress } from "../lib/adhkar-progress";
 import type { AzkarProgress } from "../lib/storage";
 import { useI18n } from "../lib/i18n";
 import { navigate } from "../lib/router";
+import { Skeleton } from "./skeleton";
 
 const KIND_EMOJI: Record<AdhkarKind, string> = {
   morning: "🌅",
@@ -17,11 +18,13 @@ export function AdhkarLanding() {
   const [sets, setSets] = useState<AdhkarSummary[]>([]);
   const [progress, setProgress] = useState<AzkarProgress | null>(null);
   const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     void fetchAdhkarList()
       .then(setSets)
-      .catch(() => setError(true));
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
     void loadProgress().then(setProgress);
   }, []);
 
@@ -40,7 +43,17 @@ export function AdhkarLanding() {
 
       <hr className="my-8 border-border" />
 
-      {error ? (
+      {loading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="space-y-3 rounded-2xl border border-border bg-surface p-4">
+              <Skeleton className="size-12 rounded-xl" />
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-4 w-1/3 rounded-full" />
+            </div>
+          ))}
+        </div>
+      ) : error ? (
         <p className="text-center text-sm text-danger">{t("adhkar.error")}</p>
       ) : sets.length === 0 ? (
         <p className="text-text-2">

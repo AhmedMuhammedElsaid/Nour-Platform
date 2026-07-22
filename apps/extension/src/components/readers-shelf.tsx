@@ -4,6 +4,7 @@ import { reciterGradient, reciterInitials } from "@repo/shared-core/quran/recite
 
 import { fetchReciters, type QuranReciter } from "../lib/content";
 import { useI18n } from "../lib/i18n";
+import { Skeleton } from "./skeleton";
 
 // Home "Readers" shelf — a horizontal row of Quran reciters. Tapping a reader
 // sets it as the active reader voice (nour.quran.prefs) and opens the Quran view,
@@ -12,11 +13,13 @@ import { useI18n } from "../lib/i18n";
 export function ReadersShelf({ onSelect }: { onSelect: (slug: string) => void }) {
   const { t, locale } = useI18n();
   const [reciters, setReciters] = useState<QuranReciter[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     void fetchReciters()
       .then(setReciters)
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   // Drop any row without a usable slug/name so a malformed API response can never
@@ -24,13 +27,20 @@ export function ReadersShelf({ onSelect }: { onSelect: (slug: string) => void })
   const usable = reciters.filter(
     (r) => typeof r.slug === "string" && r.slug.length > 0 && typeof r.name === "string",
   );
-  if (usable.length === 0) return null;
+  if (!loading && usable.length === 0) return null;
 
   return (
     <section className="space-y-3">
       <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-text-2">
         {t("home.reciters")}
       </h2>
+      {loading ? (
+        <div className="shelf-scroll flex gap-4 overflow-x-auto pb-2 pt-1">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="shrink-0 size-24 rounded-full" />
+          ))}
+        </div>
+      ) : (
       <ul className="shelf-scroll flex gap-4 overflow-x-auto pb-2 pt-1">
         {usable.map((reciter) => {
           const displayName =
@@ -52,6 +62,7 @@ export function ReadersShelf({ onSelect }: { onSelect: (slug: string) => void })
           );
         })}
       </ul>
+      )}
     </section>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { getCoverEmoji, getCoverGradient } from "../lib/cover-art";
+import { Skeleton } from "./skeleton";
 import {
   buildPlaylistQueue,
   fetchPlaylistDetail,
@@ -108,8 +109,19 @@ export function PlaylistDetail({ slug, startTrackId, state, send, categories }: 
 
   if (!detail) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <p className="text-sm text-text-2">{t("common.loading")}</p>
+      <div className="mx-auto max-w-3xl space-y-6 px-4 py-8" aria-hidden="true">
+        <Skeleton className="h-48 w-full rounded-xl sm:h-64" />
+        <Skeleton className="h-8 w-2/3" />
+        <Skeleton className="h-4 w-1/2" />
+        <div className="space-y-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 py-2">
+              <Skeleton className="h-4 w-6" />
+              <Skeleton className="h-4 flex-1" />
+              <Skeleton className="h-4 w-10" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

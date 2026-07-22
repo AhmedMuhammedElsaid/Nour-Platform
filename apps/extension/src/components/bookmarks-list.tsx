@@ -5,13 +5,17 @@ import type { AyahRef } from "../lib/storage";
 import { useI18n } from "../lib/i18n";
 import { navigate } from "../lib/router";
 import { Bookmark, SkipBack } from "./ui/icons";
+import { Skeleton } from "./skeleton";
 
 export function BookmarksList() {
   const { t } = useI18n();
   const [bookmarks, setBookmarks] = useState<AyahRef[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    void getBookmarks().then(setBookmarks);
+    void getBookmarks()
+      .then(setBookmarks)
+      .finally(() => setLoading(false));
   }, []);
 
   return (
@@ -27,7 +31,13 @@ export function BookmarksList() {
 
       <h1 className="font-display text-2xl font-bold text-primary">{t("quran.bookmarks")}</h1>
 
-      {bookmarks.length === 0 ? (
+      {loading ? (
+        <div className="space-y-2 overflow-hidden rounded-xl border border-border bg-surface p-1">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-11 w-full" />
+          ))}
+        </div>
+      ) : bookmarks.length === 0 ? (
         <p className="text-center text-sm text-text-2">{t("quran.noBookmarks")}</p>
       ) : (
         <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">

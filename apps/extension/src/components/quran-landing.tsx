@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { Skeleton } from "./skeleton";
 import { fetchSurahs, type QuranSurahSummary } from "../lib/content";
 import { computeSurahProgress, getLastRead } from "../lib/quran-progress";
 import type { AyahRef } from "../lib/storage";
@@ -12,9 +13,13 @@ export function QuranLanding() {
   const [surahs, setSurahs] = useState<QuranSurahSummary[]>([]);
   const [lastRead, setLastReadState] = useState<AyahRef | null>(null);
   const [q, setQ] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    void fetchSurahs().then(setSurahs).catch(() => {});
+    void fetchSurahs()
+      .then(setSurahs)
+      .catch(() => {})
+      .finally(() => setLoading(false));
     void getLastRead().then(setLastReadState);
   }, []);
 
@@ -67,6 +72,16 @@ export function QuranLanding() {
       </div>
 
       {/* Surah grid — mirrors apps/web/features/quran/components/surah-index.tsx */}
+      {loading ? (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 9 }).map((_, i) => (
+            <div key={i} className="space-y-2 rounded-lg border border-border bg-surface p-4">
+              <Skeleton className="mx-auto size-9 rounded-full" />
+              <Skeleton className="mx-auto h-4 w-3/4" />
+            </div>
+          ))}
+        </div>
+      ) : (
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {filtered.map((s) => {
           const pct = progress?.surah === s.number ? progress.pct : null;
@@ -104,6 +119,7 @@ export function QuranLanding() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }

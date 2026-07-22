@@ -9,6 +9,7 @@ import {
   toggleRadioFavorite,
 } from "../lib/radio-store";
 import { useI18n } from "../lib/i18n";
+import { Skeleton } from "./skeleton";
 import { StationCard } from "./station-card";
 
 const RECENT_VISIBLE_COUNT = 3;
@@ -54,11 +55,13 @@ export function RadioPage({
   const [stations, setStations] = useState<RadioStationSummary[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     void fetchStations()
       .then(setStations)
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
     void getRadioFavorites().then(setFavorites);
     void getRecentStations().then(setRecent);
   }, []);
@@ -103,7 +106,13 @@ export function RadioPage({
         <p className="text-sm text-text-2">{t("radio.subtitle")}</p>
       </header>
 
-      {stations.length === 0 ? (
+      {loading ? (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="aspect-square w-full" />
+          ))}
+        </div>
+      ) : stations.length === 0 ? (
         <p className="rounded-xl border border-border bg-surface p-6 text-center text-text-2">
           {t("radio.empty")}
         </p>

@@ -7,6 +7,7 @@ import { navigate } from "../lib/router";
 import type { PlayerCommand, PlayerState } from "../lib/player-state";
 import { buildPlaylistQueue, recordRecent } from "../lib/content";
 import { Search } from "./ui/icons";
+import { Skeleton } from "./skeleton";
 
 type PlaylistHit = { id: string; title: string; slug: string; coverMediaId?: string };
 type TrackHit = { id: string; title: string; playlistId: string; playlistSlug: string; playlistTitle: string };
@@ -96,6 +97,15 @@ export function SearchView({ initialQ, state: _state, send }: Props) {
           </span>
         ) : null}
       </div>
+
+      {/* First-search skeleton (subsequent refinements keep showing stale results while loading) */}
+      {loading && !result ? (
+        <div className="space-y-2" aria-hidden="true">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : null}
 
       {/* Error */}
       {error ? (
