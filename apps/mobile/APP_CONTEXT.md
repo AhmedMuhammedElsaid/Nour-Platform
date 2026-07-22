@@ -53,7 +53,17 @@ an `Animated.createAnimatedComponent(Circle)`, mirroring the web corona's `anima
 **`components/ui/spinner.tsx`** (`f9098dd`) — reusable `<Spinner>` over RN's native
 `ActivityIndicator` (OS-drawn, no JS loop / SVG / new dep), gold `#c8a050`, `label` →
 `accessibilityLabel`; replaced the `Loading…` text on the adhkar reader + both Quran
-screens. Skeleton-based loaders (Home/Playlist/Adhkar list) intentionally left as-is.
+screens. ⚠️ **SUPERSEDED 2026-07-22** (`4ad0ab2`): Quran list/reader + Adhkar reader
+converted from `<Spinner>` to `<Skeleton>` (owner chose full visual consistency with
+Home over keeping the Spinner) — Radio also gained a `<Skeleton>` grid (was plain
+"Loading…" text). Bookmarks/Downloads/Qibla/Prayer-times deliberately left untouched
+(no network fetch, nothing to skeleton). Playlist detail still uses a bare
+`ActivityIndicator` (pre-existing, out of this pass's scope — a stale doc-comment in
+`components/ui/skeleton.tsx` claims otherwise, don't trust it). jest-expo tests use
+`screen.UNSAFE_getAllByProps({ accessibilityRole: "progressbar" })`, NOT
+`getByRole("progressbar")` — RNTL 13.3.3's role query requires an explicit `accessible`
+prop before it'll match a plain `View`, so `Skeleton` (accessibilityRole only, no
+`accessible`) is invisible to `getByRole`.
 
 ## Key file locations
 
