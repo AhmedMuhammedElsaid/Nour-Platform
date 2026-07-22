@@ -1799,3 +1799,16 @@ Side-effect worth knowing: since onboarding never ran, the battery-optimization 
 never fired either — `dumpsys deviceidle whitelist` confirmed `com.nour.mobile` isn't
 exempted, which can still slow (not block, post-fix) the widget's 30-min periodic refresh under
 Doze on this device.
+
+## Bottom-dock spacing: prayer-times + Quran reader needed extra clearance (2026-07-22, `ef4da31`, pushed)
+
+Owner-reported content overlapping the bottom dock, only on these 2 of the 9 screens using
+`useDockSpacing()`. NOT a regression of the 2026-07-20 doubled-padding fix (`14874dd`) — that
+fix's shared 8dp base gap is still correct for the other 7 screens; these two specifically end
+on a full-width text block (last ayah / mushaf page-footer, or a settings card), not a short
+row, so 8dp reads as cramped/overlapping. Fixed by extending LOCALLY —
+`app/prayer-times/index.tsx:46` and `features/quran/components/reader.tsx:76` now use
+`useDockSpacing() + 24` — rather than raising the shared hook's base (which would re-open the
+doubled-padding bug on the other 7 screens). JS-only → OTA-eligible. **Device-verify pending**:
+owner picked 24dp without live visual confirmation (no screenshot/device access this session) —
+may need tuning up or down after the next `eas update`.
