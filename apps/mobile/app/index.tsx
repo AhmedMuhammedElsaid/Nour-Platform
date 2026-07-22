@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Notifications from "expo-notifications";
 
 import { Button } from "@/components/ui/button";
 import { DeveloperFooter } from "@/components/developer-footer";
@@ -23,13 +22,8 @@ import { QiblaHomeCard } from "@/features/qibla/components/qibla-home-card";
 import { SortSelect, type SortOption } from "@/features/home/components/sort-select";
 import { PlaylistCard } from "@/features/playlists/components/playlist-card";
 import { PrayerTimesWidget } from "@/features/prayer-times/components/prayer-times-widget";
-import { scheduleTestKahf } from "@/features/quran/hooks/use-kahf-reminder";
-import { useKahfReminderSettings } from "@/features/quran/hooks/use-kahf-reminder-settings";
-import { scheduleTestAzkar } from "@/features/prayer-times/hooks/use-azkar-reminders";
-import { useAzkarReminderSettings } from "@/features/prayer-times/hooks/use-azkar-reminder-settings";
 import type { Playlist } from "@repo/shared-core/schemas/playlist";
 import { pickHeroTextOfTheDay } from "@repo/shared-core/hero-text";
-import { formatClock } from "@repo/shared-core/prayer-times/format";
 import { initialLocale } from "@/lib/i18n";
 import { categoriesQuery, playlistsQuery } from "@/lib/queries";
 import type { CategoryChip } from "@/lib/types";
@@ -45,50 +39,6 @@ export default function HomeScreen() {
   const playlists = useQuery(playlistsQuery(locale));
   const categories = useQuery(categoriesQuery());
   const heroSubtitle = useMemo(() => pickHeroTextOfTheDay(locale), [locale]);
-
-  // Dev/verify test buttons for the Kahf + Adhkar reminders — mirrors the
-  // prayer-times screen's "Test adhan" button so tap-through can be confirmed
-  // on-device without waiting for Friday 12:00 / the real Fajr+15/Asr+15.
-  const { settings: kahf } = useKahfReminderSettings();
-  const { settings: azkar } = useAzkarReminderSettings();
-  const [notifGranted, setNotifGranted] = useState(false);
-
-  useEffect(() => {
-    void Notifications.getPermissionsAsync().then(({ status }) => {
-      setNotifGranted(status === "granted");
-    });
-  }, []);
-
-  const runTestKahf = useCallback(async () => {
-    try {
-      const fireAt = await scheduleTestKahf({
-        title: t("prayer.kahf.notifTitle", { lng: "ar" }),
-        body: t("prayer.kahf.notifBody", { lng: "ar" }),
-      });
-      Alert.alert(
-        t("prayer.kahf.testTitle"),
-        t("prayer.kahf.testScheduled", { time: formatClock(fireAt, locale) }),
-      );
-    } catch {
-      Alert.alert(t("prayer.kahf.testTitle"), t("common.error"));
-    }
-  }, [t, locale]);
-
-  const runTestAzkar = useCallback(async () => {
-    try {
-      const fireAt = await scheduleTestAzkar("sabah", {
-        title: t("prayer.azkar.sabah.title", { lng: "ar" }),
-        body: t("prayer.azkar.sabah.body", { lng: "ar" }),
-        slug: azkar.sabah.ar,
-      });
-      Alert.alert(
-        t("prayer.azkar.testTitle"),
-        t("prayer.azkar.testScheduled", { time: formatClock(fireAt, locale) }),
-      );
-    } catch {
-      Alert.alert(t("prayer.azkar.testTitle"), t("common.error"));
-    }
-  }, [t, locale, azkar.sabah]);
 
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   // Default to "all": render every playlist in its original order on first load.
@@ -243,24 +193,6 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {header}
-        {notifGranted && (kahf.enabled || azkar.enabled) ? (
-          <View className="flex-row flex-wrap gap-2">
-            {kahf.enabled ? (
-              <Button
-                label={t("prayer.kahf.test")}
-                variant="ghost"
-                onPress={() => void runTestKahf()}
-              />
-            ) : null}
-            {azkar.enabled ? (
-              <Button
-                label={t("prayer.azkar.test")}
-                variant="ghost"
-                onPress={() => void runTestAzkar()}
-              />
-            ) : null}
-          </View>
-        ) : null}
         <KahfFridayCard />
         {/* Readers shelf sits above the Library section (user request). */}
         <View className="mt-3">

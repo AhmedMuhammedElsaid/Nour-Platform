@@ -21,7 +21,9 @@ import {
   requestNotificationPermission,
   scheduleTestAzan,
 } from "@/features/prayer-times/hooks/use-azan-notifications";
+import { scheduleTestAzkar } from "@/features/prayer-times/hooks/use-azkar-reminders";
 import { useAzkarReminderSettings } from "@/features/prayer-times/hooks/use-azkar-reminder-settings";
+import { scheduleTestKahf } from "@/features/quran/hooks/use-kahf-reminder";
 import { useKahfReminderSettings } from "@/features/quran/hooks/use-kahf-reminder-settings";
 import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-settings";
 import { cityLabel } from "@/features/prayer-times/data/cities";
@@ -150,6 +152,38 @@ export default function PrayerTimesScreen() {
       Alert.alert(t("prayer.adhan.testTitle"), t("common.error"));
     }
   }, [t, locale, adhan.volume]);
+
+  // Same verify pattern as the adhan test above, for the Azkar + Kahf reminders.
+  const runTestAzkar = useCallback(async () => {
+    try {
+      const fireAt = await scheduleTestAzkar("sabah", {
+        title: t("prayer.azkar.sabah.title", { lng: "ar" }),
+        body: t("prayer.azkar.sabah.body", { lng: "ar" }),
+        slug: azkar.sabah.ar,
+      });
+      Alert.alert(
+        t("prayer.azkar.testTitle"),
+        t("prayer.azkar.testScheduled", { time: formatClock(fireAt, locale) }),
+      );
+    } catch {
+      Alert.alert(t("prayer.azkar.testTitle"), t("common.error"));
+    }
+  }, [t, locale, azkar.sabah]);
+
+  const runTestKahf = useCallback(async () => {
+    try {
+      const fireAt = await scheduleTestKahf({
+        title: t("prayer.kahf.notifTitle", { lng: "ar" }),
+        body: t("prayer.kahf.notifBody", { lng: "ar" }),
+      });
+      Alert.alert(
+        t("prayer.kahf.testTitle"),
+        t("prayer.kahf.testScheduled", { time: formatClock(fireAt, locale) }),
+      );
+    } catch {
+      Alert.alert(t("prayer.kahf.testTitle"), t("common.error"));
+    }
+  }, [t, locale]);
 
   // Active body (sun by day, moon by night) + its progress, plus the day-arc dot
   // positions. Recomputed each tick so the body glides; both are cheap + pure.
@@ -290,6 +324,13 @@ export default function PrayerTimesScreen() {
               {notifGranted ? t("prayer.azkar.hint") : t("prayer.azkar.foregroundOnly")}
             </Text>
           ) : null}
+          {notifGranted && azkar.enabled ? (
+            <Button
+              label={t("prayer.azkar.test")}
+              variant="ghost"
+              onPress={() => void runTestAzkar()}
+            />
+          ) : null}
         </View>
 
         {/* Friday Surah Al-Kahf reminder toggle — fixed Friday 12:00 local */}
@@ -315,6 +356,13 @@ export default function PrayerTimesScreen() {
             <Text variant="muted" className="text-xs">
               {t("prayer.kahf.hint")}
             </Text>
+          ) : null}
+          {notifGranted && kahf.enabled ? (
+            <Button
+              label={t("prayer.kahf.test")}
+              variant="ghost"
+              onPress={() => void runTestKahf()}
+            />
           ) : null}
         </View>
       </ScrollView>

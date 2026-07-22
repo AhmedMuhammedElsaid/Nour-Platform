@@ -1715,3 +1715,25 @@ no fix was needed:
   on `main` during this session, plus uncommitted local changes to
   `apps/mobile/__tests__/quran.test.tsx` + `apps/mobile/app/quran/[surah].tsx` — NOT touched by
   this session, left as-is.
+
+## Kahf/Adhkar test buttons relocated home → prayer-times (2026-07-22)
+
+Owner correction on the `f746417` change above: the two ghost test buttons belonged on the
+prayer-times screen, one per reminder's own settings card, not stacked on the Home screen.
+
+- **`app/index.tsx`**: removed `runTestKahf`/`runTestAzkar`, the `notifGranted` state +
+  permission-check `useEffect`, and the ghost-button row — along with the now-unused
+  `useCallback`/`useEffect`/`Alert`/`Notifications`/`formatClock` imports and the
+  `useKahfReminderSettings`/`useAzkarReminderSettings`/`scheduleTestKahf`/`scheduleTestAzkar`
+  imports. Home no longer references the reminder settings at all.
+- **`app/prayer-times/index.tsx`**: added the same two callbacks (moved verbatim) plus a ghost
+  `<Button>` inside each reminder's existing settings card — Azkar's test button sits under its
+  `hint`/`foregroundOnly` text, Kahf's under its `hint` text — gated on
+  `notifGranted && <reminder>.enabled`, exactly mirroring the pre-existing "Test adhan" button's
+  placement inside the adhan card above them. New imports: `scheduleTestAzkar` (from
+  `features/prayer-times/hooks/use-azkar-reminders`) and `scheduleTestKahf` (from
+  `features/quran/hooks/use-kahf-reminder`) — `useAzkarReminderSettings`/`useKahfReminderSettings`
+  were already imported on this screen for the toggles.
+- Verified: mobile `typecheck` + `lint` clean, targeted jest (`home-screen`, `prayer-times`,
+  `kahf`, `azkar` suites) 3/3 suites green. Real firing + tap-through still needs an A72
+  on-device check, same as before — this was a placement fix only, scheduling logic untouched.
