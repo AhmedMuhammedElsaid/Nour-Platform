@@ -43,7 +43,12 @@ export default function PrayerTimesScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const locale = initialLocale;
-  const dockSpacing = useDockSpacing();
+  // Owner-reported 2026-07-22: the shared useDockSpacing() base gap (8dp,
+  // right for most screens) still let the last settings card sit under the
+  // bottom dock here specifically. Extend locally rather than raising the
+  // shared base (that would re-open the doubled-padding bug on every other
+  // screen using the hook).
+  const dockSpacing = useDockSpacing() + 24;
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { location, prefs, hydrated, setLocation, setMethod, setMadhab } =

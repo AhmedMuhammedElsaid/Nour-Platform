@@ -73,7 +73,14 @@ export function Reader({
   autoStart,
 }: ReaderProps) {
   const { t, i18n } = useTranslation();
-  const dockSpacing = useDockSpacing();
+  // Owner-reported 2026-07-22: the shared useDockSpacing() base gap (8dp,
+  // right for the other screens using it) still let the last ayah/mushaf
+  // footer sit under the bottom dock here specifically — this reader is the
+  // one screen where the last item is routinely a full-width text block, not
+  // a short row, so it needs more clearance. Extend locally rather than
+  // raising the shared base (that would re-open the doubled-padding bug on
+  // every other screen using the hook).
+  const dockSpacing = useDockSpacing() + 24;
   const insets = useSafeAreaInsets();
   const isMushaf = prefs.layout === "mushaf";
   const [bookmarks, setBookmarks] = useState<AyahRef[]>([]);
