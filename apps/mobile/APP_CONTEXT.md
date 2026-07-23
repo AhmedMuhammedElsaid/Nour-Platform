@@ -1747,6 +1747,29 @@ were still running the pre-fix JS bundle. No code changed. Ran `eas update --bra
 --environment preview` from `apps/mobile` → update group `31da7855-eb58-4a44-90e7-91d6b6ae0952`.
 Pending: user to relaunch the app on-device and confirm the Uthmani font now renders.
 
+## Uthmani font still not visible — re-OTA with `--clear-cache` (2026-07-23)
+
+User reported (again) the Quran Uthmani font not showing on-device. Investigated fresh: font
+file present (`assets/fonts/UthmanicHafs.ttf`, 242KB), `app/_layout.tsx` `useFonts()` loads it
+correctly, `tailwind.config.js` maps `font-quran`→`UthmanicHafs`, all 6 call sites (mushaf-page,
+ayah-row, reader, surah-index, juz-shelf, word-by-word) apply the class, no `assetBundlePatterns`
+exclusion, metro's default `assetExts` already covers `.ttf`. **Code is correct — same
+conclusion as the 2026-07-22 session.** Root cause this time: the prior font OTA
+(`31da7855`, 2026-07-22) was published with `--environment preview` but **without
+`--clear-cache`**, which the repo's own OTA gotcha (line ~634 above) says to always include.
+Re-published: `eas update --branch preview --environment preview --clear-cache` from
+`apps/mobile` → update group `945c465b-5fc3-4ca3-bfcd-0781839ea6ee` (runtime `1.1.1`, commit
+`f0bb668`). Export log **confirms `assets/fonts/UthmanicHafs.ttf (242KB)` is in the asset map**
+for both platforms (already-uploaded/deduped — proof the OTA pipeline does ship the font
+correctly, ruling out a delivery-pipeline bug). No code changed.
+
+**Still pending: on-device verify.** Apply-on-device recipe (from the gotcha note): open app →
+wait ~20s (background download) → **fully close** → reopen (update applies on the *next*
+launch, not the current session) — needs two cold starts, not one. If still not visible after
+that on a fresh cold-start, next step is to actually inspect the rendered glyphs on-device
+(adb screenshot / logcat) rather than re-publishing again — 2 same-symptom OTA rounds without
+a code diff is the threshold to stop re-publishing and go hands-on with the device.
+
 ## NourHome widget blank on add — React Fragment crashes RNAW tree builder (2026-07-22, `059018e`, pushed)
 
 **Symptom (owner, on-device A72, vC10 build):** added the widget to home screen — stayed
@@ -1812,3 +1835,32 @@ row, so 8dp reads as cramped/overlapping. Fixed by extending LOCALLY —
 doubled-padding bug on the other 7 screens). JS-only → OTA-eligible. **Device-verify pending**:
 owner picked 24dp without live visual confirmation (no screenshot/device access this session) —
 may need tuning up or down after the next `eas update`.
+
+## NourHome widget renders but doesn't match the agreed design (2026-07-23)
+
+**Symptom (owner screenshot, post-`059018e`):** widget renders but (1) the sun/moon arc is a
+tiny faint ~25%-width smudge instead of spanning full width, and (2) a huge empty void sits
+below the radio row. Compared against the agreed-design artifact ("NourHome Widget — Redesign
+Preview", 2026-07-19) — everything else matched (header, AR next-prayer order, prayer cells,
+5 adhkar chips; the single generic "إذاعة" pill is the designed no-recent-station fallback).
+
+**Root cause 1 (tiny arc):** RNAW's native `SvgWidget.java:28` calls AndroidSVG's
+`svg.renderToPicture()` with **no dimensions** — AndroidSVG sizes the picture from the SVG
+root's `width`/`height` attrs and **defaults to 512×512 when absent**. `build-arc-svg.ts`
+emitted only a `viewBox`, so the 600×150 arc was aspect-fit into a 512×512 *square* picture,
+then the ImageView (default FIT_CENTER) fit that square into the wide/short slot → ~25% width.
+Fix: emit `width="600" height="150"` on the `<svg>` root. **Gotcha: every SVG string handed to
+RNAW's `SvgWidget` MUST carry explicit root width/height attrs, not just a viewBox.**
+
+**Root cause 2 (void):** root `FlexWidget` is fixed at `widgetInfo.height` with top-packed
+children and a fixed-height arc slot — launcher height beyond the ~265dp of content rendered as
+bare background. Fix: arc wrapper is now the flexible region (`flex: 1` +
+`justifyContent`/`alignItems: "center"`); the inner `SvgWidget` keeps explicit numeric
+`width`×`arcHeight` so the aspect holds, slack becomes symmetric space around the arc, and the
+lower rows sit flush at the bottom at any launcher size.
+
+**Files:** `features/prayer-times/widget/build-arc-svg.ts`,
+`features/home/widget/nour-home-widget.tsx`, `__tests__/build-arc-svg.test.tsx` (new regression
+test on the root-svg intrinsic size). Sonnet implemented from a pinned plan, Opus reviewed
+(SHIP, no findings). JS-only → shipped via `eas update`, no rebuild. **Device-verify pending:**
+re-add the widget (fires `WIDGET_ADDED` → fresh render) after 2 cold starts to pull the OTA.
