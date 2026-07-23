@@ -64,7 +64,16 @@ export function buildArcSvg({ dots, fraction, isNight, onNightBand }: BuildArcSv
   const bodyEls = isNight ? buildMoon(body) : buildSun(body);
 
   return [
-    `<svg viewBox="0 0 ${ARC.w} ${ARC.h}" xmlns="http://www.w3.org/2000/svg">`,
+    // Explicit width/height (not just viewBox): RNAW's native SvgWidget.java
+    // calls AndroidSVG's `svg.renderToPicture()` with no dimensions —
+    // AndroidSVG then sizes the picture from the SVG root's width/height
+    // attrs, defaulting to 512×512 when they're absent. Without them, our
+    // 600×150 viewBox gets aspect-fit into that 512×512 square, and the
+    // widget's ImageView (FIT_CENTER) fits the square into the wide/short arc
+    // slot — rendering the arc as a ~25%-width smudge. Explicit intrinsic
+    // size makes the picture itself 600×150, so FIT_CENTER fills the slot's
+    // full width.
+    `<svg width="${ARC.w}" height="${ARC.h}" viewBox="0 0 ${ARC.w} ${ARC.h}" xmlns="http://www.w3.org/2000/svg">`,
     "<defs>",
     `<linearGradient id="arc-grad" x1="0" y1="0" x2="1" y2="0">`,
     `<stop offset="0" stop-color="${GOLD}" stop-opacity="0.15" />`,

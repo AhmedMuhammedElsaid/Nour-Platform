@@ -101,9 +101,17 @@ export function NourHomeWidget({
         <TextWidget text={hijriDateLabel} style={{ color: SUN, fontSize: 11 }} />
       </FlexWidget>
 
-      {/* Sun/moon arc — dynamic SVG string, regenerated each refresh */}
-      <FlexWidget style={{ width: "match_parent", height: arcHeight, paddingTop: 2 }}>
-        <SvgWidget svg={arcSvg} style={{ width: "match_parent", height: arcHeight }} />
+      {/* Sun/moon arc — dynamic SVG string, regenerated each refresh. This
+          wrapper is the widget's flexible region: `flex: 1` (LinearLayout
+          weight, same prop the prayer cells below use) lets it absorb any
+          launcher height beyond the fixed rows, so the rows stay flush at
+          the bottom instead of leaving a large empty void. The inner
+          SvgWidget keeps explicit numeric width/height so the centered
+          child preserves the 600:150 aspect inside the now-flexible band. */}
+      <FlexWidget
+        style={{ width: "match_parent", flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 2 }}
+      >
+        <SvgWidget svg={arcSvg} style={{ width, height: arcHeight }} />
       </FlexWidget>
 
       {/* Next-prayer remaining time — static H:MM (no live ticking; the

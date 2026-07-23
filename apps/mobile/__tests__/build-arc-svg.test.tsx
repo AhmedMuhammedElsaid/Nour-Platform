@@ -16,6 +16,14 @@ describe("buildArcSvg", () => {
     expect(svg).toContain("M0 126"); // arcPath() start point
   });
 
+  it("root svg carries explicit intrinsic size (not just viewBox)", () => {
+    // Guards the AndroidSVG default-512×512-picture trap: SvgWidget.java
+    // calls renderToPicture() with no dimensions, so without width/height
+    // attrs on the root element the picture defaults to a 512×512 square.
+    const svg = buildArcSvg({ dots: DOTS, fraction: 0.4, isNight: false, onNightBand: false });
+    expect(svg).toContain('<svg width="600" height="150"');
+  });
+
   it("day (sun) branch: no <mask>, has the sun disc + rays", () => {
     const svg = buildArcSvg({ dots: DOTS, fraction: 0.4, isNight: false, onNightBand: false });
     expect(svg).not.toContain("<mask");
