@@ -46,12 +46,12 @@ describe("MushafSegment", () => {
 
   it("shows the Bismillah only when the segment's showBismillah is true", () => {
     renderSegment({ segment: { ...segment, showBismillah: true } });
-    expect(screen.getByText(/بِسْمِ ٱللَّهِ/)).toBeTruthy();
+    expect(screen.getByText(/بِسْمِ ٱللَّهِ/)).toBeTruthy();
   });
 
   it("hides the Bismillah when showBismillah is false", () => {
     renderSegment();
-    expect(screen.queryByText(/بِسْمِ ٱللَّهِ/)).toBeNull();
+    expect(screen.queryByText(/بِسْمِ ٱللَّهِ/)).toBeNull();
   });
 
   it("fires onSelectAyah with the ayah's numberGlobal on press", () => {

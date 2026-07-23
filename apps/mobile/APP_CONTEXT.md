@@ -1763,12 +1763,33 @@ Re-published: `eas update --branch preview --environment preview --clear-cache` 
 for both platforms (already-uploaded/deduped — proof the OTA pipeline does ship the font
 correctly, ruling out a delivery-pipeline bug). No code changed.
 
-**Still pending: on-device verify.** Apply-on-device recipe (from the gotcha note): open app →
-wait ~20s (background download) → **fully close** → reopen (update applies on the *next*
-launch, not the current session) — needs two cold starts, not one. If still not visible after
-that on a fresh cold-start, next step is to actually inspect the rendered glyphs on-device
-(adb screenshot / logcat) rather than re-publishing again — 2 same-symptom OTA rounds without
-a code diff is the threshold to stop re-publishing and go hands-on with the device.
+**Update: user sent an on-device screenshot the same session — this was NOT a delivery gap.**
+The font WAS rendering (the ayah-body paragraph was crisp, correct Uthmani calligraphy). Only
+the standalone Bismillah heading (`mushaf-page.tsx`'s module-level `BISMILLAH` constant,
+rendered when `segment.showBismillah`) was visibly corrupted — dropped/mangled letters (e.g.
+`ٱلرَّحِيمِ` missing its `ي`).
+
+**Real root cause (verified by codepoint diff against the live `alquran.cloud` `quran-uthmani`
+API, not guessed):** the hardcoded `BISMILLAH` literal has the **shadda (U+0651) and fatha
+(U+064E) diacritics swapped** at 3 positions (on `الله`, `الرحمن`, `الرحيم` — fatha-before-
+shadda instead of the canonical shadda-before-fatha). Confirmed by fetching Baqarah/Yusuf ayah
+1 from the API (whose text *does* bake the Bismillah into ayah 1 for every surah except
+At-Tawbah) and diffing codepoint-by-codepoint against the source literal — exact match except
+those 3 swapped pairs. Browsers' HarfBuzz shaping (web) silently reorders combining marks to
+canonical order before applying GSUB, so web never showed this; RN's Skia-based shaper with
+the embedded `UthmanicHafs.ttf` does not reorder, so the font's ligature substitution for the
+shadda+fatha combo failed silently on the wrong-order input, dropping glyphs. **Same literal,
+same bug, was copy-pasted into 4 files**: `apps/mobile/features/quran/components/mushaf-page.tsx`,
+`apps/extension/src/components/mushaf-page.tsx`, `apps/web/app/[locale]/quran/[surah]/page.tsx`,
+`apps/web/features/quran/components/mushaf-page-view.tsx` — all 4 fixed in the same pass
+(replaced with the API-verified canonical string), plus 2 test files whose hardcoded
+regex/string assertions had the same swapped order (`apps/mobile/__tests__/mushaf-page.test.tsx`,
+`apps/web/features/quran/components/mushaf-page-view.test.tsx`). Targeted mobile jest (5/5) +
+web vitest (9/9) pass; lint/typecheck clean across mobile/web/extension.
+
+**Shipped 2026-07-23**: OTA'd `--clear-cache` (update group `d87c9808`, runtime `1.1.1`).
+Code changes NOT yet committed — commit pending. **Still needs A72 two-cold-start verify**
+(open → wait ~20s → fully close → reopen) to confirm the glyphs render correctly now.
 
 ## NourHome widget blank on add — React Fragment crashes RNAW tree builder (2026-07-22, `059018e`, pushed)
 

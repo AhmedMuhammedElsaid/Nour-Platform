@@ -81,7 +81,7 @@ export default async function SurahReaderPage({ params, searchParams }: PageProp
         </p>
         {data.surah.bismillahPre ? (
           <p dir="rtl" className="font-quran text-text mt-4 text-2xl">
-            بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+            بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
           </p>
         ) : null}
       </header>

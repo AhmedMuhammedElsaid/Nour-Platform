@@ -19,7 +19,7 @@ function ayah(overrides: Partial<ReaderAyah>): ReaderAyah {
     juz: 1,
     page: 1,
     sajda: false,
-    textUthmani: "بِسْمِ ٱللَّهِ",
+    textUthmani: "بِسْمِ ٱللَّهِ",
     words: [],
     translation: null,
     audioUrl: "https://x/001001.mp3",
@@ -69,7 +69,7 @@ describe("MushafPageView", () => {
 
   it("only renders the Bismillah for the segment that opens a new surah", () => {
     render(<MushafPageView page={page} activeGlobal={null} isPlaying={false} onPlay={vi.fn()} />);
-    expect(screen.getAllByText("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ")).toHaveLength(1);
+    expect(screen.getAllByText("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ")).toHaveLength(1);
   });
 
   it("renders each segment's ayahs with inline markers", () => {

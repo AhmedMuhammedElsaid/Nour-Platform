@@ -6,7 +6,7 @@ import type { PageSegment } from "../lib/content";
 // constant rather than an i18n key (same literal as apps/web/app/[locale]/
 // quran/[surah]/page.tsx and apps/mobile/features/quran/components/
 // mushaf-page.tsx).
-const BISMILLAH = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ";
+const BISMILLAH = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ";
 
 export type MushafPageProps = {
   page: number;

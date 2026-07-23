@@ -8,7 +8,7 @@ import type { PageSegment } from "@repo/shared-core/schemas/quran";
 // Uthmani Bismillah — Quranic text, not a UI string, so it lives as a module
 // constant rather than an i18n key (same literal apps/web/app/[locale]/quran/
 // [surah]/page.tsx:84 renders before its Reader).
-const BISMILLAH = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ";
+const BISMILLAH = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ";
 
 export interface MushafSegmentProps {
   segment: PageSegment;

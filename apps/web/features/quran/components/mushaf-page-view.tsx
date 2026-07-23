@@ -37,7 +37,7 @@ export function MushafPageView({ page, activeGlobal, isPlaying, onPlay }: Mushaf
           </div>
           {segment.showBismillah ? (
             <p dir="rtl" className="font-quran text-text mb-4 text-center text-2xl">
-              بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+              بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
             </p>
           ) : null}
           <MushafAyahParagraph
