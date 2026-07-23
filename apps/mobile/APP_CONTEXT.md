@@ -1788,8 +1788,8 @@ regex/string assertions had the same swapped order (`apps/mobile/__tests__/musha
 web vitest (9/9) pass; lint/typecheck clean across mobile/web/extension.
 
 **Shipped 2026-07-23**: OTA'd `--clear-cache` (update group `d87c9808`, runtime `1.1.1`).
-Code changes NOT yet committed — commit pending. **Still needs A72 two-cold-start verify**
-(open → wait ~20s → fully close → reopen) to confirm the glyphs render correctly now.
+Committed + pushed `e246d7f`. **Still needs A72 two-cold-start verify** (open → wait ~20s →
+fully close → reopen) to confirm the glyphs render correctly now.
 
 ## NourHome widget blank on add — React Fragment crashes RNAW tree builder (2026-07-22, `059018e`, pushed)
 
@@ -1873,15 +1873,32 @@ then the ImageView (default FIT_CENTER) fit that square into the wide/short slot
 Fix: emit `width="600" height="150"` on the `<svg>` root. **Gotcha: every SVG string handed to
 RNAW's `SvgWidget` MUST carry explicit root width/height attrs, not just a viewBox.**
 
-**Root cause 2 (void):** root `FlexWidget` is fixed at `widgetInfo.height` with top-packed
-children and a fixed-height arc slot — launcher height beyond the ~265dp of content rendered as
-bare background. Fix: arc wrapper is now the flexible region (`flex: 1` +
-`justifyContent`/`alignItems: "center"`); the inner `SvgWidget` keeps explicit numeric
-`width`×`arcHeight` so the aspect holds, slack becomes symmetric space around the arc, and the
-lower rows sit flush at the bottom at any launcher size.
+**Root cause 2 (void), first attempt — `bbc0827`:** root `FlexWidget` is fixed at
+`widgetInfo.height` with top-packed children and a fixed-height arc slot — launcher height
+beyond the ~265dp of content rendered as bare background. Tried: arc wrapper as the flexible
+region (`flex: 1` + centered). **Files (this round):** `features/prayer-times/widget/
+build-arc-svg.ts`, `features/home/widget/nour-home-widget.tsx`, `__tests__/build-arc-svg.test.tsx`
+(new regression test on the root-svg intrinsic size). Sonnet implemented from a pinned plan,
+Opus reviewed (SHIP). JS-only → OTA'd (update group `47f4f82f`).
 
-**Files:** `features/prayer-times/widget/build-arc-svg.ts`,
-`features/home/widget/nour-home-widget.tsx`, `__tests__/build-arc-svg.test.tsx` (new regression
-test on the root-svg intrinsic size). Sonnet implemented from a pinned plan, Opus reviewed
-(SHIP, no findings). JS-only → shipped via `eas update`, no rebuild. **Device-verify pending:**
-re-add the widget (fires `WIDGET_ADDED` → fresh render) after 2 cold starts to pull the OTA.
+**Root cause 2, corrected — `4bc0b59` (2026-07-23, same day):** owner's next screenshot showed
+the full-width-arc fix landed, but the `flex: 1` centering just relocated the void into two
+gaps flanking the arc — RNAW's native `SvgWidget` (`ImageView`, default `FIT_CENTER`) caps the
+arc's *rendered* height at `width / 4` regardless of how much flex space it's handed, so
+"centering" a small fixed-aspect element in a big flexible band just splits the gap in two. The
+real constraint, traced in RNAW's Java source: whatever JSX tree `renderWidget()` receives gets
+auto-wrapped in a native `RootWidget` — a `FrameLayout` that `view.measure()`s at the **exact**
+launcher-assigned width/height (`RootWidget.java`), and that wrapper **silently drops any
+margin/gravity** our root sets (`FrameLayout.generateLayoutParams()` only copies width/height) —
+so a shorter card can never be centered inside it from JS. This launcher grants a 5×4 widget
+**~420dp tall** vs. the design's **~240dp** assumption — a mismatch no amount of internal
+flex/padding math can fully absorb without either stretching an element past its aspect ratio or
+leaving *some* leftover space. **Fix:** stopped fighting it — the returned tree is now a
+transparent, full-size **outer shell** wrapping a `height: "wrap_content"` **inner card** (arc
+reverted to fixed height, no `flex: 1`). Launcher slack now renders as transparent space *below*
+the card (blends with the wallpaper) instead of a stretched dark rectangle or split gaps.
+**Gotcha for any future RNAW layout work: a widget's top-level card should be `wrap_content`
+sized inside a transparent full-size shell, never forced to `widgetInfo.height` directly — the
+native root wrapper cannot center a shorter child for you.** Gate: jest (`nour-home-widget` +
+`build-arc-svg`, 9/9 pass), `tsc --noEmit` clean, eslint clean. JS-only → OTA pending.
+**Device-verify pending both rounds:** 2 cold starts + re-add the widget on the A72.
