@@ -74,47 +74,58 @@ export function NourHomeWidget({
   const arcHeight = Math.min(Math.round(width * ARC_ASPECT), ARC_MAX_HEIGHT);
 
   return (
-    <FlexWidget
-      style={{
-        width,
-        height,
-        flexDirection: "column",
-        backgroundColor: BG,
-        borderRadius: 20,
-      }}
-    >
-      {/* Header — city + hijri date, tap → /prayer-times */}
+    // Outer shell: RNAW auto-wraps whatever we return in a native `RootWidget`
+    // FrameLayout measured to the EXACT launcher-assigned width/height (see
+    // RootWidget.java — `view.measure(EXACTLY, EXACTLY)`), and that wrapper
+    // silently drops any margin/gravity our root sets (Android's
+    // FrameLayout.generateLayoutParams() only copies width/height), so we
+    // can't center a shorter card inside it from here. Instead this shell is
+    // transparent + full-size, and the card below is `height: "wrap_content"`
+    // — any launcher-granted height beyond the card's real content renders as
+    // transparent space under it (blends with the wallpaper) instead of a
+    // stretched dark rectangle. Some launchers/grids grant a 5×4 widget far
+    // more height than the design's ~240dp assumption (seen: ~420dp on a
+    // Samsung A72 grid), so the card must size to content, not to `height`.
+    <FlexWidget style={{ width, height, flexDirection: "column" }}>
       <FlexWidget
-        clickAction="OPEN_URI"
-        clickActionData={{ uri: "nour:///prayer-times" }}
-        accessibilityLabel={prayer.city}
         style={{
-          flexDirection: "row",
           width: "match_parent",
-          justifyContent: "space-between",
-          paddingLeft: 14,
-          paddingRight: 14,
-          paddingTop: 10,
+          height: "wrap_content",
+          flexDirection: "column",
+          backgroundColor: BG,
+          borderRadius: 20,
         }}
       >
-        <TextWidget text={`🕌 ${prayer.city}`} style={{ color: GOLD, fontSize: 14, fontWeight: "bold" }} />
-        <TextWidget text={hijriDateLabel} style={{ color: SUN, fontSize: 11 }} />
-      </FlexWidget>
+        {/* Header — city + hijri date, tap → /prayer-times */}
+        <FlexWidget
+          clickAction="OPEN_URI"
+          clickActionData={{ uri: "nour:///prayer-times" }}
+          accessibilityLabel={prayer.city}
+          style={{
+            flexDirection: "row",
+            width: "match_parent",
+            justifyContent: "space-between",
+            paddingLeft: 14,
+            paddingRight: 14,
+            paddingTop: 10,
+          }}
+        >
+          <TextWidget
+            text={`🕌 ${prayer.city}`}
+            style={{ color: GOLD, fontSize: 14, fontWeight: "bold" }}
+          />
+          <TextWidget text={hijriDateLabel} style={{ color: SUN, fontSize: 11 }} />
+        </FlexWidget>
 
-      {/* Sun/moon arc — dynamic SVG string, regenerated each refresh. This
-          wrapper is the widget's flexible region: `flex: 1` (LinearLayout
-          weight, same prop the prayer cells below use) lets it absorb any
-          launcher height beyond the fixed rows, so the rows stay flush at
-          the bottom instead of leaving a large empty void. The inner
-          SvgWidget keeps explicit numeric width/height so the centered
-          child preserves the 600:150 aspect inside the now-flexible band. */}
-      <FlexWidget
-        style={{ width: "match_parent", flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 2 }}
-      >
-        <SvgWidget svg={arcSvg} style={{ width, height: arcHeight }} />
-      </FlexWidget>
+        {/* Sun/moon arc — dynamic SVG string, regenerated each refresh. Fixed
+          height (not flex:1 — see the outer-shell comment above for why
+          that doesn't work: the card is wrap_content now, so there's no
+          launcher slack inside it left to absorb here). */}
+        <FlexWidget style={{ width: "match_parent", height: arcHeight, paddingTop: 2 }}>
+          <SvgWidget svg={arcSvg} style={{ width, height: arcHeight }} />
+        </FlexWidget>
 
-      {/* Next-prayer remaining time — static H:MM (no live ticking; the
+        {/* Next-prayer remaining time — static H:MM (no live ticking; the
           bitmap can't animate), not the in-app PrayerCountdown's mm:ss.
           Order mirrors PrayerCountdown's "label → name → countdown" reading
           order (prayer-countdown.tsx) — but unlike a plain RN <View>, RNAW's
@@ -127,154 +138,196 @@ export function NourHomeWidget({
           the one deliberate exception to "never flex-row-reverse" (CLAUDE.md
           §4.3), since that rule assumes RN's dir="rtl" auto-mirror, which
           RNAW doesn't have. */}
-      {prayer.next ? (
+        {prayer.next ? (
+          <FlexWidget
+            clickAction="OPEN_URI"
+            clickActionData={{ uri: "nour:///prayer-times" }}
+            accessibilityLabel={`${prayer.next.title} ${prayer.next.name} ${prayer.next.remaining}`}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "match_parent",
+              paddingTop: 2,
+              flexGap: 6,
+            }}
+          >
+            {locale === "ar"
+              ? [
+                  <TextWidget
+                    key="remaining"
+                    text={prayer.next.remaining}
+                    style={{ color: SUN, fontSize: 16, fontWeight: "bold" }}
+                  />,
+                  <TextWidget
+                    key="name"
+                    text={prayer.next.name}
+                    style={{ color: GOLD, fontSize: 13, fontWeight: "bold" }}
+                  />,
+                  <TextWidget
+                    key="title"
+                    text={prayer.next.title}
+                    style={{ color: MUTED, fontSize: 9 }}
+                  />,
+                ]
+              : [
+                  <TextWidget
+                    key="title"
+                    text={prayer.next.title}
+                    style={{ color: MUTED, fontSize: 9 }}
+                  />,
+                  <TextWidget
+                    key="name"
+                    text={prayer.next.name}
+                    style={{ color: GOLD, fontSize: 13, fontWeight: "bold" }}
+                  />,
+                  <TextWidget
+                    key="remaining"
+                    text={prayer.next.remaining}
+                    style={{ color: SUN, fontSize: 16, fontWeight: "bold" }}
+                  />,
+                ]}
+          </FlexWidget>
+        ) : null}
+
+        {/* Prayer row — tap → /prayer-times */}
         <FlexWidget
           clickAction="OPEN_URI"
           clickActionData={{ uri: "nour:///prayer-times" }}
-          accessibilityLabel={`${prayer.next.title} ${prayer.next.name} ${prayer.next.remaining}`}
+          accessibilityLabel={locale === "ar" ? "مواقيت الصلاة" : "Prayer times"}
           style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
+            flexDirection: "column",
             width: "match_parent",
-            paddingTop: 2,
-            flexGap: 6,
+            paddingLeft: 14,
+            paddingRight: 14,
+            paddingTop: 4,
+            paddingBottom: 8,
           }}
         >
-          {locale === "ar"
-            ? [
-                <TextWidget
-                  key="remaining"
-                  text={prayer.next.remaining}
-                  style={{ color: SUN, fontSize: 16, fontWeight: "bold" }}
-                />,
-                <TextWidget
-                  key="name"
-                  text={prayer.next.name}
-                  style={{ color: GOLD, fontSize: 13, fontWeight: "bold" }}
-                />,
-                <TextWidget key="title" text={prayer.next.title} style={{ color: MUTED, fontSize: 9 }} />,
-              ]
-            : [
-                <TextWidget key="title" text={prayer.next.title} style={{ color: MUTED, fontSize: 9 }} />,
-                <TextWidget
-                  key="name"
-                  text={prayer.next.name}
-                  style={{ color: GOLD, fontSize: 13, fontWeight: "bold" }}
-                />,
-                <TextWidget
-                  key="remaining"
-                  text={prayer.next.remaining}
-                  style={{ color: SUN, fontSize: 16, fontWeight: "bold" }}
-                />,
-              ]}
-        </FlexWidget>
-      ) : null}
-
-      {/* Prayer row — tap → /prayer-times */}
-      <FlexWidget
-        clickAction="OPEN_URI"
-        clickActionData={{ uri: "nour:///prayer-times" }}
-        accessibilityLabel={locale === "ar" ? "مواقيت الصلاة" : "Prayer times"}
-        style={{
-          flexDirection: "column",
-          width: "match_parent",
-          paddingLeft: 14,
-          paddingRight: 14,
-          paddingTop: 4,
-          paddingBottom: 8,
-        }}
-      >
-        <FlexWidget style={{ flexDirection: "row", width: "match_parent", justifyContent: "space-between" }}>
-          {prayer.rows.map((row) => (
-            <FlexWidget
-              key={row.key}
-              style={{
-                flexDirection: "column",
-                alignItems: "center",
-                flex: 1,
-                paddingTop: 2,
-                paddingBottom: 2,
-                borderRadius: 8,
-                backgroundColor: row.isNext ? ROW_HIGHLIGHT_BG : BG,
-              }}
-            >
-              <TextWidget text={row.label} style={{ color: row.isNext ? GOLD : MUTED, fontSize: 9 }} />
-              <TextWidget
-                text={row.time}
-                style={{
-                  color: row.isNext ? SUN : TEXT,
-                  fontSize: 11,
-                  fontWeight: row.isNext ? "bold" : "normal",
-                  marginTop: 2,
-                }}
-              />
-            </FlexWidget>
-          ))}
-        </FlexWidget>
-      </FlexWidget>
-
-      <FlexWidget style={{ height: 1, width: "match_parent", backgroundColor: DIVIDER }} />
-
-      {/* Adhkar row — row itself → /adhkar (tap outside an icon), each icon → its own set */}
-      <FlexWidget
-        clickAction="OPEN_URI"
-        clickActionData={{ uri: "nour:///adhkar" }}
-        accessibilityLabel={adhkar.title}
-        style={{
-          flexDirection: "column",
-          width: "match_parent",
-          paddingLeft: 14,
-          paddingRight: 14,
-          paddingTop: 8,
-          paddingBottom: 8,
-        }}
-      >
-        <FlexWidget style={{ flexDirection: "row", width: "match_parent", justifyContent: "space-between" }}>
-          {adhkar.items.map((item, index) => (
-            <FlexWidget
-              key={`${item.uri}-${index}`}
-              clickAction="OPEN_URI"
-              clickActionData={{ uri: item.uri }}
-              accessibilityLabel={`${adhkar.title} ${item.icon}`}
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 10,
-                backgroundColor: ICON_CHIP_BG,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <TextWidget text={item.icon} style={{ fontSize: 14 }} />
-            </FlexWidget>
-          ))}
-        </FlexWidget>
-      </FlexWidget>
-
-      <FlexWidget style={{ height: 1, width: "match_parent", backgroundColor: DIVIDER }} />
-
-      {/* Radio row — whole row → /radio (no per-station route exists) */}
-      <FlexWidget
-        clickAction="OPEN_URI"
-        clickActionData={{ uri: "nour:///radio" }}
-        accessibilityLabel={radioLabel}
-        style={{
-          flexDirection: "column",
-          width: "match_parent",
-          paddingLeft: 14,
-          paddingRight: 14,
-          paddingTop: 8,
-          paddingBottom: 10,
-        }}
-      >
-        {radio.stations.length > 0 ? (
-          <FlexWidget style={{ flexDirection: "row", width: "match_parent", flexGap: 6 }}>
-            {radio.stations.map((name, index) => (
+          <FlexWidget
+            style={{ flexDirection: "row", width: "match_parent", justifyContent: "space-between" }}
+          >
+            {prayer.rows.map((row) => (
               <FlexWidget
-                key={`${name}-${index}`}
+                key={row.key}
                 style={{
+                  flexDirection: "column",
+                  alignItems: "center",
                   flex: 1,
+                  paddingTop: 2,
+                  paddingBottom: 2,
+                  borderRadius: 8,
+                  backgroundColor: row.isNext ? ROW_HIGHLIGHT_BG : BG,
+                }}
+              >
+                <TextWidget
+                  text={row.label}
+                  style={{ color: row.isNext ? GOLD : MUTED, fontSize: 9 }}
+                />
+                <TextWidget
+                  text={row.time}
+                  style={{
+                    color: row.isNext ? SUN : TEXT,
+                    fontSize: 11,
+                    fontWeight: row.isNext ? "bold" : "normal",
+                    marginTop: 2,
+                  }}
+                />
+              </FlexWidget>
+            ))}
+          </FlexWidget>
+        </FlexWidget>
+
+        <FlexWidget style={{ height: 1, width: "match_parent", backgroundColor: DIVIDER }} />
+
+        {/* Adhkar row — row itself → /adhkar (tap outside an icon), each icon → its own set */}
+        <FlexWidget
+          clickAction="OPEN_URI"
+          clickActionData={{ uri: "nour:///adhkar" }}
+          accessibilityLabel={adhkar.title}
+          style={{
+            flexDirection: "column",
+            width: "match_parent",
+            paddingLeft: 14,
+            paddingRight: 14,
+            paddingTop: 8,
+            paddingBottom: 8,
+          }}
+        >
+          <FlexWidget
+            style={{ flexDirection: "row", width: "match_parent", justifyContent: "space-between" }}
+          >
+            {adhkar.items.map((item, index) => (
+              <FlexWidget
+                key={`${item.uri}-${index}`}
+                clickAction="OPEN_URI"
+                clickActionData={{ uri: item.uri }}
+                accessibilityLabel={`${adhkar.title} ${item.icon}`}
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 10,
+                  backgroundColor: ICON_CHIP_BG,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <TextWidget text={item.icon} style={{ fontSize: 14 }} />
+              </FlexWidget>
+            ))}
+          </FlexWidget>
+        </FlexWidget>
+
+        <FlexWidget style={{ height: 1, width: "match_parent", backgroundColor: DIVIDER }} />
+
+        {/* Radio row — whole row → /radio (no per-station route exists) */}
+        <FlexWidget
+          clickAction="OPEN_URI"
+          clickActionData={{ uri: "nour:///radio" }}
+          accessibilityLabel={radioLabel}
+          style={{
+            flexDirection: "column",
+            width: "match_parent",
+            paddingLeft: 14,
+            paddingRight: 14,
+            paddingTop: 8,
+            paddingBottom: 10,
+          }}
+        >
+          {radio.stations.length > 0 ? (
+            <FlexWidget style={{ flexDirection: "row", width: "match_parent", flexGap: 6 }}>
+              {radio.stations.map((name, index) => (
+                <FlexWidget
+                  key={`${name}-${index}`}
+                  style={{
+                    flex: 1,
+                    borderRadius: 10,
+                    backgroundColor: ICON_CHIP_BG,
+                    paddingLeft: 8,
+                    paddingRight: 8,
+                    paddingTop: 4,
+                    paddingBottom: 4,
+                  }}
+                >
+                  <TextWidget
+                    text={name}
+                    style={{ color: TEXT, fontSize: 11 }}
+                    truncate="END"
+                    maxLines={1}
+                  />
+                </FlexWidget>
+              ))}
+            </FlexWidget>
+          ) : (
+            // No recent/favorite station resolved — a single generic pill (NOT
+            // the removed row-title text) keeps the row from rendering empty.
+            // Row wrapper (not FlexWidget's unsupported alignSelf) keeps it
+            // hugging the start instead of stretching full width.
+            <FlexWidget
+              style={{ flexDirection: "row", width: "match_parent", justifyContent: "flex-start" }}
+            >
+              <FlexWidget
+                style={{
                   borderRadius: 10,
                   backgroundColor: ICON_CHIP_BG,
                   paddingLeft: 8,
@@ -283,30 +336,11 @@ export function NourHomeWidget({
                   paddingBottom: 4,
                 }}
               >
-                <TextWidget text={name} style={{ color: TEXT, fontSize: 11 }} truncate="END" maxLines={1} />
+                <TextWidget text={radioLabel} style={{ color: TEXT, fontSize: 11 }} />
               </FlexWidget>
-            ))}
-          </FlexWidget>
-        ) : (
-          // No recent/favorite station resolved — a single generic pill (NOT
-          // the removed row-title text) keeps the row from rendering empty.
-          // Row wrapper (not FlexWidget's unsupported alignSelf) keeps it
-          // hugging the start instead of stretching full width.
-          <FlexWidget style={{ flexDirection: "row", width: "match_parent", justifyContent: "flex-start" }}>
-            <FlexWidget
-              style={{
-                borderRadius: 10,
-                backgroundColor: ICON_CHIP_BG,
-                paddingLeft: 8,
-                paddingRight: 8,
-                paddingTop: 4,
-                paddingBottom: 4,
-              }}
-            >
-              <TextWidget text={radioLabel} style={{ color: TEXT, fontSize: 11 }} />
             </FlexWidget>
-          </FlexWidget>
-        )}
+          )}
+        </FlexWidget>
       </FlexWidget>
     </FlexWidget>
   );
