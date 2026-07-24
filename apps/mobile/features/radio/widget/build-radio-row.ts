@@ -6,7 +6,11 @@
 //
 // Multi-pill rewrite: merges recently-played + favorite station slugs
 // (recent first), dedupes, and resolves up to RADIO_STATIONS_MAX names via
-// one /radio fetch — was previously a single station name.
+// one /radio fetch — was previously a single station name. When nothing has
+// ever been played/favorited (or a favorited slug no longer exists in the
+// catalog), the same /radio fetch's first RADIO_STATIONS_MAX stations are
+// shown as samples (owner request 2026-07-23 — the row should invite a tap,
+// not read as empty) rather than the older single generic-label fallback.
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -71,25 +75,42 @@ export async function buildRadioRow(locale: "ar" | "en"): Promise<RadioRowResult
     slugs = [];
   }
 
-  if (slugs.length === 0) return { label, stations: [] };
-
   try {
     const stations = await withTimeout(getJson<RadioStation[]>("/radio"), RADIO_FETCH_TIMEOUT_MS);
-    const names = slugs
-      .map((slug) => stations.find((s) => s.slug === slug))
-      .filter((s): s is RadioStation => s != null)
-      .map((s) => toStationView(s, locale).name);
-    if (names.length > 0) {
-      try {
-        await AsyncStorage.setItem(RADIO_NAME_CACHE_KEY, JSON.stringify(names));
-      } catch {
-        // Cache write failure is non-fatal — names still render this cycle.
+
+    if (slugs.length > 0) {
+      const names = slugs
+        .map((slug) => stations.find((s) => s.slug === slug))
+        .filter((s): s is RadioStation => s != null)
+        .map((s) => toStationView(s, locale).name);
+      if (names.length > 0) {
+        try {
+          await AsyncStorage.setItem(RADIO_NAME_CACHE_KEY, JSON.stringify(names));
+        } catch {
+          // Cache write failure is non-fatal — names still render this cycle.
+        }
+        return { label, stations: names };
       }
-      return { label, stations: names };
     }
+
+    // No personalized station ever played/favorited (or a favorited slug no
+    // longer exists in the catalog) — show the first RADIO_STATIONS_MAX
+    // catalog stations as samples so the row invites a tap instead of
+    // reading as empty. Deliberately NOT written to RADIO_NAME_CACHE_KEY:
+    // that key means "this device actually played these", and caching
+    // generic samples there would fabricate history for a later offline
+    // refresh.
+    const sampleNames = stations
+      .slice(0, RADIO_STATIONS_MAX)
+      .map((s) => toStationView(s, locale).name);
+    if (sampleNames.length > 0) return { label, stations: sampleNames };
   } catch {
-    // Network failure, timeout, or non-2xx — fall through to the cache below.
+    // Network failure, timeout, or non-2xx — fall through to the personalized
+    // cache below (samples have nothing to cache/replay, so this only helps
+    // when a real station was previously resolved).
   }
+
+  if (slugs.length === 0) return { label, stations: [] };
 
   try {
     const cached = await AsyncStorage.getItem(RADIO_NAME_CACHE_KEY);

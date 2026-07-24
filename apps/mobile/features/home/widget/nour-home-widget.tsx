@@ -262,17 +262,27 @@ export function NourHomeWidget({
                 key={`${item.uri}-${index}`}
                 clickAction="OPEN_URI"
                 clickActionData={{ uri: item.uri }}
-                accessibilityLabel={`${adhkar.title} ${item.icon}`}
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 10,
-                  backgroundColor: ICON_CHIP_BG,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
+                accessibilityLabel={item.label}
+                style={{ flexDirection: "column", alignItems: "center", flex: 1 }}
               >
-                <TextWidget text={item.icon} style={{ fontSize: 14 }} />
+                <FlexWidget
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 10,
+                    backgroundColor: ICON_CHIP_BG,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <TextWidget text={item.icon} style={{ fontSize: 14 }} />
+                </FlexWidget>
+                <TextWidget
+                  text={item.label}
+                  style={{ color: MUTED, fontSize: 8.5, marginTop: 3, textAlign: "center" }}
+                  truncate="END"
+                  maxLines={1}
+                />
               </FlexWidget>
             ))}
           </FlexWidget>

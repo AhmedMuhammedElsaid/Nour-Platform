@@ -53,10 +53,21 @@ describe("buildRadioRow", () => {
     mockGetRadioFavorites.mockResolvedValue([]);
   });
 
-  it("no station ever played -> generic label, empty stations, no fetch", async () => {
+  it("no station ever played -> falls back to the first 3 catalog stations as samples", async () => {
+    mockGetJson.mockResolvedValue(STATIONS);
+
+    const result = await buildRadioRow("en");
+    expect(result).toEqual({ label: "Radio", stations: ["Quran Radio", "Sunnah Radio", "Seerah Radio"] });
+    expect(mockGetJson).toHaveBeenCalledWith("/radio");
+    // Samples are NOT personalized history — must not be written to the cache.
+    await expect(AsyncStorage.getItem(RADIO_NAME_CACHE_KEY)).resolves.toBeNull();
+  });
+
+  it("no station ever played, fetch fails -> generic label, empty stations", async () => {
+    mockGetJson.mockRejectedValue(new Error("network down"));
+
     const result = await buildRadioRow("en");
     expect(result).toEqual({ label: "Radio", stations: [] });
-    expect(mockGetJson).not.toHaveBeenCalled();
   });
 
   it("recent-then-favorite merge, deduped, capped at 3, recent first", async () => {
@@ -106,17 +117,23 @@ describe("buildRadioRow", () => {
     expect(result).toEqual({ label: "Radio", stations: [] });
   });
 
-  it("slugs not found in the station list -> empty stations, never throws", async () => {
+  it("slugs not found in the station list -> falls back to catalog samples, never throws", async () => {
     mockGetRecentStations.mockResolvedValue(["missing-slug"]);
     mockGetJson.mockResolvedValue(STATIONS); // list doesn't contain "missing-slug"
 
     const result = await buildRadioRow("en");
-    expect(result).toEqual({ label: "Radio", stations: [] });
+    expect(result).toEqual({ label: "Radio", stations: ["Quran Radio", "Sunnah Radio", "Seerah Radio"] });
   });
 
   it("never throws even when device-local reads themselves reject", async () => {
     mockGetRecentStations.mockRejectedValue(new Error("storage unavailable"));
     mockGetRadioFavorites.mockRejectedValue(new Error("storage unavailable"));
+    // jest.clearAllMocks() (beforeEach) resets call history but NOT a prior
+    // test's mockResolvedValue/mockRejectedValue — this now still hits the
+    // sample-fallback fetch (slugs=[] no longer short-circuits before it),
+    // so getJson must be pinned explicitly or it'd silently inherit whatever
+    // the previous test in file order left behind.
+    mockGetJson.mockRejectedValue(new Error("network down"));
 
     await expect(buildRadioRow("en")).resolves.toEqual({ label: "Radio", stations: [] });
   });

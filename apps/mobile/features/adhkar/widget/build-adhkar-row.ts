@@ -28,6 +28,15 @@ export const ADHKAR_SLUGS_CACHE_KEY = "nour.widget.adhkarSlugsCache";
 
 const ADHKAR_TITLE: Record<"ar" | "en", string> = { ar: "الأذكار", en: "Adhkar" };
 
+// Positional, matching ADHKAR_PREVIEW_ICONS' [morning, evening, sleep, wake,
+// prayer] order — used only for the static (offline, first-ever-run)
+// fallback, since that path has no fetched set title to show. The live path
+// below uses the real `set[locale].title` instead.
+const ADHKAR_FALLBACK_LABELS: Record<"ar" | "en", string[]> = {
+  ar: ["الصباح", "المساء", "النوم", "الاستيقاظ", "الصلاة"],
+  en: ["Morning", "Evening", "Sleep", "Wake up", "Prayer"],
+};
+
 // Same rationale as build-radio-row.ts's RADIO_FETCH_TIMEOUT_MS: getJson's
 // underlying fetch has no default timeout, so a hung request must be raced
 // against a timer or it stalls the whole widget render.
@@ -49,7 +58,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-export type AdhkarRowItem = { icon: string; uri: string };
+export type AdhkarRowItem = { icon: string; label: string; uri: string };
 export type AdhkarRowResult = { title: string; items: AdhkarRowItem[] };
 
 function isAdhkarRowItems(value: unknown): value is AdhkarRowItem[] {
@@ -60,6 +69,7 @@ function isAdhkarRowItems(value: unknown): value is AdhkarRowItem[] {
         typeof v === "object" &&
         v !== null &&
         typeof (v as AdhkarRowItem).icon === "string" &&
+        typeof (v as AdhkarRowItem).label === "string" &&
         typeof (v as AdhkarRowItem).uri === "string",
     )
   );
@@ -68,9 +78,11 @@ function isAdhkarRowItems(value: unknown): value is AdhkarRowItem[] {
 // ADHKAR_PREVIEW_ICONS is positionally [morning, evening, sleep, wake,
 // prayer] (see shared-core comment) — all 5 shown here (unlike the in-app
 // Home shelf's excludeWake preview), so the offline fallback matches live.
-function staticFallbackItems(): AdhkarRowItem[] {
-  return ADHKAR_PREVIEW_ICONS.map((icon) => ({
+function staticFallbackItems(locale: "ar" | "en"): AdhkarRowItem[] {
+  const labels = ADHKAR_FALLBACK_LABELS[locale];
+  return ADHKAR_PREVIEW_ICONS.map((icon, index) => ({
     icon,
+    label: labels[index] ?? "",
     uri: "nour:///adhkar",
   }));
 }
@@ -84,7 +96,11 @@ export async function buildAdhkarRow(locale: "ar" | "en"): Promise<AdhkarRowResu
     if (preview.length > 0) {
       const items = preview.map(({ set, icon }) => {
         const display = set[locale] ?? set.ar;
-        return { icon, uri: `nour:///adhkar/${encodeURIComponent(display.slug)}` };
+        return {
+          icon,
+          label: display.title,
+          uri: `nour:///adhkar/${encodeURIComponent(display.slug)}`,
+        };
       });
       try {
         await AsyncStorage.setItem(ADHKAR_SLUGS_CACHE_KEY, JSON.stringify(items));
@@ -109,5 +125,5 @@ export async function buildAdhkarRow(locale: "ar" | "en"): Promise<AdhkarRowResu
     // Corrupt cache — fall through to the static fallback.
   }
 
-  return { title, items: staticFallbackItems() };
+  return { title, items: staticFallbackItems(locale) };
 }

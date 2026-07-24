@@ -48,30 +48,34 @@ describe("buildAdhkarRow", () => {
     const result = await buildAdhkarRow("en");
     expect(result.title).toBe("Adhkar");
     expect(result.items).toEqual([
-      { icon: "🌅", uri: "nour:///adhkar/morning-adhkar" },
-      { icon: "🌙", uri: "nour:///adhkar/evening-adhkar" },
-      { icon: "😴", uri: "nour:///adhkar/sleep-adhkar" },
-      { icon: "⏰", uri: "nour:///adhkar/waking-adhkar" },
-      { icon: "🤲", uri: "nour:///adhkar/prayer-adhkar" },
+      { icon: "🌅", label: "morning-adhkar", uri: "nour:///adhkar/morning-adhkar" },
+      { icon: "🌙", label: "evening-adhkar", uri: "nour:///adhkar/evening-adhkar" },
+      { icon: "😴", label: "sleep-adhkar", uri: "nour:///adhkar/sleep-adhkar" },
+      { icon: "⏰", label: "waking-adhkar", uri: "nour:///adhkar/waking-adhkar" },
+      { icon: "🤲", label: "prayer-adhkar", uri: "nour:///adhkar/prayer-adhkar" },
     ]);
     expect(mockGetJson).toHaveBeenCalledWith("/adhkar");
   });
 
-  it("fetch resolves -> ar locale uses ar slugs, caches the resolved items", async () => {
+  it("fetch resolves -> ar locale uses ar slugs + titles, caches the resolved items", async () => {
     mockGetJson.mockResolvedValue(SETS);
 
     const result = await buildAdhkarRow("ar");
     expect(result.title).toBe("الأذكار");
-    expect(result.items[0]).toEqual({ icon: "🌅", uri: `nour:///adhkar/${encodeURIComponent("اذكار-الصباح")}` });
+    expect(result.items[0]).toEqual({
+      icon: "🌅",
+      label: "اذكار-الصباح",
+      uri: `nour:///adhkar/${encodeURIComponent("اذكار-الصباح")}`,
+    });
 
     const cached = await AsyncStorage.getItem(ADHKAR_SLUGS_CACHE_KEY);
     expect(JSON.parse(cached!)).toEqual(result.items);
   });
 
-  it("fetch fails with a prior cache -> falls back to the cached URIs", async () => {
+  it("fetch fails with a prior cache -> falls back to the cached items", async () => {
     const cachedItems = [
-      { icon: "🌅", uri: "nour:///adhkar/morning-adhkar" },
-      { icon: "🌙", uri: "nour:///adhkar/evening-adhkar" },
+      { icon: "🌅", label: "Morning Adhkar", uri: "nour:///adhkar/morning-adhkar" },
+      { icon: "🌙", label: "Evening Adhkar", uri: "nour:///adhkar/evening-adhkar" },
     ];
     await AsyncStorage.setItem(ADHKAR_SLUGS_CACHE_KEY, JSON.stringify(cachedItems));
     mockGetJson.mockRejectedValue(new Error("network down"));
@@ -80,16 +84,29 @@ describe("buildAdhkarRow", () => {
     expect(result).toEqual({ title: "Adhkar", items: cachedItems });
   });
 
-  it("fetch fails with no cache -> 5 static icons pointing at the plain list", async () => {
+  it("fetch fails with no cache -> 5 static icons + fallback labels, pointing at the plain list", async () => {
     mockGetJson.mockRejectedValue(new Error("network down"));
 
     const result = await buildAdhkarRow("en");
     expect(result.items).toEqual([
-      { icon: "🌅", uri: "nour:///adhkar" },
-      { icon: "🌙", uri: "nour:///adhkar" },
-      { icon: "😴", uri: "nour:///adhkar" },
-      { icon: "⏰", uri: "nour:///adhkar" },
-      { icon: "🤲", uri: "nour:///adhkar" },
+      { icon: "🌅", label: "Morning", uri: "nour:///adhkar" },
+      { icon: "🌙", label: "Evening", uri: "nour:///adhkar" },
+      { icon: "😴", label: "Sleep", uri: "nour:///adhkar" },
+      { icon: "⏰", label: "Wake up", uri: "nour:///adhkar" },
+      { icon: "🤲", label: "Prayer", uri: "nour:///adhkar" },
+    ]);
+  });
+
+  it("ar locale, fetch fails with no cache -> 5 static icons + ar fallback labels", async () => {
+    mockGetJson.mockRejectedValue(new Error("network down"));
+
+    const result = await buildAdhkarRow("ar");
+    expect(result.items.map((i) => i.label)).toEqual([
+      "الصباح",
+      "المساء",
+      "النوم",
+      "الاستيقاظ",
+      "الصلاة",
     ]);
   });
 
@@ -100,11 +117,11 @@ describe("buildAdhkarRow", () => {
     await expect(buildAdhkarRow("en")).resolves.toEqual({
       title: "Adhkar",
       items: [
-        { icon: "🌅", uri: "nour:///adhkar" },
-        { icon: "🌙", uri: "nour:///adhkar" },
-        { icon: "😴", uri: "nour:///adhkar" },
-        { icon: "⏰", uri: "nour:///adhkar" },
-        { icon: "🤲", uri: "nour:///adhkar" },
+        { icon: "🌅", label: "Morning", uri: "nour:///adhkar" },
+        { icon: "🌙", label: "Evening", uri: "nour:///adhkar" },
+        { icon: "😴", label: "Sleep", uri: "nour:///adhkar" },
+        { icon: "⏰", label: "Wake up", uri: "nour:///adhkar" },
+        { icon: "🤲", label: "Prayer", uri: "nour:///adhkar" },
       ],
     });
   });

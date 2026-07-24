@@ -42,7 +42,7 @@ const prayer: PrayerRowsResult = {
 const radio: RadioRowResult = { label: "Radio", stations: ["Quran Radio"] };
 const adhkar: AdhkarRowResult = {
   title: "Adhkar",
-  items: [{ icon: "🌅", uri: "nour:///adhkar/sabah" }],
+  items: [{ icon: "🌅", label: "Morning", uri: "nour:///adhkar/sabah" }],
 };
 
 describe("NourHomeWidget", () => {
