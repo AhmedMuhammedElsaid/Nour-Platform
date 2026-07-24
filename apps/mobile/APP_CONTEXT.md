@@ -1788,8 +1788,20 @@ regex/string assertions had the same swapped order (`apps/mobile/__tests__/musha
 web vitest (9/9) pass; lint/typecheck clean across mobile/web/extension.
 
 **Shipped 2026-07-23**: OTA'd `--clear-cache` (update group `d87c9808`, runtime `1.1.1`).
-Committed + pushed `e246d7f`. **Still needs A72 two-cold-start verify** (open → wait ~20s →
-fully close → reopen) to confirm the glyphs render correctly now.
+Committed + pushed `e246d7f`.
+
+**A72 device-verified 2026-07-24** — user reported "still broken" even after force-stop +
+clear-cache + clear-app-data cycles. Rather than guess a 3rd fix blindly, connected directly
+to the device over `adb` (wireless debugging pair/connect, see
+[[reference_adb_wireless_debugging]]) and confirmed server-side first: live manifest fetch
+for channel=`preview`/runtime=`1.1.1`/platform=`android` resolved to the fix's update ID
+(not stale), and the last native build (`10c1f9e7`, 2026-07-21) is `runtimeVersion 1.1.1` —
+eligible to receive it. Then deep-linked into the app (`adb shell am start -a
+android.intent.action.VIEW -d "nour://quran/2"`) and `screencap`'d directly — Bismillah
+heading renders perfectly, matching the ayah body. **Conclusion: the fix was correct the
+whole time; the OTA had genuinely not landed on-device yet** (expo-updates fails a background
+fetch silently, no error surfaced, keeps serving the old bundle indefinitely until a fetch
+finally succeeds) — not a flaw in the diacritic-order theory. Closed.
 
 ## NourHome widget blank on add — React Fragment crashes RNAW tree builder (2026-07-22, `059018e`, pushed)
 
@@ -1902,3 +1914,35 @@ sized inside a transparent full-size shell, never forced to `widgetInfo.height` 
 native root wrapper cannot center a shorter child for you.** Gate: jest (`nour-home-widget` +
 `build-arc-svg`, 9/9 pass), `tsc --noEmit` clean, eslint clean. JS-only → OTA pending.
 **Device-verify pending both rounds:** 2 cold starts + re-add the widget on the A72.
+
+**Round 3 — adhkar icon labels + radio sample pills (2026-07-24, `80a8698`).** Layout now
+matched the design, but owner's next screenshot flagged two content gaps: the 5 adhkar icons
+had no way to tell them apart, and the radio row's no-personalized-station fallback was just a
+bare "إذاعة" pill that read as empty/uninviting.
+
+- **Adhkar labels:** `AdhkarRowItem` gained `label: string`, threaded through
+  `build-adhkar-row.ts` end to end — `features/adhkar/widget/build-adhkar-row.ts`'s live path
+  uses the real `set[locale].title` (same field the in-app `AdhkarPreviewShelf` shows); the
+  static offline/first-run fallback uses a new local `ADHKAR_FALLBACK_LABELS` AR/EN map
+  (positional: morning/evening/sleep/wake/prayer, matching `ADHKAR_PREVIEW_ICONS` order —
+  there's no fetched title to show in that path). `nour-home-widget.tsx`'s adhkar row: each
+  item is now `flexDirection:"column"` (icon chip + a `fontSize:8.5` muted label below,
+  `truncate="END" maxLines={1}`), `clickAction` moved to the column wrapper.
+- **Radio samples:** `build-radio-row.ts` — when no station has ever been played/favorited (or
+  a favorited slug no longer exists in the catalog), the row now shows the first
+  `RADIO_STATIONS_MAX` (3) catalog stations as samples instead of the old single generic-label
+  fallback (owner explicitly re-litigated the original plan's "generic Radio label" decision).
+  Reuses the SAME `/radio` fetch already made for personalized resolution — no extra network
+  call. Samples are deliberately **not** written to `RADIO_NAME_CACHE_KEY` (that key means
+  "this device actually played these" — caching samples there would fabricate history for a
+  later offline refresh).
+- **Test-hygiene gotcha found in the process:** removing the old `if (slugs.length === 0)
+  return early` short-circuit exposed that `jest.clearAllMocks()` (in this file's `beforeEach`)
+  resets call history but **not** a prior test's `mockResolvedValue`/`mockRejectedValue` — a
+  test asserting "device-local reads reject → never throws" silently started inheriting an
+  earlier test's leftover `getJson` mock once the early return no longer shielded it. Fixed by
+  pinning `mockGetJson` explicitly in that test. **Watch for this pattern in any test file that
+  relies on an early-return to avoid needing every mock configured — removing the early return
+  can silently couple test outcomes to file execution order.**
+- Full monorepo gate green (25/25 turbo tasks). JS-only → OTA pending. Device-verify pending
+  (adds to the same A72 checklist as rounds 1–2).
