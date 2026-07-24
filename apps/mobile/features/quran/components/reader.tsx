@@ -354,34 +354,55 @@ export function Reader({
       <View className="flex-1 bg-bg">
         {isMushaf ? (
           pageData ? (
-            <Animated.View style={{ flex: 1, opacity: pageOpacity }} {...mushafPanResponder.panHandlers}>
-              <FlatList<PageSegment>
-                ref={mushafRef}
-                className="flex-1 bg-bg px-4"
-                data={pageData.segments}
-                keyExtractor={(s) => `${pageData.page}-${s.surah.number}`}
-                ListHeaderComponent={mushafHeader}
-                ListFooterComponent={
-                  <View className="mt-2 items-center border-t border-border pb-6 pt-3">
-                    <Text variant="muted">
-                      {t("quran.pageN", { number: localizeDigits(pageData.page, i18n.language) })} ·{" "}
-                      {t("quran.juzN", { number: localizeDigits(pageData.juz, i18n.language) })}
-                    </Text>
-                  </View>
-                }
-                contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: dockSpacing }}
-                onScrollToIndexFailed={() => undefined}
-                renderItem={({ item }) => (
-                  <MushafSegment
-                    segment={item}
-                    fontScale={prefs.fontScale}
-                    activeGlobal={activeGlobal}
-                    selectedGlobal={selectedGlobal}
-                    onSelectAyah={onSelectAyah}
-                  />
-                )}
-              />
-            </Animated.View>
+            <>
+              {/* Rendered as a fixed sibling, NOT ListHeaderComponent, so it isn't one
+                  of the FlatList's own flex-distributed children below — with only the
+                  segment(s) and the footer left as siblings, justifyContent: "space-between"
+                  puts its one gap exactly where it belongs (between content and footer)
+                  instead of also opening a gap here, above the content. */}
+              <View className="px-4" style={{ paddingTop: insets.top + 12 }}>
+                {mushafHeader}
+              </View>
+              <Animated.View style={{ flex: 1, opacity: pageOpacity }} {...mushafPanResponder.panHandlers}>
+                <FlatList<PageSegment>
+                  ref={mushafRef}
+                  className="flex-1 bg-bg px-4"
+                  data={pageData.segments}
+                  keyExtractor={(s) => `${pageData.page}-${s.surah.number}`}
+                  ListFooterComponent={
+                    <View className="items-center border-t border-border pb-6 pt-3">
+                      <Text variant="muted">
+                        {t("quran.pageN", { number: localizeDigits(pageData.page, i18n.language) })} ·{" "}
+                        {t("quran.juzN", { number: localizeDigits(pageData.juz, i18n.language) })}
+                      </Text>
+                    </View>
+                  }
+                  // flexGrow: 1 lets the content grow to at least fill the FlatList's
+                  // viewport on a short page; justifyContent: "space-between" then puts
+                  // all the leftover space in the one gap between the segment(s) and the
+                  // footer, pinning the footer to the bottom (RN's Yoga does NOT reliably
+                  // support margin: "auto" on the main axis the way CSS flexbox does on
+                  // web — tried first, confirmed via adb+logcat to have no on-device
+                  // effect, before switching to this).
+                  contentContainerStyle={{
+                    flexGrow: 1,
+                    justifyContent: "space-between",
+                    paddingTop: 4,
+                    paddingBottom: dockSpacing,
+                  }}
+                  onScrollToIndexFailed={() => undefined}
+                  renderItem={({ item }) => (
+                    <MushafSegment
+                      segment={item}
+                      fontScale={prefs.fontScale}
+                      activeGlobal={activeGlobal}
+                      selectedGlobal={selectedGlobal}
+                      onSelectAyah={onSelectAyah}
+                    />
+                  )}
+                />
+              </Animated.View>
+            </>
           ) : null
         ) : data ? (
           <FlatList<ReaderAyah>

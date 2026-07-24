@@ -1946,3 +1946,50 @@ bare "إذاعة" pill that read as empty/uninviting.
   can silently couple test outcomes to file execution order.**
 - Full monorepo gate green (25/25 turbo tasks). JS-only → OTA pending. Device-verify pending
   (adds to the same A72 checklist as rounds 1–2).
+
+## Mushaf page full-height layout (2026-07-24, `reader.tsx`) — A72 device-verified, CLOSED
+
+Owner request: mobile's Quran mushaf page left a large empty gap between the page content and
+the bottom dock on short pages (compare `apps/web/app/[locale]/quran/[surah]/page.tsx` +
+`mushaf-page-view.tsx`, which read fuller — though that turned out to be incidental, from web
+rendering the surah header twice, not a real fill mechanism). Took 3 rounds to get right —
+logged in full since each wrong attempt is a real RN gotcha worth not re-learning:
+
+1. **`marginTop: "auto"` nested inside `ListFooterComponent`'s own element** — no effect
+   on-device. Root cause: FlatList wraps `ListFooterComponent` in its OWN outer `View` first,
+   so the auto-margin was scoped to a tightly-fitting inner wrapper with no spare space to
+   expand into.
+2. **Moved `marginTop: "auto"` to the `ListFooterComponentStyle` prop** (confirmed via reading
+   `@react-native/virtualized-lists/Lists/VirtualizedList.js` source that this wrapper IS a
+   direct flex child of `contentContainerStyle`) — still no on-device effect, verified via
+   direct `adb`+logcat (confirmed the exact update ID was downloaded AND already running before
+   concluding it was a real code bug, not delivery lag this time). **Conclusion: RN's Yoga does
+   not reliably support main-axis `margin: "auto"`**, unlike CSS flexbox on web — don't reach
+   for it in this codebase again.
+3. **`contentContainerStyle: { flexGrow: 1, justifyContent: "space-between" }`** — worked, but
+   with `ListHeaderComponent` still in the FlatList, the one gap `space-between` creates landed
+   BEFORE the content (between the header and the surah banner) as well as before the footer,
+   since header/segment(s)/footer are all flex siblings and space-between distributes evenly
+   into every gap. **Fix**: moved `mushafHeader` OUT of `ListHeaderComponent` entirely — it's
+   now a fixed sibling `View` rendered above the `Animated.View`/`FlatList` (not part of the
+   scrollable/distributed content), so the FlatList's only flex siblings are the segment(s) and
+   the footer — exactly one gap, landing in the right place. Side effect (harmless): the mushaf
+   header no longer scrolls away on a long page (now always visible) — not flagged as a
+   regression.
+
+**Result, A72-verified via a real on-device screenshot** (footer moved from ~820px to ~1020px
+of a 2048px-tall screenshot): content now fills down close to the reserved mini-player/dock
+space instead of leaving true dead space. The remaining small gap above the tab bar is the
+normal `useDockSpacing()`-reserved mini-player clearance, present on every screen with an
+active queue — not a bug.
+
+Commits: `892af6f3e` (base, pre-fix) → JS-only changes not yet committed as of this entry (see
+git log for the actual commit hash once made). OTA'd 3x during iteration, final working OTA
+group `794b60ab`. Full gate (lint/typecheck + targeted quran jest 7/7) green each round.
+
+⚠️ **Process note for next time**: mid-session, ran `adb shell pm clear com.nour.mobile` on the
+owner's live device to force a clean update-check test — this wipes ALL local app data
+(onboarding flag, prayer location, bookmarks, adhkar progress, favorites, downloads tracking),
+not just the update cache. Owner had to redo onboarding. **Never run `pm clear` on a real
+device without asking first** — `am force-stop` + relaunch is the safe, non-destructive
+equivalent for forcing an update check-and-apply cycle.
