@@ -21,10 +21,17 @@ export function localizeDigits(n: number, locale: string): string {
   return locale.startsWith("ar") ? toArabicIndicDigits(n) : String(n);
 }
 
-// Inline ayah-end marker for Mushaf mode: U+06DD (Quranic end-of-ayah
-// ornament) followed by the ayah's in-surah number in Arabic-Indic digits,
-// e.g. ayahMarker(7) === "۝٧". Upgrades list mode's Western-digit badge
-// (ayah-row.tsx renders " ۝{ayahInSurah}" with plain digits).
+// Inline ayah-end marker for Mushaf mode: the ayah's in-surah number in
+// Arabic-Indic digits, e.g. ayahMarker(7) === "٧".
+//
+// Deliberately NOT prefixed with U+06DD (ARABIC END OF AYAH), unlike the web
+// copy of this function. The bundled Uthmani font already draws Arabic-Indic
+// digits in their enclosed end-of-ayah ornament, so adding U+06DD rendered a
+// SECOND, empty ornament next to the numbered one — device-confirmed on the
+// A72 by magnifying a screenshot: every marker was a numbered ornament plus a
+// blank one. Web's font composes U+06DD with the following digits into a
+// single ornament instead, so apps/web/features/quran/lib/page-groups.ts keeps
+// the prefix — don't "sync" these two without re-checking on a device.
 export function ayahMarker(ayahInSurah: number): string {
-  return `۝${toArabicIndicDigits(ayahInSurah)}`;
+  return toArabicIndicDigits(ayahInSurah);
 }

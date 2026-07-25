@@ -9,9 +9,13 @@ describe("toArabicIndicDigits", () => {
 });
 
 describe("ayahMarker", () => {
-  it("prefixes the Arabic-Indic ayah number with U+06DD", () => {
-    expect(ayahMarker(7)).toBe("۝٧");
-    expect(ayahMarker(107)).toBe("۝١٠٧");
+  // No U+06DD prefix on mobile: the bundled Uthmani font already encloses
+  // Arabic-Indic digits in the end-of-ayah ornament, so the prefix drew a
+  // second, empty ornament beside the numbered one on device.
+  it("renders the bare Arabic-Indic ayah number, with no U+06DD prefix", () => {
+    expect(ayahMarker(7)).toBe("٧");
+    expect(ayahMarker(107)).toBe("١٠٧");
+    expect(ayahMarker(7)).not.toContain("۝");
   });
 });
 

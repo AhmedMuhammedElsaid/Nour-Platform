@@ -53,9 +53,9 @@ describe("MushafSegment", () => {
   it("renders each ayah's text and inline Arabic-Indic marker", () => {
     renderSegment();
     expect(screen.getByText(/الرَّحْمَٰنِ/)).toBeTruthy();
-    expect(screen.getByText("۝٥")).toBeTruthy();
+    expect(screen.getByText("٥")).toBeTruthy();
     expect(screen.getByText(/الرَّحِيمِ/)).toBeTruthy();
-    expect(screen.getByText("۝٦")).toBeTruthy();
+    expect(screen.getByText("٦")).toBeTruthy();
   });
 
   it("shows the Bismillah only when the segment's showBismillah is true", () => {
@@ -83,7 +83,7 @@ describe("MushafSegment", () => {
     expect(screen.getByTestId("mushaf-ayah-5").props.style).toEqual(
       expect.objectContaining({ fontSize: 30, lineHeight: 66 }),
     );
-    expect(screen.getByText("۝٥").props.style).toEqual(
+    expect(screen.getByText("٥").props.style).toEqual(
       expect.objectContaining({ fontSize: 30, lineHeight: 66 }),
     );
   });
