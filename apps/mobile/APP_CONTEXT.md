@@ -2099,3 +2099,26 @@ is NOT evidence that a mushaf sizing bug is elsewhere.
 itself** (or use RN's raw `Text`, which carries no variant default). Fixed in `c28dca3`;
 regression test in `__tests__/mushaf-page.test.tsx` asserts every ayah span carries the
 fitted size.
+
+### Duplicate empty ayah ornament (`665897f`) + A72 verification — CLOSED 2026-07-25
+
+After the fill fix landed, every mushaf ayah marker showed TWO ornaments: one enclosing the
+number, one blank. `ayahMarker()` emitted `U+06DD` (ARABIC END OF AYAH) + Arabic-Indic digits,
+but the **bundled Uthmani font already draws Arabic-Indic digits inside their enclosed
+end-of-ayah ornament** — so `U+06DD` contributed a second, empty one. Two codepoints, two
+ornaments, 1:1. Mobile now emits the bare digits.
+
+⚠️ **`apps/web/features/quran/lib/page-groups.ts` intentionally KEEPS the `U+06DD` prefix** —
+web's font composes the mark with the following digits into one ornament. The two copies of
+`ayahMarker` are deliberately different; do not "sync" them without checking on a device.
+`ayah-row.tsx` (list mode) also keeps it: it pairs `U+06DD` with WESTERN digits, which get no
+ornament treatment, so it correctly renders one ornament + a plain number.
+
+**A72-verified 2026-07-25** (Al-Baqara p.4, owner's own `fontScale` 110%): ayahs fill the page
+top to bottom, single numbered ornament per ayah. Owner confirmed the fill. At a >100%
+fontScale the page deliberately overflows and scrolls (the user override is allowed to exceed
+the fit), which pushes the page/juz footer below the fold — expected, not a bug.
+
+Diagnosis method worth reusing: `adb exec-out screencap -p`, then crop + 3x upscale with PIL to
+inspect glyph-level rendering. Both this bug and the nested-`<Text>` one were invisible in code
+and obvious at magnification.
