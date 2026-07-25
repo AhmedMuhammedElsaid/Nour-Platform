@@ -8,11 +8,15 @@ import type { PageSegment } from "@repo/shared-core/schemas/quran";
 // Uthmani Bismillah — Quranic text, not a UI string, so it lives as a module
 // constant rather than an i18n key (same literal apps/web/app/[locale]/quran/
 // [surah]/page.tsx:84 renders before its Reader).
-const BISMILLAH = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ";
+export const BISMILLAH = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ";
 
 export interface MushafSegmentProps {
   segment: PageSegment;
-  fontScale: number;
+  // Resolved ayah font size in dp — already auto-fitted to the page's measured
+  // reading area AND multiplied by the user's fontScale pref (see
+  // ../lib/fit-mushaf-font.ts). The banner and Bismillah derive from it so the
+  // whole segment scales as one block.
+  fontSize: number;
   activeGlobal: number | null;
   selectedGlobal: number | null;
   onSelectAyah: (numberGlobal: number) => void;
@@ -28,34 +32,36 @@ export interface MushafSegmentProps {
 // the page level, not per segment. Mobile-only; no web/extension equivalent yet.
 export function MushafSegment({
   segment,
-  fontScale,
+  fontSize,
   activeGlobal,
   selectedGlobal,
   onSelectAyah,
 }: MushafSegmentProps) {
   return (
     <View className="gap-4 border-b border-border pb-6 pt-4">
-      {/* Centered ornamental surah banner: gilded Arabic name flanked by plain
-          bracket glyphs (﴾ ﴿), EN name as a small muted subtitle beneath. No
-          SVG artwork — Text/CSS only, per the mushaf-redesign decision. */}
+      {/* Centered surah banner: gilded Arabic name, EN name + meaning as a small
+          muted subtitle beneath. No SVG artwork — Text/CSS only, per the
+          mushaf-redesign decision. No bracket glyphs (web parity). This stays
+          per-segment rather than being hoisted into the reader's fixed header:
+          `segments[0]` is whichever surah owns the page's FIRST ayah, which for
+          a surah starting mid-page is the PRECEDING one — a page-level header
+          built from it would caption Quraysh's page "Al-Fil". */}
       <View className="items-center gap-1">
         <Text
-          className="text-center font-quran text-3xl text-primary"
-          style={{ writingDirection: "rtl" }}
+          className="text-center font-quran text-primary"
+          style={{ fontSize: fontSize * 1.3, writingDirection: "rtl" }}
         >
-          {"﴾ "}
           {segment.surah.name.ar}
-          {" ﴿"}
         </Text>
         <Text variant="muted" className="text-center">
-          {segment.surah.name.en}
+          {segment.surah.name.en} · {segment.surah.meaning}
         </Text>
       </View>
 
       {segment.showBismillah ? (
         <Text
-          className="text-center font-quran text-primary"
-          style={{ fontSize: 26 * fontScale, writingDirection: "rtl" }}
+          className="text-center font-quran text-text"
+          style={{ fontSize: fontSize * 1.1, writingDirection: "rtl" }}
         >
           {BISMILLAH}
         </Text>
@@ -68,8 +74,8 @@ export function MushafSegment({
       <Text
         className="font-quran text-text"
         style={{
-          fontSize: 24 * fontScale,
-          lineHeight: 24 * fontScale * 2.1,
+          fontSize,
+          lineHeight: fontSize * 2.2,
           textAlign: "justify",
           writingDirection: "rtl",
         }}

@@ -24,6 +24,7 @@ import { cn } from "@/lib/cn";
 import { usePlayer } from "@/lib/player-context";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
 import { ayahTrackId, buildAyahQueue, buildPageQueue, parseAyahTrackId } from "../lib/ayah-queue";
+import { countAdvanceGlyphs, fitMushafFontSize } from "../lib/fit-mushaf-font";
 import { localizeDigits } from "../lib/page-groups";
 import { MUSHAF_SWIPE_THRESHOLD, resolveSwipeDirection } from "../lib/swipe";
 import { AyahRow } from "./ayah-row";
@@ -89,6 +90,10 @@ export function Reader({
   const [selectedGlobal, setSelectedGlobal] = useState<number | null>(null);
   const listRef = useRef<FlatList<ReaderAyah>>(null);
   const mushafRef = useRef<FlatList<PageSegment>>(null);
+  // Measured mushaf reading area (the Animated.View wrapping the FlatList).
+  // Zero until first layout — fitMushafFontSize falls back to its floor, so the
+  // first frame renders legible text rather than nothing.
+  const [readingArea, setReadingArea] = useState({ width: 0, height: 0 });
 
   // Swipe-to-turn-page (Mushaf mode only) — additive to the header Prev/Next
   // buttons, same onChangePage target. Built on RN core's PanResponder (no
@@ -205,6 +210,34 @@ export function Reader({
     });
   }, [referenceAyah, referenceSurahName]);
 
+  // Auto-fit the mushaf type to the measured reading area so the page's ayahs
+  // FILL it — the owner's actual bar, and the thing four rounds of pure layout
+  // tweaks never reached (they moved the footer toward the content; this grows
+  // the content to meet the footer). Recomputed per page because text volume
+  // swings ~2x between a dense Al-Baqarah page and a juz-30 one.
+  const mushafFontSize = useMemo(() => {
+    if (!pageData) return 0;
+    let glyphCount = 0;
+    let bismillahCount = 0;
+    for (const segment of pageData.segments) {
+      if (segment.showBismillah) bismillahCount += 1;
+      for (const ayah of segment.ayahs) {
+        // +3 for the inline end-of-ayah marker and its surrounding spaces.
+        glyphCount += countAdvanceGlyphs(ayah.textUthmani) + 3;
+      }
+    }
+    return fitMushafFontSize({
+      glyphCount,
+      segmentCount: pageData.segments.length,
+      bismillahCount,
+      // The FlatList carries px-4 (16dp each side) inside the measured wrapper,
+      // and reserves dockSpacing at the bottom for the mini-player + tab bar.
+      width: readingArea.width - 32,
+      height: readingArea.height - dockSpacing - 4,
+      fontScale: prefs.fontScale,
+    });
+  }, [pageData, readingArea, dockSpacing, prefs.fontScale]);
+
   const translationDir =
     (isMushaf ? pageData?.translationEdition?.dir : data?.translationEdition?.dir) ??
     (locale === "ar" ? "rtl" : "ltr");
@@ -295,8 +328,14 @@ export function Reader({
     </View>
   ) : null;
 
+  // Deliberately minimal, because every dp spent here is a dp the ayahs can't
+  // fill: one row of back + Settings, one row of page pills. The surah name /
+  // meaning / Bismillah live in MushafSegment, inside the scroll area — hoisting
+  // them up here (web's structure) cost ~120dp of permanently-visible chrome and
+  // captioned mid-page surahs with the WRONG name, since `segments[0]` is
+  // whoever owns the page's first ayah, not the surah you navigated from.
   const mushafHeader = pageData ? (
-    <View className="gap-3 pb-4">
+    <View className="gap-3 pb-3">
       <View className="flex-row items-center gap-2">
         <Pressable
           accessibilityRole="button"
@@ -306,9 +345,7 @@ export function Reader({
         >
           <Text className="text-2xl text-text">‹</Text>
         </Pressable>
-        <Text variant="display" className="flex-1 text-lg text-text-2">
-          {t("quran.title")}
-        </Text>
+        <View className="flex-1" />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t("quran.settings")}
@@ -318,17 +355,29 @@ export function Reader({
           <Text className="text-sm text-text-2">⚙ {t("quran.settings")}</Text>
         </Pressable>
       </View>
-      <View className="flex-row items-center justify-center gap-4">
+      {/* Labelled pills (web parity) rather than bare chevrons. RN defaults
+          flexShrink to 0 — unlike web — so the long Arabic labels
+          ("الصفحة السابقة"/"الصفحة التالية") would clip off the edges of a
+          411dp screen without the explicit shrink + single-line clamp below.
+          The centre label is plain muted text, NOT variant="label": that
+          variant carries tracking-[3px], which alone adds ~48dp to a 16-char
+          Arabic string and blows the row's width budget. */}
+      <View className="flex-row items-center justify-center gap-2">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t("quran.prevPage")}
           disabled={pageData.prevPage === null}
           onPress={() => pageData.prevPage !== null && onChangePage(pageData.prevPage)}
-          className={cn("size-9 items-center justify-center", pageData.prevPage === null && "opacity-30")}
+          className={cn(
+            "shrink rounded-md border border-border px-3 py-1.5",
+            pageData.prevPage === null && "opacity-30",
+          )}
         >
-          <Text className="text-2xl text-text">‹</Text>
+          <Text className="text-sm text-text" numberOfLines={1}>
+            {t("quran.prevPage")}
+          </Text>
         </Pressable>
-        <Text variant="label">
+        <Text className="shrink text-center text-xs text-text-2" numberOfLines={1}>
           {t("quran.pageN", { number: localizeDigits(pageData.page, i18n.language) })} ·{" "}
           {t("quran.juzN", { number: localizeDigits(pageData.juz, i18n.language) })}
         </Text>
@@ -337,9 +386,14 @@ export function Reader({
           accessibilityLabel={t("quran.nextPage")}
           disabled={pageData.nextPage === null}
           onPress={() => pageData.nextPage !== null && onChangePage(pageData.nextPage)}
-          className={cn("size-9 items-center justify-center", pageData.nextPage === null && "opacity-30")}
+          className={cn(
+            "shrink rounded-md border border-border px-3 py-1.5",
+            pageData.nextPage === null && "opacity-30",
+          )}
         >
-          <Text className="text-2xl text-text">›</Text>
+          <Text className="text-sm text-text" numberOfLines={1}>
+            {t("quran.nextPage")}
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -363,7 +417,16 @@ export function Reader({
               <View className="px-4" style={{ paddingTop: insets.top + 12 }}>
                 {mushafHeader}
               </View>
-              <Animated.View style={{ flex: 1, opacity: pageOpacity }} {...mushafPanResponder.panHandlers}>
+              <Animated.View
+                style={{ flex: 1, opacity: pageOpacity }}
+                onLayout={(e) => {
+                  const { width, height } = e.nativeEvent.layout;
+                  setReadingArea((cur) =>
+                    cur.width === width && cur.height === height ? cur : { width, height },
+                  );
+                }}
+                {...mushafPanResponder.panHandlers}
+              >
                 <FlatList<PageSegment>
                   ref={mushafRef}
                   className="flex-1 bg-bg px-4"
@@ -394,7 +457,7 @@ export function Reader({
                   renderItem={({ item }) => (
                     <MushafSegment
                       segment={item}
-                      fontScale={prefs.fontScale}
+                      fontSize={mushafFontSize}
                       activeGlobal={activeGlobal}
                       selectedGlobal={selectedGlobal}
                       onSelectAyah={onSelectAyah}
