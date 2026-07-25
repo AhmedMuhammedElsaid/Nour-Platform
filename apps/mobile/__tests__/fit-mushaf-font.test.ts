@@ -37,7 +37,9 @@ describe("fitMushafFontSize", () => {
   // Laid-out height at a given size, mirroring the module's own model.
   function laidOutHeight(font: number, glyphs: number): number {
     const lines = Math.ceil(glyphs / (AREA.width / (font * 0.42)));
-    return lines * font * 2.2 + (font * 1.3 + 62) + font * 1.1 + 52;
+    // Banner name and Bismillah each occupy a 1.6x-tall line box (the Uthmani
+    // diacritics need it), so model the box, not the bare font size.
+    return lines * font * 2.2 + (font * 1.3 * 1.6 + 62) + font * 1.1 * 1.6 + 52;
   }
 
   // A Madani page carries roughly 15 lines of ~30 advance glyphs, so real pages

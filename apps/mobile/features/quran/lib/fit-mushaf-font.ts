@@ -35,6 +35,17 @@ const GLYPH_ADVANCE_EM = 0.42;
 // diacritic stack above/below the baseline collides at anything tighter.
 const LINE_HEIGHT_RATIO = 2.2;
 
+// Segment banner + Bismillah sizes, expressed as multiples of the ayah size so
+// the whole block scales together. Exported because MushafSegment renders with
+// them and this module models their height — one source of truth, or the fit
+// silently drifts from what's on screen.
+export const BANNER_NAME_RATIO = 1.3;
+export const BISMILLAH_RATIO = 1.1;
+// Single-line Uthmani needs a line box well above its font size or the tall
+// diacritics overflow onto the next element (device-confirmed: the surah name
+// was colliding with the EN subtitle under it).
+export const DIACRITIC_LINE_RATIO = 1.6;
+
 // Floor keeps a dense page legible even if that means it scrolls; ceiling stops
 // a 3-ayah page (juz 30) from rendering absurd poster-sized text.
 const MIN_FONT = 17;
@@ -63,9 +74,11 @@ function heightAt(font: number, input: FitMushafFontInput): number {
   const charsPerLine = Math.max(1, width / (font * GLYPH_ADVANCE_EM));
   const lines = Math.ceil(glyphCount / charsPerLine);
   const paragraph = lines * font * LINE_HEIGHT_RATIO;
-  // Banner name renders ~1.3x the body size; Bismillah ~1.1x (both single-line).
-  const banners = segmentCount * (font * 1.3 + SEGMENT_FIXED_CHROME);
-  const bismillahs = bismillahCount * font * 1.1;
+  // Both are single lines, but each occupies a DIACRITIC_LINE_RATIO-tall line
+  // box — model the box, not the font size, or the fit overshoots the viewport.
+  const banners =
+    segmentCount * (font * BANNER_NAME_RATIO * DIACRITIC_LINE_RATIO + SEGMENT_FIXED_CHROME);
+  const bismillahs = bismillahCount * font * BISMILLAH_RATIO * DIACRITIC_LINE_RATIO;
   return paragraph + banners + bismillahs + FOOTER_CHROME;
 }
 

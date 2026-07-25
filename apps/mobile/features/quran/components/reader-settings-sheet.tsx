@@ -10,7 +10,12 @@ import { cn } from "@/lib/cn";
 import type { QuranPrefs } from "@/lib/device-local";
 
 const FONT_MIN = 0.8;
-const FONT_MAX = 1.6;
+// Raised 1.6 → 3.0 on owner request: in Mushaf mode the base size is now
+// auto-fitted to fill the page, so fontScale is a multiplier on an
+// already-page-sized value rather than on a fixed 24dp — 1.6x was a much
+// smaller ceiling in practice than it used to be. Past the fit the page simply
+// scrolls, which is the documented trade-off for going bigger.
+const FONT_MAX = 3.0;
 const FONT_STEP = 0.1;
 
 export interface ReaderSettingsSheetProps {

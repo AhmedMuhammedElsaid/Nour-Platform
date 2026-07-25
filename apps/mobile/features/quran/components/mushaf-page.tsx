@@ -2,6 +2,11 @@ import { View } from "react-native";
 
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
+import {
+  BANNER_NAME_RATIO,
+  BISMILLAH_RATIO,
+  DIACRITIC_LINE_RATIO,
+} from "../lib/fit-mushaf-font";
 import { ayahMarker } from "../lib/page-groups";
 import type { PageSegment } from "@repo/shared-core/schemas/quran";
 
@@ -46,10 +51,19 @@ export function MushafSegment({
           `segments[0]` is whichever surah owns the page's FIRST ayah, which for
           a surah starting mid-page is the PRECEDING one — a page-level header
           built from it would caption Quraysh's page "Al-Fil". */}
-      <View className="items-center gap-1">
+      <View className="items-center gap-2">
+        {/* Explicit lineHeight is REQUIRED, not cosmetic: the Uthmani font's
+            diacritics sit far above the cap height, and with RN's default line
+            box they overflow onto whatever follows — the surah name was
+            visually colliding with the EN subtitle below it. 1.6x clears the
+            tallest marks. Same reason for the Bismillah below. */}
         <Text
           className="text-center font-quran text-primary"
-          style={{ fontSize: fontSize * 1.3, writingDirection: "rtl" }}
+          style={{
+            fontSize: fontSize * BANNER_NAME_RATIO,
+            lineHeight: fontSize * BANNER_NAME_RATIO * DIACRITIC_LINE_RATIO,
+            writingDirection: "rtl",
+          }}
         >
           {segment.surah.name.ar}
         </Text>
@@ -61,7 +75,11 @@ export function MushafSegment({
       {segment.showBismillah ? (
         <Text
           className="text-center font-quran text-text"
-          style={{ fontSize: fontSize * 1.1, writingDirection: "rtl" }}
+          style={{
+            fontSize: fontSize * BISMILLAH_RATIO,
+            lineHeight: fontSize * BISMILLAH_RATIO * DIACRITIC_LINE_RATIO,
+            writingDirection: "rtl",
+          }}
         >
           {BISMILLAH}
         </Text>
