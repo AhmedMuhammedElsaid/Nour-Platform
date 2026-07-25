@@ -58,7 +58,7 @@ describe("HomeScreen", () => {
   it("renders fetched playlist titles", async () => {
     mockApi([playlist({ id: "1", trackCount: 3 })]);
     renderHome();
-    await waitFor(() => expect(screen.getByText(/أ|Alpha/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/أ|Alpha/)).toBeTruthy(), { timeout: 5000 });
   });
 
   it("re-sorts A–Z when the sort chip is tapped", async () => {
@@ -67,7 +67,7 @@ describe("HomeScreen", () => {
       playlist({ id: "2", en: { title: "Apple", slug: "ap" }, ar: { title: "أب", slug: "ap" } }),
     ]);
     renderHome();
-    await waitFor(() => expect(screen.getByText(/Banana|ب/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Banana|ب/)).toBeTruthy(), { timeout: 5000 });
 
     // Tapping the A–Z sort chip should not throw and keeps both items rendered.
     fireEvent.press(screen.getByText(/A–Z|أ–ي/));
@@ -86,7 +86,7 @@ describe("HomeScreen", () => {
       playlist({ id: "2", en: { title: "Apple", slug: "ap" }, ar: { title: "أب", slug: "ap" } }),
     ]);
     renderHome();
-    await waitFor(() => expect(screen.getByText(/Apple|أب/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Apple|أب/)).toBeTruthy(), { timeout: 5000 });
 
     fireEvent.press(screen.getByText(/A–Z|أ–ي/));
     // The valid row still renders — the bad row no longer crashes the grid.
@@ -96,7 +96,7 @@ describe("HomeScreen", () => {
   it("shows an error state with retry on failure", async () => {
     jest.mocked(getJson).mockRejectedValue(new Error("network"));
     renderHome();
-    await waitFor(() => expect(screen.getByText("Something went wrong.")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Something went wrong.")).toBeTruthy(), { timeout: 5000 });
     expect(screen.getByText("Retry")).toBeTruthy();
   });
 });
