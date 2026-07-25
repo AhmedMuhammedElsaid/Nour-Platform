@@ -81,18 +81,30 @@ export function MushafSegment({
         }}
       >
         {segment.ayahs.map((ayah) => (
+          // Every nested span MUST restate fontSize/lineHeight. <Text>'s default
+          // variant="body" injects `text-base` (16dp / 24dp line), and on a child
+          // span that beats the size inherited from this paragraph's inline
+          // style — so without this the whole mushaf renders at 16dp no matter
+          // what the parent asks for. Device-confirmed 2026-07-25: this is why
+          // the paragraph never actually rendered at its nominal 24dp, and why
+          // the Bismillah (no nested children) scaled correctly while the ayahs
+          // did not. ayah-row.tsx is unaffected — its text is a direct string
+          // child, so only its marker span was ever shrunk.
           <Text
             key={ayah.numberGlobal}
             testID={`mushaf-ayah-${ayah.numberGlobal}`}
             accessibilityRole="button"
             onPress={() => onSelectAyah(ayah.numberGlobal)}
+            style={{ fontSize, lineHeight: fontSize * 2.2 }}
             className={cn(
               selectedGlobal === ayah.numberGlobal && "bg-surface-2",
               activeGlobal === ayah.numberGlobal && "text-primary",
             )}
           >
             {ayah.textUthmani}{" "}
-            <Text className="text-primary">{ayahMarker(ayah.ayahInSurah)}</Text>{" "}
+            <Text className="text-primary" style={{ fontSize, lineHeight: fontSize * 2.2 }}>
+              {ayahMarker(ayah.ayahInSurah)}
+            </Text>{" "}
           </Text>
         ))}
       </Text>

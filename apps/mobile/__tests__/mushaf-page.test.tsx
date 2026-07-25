@@ -74,6 +74,20 @@ describe("MushafSegment", () => {
     expect(onSelectAyah).toHaveBeenCalledWith(5);
   });
 
+  // Regression guard for the device-confirmed bug: <Text>'s default
+  // variant="body" carries `text-base` (16dp), which on a nested span beats the
+  // size inherited from the paragraph's inline style — so the mushaf rendered at
+  // 16dp regardless of the fitted size until every span restated it.
+  it("restates the fitted fontSize on every nested ayah span", () => {
+    renderSegment({ fontSize: 30 });
+    expect(screen.getByTestId("mushaf-ayah-5").props.style).toEqual(
+      expect.objectContaining({ fontSize: 30, lineHeight: 66 }),
+    );
+    expect(screen.getByText("۝٥").props.style).toEqual(
+      expect.objectContaining({ fontSize: 30, lineHeight: 66 }),
+    );
+  });
+
   it("scales the whole segment from the auto-fitted fontSize", () => {
     renderSegment({ segment: { ...segment, showBismillah: true }, fontSize: 20 });
     // Ayah paragraph sits at the fitted size with web's 2.2 leading; the banner
