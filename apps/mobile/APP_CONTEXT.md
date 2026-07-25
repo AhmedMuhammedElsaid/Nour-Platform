@@ -2074,3 +2074,28 @@ code-clean pass is not the acceptance test. Needs `eas update` + an A72 screensh
 ayahs actually reaching the footer.
 
 Commit `(pending)`.
+
+### ⚠️ Nested `<Text>` spans silently ignore the parent's font size (device-confirmed 2026-07-25)
+
+**The real root cause behind the whole "mushaf text looks tiny" saga**, found only by
+screenshotting the A72 — five rounds of code reading never surfaced it.
+
+`components/ui/text.tsx`'s `Text` defaults to `variant="body"`, which injects `text-base`
+(16dp font / 24dp line). On a NESTED span that beats the size inherited from the parent's
+inline `style`. So `mushaf-page.tsx`'s paragraph — where every ayah is a nested `<Text>` —
+rendered at **16/24 regardless of what the parent asked for**. The nominal 24dp never
+rendered at 24; the later 30dp and the auto-fit both computed correctly and had zero effect.
+
+Tells that identify this bug from a screenshot: siblings WITHOUT nested children (the surah
+name, the Bismillah) scale correctly while the paragraph does not, and the paragraph's line
+spacing measures exactly 24dp.
+
+`ayah-row.tsx` (list mode) is NOT affected — its ayah text is a direct string child of the
+styled `<Text>`, so only its `۝N` marker span was ever shrunk. That asymmetry is exactly why
+list mode always looked right and mushaf never did, and why "list mode uses the same pattern"
+is NOT evidence that a mushaf sizing bug is elsewhere.
+
+**Rule: any nested `<Text>` inside a size-styled parent must restate `fontSize`/`lineHeight`
+itself** (or use RN's raw `Text`, which carries no variant default). Fixed in `c28dca3`;
+regression test in `__tests__/mushaf-page.test.tsx` asserts every ayah span carries the
+fitted size.
