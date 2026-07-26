@@ -60,6 +60,15 @@
   --motion-slow: 320ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-emphasis: cubic-bezier(0, 0, 0.2, 1);
+
+  /* Mushaf (Quran reader) parchment palette — deliberately theme-INDEPENDENT:
+     a printed mushaf page reads as cream paper whether the surrounding app
+     chrome is in dark or light mode, so these live in the unconditional
+     `:root` block only, never under `[data-theme]`. Scoped via `.mushaf-page`
+     in globals.css; nothing outside the reader consumes them. */
+  --color-mushaf-paper: #faf3e8;
+  --color-mushaf-ink: #241a12;
+  --color-mushaf-ornament: #a3762b;
 }
 
 /* Dark — default palette: applies with no attribute AND on explicit toggle-back. */
