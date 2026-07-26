@@ -2215,3 +2215,16 @@ See [[feedback_quranic_literal_integrity]]: a green suite cannot detect this, be
 gets retyped alongside the source.
 
 OTA `22f07cd3` (runtime 1.1.1) — **A72 device-verify pending**.
+
+### Mushaf palette reverted to app tokens — format/font kept — 2026-07-26 (`c768a28`)
+
+Owner: keep the printed-page FORMAT + Uthmani font from the parchment prototype, drop the
+cream/parchment COLOR palette — reader now uses the app's own bg/text/text-2/primary tokens on
+all 3 surfaces, same as everywhere else. Removed `--color-mushaf-paper/ink/ornament` +
+`.mushaf-page` scope from `packages/ui/src/styles/{tokens,globals}.css` and
+`apps/extension/src/styles/tailwind.css` (font-face/`--font-quran` untouched), and the
+`mushaf-*` color entries from `apps/mobile/tailwind.config.js`. Mobile cartouche SVG fill now
+comes from `useTheme()` + a small per-theme hex map (dark `#c8a050` / light `#9a7830`, mirrors
+`--color-primary`) instead of a fixed parchment hex — react-native-svg still can't read CSS
+vars/NativeWind classes. OTA group `bef0fe5d-516e-4431-a905-8a76b1d71211` (runtime 1.1.1),
+gate 25/25, Bismillah byte-check clean. Device-verify pending.
