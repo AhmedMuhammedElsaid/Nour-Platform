@@ -241,7 +241,6 @@
     "layoutMushaf": "مصحف",
     "pageN": "صفحة {{number}}",
     "juzN": "الجزء {{number}}",
-    "partOfCount": "({{part}} من {{total}})",
     "prevPage": "الصفحة السابقة",
     "nextPage": "الصفحة التالية"
   },

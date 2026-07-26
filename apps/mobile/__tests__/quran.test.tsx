@@ -7,7 +7,6 @@ import QuranReaderScreen from "@/app/quran/[surah]";
 import { getJson } from "@/lib/api";
 import { DEFAULT_QURAN_PREFS } from "@/lib/device-local";
 import { PlayerProvider } from "@/lib/player-context";
-import * as fitMushafFontModule from "@/features/quran/lib/fit-mushaf-font";
 
 jest.mock("@/lib/api", () => ({
   getJson: jest.fn(),
@@ -32,12 +31,11 @@ jest.mock("@/lib/player-context", () => ({
   PlayerProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-const mockUseLocalSearchParams = jest.fn(() => ({ surah: "1" }));
 jest.mock("expo-router", () => {
   const react = jest.requireActual("react") as typeof import("react");
   return {
     useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
-    useLocalSearchParams: () => mockUseLocalSearchParams(),
+    useLocalSearchParams: () => ({ surah: "1" }),
     usePathname: () => "/quran",
     useFocusEffect: (cb: () => void | (() => void)) => react.useEffect(cb, []),
     Stack: { Screen: () => null },
@@ -87,55 +85,11 @@ const pageReader = {
   reciter: reader.reciter,
 };
 
-// A second surah sharing the SAME page — mirrors the owner's reported p.293
-// (Al-Israa's tail + Al-Kahf's opening): one page, two segments, one flip
-// should show ONLY one of them.
-const surah2 = {
-  number: 114,
-  name: { ar: "الناس", en: "An-Nas" },
-  meaning: "Mankind",
-  revelationPlace: "meccan",
-  ayahCount: 6,
-  pageStart: 1,
-  pageEnd: 1,
-  bismillahPre: true,
-};
-
-const pageReaderTwoSegments = {
-  page: 1,
-  juz: 1,
-  prevPage: null,
-  nextPage: 2,
-  segments: [
-    { surah, showBismillah: true, ayahs: reader.ayahs },
-    {
-      surah: surah2,
-      showBismillah: true,
-      ayahs: [
-        {
-          surah: 114,
-          ayahInSurah: 1,
-          numberGlobal: 6231,
-          juz: 30,
-          page: 1,
-          sajda: false,
-          textUthmani: "قُلْ أَعُوذُ بِرَبِّ النَّاسِ",
-          words: [],
-          translation: "Say, I seek refuge in the Lord of mankind.",
-          audioUrl: "https://everyayah.com/data/Alafasy_128kbps/114001.mp3",
-        },
-      ],
-    },
-  ],
-  translationEdition: reader.translationEdition,
-  reciter: reader.reciter,
-};
-
-function mockApi(page: typeof pageReader = pageReader) {
+function mockApi() {
   (jest.mocked(getJson) as jest.Mock).mockImplementation((path: string) => {
-    if (path === "/quran/surahs") return Promise.resolve([surah, surah2]);
+    if (path === "/quran/surahs") return Promise.resolve([surah]);
     if (path.startsWith("/quran/surah/")) return Promise.resolve(reader);
-    if (path.startsWith("/quran/page/")) return Promise.resolve(page);
+    if (path.startsWith("/quran/page/")) return Promise.resolve(pageReader);
     if (path === "/quran/editions") return Promise.resolve([reader.translationEdition]);
     if (path === "/quran/reciters") return Promise.resolve([reader.reciter]);
     return Promise.resolve([]);
@@ -188,7 +142,6 @@ describe("QuranReaderScreen", () => {
     mockLoadQueue.mockClear();
     mockToggle.mockClear();
     mockCurrentTrack = null;
-    mockUseLocalSearchParams.mockReturnValue({ surah: "1" });
     await AsyncStorage.clear();
   });
 
@@ -229,75 +182,5 @@ describe("QuranReaderScreen", () => {
     (jest.mocked(getJson) as jest.Mock).mockReturnValue(new Promise(() => {}));
     renderWith(<QuranReaderScreen />);
     expect(screen.UNSAFE_getAllByProps({ accessibilityRole: "progressbar" }).length).toBeGreaterThan(0);
-  });
-
-  // The owner's reported bug (p.293 = Al-Israa's tail + Al-Kahf's opening
-  // rendered together): a page that straddles a surah boundary must show
-  // ONLY one segment per flip, and Next must flip within the page without a
-  // new fetch before advancing to the next real page.
-  describe("multi-segment (surah-boundary) page", () => {
-    it("shows only the entered surah's own segment, not the page's first", async () => {
-      mockUseLocalSearchParams.mockReturnValue({ surah: "114" });
-      mockApi(pageReaderTwoSegments);
-      renderWith(<QuranReaderScreen />);
-
-      // surah2 (An-Nas, entered surah) is segment 1 on this page — opening
-      // here must land on ITS ayah, not segment 0's (Al-Fatihah).
-      await waitFor(() => expect(screen.getByTestId("mushaf-ayah-6231")).toBeTruthy());
-      expect(screen.queryByTestId("mushaf-ayah-1")).toBeNull();
-      expect(screen.getByText("An-Nas · Mankind")).toBeTruthy();
-      expect(screen.queryByText("Al-Fatihah · The Opening")).toBeNull();
-
-      // Two segments share this page, so the part indicator must show — it's
-      // rendered twice (header pill row + footer), hence getAllByText.
-      expect(screen.getAllByText(/\(2 of 2\)/).length).toBeGreaterThan(0);
-    });
-
-    it("Next flips to the OTHER segment on the same page without refetching it", async () => {
-      mockApi(pageReaderTwoSegments);
-      renderWith(<QuranReaderScreen />);
-
-      await waitFor(() => expect(screen.getByTestId("mushaf-ayah-1")).toBeTruthy());
-      expect(screen.queryByTestId("mushaf-ayah-6231")).toBeNull();
-      expect(screen.getAllByText(/\(1 of 2\)/).length).toBeGreaterThan(0);
-
-      const pageFetchCalls = () =>
-        (jest.mocked(getJson) as jest.Mock).mock.calls.filter(([path]) =>
-          String(path).startsWith("/quran/page/"),
-        ).length;
-      const fetchesBefore = pageFetchCalls();
-
-      fireEvent.press(screen.getByLabelText("Next page"));
-
-      await waitFor(() => expect(screen.getByTestId("mushaf-ayah-6231")).toBeTruthy());
-      expect(screen.queryByTestId("mushaf-ayah-1")).toBeNull();
-      expect(screen.getAllByText(/\(2 of 2\)/).length).toBeGreaterThan(0);
-      // Same page (1) — no new /quran/page/:n fetch for this flip.
-      expect(pageFetchCalls()).toBe(fetchesBefore);
-    });
-
-    it("shows no part indicator on a single-segment page", async () => {
-      mockApi(pageReader);
-      renderWith(<QuranReaderScreen />);
-      await waitFor(() => expect(screen.getByTestId("mushaf-ayah-1")).toBeTruthy());
-      expect(screen.queryByText(/\(1 of/)).toBeNull();
-    });
-
-    // Regression guard for the bug this ticket exists to avoid re-introducing:
-    // sizing the auto-fit for the WHOLE page (both segments' glyphs) shrinks
-    // the type to fit text that isn't even on screen, reopening the "empty
-    // space at the bottom" void fixed in 9254a65/c28dca3 — see
-    // features/quran/components/reader.tsx's `mushafFontSize` memo.
-    it("computes the auto-fit font for the ONE visible segment (segmentCount: 1), not the whole page", async () => {
-      const fitSpy = jest.spyOn(fitMushafFontModule, "fitMushafFontSize");
-      mockApi(pageReaderTwoSegments);
-      renderWith(<QuranReaderScreen />);
-
-      await waitFor(() => expect(screen.getByTestId("mushaf-ayah-1")).toBeTruthy());
-      expect(fitSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ segmentCount: 1, bismillahCount: 1 }),
-      );
-      fitSpy.mockRestore();
-    });
   });
 });

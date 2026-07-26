@@ -241,7 +241,6 @@
     "layoutMushaf": "Mushaf",
     "pageN": "Page {{number}}",
     "juzN": "Juz {{number}}",
-    "partOfCount": "({{part}} of {{total}})",
     "prevPage": "Previous page",
     "nextPage": "Next page"
   },
