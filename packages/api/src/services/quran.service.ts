@@ -272,6 +272,7 @@ export async function getPageReader(
         },
         meaning: surahDoc.meaning,
         bismillahPre: surahDoc.bismillahPre,
+        ayahCount: surahDoc.ayahCount,
       },
       showBismillah:
         ayahDoc.ayahInSurah === 1 && surahDoc.bismillahPre && surahDoc.number !== 1,

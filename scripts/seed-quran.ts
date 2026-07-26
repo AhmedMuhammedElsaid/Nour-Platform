@@ -54,6 +54,10 @@ interface QcWord {
   text_uthmani?: string;
   transliteration?: { text?: string | null };
   translation?: { text?: string | null };
+  // Printed-mushaf layout. `line_number` is the line WITHIN `page_number`, so
+  // the pair is only meaningful together.
+  line_number?: number;
+  page_number?: number;
 }
 interface QcVerse {
   verse_number: number;
@@ -132,7 +136,10 @@ async function seedSurahsAndAyahs(): Promise<void> {
 async function seedWordByWord(): Promise<void> {
   // quran.com v4: per-chapter verses with words; map onto ayahs by surah+ayah.
   for (let chapter = 1; chapter <= 114; chapter++) {
-    const url = `${QURANCOM}/verses/by_chapter/${chapter}?words=true&word_fields=text_uthmani,transliteration&per_page=300`;
+    // line_number/page_number give the printed Madani mushaf's own line breaks,
+    // which is what lets the reader reproduce a page line-for-line instead of
+    // reflowing it. Verified against the reference: 18:1 → page 293, line 12.
+    const url = `${QURANCOM}/verses/by_chapter/${chapter}?words=true&word_fields=text_uthmani,transliteration,line_number,page_number&per_page=300`;
     const data = await getJsonRaw<{ verses: QcVerse[] }>(url);
     // Loose bulk-op typing: Mongoose's DocumentArray type for the embedded
     // words[] subdocument isn't assignable from a plain object array here.
@@ -150,6 +157,8 @@ async function seedWordByWord(): Promise<void> {
                   ? { transliteration: w.transliteration.text }
                   : {}),
                 ...(w.translation?.text ? { glossEn: w.translation.text } : {}),
+                ...(w.line_number ? { line: w.line_number } : {}),
+                ...(w.page_number ? { page: w.page_number } : {}),
               })),
           },
         },
@@ -259,14 +268,20 @@ async function seedReciter(): Promise<void> {
 
 async function main(): Promise<void> {
   const { values } = parseArgs({
-    options: { force: { type: "boolean" }, help: { type: "boolean", short: "h" } },
+    options: {
+      force: { type: "boolean" },
+      help: { type: "boolean", short: "h" },
+      only: { type: "string" },
+    },
     strict: true,
   });
   if (values.help) {
     console.log(
-      "Usage: pnpm seed:quran [--force]\n" +
+      "Usage: pnpm seed:quran [--force] [--only <step>]\n" +
         "Fetches open Quran datasets (Al-Quran Cloud + quran.com v4) and upserts them.\n" +
-        "Idempotent. --force required when NODE_ENV=production.",
+        "Idempotent. --force required when NODE_ENV=production.\n" +
+        "Steps: surahs, words, translations, reciter, tafsir, indexes.\n" +
+        "  --only words  re-fetches word-by-word text AND printed-mushaf line/page layout.",
     );
     process.exit(0);
   }
@@ -275,35 +290,53 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  // `--only <step>` runs a single step. Added so re-fetching word layout data
+  // doesn't also re-download every translation and tafsir (114 + 4×114 extra
+  // HTTP round-trips). Unknown names fail loudly rather than silently no-op.
+  const only = values.only;
+  const STEPS = ["surahs", "words", "translations", "reciter", "tafsir", "indexes"] as const;
+  type Step = (typeof STEPS)[number];
+  if (only !== undefined && !STEPS.includes(only as Step)) {
+    console.error(`Unknown --only "${only}". Known steps: ${STEPS.join(", ")}`);
+    process.exit(1);
+  }
+  const run = (step: Step): boolean => only === undefined || only === step;
+
   await getDb();
   try {
-    await seedSurahsAndAyahs();
-    await seedWordByWord();
-    await seedTranslation("en.sahih", {
+    if (run("surahs")) await seedSurahsAndAyahs();
+    if (run("words")) await seedWordByWord();
+    if (run("translations")) {
+      await seedTranslation("en.sahih", {
       language: "en",
       name: "Sahih International",
-      author: "Sahih International",
-      dir: "ltr",
-    });
-    await seedTranslation("ar.muyassar", {
-      language: "ar",
-      name: "Tafsir al-Muyassar",
-      author: "King Fahd Complex",
-      dir: "rtl",
-    });
-    await seedReciter();
-    await seedTafsir(
-      "en.ibnkathir",
-      { language: "en", name: "Tafsir Ibn Kathir (abridged)", author: "Ibn Kathir", dir: "ltr" },
-      169,
-    );
-    await seedTafsir(
-      "ar.saadi",
-      { language: "ar", name: "Tafsir al-Saadi", author: "al-Saadi", dir: "rtl" },
-      91,
-    );
-    await migration0009.up(); // ensure indexes (self-contained; no full migrate chain)
-    await migration0010.up(); // ensure tafsir indexes (self-contained; no full migrate chain)
+        author: "Sahih International",
+        dir: "ltr",
+      });
+      await seedTranslation("ar.muyassar", {
+        language: "ar",
+        name: "Tafsir al-Muyassar",
+        author: "King Fahd Complex",
+        dir: "rtl",
+      });
+    }
+    if (run("reciter")) await seedReciter();
+    if (run("tafsir")) {
+      await seedTafsir(
+        "en.ibnkathir",
+        { language: "en", name: "Tafsir Ibn Kathir (abridged)", author: "Ibn Kathir", dir: "ltr" },
+        169,
+      );
+      await seedTafsir(
+        "ar.saadi",
+        { language: "ar", name: "Tafsir al-Saadi", author: "al-Saadi", dir: "rtl" },
+        91,
+      );
+    }
+    if (run("indexes")) {
+      await migration0009.up(); // ensure indexes (self-contained; no full migrate chain)
+      await migration0010.up(); // ensure tafsir indexes (self-contained; no full migrate chain)
+    }
     console.log("[seed:quran] done.");
   } finally {
     await disconnectDb();

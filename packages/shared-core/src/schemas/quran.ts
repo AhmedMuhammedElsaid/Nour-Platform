@@ -22,6 +22,14 @@ export const quranWordSchema = z.object({
   arabic: z.string().min(1),
   transliteration: z.string().optional(),
   glossEn: z.string().optional(),
+  // Printed-mushaf layout, from quran.com v4's `line_number`/`page_number`.
+  // OPTIONAL on purpose: they are absent until the word-layout seed has run,
+  // and a client holding a pre-seed cached payload must still parse. Every
+  // consumer treats missing layout as "reflow this page" — never as an error.
+  // `page` is per-WORD because an ayah can straddle a page boundary, so it can
+  // differ from the parent ayah's own `page`.
+  line: z.number().int().min(1).optional(),
+  page: z.number().int().min(1).max(604).optional(),
 });
 export type QuranWord = z.infer<typeof quranWordSchema>;
 
@@ -108,6 +116,10 @@ export const pageSegmentSchema = z.object({
     name: z.object({ ar: z.string().min(1), en: z.string().min(1) }),
     meaning: z.string().min(1),
     bismillahPre: z.boolean(),
+    // Lets the renderer tell "this surah ENDS here" (last line centred, as in
+    // print) from "the page just ran out" (last line justified). Optional so a
+    // client holding a cached pre-change payload still parses.
+    ayahCount: z.number().int().min(1).optional(),
   }),
   // true only when this segment opens a new surah on the page (its first
   // ayah is ayahInSurah 1) AND that surah has a Bismillah AND it isn't

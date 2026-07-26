@@ -25,6 +25,7 @@
     "./quran/audio-url": "./src/quran/audio-url.ts",
     "./quran/basmala": "./src/quran/basmala.ts",
     "./quran/juz": "./src/quran/juz.ts",
+    "./quran/page-rows": "./src/quran/page-rows.ts",
     "./quran/reciter-avatar": "./src/quran/reciter-avatar.ts",
     "./prayer-times/schedule": "./src/prayer-times/schedule.ts",
     "./prayer-times/aladhan": "./src/prayer-times/aladhan.ts",

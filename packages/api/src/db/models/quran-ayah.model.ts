@@ -6,6 +6,10 @@ const quranWordSchema = new Schema(
     arabic: { type: String, required: true },
     transliteration: { type: String },
     glossEn: { type: String },
+    // Printed-mushaf layout (quran.com `line_number`/`page_number`). Optional —
+    // populated by the `--only words` seed step; absent means "reflow".
+    line: { type: Number, min: 1 },
+    page: { type: Number, min: 1, max: 604 },
   },
   { _id: false },
 );
