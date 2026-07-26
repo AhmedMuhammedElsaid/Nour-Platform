@@ -43,14 +43,14 @@ const page: PageReader = {
       surah: { number: 113, name: { ar: "الفلق", en: "Al-Falaq" }, meaning: "The Daybreak", bismillahPre: true },
       showBismillah: false,
       ayahs: [
-        ayah({ numberGlobal: 6215, ayahInSurah: 4, surah: 113, textUthmani: "وَمِن شَرِّ ٱلنَّفَّٰثَٰتِ" }),
+        ayah({ numberGlobal: 6215, ayahInSurah: 4, surah: 113, textUthmani: "وَمِن شَرِّ ٱلنَّفَّٰثَٰتِ" }),
       ],
     },
     {
       surah: { number: 114, name: { ar: "الناس", en: "An-Nas" }, meaning: "Mankind", bismillahPre: true },
       showBismillah: true,
       ayahs: [
-        ayah({ numberGlobal: 6221, ayahInSurah: 1, surah: 114, textUthmani: "قُلْ أَعُوذُ بِرَبِّ ٱلنَّاسِ" }),
+        ayah({ numberGlobal: 6221, ayahInSurah: 1, surah: 114, textUthmani: "قُلْ أَعُوذُ بِرَبِّ ٱلنَّاسِ" }),
       ],
     },
   ],
@@ -58,36 +58,61 @@ const page: PageReader = {
   reciter: null,
 };
 
+// A single-segment page (the common case) — no straddling surah boundary,
+// so no part indicator should render.
+const singlePartPage: PageReader = {
+  ...page,
+  page: 1,
+  segments: [page.segments[0]!],
+};
+
 describe("MushafPageView", () => {
-  it("renders a surah-name banner for every segment", () => {
-    render(<MushafPageView page={page} activeGlobal={null} isPlaying={false} onPlay={vi.fn()} />);
+  it("renders exactly one segment's surah banner for the given part", () => {
+    render(<MushafPageView page={page} part={0} activeGlobal={null} isPlaying={false} onPlay={vi.fn()} />);
     expect(screen.getByText("الفلق")).toBeInTheDocument();
-    expect(screen.getByText("الناس")).toBeInTheDocument();
     expect(screen.getByText(/Al-Falaq/)).toBeInTheDocument();
+    expect(screen.queryByText("الناس")).not.toBeInTheDocument();
+    expect(screen.queryByText(/An-Nas/)).not.toBeInTheDocument();
+  });
+
+  it("renders the OTHER segment when part is 1, not part 0", () => {
+    render(<MushafPageView page={page} part={1} activeGlobal={null} isPlaying={false} onPlay={vi.fn()} />);
+    expect(screen.getByText("الناس")).toBeInTheDocument();
     expect(screen.getByText(/An-Nas/)).toBeInTheDocument();
+    expect(screen.queryByText("الفلق")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Al-Falaq/)).not.toBeInTheDocument();
   });
 
   it("only renders the Bismillah for the segment that opens a new surah", () => {
-    render(<MushafPageView page={page} activeGlobal={null} isPlaying={false} onPlay={vi.fn()} />);
+    render(<MushafPageView page={page} part={1} activeGlobal={null} isPlaying={false} onPlay={vi.fn()} />);
     expect(screen.getAllByText("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ")).toHaveLength(1);
   });
 
-  it("renders each segment's ayahs with inline markers", () => {
-    render(<MushafPageView page={page} activeGlobal={null} isPlaying={false} onPlay={vi.fn()} />);
+  it("renders only the visible segment's ayahs", () => {
+    render(<MushafPageView page={page} part={0} activeGlobal={null} isPlaying={false} onPlay={vi.fn()} />);
     expect(screen.getByTestId("mushaf-ayah-6215")).toBeInTheDocument();
-    expect(screen.getByTestId("mushaf-ayah-6221")).toBeInTheDocument();
+    expect(screen.queryByTestId("mushaf-ayah-6221")).not.toBeInTheDocument();
   });
 
-  it("renders the page/juz footer once, from the page reader (not a segment)", () => {
-    render(<MushafPageView page={page} activeGlobal={null} isPlaying={false} onPlay={vi.fn()} />);
+  it("renders the page/juz footer with a part indicator when the page has 2+ parts", () => {
+    render(<MushafPageView page={page} part={0} activeGlobal={null} isPlaying={false} onPlay={vi.fn()} />);
     expect(
-      screen.getByText((_, el) => el?.textContent === "pageN:582 · juzN:30"),
+      screen.getByText((_, el) => el?.textContent === "pageN:582 pagePart:1,2 · juzN:30"),
     ).toBeInTheDocument();
   });
 
-  it("calls onPlay with the tapped ayah's numberGlobal, across segments", async () => {
+  it("omits the part indicator for a single-part page", () => {
+    render(
+      <MushafPageView page={singlePartPage} part={0} activeGlobal={null} isPlaying={false} onPlay={vi.fn()} />,
+    );
+    expect(
+      screen.getByText((_, el) => el?.textContent === "pageN:1 · juzN:30"),
+    ).toBeInTheDocument();
+  });
+
+  it("calls onPlay with the tapped ayah's numberGlobal", async () => {
     const onPlay = vi.fn();
-    render(<MushafPageView page={page} activeGlobal={null} isPlaying={false} onPlay={onPlay} />);
+    render(<MushafPageView page={page} part={1} activeGlobal={null} isPlaying={false} onPlay={onPlay} />);
     await userEvent.click(screen.getByTestId("mushaf-ayah-6221"));
     expect(onPlay).toHaveBeenCalledWith(6221);
   });

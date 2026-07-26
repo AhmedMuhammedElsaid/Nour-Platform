@@ -179,6 +179,7 @@
     "layoutList": "List",
     "layoutMushaf": "Mushaf",
     "pageN": "Page {number}",
+    "pagePart": "({number} of {total})",
     "juzN": "Juz {number}",
     "prevPage": "Previous page",
     "nextPage": "Next page",

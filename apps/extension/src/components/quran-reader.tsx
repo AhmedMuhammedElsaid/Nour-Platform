@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  nextPartCursor,
+  prevPartCursor,
+  resolveEntryPart,
+  settlePart,
+  type PendingCursor,
+  type PendingPart,
+} from "@repo/shared-core/quran/page-parts";
+import {
   fetchEditions,
   fetchPageReader,
   fetchReciters,
@@ -53,6 +61,21 @@ export function QuranReader({ surah, autoplay, state, send }: Props) {
   const [surahs, setSurahs] = useState<QuranSurahSummary[]>([]);
   const [pageData, setPageData] = useState<PageReaderData | null>(null);
   const [currentPage, setCurrentPage] = useState<number | null>(null);
+  // Which segment ("part") of `pageData.segments` is the one visible flip —
+  // a page can hold 2+ surahs' segments (short surahs sharing a page), and
+  // the owner rejected showing a surah's ending + another's beginning at
+  // once, so Prev/Next paginate by (page, part) instead of by whole page.
+  // Starts as "first"/"last" (a PendingPart) when crossing INTO a new page —
+  // resolved to a concrete index once that page's segment count is known
+  // (see `part` below) — see @repo/shared-core/quran/page-parts. Entering a
+  // surah is a special case: that page's first segment is often the
+  // PRECEDING surah (e.g. Al-Kahf opens on p.293, whose segment 0 is
+  // Al-Israa's tail), so entry resolves via `resolveEntryPart` instead of
+  // "first" — see the entry-resolution effect below.
+  const [pendingPart, setPendingPart] = useState<number | PendingPart>("first");
+  // True while the next `pageData` load should resolve via `resolveEntryPart`
+  // (a fresh surah entry) rather than being settled as a plain flip.
+  const entryResolvePending = useRef(true);
   const [editions, setEditions] = useState<QuranEdition[]>([]);
   const [reciters, setReciters] = useState<QuranReciter[]>([]);
   const [bookmarks, setBookmarks] = useState<AyahRef[]>([]);
@@ -114,6 +137,17 @@ export function QuranReader({ surah, autoplay, state, send }: Props) {
       return;
     }
     setError(false);
+    entryResolvePending.current = true;
+    setPendingPart("first");
+    // Drop the outgoing surah's page data in the SAME commit that re-anchors.
+    // Without this, a surah→surah change that keeps this component mounted
+    // (browser back/forward between two reader routes) leaves stale `pageData`
+    // visible to the entry-resolve effect below — it runs on `surahNumber`
+    // alone, consumes the pending flag against the PREVIOUS page's segments,
+    // and `resolveEntryPart` returns 0 for a surah that isn't on them. The
+    // reader would then open on the preceding surah's tail: exactly the bug
+    // this feature exists to fix.
+    setPageData(null);
     setCurrentPage(target.pageStart);
   }, [hydrated, prefs.layout, surahNumber, surahs]);
 
@@ -131,25 +165,57 @@ export function QuranReader({ surah, autoplay, state, send }: Props) {
       .catch(() => setError(true));
   }, [hydrated, prefs.layout, currentPage, prefs.translationSlug, prefs.reciterSlug]);
 
-  function goToPage(page: number | null): void {
-    if (page === null) return;
-    setCurrentPage(page);
+  // Once the anchored entry page's data resolves, land on the segment that
+  // actually holds the entry surah (not necessarily segment 0 — see the
+  // Al-Kahf/p.293 case above). Skipped for ordinary Prev/Next flips, which
+  // already set a concrete `pendingPart` (or "first"/"last" at a page
+  // boundary, settled below).
+  useEffect(() => {
+    if (!pageData || !entryResolvePending.current) return;
+    // Second guard: only resolve against data for the page we anchored to, so
+    // an in-flight response for a previous page can never consume the flag.
+    if (pageData.page !== currentPage) return;
+    entryResolvePending.current = false;
+    setPendingPart(resolveEntryPart(pageData.segments.map((s) => s.surahNumber), surahNumber));
+  }, [pageData, surahNumber, currentPage]);
+
+  // The settled 0-based index into `pageData.segments` — clamps a leftover
+  // numeric part (e.g. from a longer page) and resolves "first"/"last" once
+  // the new page's segment count is known.
+  const part = pageData ? settlePart(pendingPart, pageData.segments.length) : 0;
+  const partCount = pageData?.segments.length ?? 0;
+  const visibleSegment = pageData?.segments[part];
+
+  // Moves the (page, part) cursor by one flip; null means the mushaf's edge
+  // (page 1's start or page 604's end) — the caller disables its button then.
+  function applyCursor(cursor: PendingCursor): void {
+    entryResolvePending.current = false;
+    setPendingPart(cursor.part);
+    setCurrentPage(cursor.page);
   }
 
+  const nextCursor =
+    pageData && currentPage !== null
+      ? nextPartCursor({ page: currentPage, part }, partCount, pageData.nextPage)
+      : null;
+  const prevCursor =
+    pageData && currentPage !== null
+      ? prevPartCursor({ page: currentPage, part }, pageData.prevPage)
+      : null;
+
   // Flattened, mode-appropriate ayah list for the reader-scoped audio queue —
-  // list mode plays one surah; Mushaf mode plays across all of the current
-  // page's segments (2+ when short surahs share a page), reusing each ayah's
-  // already-resolved audioUrl.
+  // list mode plays one surah; Mushaf mode plays only the VISIBLE segment's
+  // ayahs (never the whole page — a flip shows one surah's ending or
+  // another's beginning, never both), reusing each ayah's already-resolved
+  // audioUrl.
   const audioAyahs = useMemo(() => {
     if (prefs.layout === "mushaf") {
-      return pageData
-        ? pageData.segments.flatMap((s) =>
-            s.ayahs.map((a) => ({ numberGlobal: a.numberGlobal, audioUrl: a.audioUrl })),
-          )
+      return visibleSegment
+        ? visibleSegment.ayahs.map((a) => ({ numberGlobal: a.numberGlobal, audioUrl: a.audioUrl }))
         : [];
     }
     return data ? data.ayahs.map((a) => ({ numberGlobal: a.numberGlobal, audioUrl: a.audioUrl })) : [];
-  }, [prefs.layout, pageData, data]);
+  }, [prefs.layout, visibleSegment, data]);
 
   const audio = useAyahAudio(audioAyahs, {
     // Pause the offscreen player so the two never overlap.
@@ -165,26 +231,25 @@ export function QuranReader({ surah, autoplay, state, send }: Props) {
   const { playAyah } = audio;
   useEffect(() => {
     if (!autoplay || didAutoplay.current) return;
-    const first =
-      prefs.layout === "mushaf" ? pageData?.segments[0]?.ayahs[0] : data?.ayahs[0];
+    const first = prefs.layout === "mushaf" ? visibleSegment?.ayahs[0] : data?.ayahs[0];
     if (!first?.audioUrl) return;
     didAutoplay.current = true;
     playAyah(first.numberGlobal);
-  }, [autoplay, data, pageData, prefs.layout, playAyah]);
+  }, [autoplay, data, visibleSegment, prefs.layout, playAyah]);
 
   // Record last-read = first ayah currently loaded (surah's first ayah in
-  // list mode; the page's first segment's first ayah in Mushaf mode — the
-  // page may open mid-surah when flipped into an adjacent one).
+  // list mode; the VISIBLE segment's first ayah in Mushaf mode — the page may
+  // open mid-surah when flipped into an adjacent one, and only one segment is
+  // ever on screen at a time).
   useEffect(() => {
     if (prefs.layout === "mushaf") {
-      const segment = pageData?.segments[0];
-      const first = segment?.ayahs[0];
-      if (first && segment) {
+      const first = visibleSegment?.ayahs[0];
+      if (first && visibleSegment) {
         void setLastRead({
           surah: first.surah,
           ayah: first.ayahInSurah,
           numberGlobal: first.numberGlobal,
-          surahName: segment.surahNameEn,
+          surahName: visibleSegment.surahNameEn,
         });
       }
       return;
@@ -198,7 +263,7 @@ export function QuranReader({ surah, autoplay, state, send }: Props) {
         surahName: data.nameEn,
       });
     }
-  }, [data, pageData, prefs.layout]);
+  }, [data, visibleSegment, prefs.layout]);
 
   // Scroll the currently-playing ayah into view.
   useEffect(() => {
@@ -261,12 +326,17 @@ export function QuranReader({ surah, autoplay, state, send }: Props) {
     );
   }
 
-  // Header title: the entry surah in list mode; the current page's leading
-  // segment (updates as Prev/Next crosses surah boundaries) in Mushaf mode.
+  // Header title: the entry surah in list mode; the VISIBLE segment in Mushaf
+  // mode (updates as Prev/Next crosses surah boundaries). Bug fix: this used
+  // to read `segments[0]` unconditionally, so any surah that begins mid-page
+  // (e.g. Quraysh on the same page as the end of Al-Fil) was captioned with
+  // the PRECEDING surah's name until a page flip happened to land on its own
+  // first segment. Pointing at `visibleSegment` (the part-scoped segment)
+  // fixes it for every entry point, not just the ones that got lucky.
   const headerNameAr =
-    prefs.layout === "mushaf" ? (pageData?.segments[0]?.surahNameAr ?? "") : (data?.nameAr ?? "");
+    prefs.layout === "mushaf" ? (visibleSegment?.surahNameAr ?? "") : (data?.nameAr ?? "");
   const headerNameEn =
-    prefs.layout === "mushaf" ? (pageData?.segments[0]?.surahNameEn ?? "") : (data?.nameEn ?? "");
+    prefs.layout === "mushaf" ? (visibleSegment?.surahNameEn ?? "") : (data?.nameEn ?? "");
 
   return (
     <div
@@ -299,12 +369,12 @@ export function QuranReader({ surah, autoplay, state, send }: Props) {
 
       {/* Ayahs */}
       {prefs.layout === "mushaf" && pageData ? (
-        <div>
+        <div className="border-b border-border py-5">
           <div className="mb-3 flex items-center justify-between gap-3">
             <button
               type="button"
-              onClick={() => goToPage(pageData.prevPage)}
-              disabled={pageData.prevPage === null}
+              onClick={() => prevCursor && applyCursor(prevCursor)}
+              disabled={prevCursor === null}
               className="inline-flex items-center gap-1.5 text-xs text-text-2 hover:text-primary disabled:pointer-events-none disabled:opacity-40"
             >
               <SkipForward className="size-3.5 rtl:scale-x-[-1]" />
@@ -312,8 +382,8 @@ export function QuranReader({ surah, autoplay, state, send }: Props) {
             </button>
             <button
               type="button"
-              onClick={() => goToPage(pageData.nextPage)}
-              disabled={pageData.nextPage === null}
+              onClick={() => nextCursor && applyCursor(nextCursor)}
+              disabled={nextCursor === null}
               className="inline-flex items-center gap-1.5 text-xs text-text-2 hover:text-primary disabled:pointer-events-none disabled:opacity-40"
             >
               {t("quran.nextPage")}
@@ -321,13 +391,20 @@ export function QuranReader({ surah, autoplay, state, send }: Props) {
             </button>
           </div>
           <MushafPage
-            page={pageData.page}
-            juz={pageData.juz}
             segments={pageData.segments}
+            part={part}
             activeGlobal={audio.currentGlobal}
             isPlaying={audio.isPlaying}
             onPlay={onPlayToggle}
           />
+          <div className="mt-4 border-t border-border pt-3 text-center text-xs text-text-2">
+            {t("quran.pageN", { number: pageData.page })}
+            {partCount > 1
+              ? ` ${t("quran.pagePart", { number: part + 1, total: partCount })}`
+              : ""}
+            {" · "}
+            {t("quran.juzN", { number: pageData.juz })}
+          </div>
         </div>
       ) : data ? (
         <div>

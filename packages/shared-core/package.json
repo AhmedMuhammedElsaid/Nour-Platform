@@ -24,6 +24,7 @@
     "./qibla/compute": "./src/qibla/compute.ts",
     "./quran/audio-url": "./src/quran/audio-url.ts",
     "./quran/juz": "./src/quran/juz.ts",
+    "./quran/page-parts": "./src/quran/page-parts.ts",
     "./quran/reciter-avatar": "./src/quran/reciter-avatar.ts",
     "./prayer-times/schedule": "./src/prayer-times/schedule.ts",
     "./prayer-times/aladhan": "./src/prayer-times/aladhan.ts",

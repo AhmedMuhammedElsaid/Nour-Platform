@@ -1,9 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  resolveEntryPart,
+  settlePart,
+  type PendingPart,
+} from "@repo/shared-core/quran/page-parts";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -61,6 +66,22 @@ export default function QuranReaderScreen() {
     if (currentPage === null && surahMeta) setCurrentPage(surahMeta.pageStart);
   }, [currentPage, surahMeta]);
 
+  // A Madani page can straddle a surah boundary (p.293 = Al-Israa's tail +
+  // Al-Kahf's opening) — the reader shows one SEGMENT ("part") per flip, not
+  // the whole page. `null` means "not yet navigated": resolve the entry part
+  // from `entrySurah` once the page arrives (Al-Kahf routes to p.293 whose
+  // segment 0 is Al-Israa, so this is NOT always 0). Once the reader starts
+  // paging with Prev/Next/swipe it sets an explicit target ("first"/"last"/a
+  // concrete index) here — kept in THIS component (not inside <Reader>)
+  // because the `active.isPending` gate below unmounts <Reader> on every page
+  // change, which would otherwise wipe out any pending-part intent before the
+  // new page's segment count is known to settle it against.
+  const [partIntent, setPartIntent] = useState<number | PendingPart | null>(null);
+  const onChangePage = (page: number, part: number | PendingPart) => {
+    setCurrentPage(page);
+    setPartIntent(part);
+  };
+
   // List mode's fetch is byte-for-byte the same query as before.
   const surahReader = useQuery({
     ...quranSurahReaderQuery(surahNumber, locale, prefs.translationSlug, prefs.reciterSlug),
@@ -75,6 +96,20 @@ export default function QuranReaderScreen() {
 
   const active = isMushaf ? pageReader : surahReader;
   const resolvingPage = isMushaf && currentPage === null;
+
+  // Settle `partIntent` against the arrived page's actual segment count. Pure
+  // derivation (not an effect) so there's no extra render between the new
+  // page landing and the correct segment showing.
+  const part = useMemo(() => {
+    if (!pageReader.data) return 0;
+    if (partIntent === null) {
+      return resolveEntryPart(
+        pageReader.data.segments.map((s) => s.surah.number),
+        surahNumber,
+      );
+    }
+    return settlePart(partIntent, pageReader.data.segments.length);
+  }, [pageReader.data, partIntent, surahNumber]);
 
   if (!hydrated || resolvingPage || active.isPending) {
     return (
@@ -121,8 +156,8 @@ export default function QuranReaderScreen() {
       <Reader
         data={isMushaf ? null : (surahReader.data ?? null)}
         pageData={isMushaf ? (pageReader.data ?? null) : null}
-        entrySurah={surahNumber}
-        onChangePage={setCurrentPage}
+        part={part}
+        onChangePage={onChangePage}
         editions={editions.data ?? []}
         reciters={reciters.data ?? []}
         locale={locale}

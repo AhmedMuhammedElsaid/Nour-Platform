@@ -4,6 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import type { PageReader, QuranReciter, ReaderAyah, SurahReader } from "@repo/api/schemas/quran";
+import {
+  nextPartCursor,
+  prevPartCursor,
+  resolveEntryPart,
+  settlePart,
+  type PendingPart,
+} from "@repo/shared-core/quran/page-parts";
 import { usePlayer } from "@repo/ui/blocks/player-context";
 import { AyahRow } from "./ayah-row";
 import { MushafPage } from "./mushaf-page";
@@ -52,12 +59,56 @@ export function Reader({
   const [pageStatus, setPageStatus] = useState<"idle" | "loading" | "error">("idle");
   const [retryToken, setRetryToken] = useState(0);
 
+  // Which SEGMENT of `currentPage` is on screen (0-based index into
+  // `pageData.segments`) — a Madani page can straddle a surah boundary and
+  // the owner wants one flip to show either a surah's ending or another's
+  // beginning, never both (see packages/shared-core/quran/page-parts.ts).
+  // `pendingPart` carries the intent for whichever page is currently being
+  // fetched: "entry" resolves via `resolveEntryPart` against the entry
+  // surah once that page's segments arrive; a numeric/"first"/"last" value
+  // (from Prev/Next) resolves via `settlePart`. Two-step because we don't
+  // know the target page's segment count until its fetch resolves.
+  const [pendingPart, setPendingPart] = useState<number | PendingPart | "entry">("entry");
+  // Last index settled against data that actually belonged to the page it was
+  // computed for — used while an outgoing page is still on screen mid-fetch.
+  const settledPartRef = useRef(0);
+
   // A different surah was routed to (surah-list/bookmark/search links all
   // still link by surah number) — reset paging to that surah's own start.
   useEffect(() => {
     setCurrentPage(data.surah.pageStart);
     setPageData(null);
+    settledPartRef.current = 0;
+    setPendingPart("entry");
   }, [data.surah.number, data.surah.pageStart]);
+
+  // Resolve `pendingPart` into a concrete `part` index once `pageData` for
+  // Derived during RENDER, not in an effect. An effect resolves after paint, so
+  // when a page-crossing flip commits new `pageData` while `part` still held
+  // the outgoing page's index, the wrong segment painted for a frame AND the
+  // last-read effect below wrote that wrong segment's surah/ayah into the
+  // shared `nour.*` record before being corrected on the next commit.
+  //
+  // Unlike the extension, this reader deliberately keeps the outgoing page
+  // rendered while the next one fetches (no blank flash). So while `pageData`
+  // is not yet the page we asked for, `pendingPart` doesn't apply to it — reuse
+  // the last index that was settled AGAINST that data instead.
+  const isPageCurrent = pageData !== null && pageData.page === currentPage;
+  const part = useMemo(() => {
+    if (!pageData) return 0;
+    if (!isPageCurrent) return settledPartRef.current;
+    return pendingPart === "entry"
+      ? resolveEntryPart(
+          pageData.segments.map((s) => s.surah.number),
+          data.surah.number,
+        )
+      : settlePart(pendingPart, pageData.segments.length);
+  }, [pageData, isPageCurrent, pendingPart, data.surah.number]);
+
+  // Ref write stays in an effect — never during render.
+  useEffect(() => {
+    if (isPageCurrent) settledPartRef.current = part;
+  }, [isPageCurrent, part]);
 
   // Client-side fetch of the cross-surah page reader whenever Mushaf layout
   // is active and the requested page/edition changes.
@@ -88,25 +139,56 @@ export function Reader({
   }, [prefs.layout, currentPage, locale, prefs.translationSlug, prefs.reciterSlug, retryToken]);
 
   const onPrevPage = useCallback(() => {
-    if (pageData?.prevPage != null) setCurrentPage(pageData.prevPage);
-  }, [pageData]);
+    if (!pageData) return;
+    const cursor = prevPartCursor({ page: currentPage, part }, pageData.prevPage);
+    if (!cursor) return;
+    setPendingPart(cursor.part);
+    setCurrentPage(cursor.page);
+  }, [pageData, currentPage, part]);
   const onNextPage = useCallback(() => {
-    if (pageData?.nextPage != null) setCurrentPage(pageData.nextPage);
-  }, [pageData]);
+    if (!pageData) return;
+    const cursor = nextPartCursor(
+      { page: currentPage, part },
+      pageData.segments.length,
+      pageData.nextPage,
+    );
+    if (!cursor) return;
+    setPendingPart(cursor.part);
+    setCurrentPage(cursor.page);
+  }, [pageData, currentPage, part]);
 
-  // The playback queue spans whatever is actually on screen: the resolved
-  // cross-surah page (segments can hold 2+ surahs' ayahs when short surahs
-  // share a page) once loaded, else the surah-scoped fallback/list-mode data.
-  // Per-ayah audioUrl is already resolved server-side on ReaderAyah, so no
-  // extra per-track surah metadata is needed to flatten segments into a queue.
+  // Prev/Next disable only at the true mushaf ends (the cursor helpers
+  // return null) or while a fetch is in flight — not just at a page edge,
+  // since a page can hold more than one part.
+  const canGoPrev = pageData
+    ? prevPartCursor({ page: currentPage, part }, pageData.prevPage) !== null
+    : false;
+  const canGoNext = pageData
+    ? nextPartCursor({ page: currentPage, part }, pageData.segments.length, pageData.nextPage) !==
+      null
+    : false;
+
+  // The segment actually on screen. Clamped defensively — `part` is kept in
+  // range by the resolver effect above, but a stale `pageData` reference
+  // mid-transition (page just changed, new fetch not yet resolved) could
+  // otherwise index past a shorter page's segment count.
+  const visibleSegment = useMemo(() => {
+    if (!pageData) return null;
+    const idx = Math.min(Math.max(part, 0), pageData.segments.length - 1);
+    return pageData.segments[idx] ?? null;
+  }, [pageData, part]);
+
+  // The playback queue spans whatever is actually on screen: the single
+  // visible segment of the resolved cross-surah page once loaded, else the
+  // surah-scoped fallback/list-mode data. Per-ayah audioUrl is already
+  // resolved server-side on ReaderAyah, so no extra per-track surah metadata
+  // is needed to build the queue.
   const queueAyahs = useMemo(
     () =>
-      prefs.layout === "mushaf" && pageData
-        ? pageData.segments.flatMap((s) =>
-            s.ayahs.map((a) => ({ numberGlobal: a.numberGlobal, audioUrl: a.audioUrl })),
-          )
+      prefs.layout === "mushaf" && visibleSegment
+        ? visibleSegment.ayahs.map((a) => ({ numberGlobal: a.numberGlobal, audioUrl: a.audioUrl }))
         : data.ayahs.map((a) => ({ numberGlobal: a.numberGlobal, audioUrl: a.audioUrl })),
-    [prefs.layout, pageData, data.ayahs],
+    [prefs.layout, visibleSegment, data.ayahs],
   );
 
   // The reader's ayah audio and the site-wide player are independent
@@ -147,16 +229,19 @@ export function Reader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Record last-read = the first ayah currently on screen: the current
-  // Mushaf page's first segment once resolved, else this surah's own first
-  // ayah (list mode, or Mushaf before the page fetch resolves).
+  // Record last-read = the first ayah of the segment currently on screen (list
+  // mode: this surah's own first ayah). `nour.quran.lastread` is a shared
+  // cross-surface record that drives the "Continue reading" shelves, so it must
+  // never be written from a page still being replaced — hold off until
+  // `pageData` is the page we actually asked for.
   useEffect(() => {
-    const firstSegment = prefs.layout === "mushaf" ? pageData?.segments[0] : undefined;
+    if (prefs.layout === "mushaf" && !isPageCurrent) return;
+    const visibleFirst = prefs.layout === "mushaf" ? visibleSegment : undefined;
     let first: ReaderAyah | undefined = data.ayahs[0];
     let surahName = data.surah.name.en;
-    if (firstSegment?.ayahs[0]) {
-      first = firstSegment.ayahs[0];
-      surahName = firstSegment.surah.name.en;
+    if (visibleFirst?.ayahs[0]) {
+      first = visibleFirst.ayahs[0];
+      surahName = visibleFirst.surah.name.en;
     }
     if (first) {
       setLastRead({
@@ -166,7 +251,7 @@ export function Reader({
         surahName,
       });
     }
-  }, [prefs.layout, pageData, data.ayahs, data.surah.name.en]);
+  }, [prefs.layout, isPageCurrent, visibleSegment, data.ayahs, data.surah.name.en]);
 
   // Scroll the currently-playing ayah into view.
   useEffect(() => {
@@ -220,7 +305,7 @@ export function Reader({
               type="button"
               aria-label={t("prevPage")}
               onClick={onPrevPage}
-              disabled={!pageData || pageData.prevPage === null || pageStatus === "loading"}
+              disabled={!canGoPrev || pageStatus === "loading"}
               className="border-border text-text-2 hover:text-primary rounded-md border px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
             >
               {t("prevPage")}
@@ -232,7 +317,7 @@ export function Reader({
               type="button"
               aria-label={t("nextPage")}
               onClick={onNextPage}
-              disabled={!pageData || pageData.nextPage === null || pageStatus === "loading"}
+              disabled={!canGoNext || pageStatus === "loading"}
               className="border-border text-text-2 hover:text-primary rounded-md border px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
             >
               {t("nextPage")}
@@ -252,6 +337,7 @@ export function Reader({
         pageData ? (
           <MushafPageView
             page={pageData}
+            part={part}
             activeGlobal={audio.currentGlobal}
             isPlaying={audio.isPlaying}
             onPlay={onPlayToggle}
