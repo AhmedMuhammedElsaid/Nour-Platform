@@ -21,17 +21,18 @@ export function localizeDigits(n: number, locale: string): string {
   return locale.startsWith("ar") ? toArabicIndicDigits(n) : String(n);
 }
 
-// Inline ayah-end marker for Mushaf mode: the ayah's in-surah number in
-// Arabic-Indic digits, e.g. ayahMarker(7) === "٧".
+// Inline ayah-end marker for Mushaf mode: U+06DD (ARABIC END OF AYAH) followed
+// by the ayah's in-surah number in Arabic-Indic digits, e.g. "۝٧".
 //
-// Deliberately NOT prefixed with U+06DD (ARABIC END OF AYAH), unlike the web
-// copy of this function. The bundled Uthmani font already draws Arabic-Indic
-// digits in their enclosed end-of-ayah ornament, so adding U+06DD rendered a
-// SECOND, empty ornament next to the numbered one — device-confirmed on the
-// A72 by magnifying a screenshot: every marker was a numbered ornament plus a
-// blank one. Web's font composes U+06DD with the following digits into a
-// single ornament instead, so apps/web/features/quran/lib/page-groups.ts keeps
-// the prefix — don't "sync" these two without re-checking on a device.
+// HISTORY — this flipped twice, so read before changing it. While mobile
+// bundled KFGQPC Uthmanic Script HAFS, the prefix had to be OMITTED (665897f):
+// that font already draws Arabic-Indic digits inside their enclosed ornament,
+// so U+06DD produced a SECOND, empty ornament (device-confirmed on the A72 by
+// magnifying a screenshot). Mobile now bundles Amiri Quran instead, to match
+// web — and Amiri composes U+06DD WITH the following digits into one ornament,
+// exactly like web does. So the prefix is correct again here.
+// The rule is not "web and mobile differ"; it is "the prefix follows the FONT".
+// If the bundled font ever changes again, re-check this on a device.
 export function ayahMarker(ayahInSurah: number): string {
-  return toArabicIndicDigits(ayahInSurah);
+  return `۝${toArabicIndicDigits(ayahInSurah)}`;
 }

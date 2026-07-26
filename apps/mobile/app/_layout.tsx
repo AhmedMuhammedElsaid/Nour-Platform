@@ -95,11 +95,12 @@ export default function RootLayout() {
   const [localeReady, setLocaleReady] = useState(false);
   const onboarding = useOnboarding();
 
-  // Load custom fonts. UthmanicHafs (KFGQPC Uthmanic Script HAFS) is the Quran
-  // reader's calligraphic font — bundled under assets/fonts/, mapped to
-  // font-quran in tailwind.config.js.
+  // Load custom fonts. AmiriQuran is the Quran reader's calligraphic font,
+  // bundled under assets/fonts/ and mapped to font-quran in tailwind.config.js.
+  // It matches what apps/web loads via next/font/google, so the three surfaces
+  // render the same typeface (owner asked mobile/extension to mirror web).
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const [fontsLoaded] = useFonts({ UthmanicHafs: require("../assets/fonts/UthmanicHafs.ttf") });
+  const [fontsLoaded] = useFonts({ AmiriQuran: require("../assets/fonts/AmiriQuran.ttf") });
 
   useEffect(() => {
     void hydrateLocale().then(() => setLocaleReady(true));

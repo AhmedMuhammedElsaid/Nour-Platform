@@ -9,13 +9,14 @@ describe("toArabicIndicDigits", () => {
 });
 
 describe("ayahMarker", () => {
-  // No U+06DD prefix on mobile: the bundled Uthmani font already encloses
-  // Arabic-Indic digits in the end-of-ayah ornament, so the prefix drew a
-  // second, empty ornament beside the numbered one on device.
-  it("renders the bare Arabic-Indic ayah number, with no U+06DD prefix", () => {
-    expect(ayahMarker(7)).toBe("٧");
-    expect(ayahMarker(107)).toBe("١٠٧");
-    expect(ayahMarker(7)).not.toContain("۝");
+  // The U+06DD prefix follows the bundled FONT, not the platform. Mobile now
+  // bundles Amiri Quran (matching web), which composes U+06DD with the digits
+  // into ONE ornament — so the prefix belongs here. It was correctly OMITTED
+  // while mobile bundled KFGQPC Uthmanic Script HAFS, which draws the ornament
+  // around the digits itself and rendered a second, empty one (665897f).
+  it("prefixes the Arabic-Indic ayah number with U+06DD", () => {
+    expect(ayahMarker(7)).toBe("۝٧");
+    expect(ayahMarker(107)).toBe("۝١٠٧");
   });
 });
 

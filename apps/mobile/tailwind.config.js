@@ -30,7 +30,7 @@ module.exports = {
       fontFamily: {
         display: ["Fraunces_400Regular", "System"],
         sans: ["Inter_400Regular", "System"],
-        quran: ["UthmanicHafs", "System"],
+        quran: ["AmiriQuran", "System"],
       },
       borderRadius: {
         sm: "6px",

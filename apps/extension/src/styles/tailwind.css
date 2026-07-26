@@ -16,11 +16,11 @@
    here so the Mushaf reader gets the real printed-mushaf glyph shapes offline,
    with no CDN request (MV3 CSP + privacy, same rationale as Fraunces above). */
 @font-face {
-  font-family: "KFGQPC Uthmanic Script HAFS";
+  font-family: "Amiri Quran";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("../assets/uthmanic-hafs.woff2") format("woff2");
+  src: url("../assets/amiri-quran.woff2") format("woff2");
 }
 
 /* Design tokens — mirrors packages/ui/src/styles/tokens.css. Dark is the default
@@ -45,9 +45,9 @@
      first so the Mushaf reader renders real printed-mushaf glyph shapes
      offline; the rest is a best-effort fallback through commonly-installed
      Quran/Naskh faces for the brief flash before the font-face loads. */
-  --font-quran: "KFGQPC Uthmanic Script HAFS", "Amiri Quran", "Amiri",
-    "Scheherazade New", "Traditional Arabic", "Noto Naskh Arabic", ui-serif,
-    serif;
+  --font-quran: "Amiri Quran", "Amiri", "Scheherazade New",
+    "KFGQPC Uthmanic Script HAFS", "Traditional Arabic", "Noto Naskh Arabic",
+    ui-serif, serif;
 
   --radius-sm: 6px;
   --radius-md: 10px;
