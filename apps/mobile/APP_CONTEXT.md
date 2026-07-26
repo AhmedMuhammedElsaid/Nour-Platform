@@ -2145,3 +2145,45 @@ charging; a temporary `settings put system screen_off_timeout` bump was used and
 30000**). Verified by eye earlier in the session: fill + single ornament. NOT verified: this
 overlap fix and the 300% ceiling.
 
+
+### Mushaf paginates by (page, part) — one surah per flip — 2026-07-26
+
+Owner report (web/extension screenshot, p.293): a Madani page that straddles a surah boundary
+showed the END of Al-Israa and the BEGINNING of Al-Kahf on the same flip. `getPageReader`
+already returns per-surah `segments`; every reader just rendered all of them.
+
+Now paginated by `(page, part)`, part = 0-based index into `segments`. Cursor math lives ONCE
+in `packages/shared-core/src/quran/page-parts.ts` (`resolveEntryPart` / `nextPartCursor` /
+`prevPartCursor` / `settlePart`) so the 3 surfaces cannot drift. 604-page numbering unchanged;
+client-only, no API/schema/DB change. Commit `2203997`.
+
+⚠️ **`resolveEntryPart` is load-bearing**: entering a surah routes to its `pageStart`, and for
+any surah starting mid-page that page's segment 0 is the PRECEDING surah. Without it, tapping
+Al-Kahf opens on Al-Israa's tail.
+
+⚠️ **The auto-fit input must describe only what is ON SCREEN.** `reader.tsx` feeds
+`fitMushafFontSize` `segmentCount: 1` + the visible segment's glyphs/bismillah, recomputed on
+PART change. Feeding it the whole page shrinks type to fit text that isn't rendered — that
+reinstates the void `9254a65`/`c28dca3` closed. `GLYPH_ADVANCE_EM` and the
+BANNER/BISMILLAH/DIACRITIC ratios untouched.
+
+✅ **Closes the known `space-between` residual** from the auto-fit entry above: with one segment
+per flip there are only segment + footer, so leftover space can no longer gap BETWEEN surahs.
+
+`autoStartIndex` deleted — the queue is now segment-scoped, so index 0 is correct.
+
+### Content cache version — server-side data changes reach installed builds (`0a961f9`)
+
+Quran queries are `staleTime: Infinity` over a persisted cache and `runOfflinePrefetch`'s
+marker short-circuits on match, so an Atlas-only change is invisible to an installed build.
+⛔ **Do NOT bump `app.json` `expo.version` to force it** — `runtimeVersion.policy` is
+`"appVersion"`, so that moves the runtime version and the OTA stops reaching the installed
+build, needing a full `eas build` + store release. `lib/data-version.ts` exports
+`CONTENT_DATA_VERSION` + `contentCacheBuster(appVersion)`, folded into BOTH the persisted-cache
+`buster` and the prefetch marker (they must stay the same string, or a bust wipes the cache and
+the marker early-returns forever without refilling). Bump the integer on any server-side content
+change.
+
+⚠️ **Ordering trap**: run the migration BEFORE the OTA. OTA-first busts the cache and refetches
+from a not-yet-migrated API, re-caching bad data under the NEW buster — the later migration
+won't bust again.
