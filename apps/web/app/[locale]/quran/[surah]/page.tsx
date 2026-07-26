@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 import { Link } from "@/i18n/navigation";
 import { Reader } from "@/features/quran/components/reader";
+import { ReaderChrome } from "@/features/quran/components/reader-chrome";
 
 interface PageProps {
   params: Promise<{ locale: string; surah: string }>;
@@ -71,20 +72,26 @@ export default async function SurahReaderPage({ params, searchParams }: PageProp
         </span>
         {t("back")}
       </Link>
-      <header className="border-border mb-4 border-b pb-4 text-center">
-        <h1 dir="rtl" className="font-quran text-primary text-2xl sm:text-3xl mb-2">
-          {data.surah.name.ar}
-        </h1>
-        <p className="text-text-2 mt-1 text-sm">
-          {data.surah.name.en} · {data.surah.meaning} · {data.surah.ayahCount}{" "}
-          {t("ayahs")}
-        </p>
-        {data.surah.bismillahPre ? (
-          <p dir="rtl" className="font-quran text-text mt-4 text-2xl">
-            بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
-          </p>
-        ) : null}
-      </header>
+      <ReaderChrome
+        heading={
+          <h1 dir="rtl" className="font-quran text-primary text-2xl sm:text-3xl mb-2">
+            {data.surah.name.ar}
+          </h1>
+        }
+        details={
+          <>
+            <p className="text-text-2 mt-1 text-sm">
+              {data.surah.name.en} · {data.surah.meaning} · {data.surah.ayahCount}{" "}
+              {t("ayahs")}
+            </p>
+            {data.surah.bismillahPre ? (
+              <p dir="rtl" className="font-quran text-text mt-4 text-2xl">
+                بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+              </p>
+            ) : null}
+          </>
+        }
+      />
       <Reader data={data} reciters={reciters} translationDir={translationDir} locale={loc} />
     </div>
   );
