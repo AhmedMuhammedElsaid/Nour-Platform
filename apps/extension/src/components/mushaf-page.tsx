@@ -85,7 +85,7 @@ export function MushafPage({ page, juz, segments, activeGlobal, isPlaying, onPla
   }, [rows]);
 
   return (
-    <div className="mushaf-page border-b border-border px-4 py-5">
+    <div className="border-b border-border px-4 py-5">
       {rows ? (
         rows.map((row, i) => (
           <PageRowView
@@ -176,7 +176,7 @@ function PageRowView({ row, segment, firstLineByAyah, activeGlobal, isPlaying, o
     return (
       <p
         dir="rtl"
-        className="mb-4 text-center font-quran text-mushaf-ink"
+        className="mb-4 text-center font-quran text-text"
         style={{ fontSize: "calc(1.5rem * var(--quran-scale, 1))" }}
       >
         {BISMILLAH}
@@ -224,8 +224,8 @@ function MushafLine({ row, firstLineByAyah, activeGlobal, isPlaying, onPlay }: M
       dir="rtl"
       className={
         row.endsSurah
-          ? "text-center font-quran leading-[2.2] text-mushaf-ink"
-          : "font-quran leading-[2.2] text-mushaf-ink [text-align:justify] [text-align-last:justify]"
+          ? "text-center font-quran leading-[2.2] text-text"
+          : "font-quran leading-[2.2] text-text [text-align:justify] [text-align-last:justify]"
       }
       // Font-size slider: scales the ayah text via the --quran-scale var the
       // reader sets on its wrapper (text-3xl base = 1.875rem).
@@ -255,7 +255,7 @@ function MushafLine({ row, firstLineByAyah, activeGlobal, isPlaying, onPlay }: M
               <span key={i}>
                 {word.arabic}{" "}
                 {word.endsAyah ? (
-                  <span className="mx-1 text-mushaf-ornament">{ayahMarker(word.ayahInSurah)}</span>
+                  <span className="mx-1 text-primary">{ayahMarker(word.ayahInSurah)}</span>
                 ) : null}{" "}
               </span>
             ))}
@@ -279,13 +279,13 @@ function SurahCartouche({ nameAr, nameEn }: SurahCartoucheProps) {
   return (
     <div className="my-4">
       <div dir="rtl" className="flex items-center gap-3">
-        <CartoucheEndcap className="h-6 w-6 shrink-0 text-mushaf-ornament" />
-        <div className="h-px flex-1 border-t border-mushaf-ornament/60" />
-        <p className="shrink-0 px-1 font-quran text-2xl text-mushaf-ornament">{nameAr}</p>
-        <div className="h-px flex-1 border-t border-mushaf-ornament/60" />
-        <CartoucheEndcap className="h-6 w-6 shrink-0 -scale-x-100 text-mushaf-ornament" />
+        <CartoucheEndcap className="h-6 w-6 shrink-0 text-primary" />
+        <div className="h-px flex-1 border-t border-primary/60" />
+        <p className="shrink-0 px-1 font-quran text-2xl text-primary">{nameAr}</p>
+        <div className="h-px flex-1 border-t border-primary/60" />
+        <CartoucheEndcap className="h-6 w-6 shrink-0 -scale-x-100 text-primary" />
       </div>
-      {nameEn ? <p className="mt-1 text-center text-xs text-mushaf-ink/70">{nameEn}</p> : null}
+      {nameEn ? <p className="mt-1 text-center text-xs text-text-2">{nameEn}</p> : null}
     </div>
   );
 }

@@ -82,7 +82,7 @@ export function MushafPageView({ page, activeGlobal, isPlaying, onPlay }: Mushaf
   }, [rows]);
 
   return (
-    <div className="mushaf-page border-border rounded-md border-b px-4 py-5 sm:px-6">
+    <div className="border-border rounded-md border-b px-4 py-5 sm:px-6">
       {rows ? (
         rows.map((row, i) => (
           <PageRowView
@@ -152,7 +152,7 @@ function PageRowView({
 
   if (row.kind === "bismillah") {
     return (
-      <p dir="rtl" className="font-quran text-mushaf-ink mb-4 text-center text-2xl">
+      <p dir="rtl" className="font-quran text-text mb-4 text-center text-2xl">
         {BISMILLAH_UTHMANI}
       </p>
     );
@@ -197,7 +197,7 @@ function MushafLine({ row, firstLineByAyah, activeGlobal, isPlaying, onPlay }: M
     <p
       dir="rtl"
       className={cn(
-        "font-quran text-mushaf-ink leading-[2.2]",
+        "font-quran text-text leading-[2.2]",
         row.endsSurah ? "text-center" : "[text-align:justify] [text-align-last:justify]",
       )}
       // Font-size slider: scales the ayah text via the --quran-scale var the
@@ -234,7 +234,7 @@ function MushafLine({ row, firstLineByAyah, activeGlobal, isPlaying, onPlay }: M
               <span key={i}>
                 {word.arabic}{" "}
                 {word.endsAyah ? (
-                  <span className="text-mushaf-ornament mx-1">{ayahMarker(word.ayahInSurah)}</span>
+                  <span className="text-primary mx-1">{ayahMarker(word.ayahInSurah)}</span>
                 ) : null}{" "}
               </span>
             ))}
@@ -260,14 +260,14 @@ function SurahCartouche({ name, englishName, meaning }: SurahCartoucheProps) {
   return (
     <div className="my-4">
       <div dir="rtl" className="flex items-center gap-3">
-        <CartoucheEndcap className="text-mushaf-ornament h-6 w-6 shrink-0" />
-        <div className="border-mushaf-ornament/60 h-px flex-1 border-t" />
-        <p className="font-quran text-mushaf-ornament shrink-0 px-1 text-2xl sm:text-3xl">{name}</p>
-        <div className="border-mushaf-ornament/60 h-px flex-1 border-t" />
-        <CartoucheEndcap className="text-mushaf-ornament h-6 w-6 shrink-0 -scale-x-100" />
+        <CartoucheEndcap className="text-primary h-6 w-6 shrink-0" />
+        <div className="border-primary/60 h-px flex-1 border-t" />
+        <p className="font-quran text-primary shrink-0 px-1 text-2xl sm:text-3xl">{name}</p>
+        <div className="border-primary/60 h-px flex-1 border-t" />
+        <CartoucheEndcap className="text-primary h-6 w-6 shrink-0 -scale-x-100" />
       </div>
       {englishName ? (
-        <p className="text-mushaf-ink/70 mt-1 text-center text-sm">
+        <p className="text-text-2 mt-1 text-center text-sm">
           {englishName}
           {meaning ? ` · ${meaning}` : ""}
         </p>

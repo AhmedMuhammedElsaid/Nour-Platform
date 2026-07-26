@@ -36,13 +36,6 @@
   --color-danger: var(--color-danger);
   --color-focus: var(--color-focus);
 
-  /* Mushaf (Quran reader) parchment palette — theme-independent, see tokens.css.
-     Powers `bg-mushaf-paper`/`text-mushaf-ink`/`text-mushaf-ornament` etc.,
-     scoped to `.mushaf-page` only. */
-  --color-mushaf-paper: var(--color-mushaf-paper);
-  --color-mushaf-ink: var(--color-mushaf-ink);
-  --color-mushaf-ornament: var(--color-mushaf-ornament);
-
   /* Shadcn semantic aliases */
   --color-background: var(--color-bg);
   --color-foreground: var(--color-text);
@@ -163,21 +156,4 @@
 }
 .shelf-scroll:hover::-webkit-scrollbar-thumb {
   background-color: var(--color-muted);
-}
-
-/*
- * Mushaf (Quran reader) parchment scope. A printed Madani page reads as
- * cream paper regardless of the surrounding app's dark/light toggle, so this
- * aliases the theme-independent `--color-mushaf-*` tokens (tokens.css) to
- * short local custom properties for use in inline styles/SVG fills (e.g.
- * `fill="var(--ornament)"`), and sets the scope's own background/ink so
- * anything under `.mushaf-page` that forgets a utility class still reads
- * correctly. Never nest `[data-theme]`-scoped rules inside this selector.
- */
-.mushaf-page {
-  --paper: var(--color-mushaf-paper);
-  --ink: var(--color-mushaf-ink);
-  --ornament: var(--color-mushaf-ornament);
-  background-color: var(--paper);
-  color: var(--ink);
 }

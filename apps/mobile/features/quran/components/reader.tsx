@@ -29,7 +29,7 @@ import { countAdvanceGlyphs, fitMushafFontSize } from "../lib/fit-mushaf-font";
 import { localizeDigits } from "../lib/page-groups";
 import { MUSHAF_SWIPE_THRESHOLD, resolveSwipeDirection } from "../lib/swipe";
 import { AyahRow } from "./ayah-row";
-import { MUSHAF_VARS, MushafSegment } from "./mushaf-page";
+import { MushafSegment } from "./mushaf-page";
 import { ReaderSettingsSheet } from "./reader-settings-sheet";
 import { TafsirSheet } from "./tafsir-sheet";
 
@@ -455,12 +455,7 @@ export function Reader({
                 {mushafHeader}
               </View>
               <Animated.View
-                // MUSHAF_VARS: the parchment palette is scoped to this reading
-                // container ONLY (never the DARK/LIGHT theme vars from
-                // theme-context.tsx) — a printed page reads as cream paper
-                // whether the app chrome is dark or light. bg-mushaf-paper on
-                // the FlatList below resolves against these vars.
-                style={[{ flex: 1, opacity: pageOpacity }, MUSHAF_VARS]}
+                style={{ flex: 1, opacity: pageOpacity }}
                 onLayout={(e) => {
                   const { width, height } = e.nativeEvent.layout;
                   setReadingArea((cur) =>
@@ -471,12 +466,12 @@ export function Reader({
               >
                 <FlatList<PageSegment>
                   ref={mushafRef}
-                  className="flex-1 bg-mushaf-paper px-4"
+                  className="flex-1 bg-bg px-4"
                   data={pageData.segments}
                   keyExtractor={(s) => `${pageData.page}-${s.surah.number}`}
                   ListFooterComponent={
-                    <View className="items-center border-t border-mushaf-ornament/30 pb-6 pt-3">
-                      <Text className="text-sm text-mushaf-ink/70">
+                    <View className="items-center border-t border-primary/30 pb-6 pt-3">
+                      <Text className="text-sm text-text-2">
                         {t("quran.pageN", { number: localizeDigits(pageData.page, i18n.language) })} ·{" "}
                         {t("quran.juzN", { number: localizeDigits(pageData.juz, i18n.language) })}
                       </Text>

@@ -1,10 +1,10 @@
-import { vars } from "nativewind";
 import { BISMILLAH_UTHMANI } from "@repo/shared-core/quran/basmala";
 import { View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
+import { useTheme } from "@/lib/theme-context";
 import {
   BANNER_NAME_RATIO,
   BISMILLAH_RATIO,
@@ -19,22 +19,14 @@ import type { PageRow, PageRowWord } from "@repo/shared-core/quran/page-rows";
 // [surah]/page.tsx:84 renders before its Reader).
 export const BISMILLAH = BISMILLAH_UTHMANI;
 
-// Mushaf (Quran reader) parchment palette — theme-INDEPENDENT, verbatim from
-// packages/ui/src/styles/tokens.css `--color-mushaf-*`. A printed mushaf page
-// reads as cream paper whether the surrounding app is in dark or light mode,
-// so this is a FIXED vars() block (never DARK/LIGHT from theme-context.tsx),
-// applied by reader.tsx only to the mushaf reading container — nothing else
-// in the app consumes bg-mushaf-paper/text-mushaf-ink/text-mushaf-ornament.
-export const MUSHAF_VARS = vars({
-  "--color-mushaf-paper": "#faf3e8",
-  "--color-mushaf-ink": "#241a12",
-  "--color-mushaf-ornament": "#a3762b",
-});
-
+// The cartouche ornament follows the app's own `--color-primary`, per theme
+// (dark `#c8a050` / light `#9a7830`, apps/mobile/lib/theme-context.tsx).
 // react-native-svg fills can't read NativeWind classes/CSS vars (see
-// sun-arc.tsx), so the ornament hex is repeated here literally — it's the
-// same theme-independent value as MUSHAF_VARS above, not a re-derivation.
-const ORNAMENT_HEX = "#a3762b";
+// sun-arc.tsx), so the hex is repeated here literally rather than derived.
+const ORNAMENT_HEX: Record<"dark" | "light", string> = {
+  dark: "#c8a050",
+  light: "#9a7830",
+};
 
 export interface MushafSegmentProps {
   segment: PageSegment;
@@ -77,7 +69,7 @@ export function MushafSegment({
   onSelectAyah,
 }: MushafSegmentProps) {
   return (
-    <View className="gap-4 border-b border-mushaf-ornament/20 pb-6 pt-4">
+    <View className="gap-4 border-b border-primary/20 pb-6 pt-4">
       {rows ? (
         <MushafRows
           rows={rows}
@@ -148,7 +140,7 @@ function MushafRows({
           return (
             <Text
               key={`bismillah-${i}`}
-              className="text-center font-quran text-mushaf-ink"
+              className="text-center font-quran text-text"
               style={{
                 fontSize: fontSize * BISMILLAH_RATIO,
                 lineHeight: fontSize * BISMILLAH_RATIO * DIACRITIC_LINE_RATIO,
@@ -201,7 +193,7 @@ function MushafLine({ row, fontSize, firstLine, activeGlobal, selectedGlobal, on
 
   return (
     <Text
-      className="font-quran text-mushaf-ink"
+      className="font-quran text-text"
       style={{
         fontSize,
         lineHeight: fontSize * 2.2,
@@ -243,7 +235,7 @@ function MushafLine({ row, fontSize, firstLine, activeGlobal, selectedGlobal, on
           >
             {text}{" "}
             {endsAyahWord ? (
-              <Text className="text-mushaf-ornament" style={{ fontSize, lineHeight: fontSize * 2.2 }}>
+              <Text className="text-primary" style={{ fontSize, lineHeight: fontSize * 2.2 }}>
                 {ayahMarker(endsAyahWord.ayahInSurah)}
               </Text>
             ) : null}{" "}
@@ -283,7 +275,7 @@ function MushafReflow({ segment, fontSize, activeGlobal, selectedGlobal, onSelec
             visually colliding with the EN subtitle below it. 1.6x clears the
             tallest marks. Same reason for the Bismillah below. */}
         <Text
-          className="text-center font-quran text-mushaf-ink"
+          className="text-center font-quran text-text"
           style={{
             fontSize: fontSize * BANNER_NAME_RATIO,
             lineHeight: fontSize * BANNER_NAME_RATIO * DIACRITIC_LINE_RATIO,
@@ -292,14 +284,14 @@ function MushafReflow({ segment, fontSize, activeGlobal, selectedGlobal, onSelec
         >
           {segment.surah.name.ar}
         </Text>
-        <Text className="text-center text-mushaf-ink/70">
+        <Text className="text-center text-text-2">
           {segment.surah.name.en} · {segment.surah.meaning}
         </Text>
       </View>
 
       {segment.showBismillah ? (
         <Text
-          className="text-center font-quran text-mushaf-ink"
+          className="text-center font-quran text-text"
           style={{
             fontSize: fontSize * BISMILLAH_RATIO,
             lineHeight: fontSize * BISMILLAH_RATIO * DIACRITIC_LINE_RATIO,
@@ -315,7 +307,7 @@ function MushafReflow({ segment, fontSize, activeGlobal, selectedGlobal, onSelec
           `writingDirection` only affects iOS; Android resolves RTL from the
           first strong Arabic character, same as ayah-row.tsx today. */}
       <Text
-        className="font-quran text-mushaf-ink"
+        className="font-quran text-text"
         style={{
           fontSize,
           lineHeight: fontSize * 2.2,
@@ -345,7 +337,7 @@ function MushafReflow({ segment, fontSize, activeGlobal, selectedGlobal, onSelec
             )}
           >
             {ayah.textUthmani}{" "}
-            <Text className="text-mushaf-ornament" style={{ fontSize, lineHeight: fontSize * 2.2 }}>
+            <Text className="text-primary" style={{ fontSize, lineHeight: fontSize * 2.2 }}>
               {ayahMarker(ayah.ayahInSurah)}
             </Text>{" "}
           </Text>
@@ -373,9 +365,9 @@ function SurahCartouche({ name, englishName, meaning, fontSize }: SurahCartouche
     <View className="my-1 gap-1">
       <View className="flex-row items-center gap-3">
         <CartoucheEndcap size={endcapSize} />
-        <View className="h-px flex-1 bg-mushaf-ornament/60" />
+        <View className="h-px flex-1 bg-primary/60" />
         <Text
-          className="shrink-0 px-1 text-center font-quran text-mushaf-ornament"
+          className="shrink-0 px-1 text-center font-quran text-primary"
           style={{
             fontSize: fontSize * BANNER_NAME_RATIO,
             lineHeight: fontSize * BANNER_NAME_RATIO * DIACRITIC_LINE_RATIO,
@@ -384,11 +376,11 @@ function SurahCartouche({ name, englishName, meaning, fontSize }: SurahCartouche
         >
           {name}
         </Text>
-        <View className="h-px flex-1 bg-mushaf-ornament/60" />
+        <View className="h-px flex-1 bg-primary/60" />
         <CartoucheEndcap size={endcapSize} mirrored />
       </View>
       {englishName ? (
-        <Text className="text-center text-sm text-mushaf-ink/70">
+        <Text className="text-center text-sm text-text-2">
           {englishName}
           {meaning ? ` · ${meaning}` : ""}
         </Text>
@@ -403,6 +395,8 @@ function SurahCartouche({ name, englishName, meaning, fontSize }: SurahCartouche
 // numeric root width/height — a percentage-only root silently renders
 // nothing (device-confirmed trap from the sun-arc/widget work).
 function CartoucheEndcap({ size, mirrored }: { size: number; mirrored?: boolean }) {
+  const { theme } = useTheme();
+  const ornamentHex = ORNAMENT_HEX[theme];
   return (
     <Svg
       width={size}
@@ -412,10 +406,10 @@ function CartoucheEndcap({ size, mirrored }: { size: number; mirrored?: boolean 
     >
       <Path
         d="M12 2c4 3.5 6 7 6 10.5A6 6 0 0 1 12 19a6 6 0 0 1-6-6.5C6 9 8 5.5 12 2Z"
-        fill={ORNAMENT_HEX}
+        fill={ornamentHex}
         opacity={0.85}
       />
-      <Circle cx={12} cy={12.5} r={2.1} fill={ORNAMENT_HEX} />
+      <Circle cx={12} cy={12.5} r={2.1} fill={ornamentHex} />
     </Svg>
   );
 }

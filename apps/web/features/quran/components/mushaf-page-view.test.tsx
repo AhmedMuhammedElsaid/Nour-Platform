@@ -142,11 +142,10 @@ describe("MushafPageView — laid-out rows", () => {
   });
 
   it("renders rows in order: continuing lines, then the new surah's cartouche/bismillah/line", () => {
-    render(
+    const { container } = render(
       <MushafPageView page={laidOutPage} activeGlobal={null} isPlaying={false} onPlay={vi.fn()} />,
     );
-    const container = screen.getByTestId("mushaf-ayah-6215").closest(".mushaf-page");
-    const text = container?.textContent ?? "";
+    const text = container.textContent ?? "";
     const iLine10 = text.indexOf("AAAA");
     const iLine11 = text.indexOf("DDDD");
     const iCartouche = text.indexOf("الناس");

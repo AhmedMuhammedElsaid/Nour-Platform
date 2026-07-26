@@ -26,15 +26,6 @@ module.exports = {
         warning: "var(--color-warning)",
         danger: "var(--color-danger)",
         focus: "var(--color-focus)",
-        // Mushaf (Quran reader) parchment palette — theme-INDEPENDENT (mirrors
-        // packages/ui/src/styles/tokens.css `--color-mushaf-*`). Applied via a
-        // fixed `vars()` block scoped to the mushaf reading container only
-        // (see MUSHAF_VARS in features/quran/components/mushaf-page.tsx), never
-        // the DARK/LIGHT theme vars — a printed page reads as cream paper
-        // whether the app chrome is dark or light.
-        "mushaf-paper": "var(--color-mushaf-paper)",
-        "mushaf-ink": "var(--color-mushaf-ink)",
-        "mushaf-ornament": "var(--color-mushaf-ornament)",
       },
       fontFamily: {
         display: ["Fraunces_400Regular", "System"],

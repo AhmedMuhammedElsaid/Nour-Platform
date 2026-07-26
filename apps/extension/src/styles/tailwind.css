@@ -52,15 +52,6 @@
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
-
-  /* Mushaf (Quran reader) parchment palette — deliberately theme-INDEPENDENT:
-     a printed mushaf page reads as cream paper whether the surrounding app
-     chrome is in dark or light mode, so these live in the unconditional
-     `:root` block only, never under `[data-theme]`. Scoped via `.mushaf-page`
-     below. Mirrors packages/ui/src/styles/tokens.css. */
-  --color-mushaf-paper: #faf3e8;
-  --color-mushaf-ink: #241a12;
-  --color-mushaf-ornament: #a3762b;
 }
 
 /* Light theme (warm cream) — mirrors the web [data-theme="light"] palette. */
@@ -98,13 +89,6 @@
   --color-ring: var(--color-focus);
   --color-background: var(--color-bg);
   --color-foreground: var(--color-text);
-
-  /* Mushaf (Quran reader) parchment palette — theme-independent, see above.
-     Powers `bg-mushaf-paper`/`text-mushaf-ink`/`text-mushaf-ornament` etc.,
-     scoped to `.mushaf-page` only. */
-  --color-mushaf-paper: var(--color-mushaf-paper);
-  --color-mushaf-ink: var(--color-mushaf-ink);
-  --color-mushaf-ornament: var(--color-mushaf-ornament);
 
   --font-display: var(--font-display);
   --font-quran: var(--font-quran);
@@ -203,22 +187,4 @@
   60% {
     height: 5px;
   }
-}
-
-/*
- * Mushaf (Quran reader) parchment scope. A printed Madani page reads as cream
- * paper regardless of the surrounding app's dark/light toggle, so this
- * aliases the theme-independent `--color-mushaf-*` tokens above to short
- * local custom properties for use in inline styles/SVG fills, and sets the
- * scope's own background/ink so anything under `.mushaf-page` that forgets a
- * utility class still reads correctly. Mirrors
- * packages/ui/src/styles/globals.css `.mushaf-page`. Never nest
- * `[data-theme]`-scoped rules inside this selector.
- */
-.mushaf-page {
-  --paper: var(--color-mushaf-paper);
-  --ink: var(--color-mushaf-ink);
-  --ornament: var(--color-mushaf-ornament);
-  background-color: var(--paper);
-  color: var(--ink);
 }
