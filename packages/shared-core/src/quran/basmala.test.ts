@@ -14,7 +14,7 @@ const DAMMA = "ُ";
 const SUPERSCRIPT_ALEF = "ٰ";
 const ALEF_WASLA = "ٱ";
 
-// بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+// بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
 const BISMILLAH_UTHMANI = [
   `ب${KASRA}س${SUKUN}م${KASRA}`,
   `${ALEF_WASLA}لل${SHADDA}${FATHA}ه${KASRA}`,
@@ -22,7 +22,7 @@ const BISMILLAH_UTHMANI = [
   `${ALEF_WASLA}لر${SHADDA}${FATHA}ح${KASRA}يم${KASRA}`,
 ].join(" ");
 
-// ٱلْحَمْدُ لِلَّهِ — Al-Kahf 18:1 without the prefix (the owner's screenshot).
+// ٱلْحَمْدُ لِلَّهِ — Al-Kahf 18:1 without the prefix (the owner's screenshot).
 const KAHF_1 = [
   `${ALEF_WASLA}ل${SUKUN}ح${FATHA}م${SUKUN}د${DAMMA}`,
   `ل${KASRA}ل${SHADDA}${FATHA}ه${KASRA}`,

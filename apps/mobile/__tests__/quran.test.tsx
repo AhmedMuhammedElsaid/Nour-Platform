@@ -63,7 +63,7 @@ const reader = {
       juz: 1,
       page: 1,
       sajda: false,
-      textUthmani: "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ",
+      textUthmani: "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ",
       words: [],
       translation: "In the name of Allah, the Most Gracious, the Most Merciful.",
       audioUrl: "https://everyayah.com/data/Alafasy_128kbps/001001.mp3",

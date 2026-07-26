@@ -53,3 +53,15 @@ export function stripLeadingBasmala(text: string, surah: number, ayahInSurah: nu
   // the real mushaf, but a data glitch shouldn't blank an ayah.
   return stripped.length > 0 ? stripped : text;
 }
+
+// The Uthmani Basmala, as rendered above a surah. THE canonical copy for every
+// surface — import it, never retype it.
+//
+// Why this exists as a constant: Arabic combining marks are visually identical
+// when reordered, so a hand-typed copy differs in bytes while looking correct,
+// and whoever retypes the string retypes the test assertion with it — meaning a
+// full green test suite proves nothing. That shipped once (`e246d7f`) and was
+// reintroduced three times in a single session on 2026-07-26, once passing a
+// 25/25 gate with corrupted scripture on screen. Removing the second copy is the
+// only control that actually holds; a byte diff is the only way to verify one.
+export const BISMILLAH_UTHMANI = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ";

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import type { PageReader } from "@repo/api/schemas/quran";
+import { BISMILLAH_UTHMANI } from "@repo/shared-core/quran/basmala";
 import { buildPageRows, type PageRow, type PageRowWord } from "@repo/shared-core/quran/page-rows";
 import { cn } from "@repo/ui/lib/utils";
 import { MushafAyahParagraph } from "./mushaf-page";
@@ -109,7 +110,7 @@ export function MushafPageView({ page, activeGlobal, isPlaying, onPlay }: Mushaf
             </div>
             {segment.showBismillah ? (
               <p dir="rtl" className="font-quran text-text mb-4 text-center text-2xl">
-                بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+                {BISMILLAH_UTHMANI}
               </p>
             ) : null}
             <MushafAyahParagraph
@@ -152,7 +153,7 @@ function PageRowView({
   if (row.kind === "bismillah") {
     return (
       <p dir="rtl" className="font-quran text-mushaf-ink mb-4 text-center text-2xl">
-        بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+        {BISMILLAH_UTHMANI}
       </p>
     );
   }

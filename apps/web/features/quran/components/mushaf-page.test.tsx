@@ -20,7 +20,7 @@ function ayah(overrides: Partial<ReaderAyah>): ReaderAyah {
     juz: 1,
     page: 1,
     sajda: false,
-    textUthmani: "بِسْمِ ٱللَّهِ",
+    textUthmani: "بِسْمِ ٱللَّهِ",
     words: [],
     translation: null,
     audioUrl: "https://x/001001.mp3",
@@ -32,16 +32,16 @@ const group: AyahPageGroup = {
   page: 1,
   juz: 1,
   ayahs: [
-    ayah({ numberGlobal: 1, ayahInSurah: 1, textUthmani: "بِسْمِ ٱللَّهِ" }),
-    ayah({ numberGlobal: 2, ayahInSurah: 2, textUthmani: "ٱلْحَمْدُ لِلَّهِ" }),
+    ayah({ numberGlobal: 1, ayahInSurah: 1, textUthmani: "بِسْمِ ٱللَّهِ" }),
+    ayah({ numberGlobal: 2, ayahInSurah: 2, textUthmani: "ٱلْحَمْدُ لِلَّهِ" }),
   ],
 };
 
 describe("MushafPage", () => {
   it("renders each ayah's Uthmani text with an inline ayah marker", () => {
     render(<MushafPage group={group} activeGlobal={null} isPlaying={false} onPlay={vi.fn()} />);
-    expect(screen.getByText(/بِسْمِ ٱللَّهِ/)).toBeInTheDocument();
-    expect(screen.getByText(/ٱلْحَمْدُ لِلَّهِ/)).toBeInTheDocument();
+    expect(screen.getByText(/بِسْمِ ٱللَّهِ/)).toBeInTheDocument();
+    expect(screen.getByText(/ٱلْحَمْدُ لِلَّهِ/)).toBeInTheDocument();
     expect(screen.getByText("۝١")).toBeInTheDocument();
     expect(screen.getByText("۝٢")).toBeInTheDocument();
   });

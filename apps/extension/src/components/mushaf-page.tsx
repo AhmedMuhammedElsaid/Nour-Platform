@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { BISMILLAH_UTHMANI } from "@repo/shared-core/quran/basmala";
 
 import { useI18n } from "../lib/i18n";
 import { ayahMarker } from "../lib/quran-page-groups";
@@ -9,7 +10,7 @@ import type { PageSegment } from "../lib/content";
 // constant rather than an i18n key (same literal as apps/web/app/[locale]/
 // quran/[surah]/page.tsx and apps/mobile/features/quran/components/
 // mushaf-page.tsx).
-export const BISMILLAH = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ";
+export const BISMILLAH = BISMILLAH_UTHMANI;
 
 export type MushafPageProps = {
   page: number;

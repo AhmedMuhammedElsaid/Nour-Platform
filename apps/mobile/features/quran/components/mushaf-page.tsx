@@ -1,4 +1,5 @@
 import { vars } from "nativewind";
+import { BISMILLAH_UTHMANI } from "@repo/shared-core/quran/basmala";
 import { View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
@@ -16,7 +17,7 @@ import type { PageRow, PageRowWord } from "@repo/shared-core/quran/page-rows";
 // Uthmani Bismillah — Quranic text, not a UI string, so it lives as a module
 // constant rather than an i18n key (same literal apps/web/app/[locale]/quran/
 // [surah]/page.tsx:84 renders before its Reader).
-export const BISMILLAH = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ";
+export const BISMILLAH = BISMILLAH_UTHMANI;
 
 // Mushaf (Quran reader) parchment palette — theme-INDEPENDENT, verbatim from
 // packages/ui/src/styles/tokens.css `--color-mushaf-*`. A printed mushaf page

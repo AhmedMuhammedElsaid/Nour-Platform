@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { BISMILLAH_UTHMANI } from "@repo/shared-core/quran/basmala";
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -86,7 +87,7 @@ export default async function SurahReaderPage({ params, searchParams }: PageProp
             </p>
             {data.surah.bismillahPre ? (
               <p dir="rtl" className="font-quran text-text mt-4 text-2xl">
-                بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+                {BISMILLAH_UTHMANI}
               </p>
             ) : null}
           </>

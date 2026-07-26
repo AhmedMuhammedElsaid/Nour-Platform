@@ -44,7 +44,7 @@ function ayahDoc(over: Record<string, unknown> = {}): any {
     hizb: 1,
     page: 1,
     sajda: false,
-    textUthmani: "بِسْمِ ٱللَّهِ",
+    textUthmani: "بِسْمِ ٱللَّهِ",
     words: [{ position: 1, arabic: "بِسْمِ", glossEn: "In (the) name" }],
     ...over,
   };
@@ -150,7 +150,7 @@ describe("quran.service", () => {
           numberGlobal: 2,
           juz: 1,
           page: 1,
-          textUthmani: "ٱلْحَمْدُ لِلَّهِ",
+          textUthmani: "ٱلْحَمْدُ لِلَّهِ",
         }),
       ]);
       vi.mocked(repo.findEditionBySlug).mockResolvedValueOnce(null);
