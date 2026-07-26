@@ -59,7 +59,8 @@
     "./db/migrations/0008-azkar-indexes": "./src/db/migrations/0008-azkar-indexes.ts",
     "./db/migrations/0009-quran-indexes": "./src/db/migrations/0009-quran-indexes.ts",
     "./db/migrations/0010-quran-tafsir-indexes": "./src/db/migrations/0010-quran-tafsir-indexes.ts",
-    "./db/migrations/0011-radio-indexes": "./src/db/migrations/0011-radio-indexes.ts"
+    "./db/migrations/0011-radio-indexes": "./src/db/migrations/0011-radio-indexes.ts",
+    "./db/migrations/0012-strip-ayah1-basmala": "./src/db/migrations/0012-strip-ayah1-basmala.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",

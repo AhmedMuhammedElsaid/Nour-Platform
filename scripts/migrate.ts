@@ -13,6 +13,7 @@ import * as migration0008 from "@repo/api/db/migrations/0008-azkar-indexes";
 import * as migration0009 from "@repo/api/db/migrations/0009-quran-indexes";
 import * as migration0010 from "@repo/api/db/migrations/0010-quran-tafsir-indexes";
 import * as migration0011 from "@repo/api/db/migrations/0011-radio-indexes";
+import * as migration0012 from "@repo/api/db/migrations/0012-strip-ayah1-basmala";
 
 /*
  * Migration runner for the Nour Platform.
@@ -59,6 +60,7 @@ const migrations: Migration[] = [
   migration0009, // quran indexes — additive ensureIndexes on Quran collections (run with --only)
   migration0010, // quran tafsir index — additive
   migration0011, // radio station indexes — additive ensureIndexes (run with --only)
+  migration0012, // strip the dataset's prepended Basmala from ayah 1 (run with --only)
 ];
 
 async function main(): Promise<void> {

@@ -2,6 +2,7 @@
 
 import { parseArgs } from "node:util";
 import type { AnyBulkWriteOperation } from "mongoose";
+import { stripLeadingBasmala } from "@repo/shared-core/quran/basmala";
 import { getDb, disconnectDb } from "@repo/api/db/client";
 import { QuranSurahModel } from "@repo/api/db/models/quran-surah.model";
 import { QuranAyahModel } from "@repo/api/db/models/quran-ayah.model";
@@ -113,7 +114,11 @@ async function seedSurahsAndAyahs(): Promise<void> {
             hizb: Math.ceil(a.hizbQuarter / 4),
             page: a.page,
             sajda: a.sajda !== false,
-            textUthmani: a.text,
+            // The `quran-uthmani` edition embeds the Basmala in ayah 1 of every
+            // surah but 1 and 9, which double-prints against the standalone
+            // Basmala every surface renders as chrome. Strip at the boundary so
+            // a re-seed can't reintroduce what migration 0012 removed.
+            textUthmani: stripLeadingBasmala(a.text, s.number, a.numberInSurah),
           },
         },
         upsert: true,

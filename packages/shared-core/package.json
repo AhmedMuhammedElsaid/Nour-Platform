@@ -23,6 +23,7 @@
     "./prayer-times/format": "./src/prayer-times/format.ts",
     "./qibla/compute": "./src/qibla/compute.ts",
     "./quran/audio-url": "./src/quran/audio-url.ts",
+    "./quran/basmala": "./src/quran/basmala.ts",
     "./quran/juz": "./src/quran/juz.ts",
     "./quran/page-parts": "./src/quran/page-parts.ts",
     "./quran/reciter-avatar": "./src/quran/reciter-avatar.ts",
