@@ -2187,3 +2187,31 @@ change.
 ⚠️ **Ordering trap**: run the migration BEFORE the OTA. OTA-first busts the cache and refetches
 from a not-yet-migrated API, re-caching bad data under the NEW buster — the later migration
 won't bust again.
+
+### Printed-mushaf page layout — reverts the (page,part) split — 2026-07-26
+
+Owner supplied reference screenshots of a printed Madani mushaf and asked for the format,
+paging AND surah content to match. That **reverted the same-day one-surah-per-flip work**
+(`4e37104` reverts `2203997`): the reference shows p.293 with Al-Israa's ending *and* Al-Kahf's
+beginning. `page-parts.ts` is deleted — do not re-add it.
+
+`buildPageRows` (`@repo/shared-core/quran/page-rows`) turns a page into print rows; `reader.tsx`
+computes it once per page and hands each `MushafSegment` its filtered slice. Returns `null` when
+per-word `line`/`page` layout is unseeded → the previous reflowed rendering is kept as a
+PERMANENT fallback, not a transitional one.
+
+⚠️ **`fitMushafFontSize` now takes an optional `lineCount`** and uses it directly when rows
+exist, instead of `ceil(glyphCount / charsPerLine)`. Real line data is strictly better than the
+estimate; the estimate stays for the fallback path. `GLYPH_ADVANCE_EM` and the exported
+BANNER/BISMILLAH/DIACRITIC ratios are untouched — the fit model must keep matching the renderer.
+
+⚠️ The cartouche `Svg` root needs explicit numeric `width`/`height`; percentage-only renders
+nothing on device (same RNAW-class trap as the widget arc).
+
+⛔ **The Uthmani BISMILLAH literal was silently corrupted this session** — retyped with
+shadda/fatha swapped in BOTH the component and its test, so the full gate passed 25/25 green
+while the rendered scripture was wrong. Caught only by `git diff | grep "بِسْمِ" | cat -A`.
+See [[feedback_quranic_literal_integrity]]: a green suite cannot detect this, because the test
+gets retyped alongside the source.
+
+OTA `22f07cd3` (runtime 1.1.1) — **A72 device-verify pending**.
