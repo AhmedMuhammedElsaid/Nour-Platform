@@ -2122,3 +2122,26 @@ the fit), which pushes the page/juz footer below the fold — expected, not a bu
 Diagnosis method worth reusing: `adb exec-out screencap -p`, then crop + 3x upscale with PIL to
 inspect glyph-level rendering. Both this bug and the nested-`<Text>` one were invisible in code
 and obvious at magnification.
+
+### Banner line-height overlap + font ceiling (`5064149`) — 2026-07-26
+
+Owner-reported on A72 after the fill fix: the gilded Arabic surah name visually **collided**
+with its `Al-Baqara · The Cow` subtitle. Cause: neither the banner name nor the Bismillah set
+an explicit `lineHeight`, so RN's default line box let the Uthmani font's tall diacritics
+overflow onto the element below. Both now use a **1.6x line box**; banner gap `gap-1`→`gap-2`.
+**The 1.3 / 1.1 / 1.6 ratios are exported from `lib/fit-mushaf-font.ts`** and consumed by
+`mushaf-page.tsx` — the auto-fit MODELS those line boxes, so a renderer/model drift makes the
+fit overshoot the viewport. Change them in one place only.
+
+`reader-settings-sheet.tsx` `FONT_MAX` **1.6 → 3.0**. Note for the record: the owner believed
+the setting capped at 110%, but 1.6 was always reachable — 110% was just their stored value,
+and a Cancel tap during screenshotting discarded their increase. Ceiling raised anyway because
+the premise holds: fontScale now multiplies an already-page-sized auto-fit, not a fixed 24dp.
+
+Gate: full `pnpm turbo run lint typecheck test build` 25/25, 208 tests. OTA `d9311138`.
+⚠️ **This commit is NOT device-verified** — the A72's 30s screen timeout kept re-locking before
+a screenshot could be taken (`svc power stayon` is a no-op when `mIsPowered=false`, i.e. not
+charging; a temporary `settings put system screen_off_timeout` bump was used and **restored to
+30000**). Verified by eye earlier in the session: fill + single ornament. NOT verified: this
+overlap fix and the 300% ceiling.
+
