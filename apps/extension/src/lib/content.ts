@@ -75,6 +75,11 @@ export type QuranWord = {
   position: number;
   arabic: string;
   glossEn?: string;
+  // Printed-mushaf layout (packages/shared-core/src/schemas/quran.ts
+  // quranWordSchema.line/page), optional until the word-layout seed has run —
+  // drives @repo/shared-core/quran/page-rows, which reflows when absent.
+  line?: number;
+  page?: number;
 };
 
 export type ReaderAyah = {
@@ -138,6 +143,12 @@ export type PageSegment = {
   // True iff this segment opens a new surah on the page AND that surah has a
   // Bismillah preface AND it isn't At-Tawbah (9) — computed server-side.
   showBismillah: boolean;
+  // The surah's total ayah count (packages/shared-core/src/schemas/quran.ts
+  // pageSegmentSchema.surah.ayahCount), optional since a cached pre-change
+  // payload may lack it. Lets buildPageRows tell "this surah ENDS on this
+  // page" (centred final line, as in print) from "the page just ran out"
+  // (justified) — see @repo/shared-core/quran/page-rows.
+  surahAyahCount?: number;
   ayahs: ReaderAyah[];
 };
 
@@ -151,7 +162,15 @@ export type PageReaderData = {
 };
 
 type RawPageSegment = {
-  surah: { number: number; name: { ar: string; en: string }; meaning: string; bismillahPre: boolean };
+  surah: {
+    number: number;
+    name: { ar: string; en: string };
+    meaning: string;
+    bismillahPre: boolean;
+    // Optional (packages/shared-core/src/schemas/quran.ts pageSegmentSchema)
+    // so a cached pre-change payload still parses.
+    ayahCount?: number;
+  };
   showBismillah: boolean;
   ayahs: ReaderAyah[];
 };
@@ -217,6 +236,7 @@ export async function fetchPageReader(
       surahNameEn: s.surah.name.en,
       bismillahPre: s.surah.bismillahPre,
       showBismillah: s.showBismillah,
+      surahAyahCount: s.surah.ayahCount,
       ayahs: s.ayahs,
     })),
   };
