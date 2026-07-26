@@ -10,6 +10,7 @@ import type {
   ReaderAyah,
   SurahReader,
 } from "@repo/shared-core/schemas/quran";
+import { buildPageRows } from "@repo/shared-core/quran/page-rows";
 
 import { Text } from "@/components/ui/text";
 import {
@@ -28,7 +29,7 @@ import { countAdvanceGlyphs, fitMushafFontSize } from "../lib/fit-mushaf-font";
 import { localizeDigits } from "../lib/page-groups";
 import { MUSHAF_SWIPE_THRESHOLD, resolveSwipeDirection } from "../lib/swipe";
 import { AyahRow } from "./ayah-row";
-import { MushafSegment } from "./mushaf-page";
+import { MUSHAF_VARS, MushafSegment } from "./mushaf-page";
 import { ReaderSettingsSheet } from "./reader-settings-sheet";
 import { TafsirSheet } from "./tafsir-sheet";
 
@@ -210,6 +211,37 @@ export function Reader({
     });
   }, [referenceAyah, referenceSurahName]);
 
+  // Line-for-line printed layout, page-level (mirrors apps/web/features/quran/
+  // components/mushaf-page-view.tsx): one buildPageRows() call across every
+  // segment on the page, since a segment with ayahs but no usable per-word
+  // line data bails the WHOLE page to the reflow fallback, not just its own
+  // segment. Each MushafSegment then gets its own slice, filtered by surah
+  // number, below.
+  const pageRows = useMemo(
+    () =>
+      pageData
+        ? buildPageRows({
+            page: pageData.page,
+            segments: pageData.segments.map((segment) => ({
+              surahNumber: segment.surah.number,
+              showBismillah: segment.showBismillah,
+              surahAyahCount: segment.surah.ayahCount,
+              ayahs: segment.ayahs.map((ayah) => ({
+                numberGlobal: ayah.numberGlobal,
+                ayahInSurah: ayah.ayahInSurah,
+                words: ayah.words.map((word) => ({
+                  position: word.position,
+                  arabic: word.arabic,
+                  line: word.line,
+                  page: word.page,
+                })),
+              })),
+            })),
+          })
+        : null,
+    [pageData],
+  );
+
   // Auto-fit the mushaf type to the measured reading area so the page's ayahs
   // FILL it — the owner's actual bar, and the thing four rounds of pure layout
   // tweaks never reached (they moved the footer toward the content; this grows
@@ -235,8 +267,13 @@ export function Reader({
       width: readingArea.width - 32,
       height: readingArea.height - dockSpacing - 4,
       fontScale: prefs.fontScale,
+      // The page's REAL printed line count, when the layout data is there — a
+      // fixed number of rows is strictly better information than estimating
+      // lines from glyphCount/charsPerLine (that estimate assumes reflow to
+      // the measured width, which is only what the FALLBACK path does).
+      lineCount: pageRows?.filter((row) => row.kind === "line").length,
     });
-  }, [pageData, readingArea, dockSpacing, prefs.fontScale]);
+  }, [pageData, pageRows, readingArea, dockSpacing, prefs.fontScale]);
 
   const translationDir =
     (isMushaf ? pageData?.translationEdition?.dir : data?.translationEdition?.dir) ??
@@ -418,7 +455,12 @@ export function Reader({
                 {mushafHeader}
               </View>
               <Animated.View
-                style={{ flex: 1, opacity: pageOpacity }}
+                // MUSHAF_VARS: the parchment palette is scoped to this reading
+                // container ONLY (never the DARK/LIGHT theme vars from
+                // theme-context.tsx) — a printed page reads as cream paper
+                // whether the app chrome is dark or light. bg-mushaf-paper on
+                // the FlatList below resolves against these vars.
+                style={[{ flex: 1, opacity: pageOpacity }, MUSHAF_VARS]}
                 onLayout={(e) => {
                   const { width, height } = e.nativeEvent.layout;
                   setReadingArea((cur) =>
@@ -429,12 +471,12 @@ export function Reader({
               >
                 <FlatList<PageSegment>
                   ref={mushafRef}
-                  className="flex-1 bg-bg px-4"
+                  className="flex-1 bg-mushaf-paper px-4"
                   data={pageData.segments}
                   keyExtractor={(s) => `${pageData.page}-${s.surah.number}`}
                   ListFooterComponent={
-                    <View className="items-center border-t border-border pb-6 pt-3">
-                      <Text variant="muted">
+                    <View className="items-center border-t border-mushaf-ornament/30 pb-6 pt-3">
+                      <Text className="text-sm text-mushaf-ink/70">
                         {t("quran.pageN", { number: localizeDigits(pageData.page, i18n.language) })} ·{" "}
                         {t("quran.juzN", { number: localizeDigits(pageData.juz, i18n.language) })}
                       </Text>
@@ -457,6 +499,7 @@ export function Reader({
                   renderItem={({ item }) => (
                     <MushafSegment
                       segment={item}
+                      rows={pageRows ? pageRows.filter((row) => row.surahNumber === item.surah.number) : null}
                       fontSize={mushafFontSize}
                       activeGlobal={activeGlobal}
                       selectedGlobal={selectedGlobal}

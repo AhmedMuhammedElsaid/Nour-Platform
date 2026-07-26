@@ -81,4 +81,33 @@ describe("fitMushafFontSize", () => {
       fit(200, { segmentCount: 1, bismillahCount: 1 }),
     );
   });
+
+  describe("lineCount (real printed line count from buildPageRows)", () => {
+    // Laid-out height using the FIXED line count, mirroring heightAt's
+    // lineCount branch — no charsPerLine/width dependency at all.
+    function laidOutHeightFromLines(font: number, lines: number): number {
+      return lines * font * 2.2 + (font * 1.3 * 1.6 + 62) + font * 1.1 * 1.6 + 52;
+    }
+
+    it("fills the area using the real line count instead of the glyph estimate", () => {
+      // An 8-line page — the estimate path would derive a DIFFERENT line count
+      // from glyphCount/width, so feeding lineCount must actually change the
+      // result, not be ignored.
+      const withLineCount = fit(300, { lineCount: 8 });
+      const withoutLineCount = fit(300);
+      expect(withLineCount).not.toBe(withoutLineCount);
+      const height = laidOutHeightFromLines(withLineCount, 8);
+      expect(height).toBeLessThanOrEqual(AREA.height + 1);
+      expect(height).toBeGreaterThan(AREA.height * 0.9);
+    });
+
+    it("does not vary with width when lineCount is provided (real layout, not reflow)", () => {
+      expect(fit(300, { lineCount: 8, width: 200 })).toBe(fit(300, { lineCount: 8, width: 600 }));
+    });
+
+    it("still clamps to floor/ceiling with a real line count", () => {
+      expect(fit(300, { lineCount: 100 })).toBe(17);
+      expect(fit(300, { lineCount: 1 })).toBeLessThanOrEqual(40);
+    });
+  });
 });

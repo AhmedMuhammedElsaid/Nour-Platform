@@ -24,6 +24,15 @@ export interface FitMushafFontInput {
   height: number;
   /** User's font-size preference from reader settings; 1 = auto-fit exactly. */
   fontScale: number;
+  /**
+   * The page's REAL printed line count, from `buildPageRows` (one row per
+   * kind:"line"). A printed mushaf page's line count is fixed by the source
+   * layout, not by reflow — so when this is known it's strictly better than
+   * the `glyphCount / charsPerLine` estimate below, which assumes the text
+   * reflows to the measured width (true only for the fallback path, where no
+   * per-word line data exists). Omit for that fallback path.
+   */
+  lineCount?: number;
 }
 
 // Mean horizontal advance of an Uthmani glyph, in em. Calibrated against the
@@ -70,9 +79,16 @@ export function countAdvanceGlyphs(text: string): number {
 // Total laid-out height at a candidate font size. Monotonically increasing in
 // `font`, which is what lets the caller binary-search it.
 function heightAt(font: number, input: FitMushafFontInput): number {
-  const { glyphCount, segmentCount, bismillahCount, width } = input;
-  const charsPerLine = Math.max(1, width / (font * GLYPH_ADVANCE_EM));
-  const lines = Math.ceil(glyphCount / charsPerLine);
+  const { glyphCount, segmentCount, bismillahCount, width, lineCount } = input;
+  let lines: number;
+  if (lineCount !== undefined) {
+    // Real print layout: the line count doesn't change with font size or
+    // measured width, unlike the reflow estimate below.
+    lines = lineCount;
+  } else {
+    const charsPerLine = Math.max(1, width / (font * GLYPH_ADVANCE_EM));
+    lines = Math.ceil(glyphCount / charsPerLine);
+  }
   const paragraph = lines * font * LINE_HEIGHT_RATIO;
   // Both are single lines, but each occupies a DIACRITIC_LINE_RATIO-tall line
   // box — model the box, not the font size, or the fit overshoots the viewport.
