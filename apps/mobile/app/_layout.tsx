@@ -31,6 +31,7 @@ import { useForegroundAdhan } from "@/features/prayer-times/hooks/use-foreground
 import { ThemeProvider } from "@/lib/theme-context";
 import { PlayerProvider } from "@/lib/player-context";
 import { playbackService } from "@/lib/playback-service";
+import { contentCacheBuster } from "@/lib/data-version";
 import { runOfflinePrefetch } from "@/lib/offline-prefetch";
 import appJson from "@/app.json";
 
@@ -118,10 +119,13 @@ export default function RootLayout() {
         persistOptions={{
           persister,
           maxAge: CACHE_MAX_AGE_MS,
-          // Invalidates the persisted cache on an app version bump, so a data
-          // shape change ships with a guaranteed-clean cache instead of a
-          // stale/incompatible restore.
-          buster: appJson.expo.version,
+          // Invalidates the persisted cache on an app version bump OR a
+          // server-side content change, so a data shape/content change ships
+          // with a guaranteed-clean cache instead of a stale restore. The
+          // content half is what lets a JS-only OTA bust the cache without
+          // touching expo.version (which would move the runtime version and
+          // strand the update) — see lib/data-version.ts.
+          buster: contentCacheBuster(appJson.expo.version),
           dehydrateOptions: {
             // Keep TanStack's own success-only predicate for everything else;
             // only add the Quran-surah exclusion on top (see
@@ -188,11 +192,15 @@ function AdhkarQuickActions() {
 function OfflinePrefetchRunner({ queryClient }: { queryClient: QueryClient }) {
   useEffect(() => {
     const timer = setTimeout(() => {
-      // Same version string as the persisted-cache `buster` above — stamped
-      // into the completion marker so an app update (new surah/adhkar data
-      // shape, wiped persisted cache) re-triggers a full prefetch instead of
-      // the marker silently matching forever.
-      void runOfflinePrefetch(queryClient, initialLocale, appJson.expo.version);
+      // MUST be the same string as the persisted-cache `buster` above —
+      // stamped into the completion marker so an app update or a server-side
+      // content bump (wiped persisted cache) re-triggers a full prefetch
+      // instead of the marker silently matching forever.
+      void runOfflinePrefetch(
+        queryClient,
+        initialLocale,
+        contentCacheBuster(appJson.expo.version),
+      );
     }, PREFETCH_DELAY_MS);
     return () => clearTimeout(timer);
     // queryClient is a stable ref from useState(() => ...) in the parent

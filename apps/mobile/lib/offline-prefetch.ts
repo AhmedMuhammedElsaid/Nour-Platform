@@ -104,7 +104,11 @@ async function runWithConcurrency<T>(
 // unset (or stale), so the next app launch's call retries the whole pass.
 //
 // appVersion must be the SAME string passed as _layout.tsx's persisted-cache
-// `buster` (app.json expo.version) — see the OfflineMarker.version comment.
+// `buster` — i.e. `contentCacheBuster(app.json expo.version)`, which folds in
+// CONTENT_DATA_VERSION so a server-side content change (e.g. migration
+// 0012-strip-ayah1-basmala) invalidates cached ayah text without moving the
+// OTA runtime version. See lib/data-version.ts and the OfflineMarker.version
+// comment.
 export async function runOfflinePrefetch(
   queryClient: QueryClient,
   locale: Locale,
