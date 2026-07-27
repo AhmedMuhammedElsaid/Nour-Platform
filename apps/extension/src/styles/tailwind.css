@@ -11,10 +11,16 @@
   src: url("../assets/fraunces.woff2") format("woff2");
 }
 
-/* Self-hosted Quran (Uthmani) face — same UthmanicHafs.ttf apps/mobile loads
-   (apps/mobile/app/_layout.tsx), losslessly repacked to woff2 via fontTools
-   here so the Mushaf reader gets the real printed-mushaf glyph shapes offline,
-   with no CDN request (MV3 CSP + privacy, same rationale as Fraunces above). */
+/* Self-hosted Amiri Quran — the SAME typeface apps/web loads via
+   next/font/google and apps/mobile bundles as AmiriQuran.ttf, so all three
+   surfaces render identically (owner asked mobile+extension to mirror web).
+   Bundled rather than fetched: MV3 CSP forbids CDN fonts (same rationale as
+   Fraunces above).
+   ⚠️ The ayah-end marker prefix FOLLOWS THIS FONT: Amiri composes U+06DD with
+   the following digits into one ornament, so lib/quran-page-groups.ts keeps the
+   prefix. It bundled KFGQPC Uthmanic Script HAFS briefly (that font draws the
+   ornament itself, making U+06DD render a second empty one) — if this file ever
+   goes back to KFGQPC, the marker must drop the prefix again. */
 @font-face {
   font-family: "Amiri Quran";
   font-style: normal;
@@ -41,10 +47,10 @@
   --color-danger: #e26a63;
 
   --font-display: "Fraunces", ui-serif, Georgia, serif;
-  /* Quran (Uthmani) text. Self-hosted KFGQPC Uthmanic Script HAFS (above) is
-     first so the Mushaf reader renders real printed-mushaf glyph shapes
-     offline; the rest is a best-effort fallback through commonly-installed
-     Quran/Naskh faces for the brief flash before the font-face loads. */
+  /* Quran text. Self-hosted Amiri Quran (above) is first so the Mushaf reader
+     matches web exactly; the rest is a best-effort fallback through
+     commonly-installed Quran/Naskh faces for the brief flash before the
+     font-face loads. */
   --font-quran: "Amiri Quran", "Amiri", "Scheherazade New",
     "KFGQPC Uthmanic Script HAFS", "Traditional Arabic", "Noto Naskh Arabic",
     ui-serif, serif;

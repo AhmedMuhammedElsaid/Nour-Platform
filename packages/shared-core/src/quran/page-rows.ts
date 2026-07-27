@@ -90,9 +90,17 @@ export function buildPageRows(input: PageRowsInput): PageRow[] | null {
       const lastPosition = ordered[ordered.length - 1]?.position;
 
       for (const word of ordered) {
+        // Layout must be ALL-or-NOTHING per page. A word with no `line` at all
+        // means the layout seed is incomplete (interrupted bulkWrite, or the
+        // upstream omitted a field) — bail so the caller reflows the whole page
+        // rather than silently dropping that word from a laid-out page. Without
+        // this, a partially-seeded segment renders half its text and loses the
+        // rest with no trace, which is far worse than an unstyled page.
+        if (word.line === undefined || word.page === undefined) return null;
         // An ayah can straddle a page boundary, so filter on the WORD's page,
-        // never the parent ayah's.
-        if (word.page !== input.page || word.line === undefined) continue;
+        // never the parent ayah's. A word legitimately belonging to the
+        // neighbouring page is skipped here, not a bail.
+        if (word.page !== input.page) continue;
 
         const bucket = byLine.get(word.line) ?? [];
         bucket.push({

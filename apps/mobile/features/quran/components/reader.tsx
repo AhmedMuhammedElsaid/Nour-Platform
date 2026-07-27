@@ -10,7 +10,7 @@ import type {
   ReaderAyah,
   SurahReader,
 } from "@repo/shared-core/schemas/quran";
-import { buildPageRows } from "@repo/shared-core/quran/page-rows";
+import { buildPageRows, type PageRow } from "@repo/shared-core/quran/page-rows";
 
 import { Text } from "@/components/ui/text";
 import {
@@ -61,6 +61,15 @@ export interface ReaderProps {
 // scroll for BOTH modes. It also owns the single themed header (back + title
 // + settings/repeat) — the Stack header is hidden to avoid the duplicate-title
 // white bar (point 25).
+// Rows belonging to one segment, or null when there are none. Returning [] here
+// would be TRUTHY and make MushafSegment render an empty page instead of
+// falling back to its reflow path.
+function segmentRows(pageRows: PageRow[] | null, surahNumber: number): PageRow[] | null {
+  if (!pageRows) return null;
+  const own = pageRows.filter((row) => row.surahNumber === surahNumber);
+  return own.length > 0 ? own : null;
+}
+
 export function Reader({
   data,
   pageData,
@@ -494,7 +503,7 @@ export function Reader({
                   renderItem={({ item }) => (
                     <MushafSegment
                       segment={item}
-                      rows={pageRows ? pageRows.filter((row) => row.surahNumber === item.surah.number) : null}
+                      rows={segmentRows(pageRows, item.surah.number)}
                       fontSize={mushafFontSize}
                       activeGlobal={activeGlobal}
                       selectedGlobal={selectedGlobal}
