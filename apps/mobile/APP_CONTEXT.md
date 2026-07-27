@@ -2228,3 +2228,22 @@ comes from `useTheme()` + a small per-theme hex map (dark `#c8a050` / light `#9a
 `--color-primary`) instead of a fixed parchment hex — react-native-svg still can't read CSS
 vars/NativeWind classes. OTA group `bef0fe5d-516e-4431-a905-8a76b1d71211` (runtime 1.1.1),
 gate 25/25, Bismillah byte-check clean. Device-verify pending.
+
+### Mobile now bundles Amiri Quran, matching web — `ayahMarker` back to `U+06DD` — 2026-07-26/27 (`5cd1923`)
+
+Owner reviewed web/mobile/ext typefaces side by side, preferred web's **Amiri Quran**, asked
+mobile+ext to mirror it (mobile+ext both had KFGQPC Uthmanic Script HAFS instead). Added
+`apps/mobile/assets/fonts/AmiriQuran.ttf` (137KB, from `google/fonts`, OFL); deleted
+`UthmanicHafs.ttf`. This flips `ayahMarker` back to prefixing `U+06DD` — **undoing `665897f`,
+correctly**: the prefix follows the bundled FONT, not the platform. KFGQPC draws Arabic-Indic
+digits inside its own end-of-ayah ornament, so adding `U+06DD` produced a second empty ornament
+(device-confirmed on the A72 — this is why `665897f` dropped the prefix for mobile). Amiri
+composes `U+06DD` WITH the digits into a single ornament, exactly like web. All 3 surfaces now
+share a typeface, so all 3 correctly carry the same prefix. **Do not re-flip this** based on
+"mobile used to have no prefix" — that was only right while mobile bundled KFGQPC. Owner
+explicitly chose to KEEP mobile's per-page auto-fit (`fitMushafFontSize`) — type size still
+adapts per device even though typeface/layout/format now match web exactly. OTA group
+`faa39c30-66cd-4808-9570-f2715c88e8d1` (runtime 1.1.1). **Pending**: A72 device-verify of BOTH
+the layout and whether the OTA actually delivered the new font asset — if Arabic renders as a
+plain system serif on-device, the asset didn't ship and this needs a real `eas build`, not an
+OTA (font files are native assets, not JS).
