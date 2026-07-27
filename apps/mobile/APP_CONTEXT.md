@@ -2247,3 +2247,27 @@ adapts per device even though typeface/layout/format now match web exactly. OTA 
 the layout and whether the OTA actually delivered the new font asset — if Arabic renders as a
 plain system serif on-device, the asset didn't ship and this needs a real `eas build`, not an
 OTA (font files are native assets, not JS).
+
+### Opus review of mushaf branch (`7b3f4aa..HEAD`, 2026-07-27) — 2 mobile-visual findings OPEN
+
+`a7d6ea0` fixed the mechanical part (`buildPageRows` partial-bail + `reader.tsx`
+`segmentRows()` empty-array guard — both latent, not live). These two are NOT fixed —
+mobile-visual, need the A72 in hand per `project_mushaf_full_page_layout.md`'s
+four-wasted-rounds history:
+
+- **A. Auto-fit ignores row gap.** `apps/mobile/features/quran/components/mushaf-page.tsx`
+  wraps rows in `<View className="gap-4 …">`; `MushafRows` returns a fragment, so every
+  row is a direct flex child of that gapped container → `16dp × (rowCount − 1)` of height
+  the model in `apps/mobile/features/quran/lib/fit-mushaf-font.ts` never subtracts. A
+  15-line page can overshoot the viewport ~40% (model hits the MIN_FONT floor and still
+  overflows). Fix: either add `+ Math.max(0, rowCount - 1) * ROW_GAP` inside `heightAt()`,
+  or drop `gap-4` from the rows wrapper and let `lineHeight` own the spacing so renderer
+  and model agree again.
+- **B. RN can't justify a one-line paragraph.** Each `kind: "line"` row is its own
+  `<Text>` holding exactly one line; iOS and Android both exclude a paragraph's LAST line
+  from justification, and a one-line paragraph is all last-line — no RN equivalent of
+  web/ext's `[text-align-last:justify]`. Mobile renders ragged start-aligned lines while
+  web/extension render true justified mushaf blocks on the same data. Net effect: the
+  "reproduces the printed mushaf page" feature does not actually reproduce on the surface
+  the owner reviews on hardware — needs a different technique (e.g. manual justification
+  via measured word-gap padding) since there's no RN prop for it.
