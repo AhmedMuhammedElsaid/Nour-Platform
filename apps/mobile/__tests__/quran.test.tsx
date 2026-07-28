@@ -17,19 +17,38 @@ jest.mock("@/lib/api", () => ({
 const mockLoadQueue = jest.fn();
 const mockToggle = jest.fn();
 let mockCurrentTrack: { id: string } | null = null;
-jest.mock("@/lib/player-context", () => ({
-  usePlayer: () => ({
+// The reader reads transport + actions separately (see lib/player-context's
+// four-context split); usePlayer is kept here for any consumer still using it.
+jest.mock("@/lib/player-context", () => {
+  const transport = () => ({
     isPlaying: false,
+    isBuffering: false,
+    errorMessage: null,
     hasQueue: false,
+    currentIndex: -1,
     currentTrack: mockCurrentTrack,
+  });
+  const actions = () => ({
     loadQueue: mockLoadQueue,
     toggle: mockToggle,
     pause: jest.fn(),
     play: jest.fn(),
-  }),
-  usePlayerProgress: () => ({ currentTime: 0, duration: 0 }),
-  PlayerProvider: ({ children }: { children: React.ReactNode }) => children,
-}));
+  });
+  return {
+    usePlayerTransport: transport,
+    usePlayerActions: actions,
+    usePlayerQueue: () => ({ queue: [], repeatMode: "off", isShuffled: false }),
+    usePlayerPrefs: () => ({
+      playbackRate: 1,
+      volume: 1,
+      sleepTimerEndsAt: null,
+      sleepAtTrackEnd: false,
+    }),
+    usePlayer: () => ({ ...transport(), ...actions() }),
+    usePlayerProgress: () => ({ currentTime: 0, duration: 0 }),
+    PlayerProvider: ({ children }: { children: React.ReactNode }) => children,
+  };
+});
 
 jest.mock("expo-router", () => {
   const react = jest.requireActual("react") as typeof import("react");

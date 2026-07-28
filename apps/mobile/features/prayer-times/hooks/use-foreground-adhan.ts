@@ -12,7 +12,7 @@ import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from "expo-aud
 import type { AdhanPrayerKey } from "@repo/shared-core/schemas/prayer-times";
 
 import { assetUrl } from "@/lib/api";
-import { usePlayer } from "@/lib/player-context";
+import { usePlayerActions } from "@/lib/player-context";
 import { useAdhanSettings } from "./use-adhan-settings";
 
 const NOTIF_TAG_PREFIX = "nour-azan-";
@@ -46,7 +46,11 @@ export function useForegroundAdhan(): {
   stop: () => void;
 } {
   const { settings } = useAdhanSettings();
-  const player = usePlayer();
+  // Actions ONLY (plus the imperative isPlaying read below). This hook is
+  // mounted at the app root, so subscribing to player state would re-render the
+  // whole tree on every track change / volume nudge for no reason — it never
+  // renders playback state, it only ducks and resumes.
+  const player = usePlayerActions();
   const [activeKey, setActiveKey] = useState<AdhanPrayerKey | null>(null);
 
   // Keep the latest settings + RNTP handle reachable from the stable listener.
@@ -104,7 +108,7 @@ export function useForegroundAdhan(): {
       const adhan = adhanRef.current;
 
       // Duck the playlist queue for the adhan's duration.
-      if (playerRef.current.isPlaying) {
+      if (playerRef.current.getIsPlaying()) {
         duckedRef.current = true;
         playerRef.current.pause();
       }

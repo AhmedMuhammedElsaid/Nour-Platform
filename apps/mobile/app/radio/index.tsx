@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { initialLocale } from "@/lib/i18n";
-import { usePlayer } from "@/lib/player-context";
+import { usePlayerActions, usePlayerTransport } from "@/lib/player-context";
 import { radioStationsQuery } from "@/lib/queries";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
 import {
@@ -37,7 +37,8 @@ export default function RadioScreen() {
   const insets = useSafeAreaInsets();
   const dockSpacing = useDockSpacing();
   const locale = initialLocale;
-  const { loadQueue, currentTrack, isPlaying, toggle } = usePlayer();
+  const { currentTrack, isPlaying } = usePlayerTransport();
+  const { loadQueue, toggle } = usePlayerActions();
 
   const stationsQuery = useQuery(radioStationsQuery());
 
@@ -90,17 +91,25 @@ export default function RadioScreen() {
       .slice(0, RECENT_VISIBLE_COUNT);
   }, [recent, stations]);
 
-  const renderCard = (station: StationView) => (
-    <View key={station.slug} className="w-[48%]">
-      <StationCard
-        station={station}
-        isCurrent={currentTrack?.id === `radio:${station.slug}`}
-        isPlaying={isPlaying}
-        isFavorite={favorites.includes(station.slug)}
-        onPlay={handlePlay}
-        onToggleFavorite={handleToggleFavorite}
-      />
-    </View>
+  const favoriteSet = useMemo(() => new Set(favorites), [favorites]);
+
+  // useCallback + a Set lookup so <StationCard>'s React.memo actually holds:
+  // an inline renderer rebuilt every render re-rendered all 18 tiles on any
+  // parent state change (favorites/recents load, playback state).
+  const renderCard = useCallback(
+    (station: StationView) => (
+      <View key={station.slug} className="w-[48%]">
+        <StationCard
+          station={station}
+          isCurrent={currentTrack?.id === `radio:${station.slug}`}
+          isPlaying={isPlaying}
+          isFavorite={favoriteSet.has(station.slug)}
+          onPlay={handlePlay}
+          onToggleFavorite={handleToggleFavorite}
+        />
+      </View>
+    ),
+    [currentTrack, isPlaying, favoriteSet, handlePlay, handleToggleFavorite],
   );
 
   return (

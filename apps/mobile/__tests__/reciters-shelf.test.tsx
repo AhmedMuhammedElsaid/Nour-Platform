@@ -24,7 +24,10 @@ jest.mock("@/lib/device-local", () => ({
   },
 }));
 const mockLoadQueue = jest.fn();
-jest.mock("@/lib/player-context", () => ({ usePlayer: () => ({ loadQueue: mockLoadQueue }) }));
+// The shelf takes actions only — it never renders playback state.
+jest.mock("@/lib/player-context", () => ({
+  usePlayerActions: () => ({ loadQueue: mockLoadQueue }),
+}));
 
 const reciter = (over: Partial<QuranReciter> & Pick<QuranReciter, "slug" | "name">): QuranReciter =>
   ({ audioBase: "https://everyayah.com/x/", ...over }) as QuranReciter;

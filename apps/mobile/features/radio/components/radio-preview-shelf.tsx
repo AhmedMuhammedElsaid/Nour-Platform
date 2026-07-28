@@ -6,7 +6,7 @@ import { useRouter } from "expo-router";
 
 import { Text } from "@/components/ui/text";
 import { initialLocale } from "@/lib/i18n";
-import { usePlayer } from "@/lib/player-context";
+import { usePlayerActions, usePlayerTransport } from "@/lib/player-context";
 import { radioStationsQuery } from "@/lib/queries";
 import { getRadioFavorites, recordRecentStation, toggleRadioFavorite } from "@/lib/device-local";
 import { StationCard } from "./station-card";
@@ -26,7 +26,8 @@ export function RadioPreviewShelf() {
   const { t } = useTranslation();
   const router = useRouter();
   const locale = initialLocale;
-  const { loadQueue, currentTrack, isPlaying, toggle } = usePlayer();
+  const { currentTrack, isPlaying } = usePlayerTransport();
+  const { loadQueue, toggle } = usePlayerActions();
   const { data } = useQuery(radioStationsQuery());
 
   const [favorites, setFavorites] = useState<string[]>([]);

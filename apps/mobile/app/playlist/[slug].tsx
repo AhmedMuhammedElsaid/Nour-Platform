@@ -12,7 +12,7 @@ import { DownloadButton } from "@/features/downloads/components/download-button"
 import { useDownloads } from "@/features/downloads/hooks/use-downloads";
 import { Cover } from "@/features/playlists/components/cover";
 import { initialLocale } from "@/lib/i18n";
-import { usePlayer, type QueueTrack } from "@/lib/player-context";
+import { usePlayerActions, usePlayerTransport, type QueueTrack } from "@/lib/player-context";
 import { categoriesQuery, playlistDetailQuery } from "@/lib/queries";
 import type { CategoryChip, PlayableTrack } from "@/lib/types";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
@@ -30,7 +30,8 @@ export default function PlaylistDetailScreen() {
   const locale = initialLocale;
   const { slug, trackId } = useLocalSearchParams<{ slug: string; trackId?: string }>();
   const dockSpacing = useDockSpacing();
-  const { loadQueue, currentTrack, isPlaying } = usePlayer();
+  const { currentTrack, isPlaying } = usePlayerTransport();
+  const { loadQueue } = usePlayerActions();
   const downloads = useDownloads();
 
   const detail = useQuery(playlistDetailQuery(slug ?? "", locale));

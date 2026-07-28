@@ -74,12 +74,101 @@ export type PlayerContextValue = {
   setSleepTimer: (option: SleepTimerOption) => void;
 };
 
-const PlayerContext = React.createContext<PlayerContextValue | null>(null);
+// The player's state is split across FOUR contexts, not one, because a single
+// bundled value re-rendered every consumer on every unrelated change: the
+// mini-player and the Quran reader re-rendered when the volume slider moved,
+// the root-mounted ForegroundAdhan re-rendered when the queue changed, and so
+// on. `PlayerProgressContext` below was already isolated for the same reason —
+// this generalises that split rather than inventing a second pattern.
+//
+// Read the NARROWEST context you need. `usePlayer()` still returns everything
+// and is fine for the full Now Playing screen, which genuinely reads all of it.
+export type PlayerTransportValue = Pick<
+  PlayerContextValue,
+  "isPlaying" | "isBuffering" | "errorMessage" | "currentTrack" | "currentIndex" | "hasQueue"
+>;
+export type PlayerQueueValue = Pick<
+  PlayerContextValue,
+  "queue" | "repeatMode" | "isShuffled"
+>;
+export type PlayerPrefsValue = Pick<
+  PlayerContextValue,
+  "playbackRate" | "volume" | "sleepTimerEndsAt" | "sleepAtTrackEnd"
+>;
+export type PlayerActionsValue = Pick<
+  PlayerContextValue,
+  | "loadQueue"
+  | "play"
+  | "pause"
+  | "toggle"
+  | "seek"
+  | "next"
+  | "prev"
+  | "goTo"
+  | "retry"
+  | "stop"
+  | "cycleRepeat"
+  | "toggleShuffle"
+  | "setPlaybackRate"
+  | "setVolume"
+  | "setSleepTimer"
+> & {
+  // Imperative read of the live playing state, for callers that must BRANCH on
+  // it inside an event handler but must not re-render when it changes (the
+  // root-mounted foreground-adhan hook). Never call this during render — it
+  // isn't reactive; use `usePlayerTransport().isPlaying` for that.
+  getIsPlaying: () => boolean;
+};
 
+const PlayerTransportContext = React.createContext<PlayerTransportValue | null>(null);
+const PlayerQueueContext = React.createContext<PlayerQueueValue | null>(null);
+const PlayerPrefsContext = React.createContext<PlayerPrefsValue | null>(null);
+const PlayerActionsContext = React.createContext<PlayerActionsValue | null>(null);
+
+function useRequiredContext<T>(ctx: React.Context<T | null>): T {
+  const value = React.useContext(ctx);
+  if (!value) throw new Error("usePlayer must be used within a PlayerProvider");
+  return value;
+}
+
+/** Playback status + what's currently loaded. The slice most consumers want. */
+export function usePlayerTransport(): PlayerTransportValue {
+  return useRequiredContext(PlayerTransportContext);
+}
+
+/** The queue itself plus its repeat/shuffle modes. */
+export function usePlayerQueue(): PlayerQueueValue {
+  return useRequiredContext(PlayerQueueContext);
+}
+
+/** Rate, volume and the sleep timer. */
+export function usePlayerPrefs(): PlayerPrefsValue {
+  return useRequiredContext(PlayerPrefsContext);
+}
+
+/**
+ * Transport controls. This value is identity-STABLE for the provider's whole
+ * lifetime, so a component that only issues commands never re-renders because
+ * of playback — prefer it over `usePlayer()` wherever you don't read state.
+ */
+export function usePlayerActions(): PlayerActionsValue {
+  return useRequiredContext(PlayerActionsContext);
+}
+
+/**
+ * Everything at once. Convenient, but it subscribes to all four contexts, so a
+ * component using it re-renders on ANY player change. Reach for the narrow
+ * hooks above unless you really do read most of the player's state.
+ */
 export function usePlayer(): PlayerContextValue {
-  const ctx = React.useContext(PlayerContext);
-  if (!ctx) throw new Error("usePlayer must be used within a PlayerProvider");
-  return ctx;
+  const transport = usePlayerTransport();
+  const queue = usePlayerQueue();
+  const prefs = usePlayerPrefs();
+  const actions = usePlayerActions();
+  return React.useMemo(
+    () => ({ ...transport, ...queue, ...prefs, ...actions }),
+    [transport, queue, prefs, actions],
+  );
 }
 
 // Live playback position/duration tick ~4×/sec (useProgress). They are kept in a
@@ -390,7 +479,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     null,
   );
   const sleepAtTrackEndRef = React.useRef(false);
-  const lastSaveRef = React.useRef(0);
   // Auto-retry bookkeeping for live streams — the upstream Quran-radio mounts
   // intermittently 5xx on a cold connect; a fresh attempt almost always works,
   // so retry a few times before surfacing the error (see MAX_LIVE_RETRIES).
@@ -406,6 +494,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   // load effect once so it doesn't reset/re-add/replay the already-loaded track.
   const skipNextLoadRef = React.useRef(false);
 
+  // Mirrors of state that ACTIONS need to read. Reading them through refs is
+  // what keeps every callback below on a `[]` dep list, which in turn keeps the
+  // actions context value identity-stable — so an actions-only consumer (e.g.
+  // the root-mounted ForegroundAdhan) never re-renders on playback state.
+  const isPlayingRef = React.useRef(false);
+  const volumeRef = React.useRef(1);
+  const positionRef = React.useRef(0);
+
   queueRef.current = queue;
   currentIndexRef.current = currentIndex;
 
@@ -417,6 +513,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const isBuffering =
     playbackState.state === RNTPState.Buffering ||
     playbackState.state === RNTPState.Loading;
+
+  isPlayingRef.current = isPlaying;
+  volumeRef.current = volumeState;
 
   // Setup RNTP on mount.
   React.useEffect(() => {
@@ -540,19 +639,23 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, [playbackRate, repeatModeState, isShuffled, volumeState]);
 
   // Persist resume position periodically.
+  //
+  // Driven by its OWN 5s interval reading a ref, not by the 250ms `useProgress`
+  // tick: as an effect on [progress.position] it re-ran 4×/sec for the entire
+  // listening session — including infinite live-radio streams — just to fail a
+  // timestamp check 19 times out of 20.
+  positionRef.current = progress.position;
   React.useEffect(() => {
-    const now = Date.now();
-    if (
-      now - lastSaveRef.current > 5000 &&
-      progress.position > 0 &&
-      currentIndex >= 0
-    ) {
-      lastSaveRef.current = now;
-      const track = queueRef.current[currentIndex];
+    const id = setInterval(() => {
+      const position = positionRef.current;
+      const index = currentIndexRef.current;
+      if (position <= 0 || index < 0) return;
+      const track = queueRef.current[index];
       // Live streams have no meaningful resume position — never persist one.
-      if (track && !track.isLive) void savePosition(track.id, progress.position);
-    }
-  }, [progress.position, currentIndex]);
+      if (track && !track.isLive) void savePosition(track.id, position);
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
 
   // Handle RNTP track ending — drive our own repeat/shuffle advancement.
   useTrackPlayerEvents([Event.PlaybackQueueEnded], () => {
@@ -735,14 +838,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const toggle = React.useCallback((): void => {
-    if (isPlaying) {
+    if (isPlayingRef.current) {
       setUserWantsPlayback(false);
       void TrackPlayer.pause();
     } else {
       setUserWantsPlayback(true);
       void TrackPlayer.play();
     }
-  }, [isPlaying]);
+  }, []);
 
   const seek = React.useCallback((seconds: number): void => {
     void TrackPlayer.seekTo(Math.max(0, seconds));
@@ -842,6 +945,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     void TrackPlayer.setVolume(clamped);
   }, []);
 
+  const getIsPlaying = React.useCallback((): boolean => isPlayingRef.current, []);
+
   const setSleepTimer = React.useCallback((option: SleepTimerOption): void => {
     if (sleepTimeoutRef.current) {
       clearTimeout(sleepTimeoutRef.current);
@@ -869,7 +974,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       // Gentle fade-out over ~3s, then pause and restore volume.
       let step = 0;
       const steps = 15;
-      const startVol = volumeState;
+      // Read at FIRE time, not at schedule time — the user may have changed the
+      // volume during the countdown, and the fade has to restore what's current.
+      const startVol = volumeRef.current;
       const fade = setInterval(() => {
         step += 1;
         const v = Math.max(0, startVol * (1 - step / steps));
@@ -882,7 +989,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         }
       }, 200);
     }, ms);
-  }, [volumeState]);
+  }, []);
 
   // Cleanup sleep timeout on unmount.
   React.useEffect(() => {
@@ -902,19 +1009,31 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       ? (queue[currentIndex] ?? null)
       : null;
 
-  const value = React.useMemo<PlayerContextValue>(
+  const transportValue = React.useMemo<PlayerTransportValue>(
+    () => ({ isPlaying, isBuffering, errorMessage, currentTrack, currentIndex, hasQueue }),
+    [isPlaying, isBuffering, errorMessage, currentTrack, currentIndex, hasQueue],
+  );
+
+  const queueValue = React.useMemo<PlayerQueueValue>(
+    () => ({ queue, repeatMode: repeatModeState, isShuffled }),
+    [queue, repeatModeState, isShuffled],
+  );
+
+  const prefsValue = React.useMemo<PlayerPrefsValue>(
     () => ({
-      queue,
-      currentIndex,
-      isPlaying,
-      isBuffering,
-      errorMessage,
-      hasQueue,
-      currentTrack,
-      repeatMode: repeatModeState,
-      isShuffled,
       playbackRate,
       volume: volumeState,
+      sleepTimerEndsAt,
+      sleepAtTrackEnd,
+    }),
+    [playbackRate, volumeState, sleepTimerEndsAt, sleepAtTrackEnd],
+  );
+
+  // Every callback here has a `[]` dep list (volatile reads go through refs —
+  // see isPlayingRef/volumeRef), so this value is created ONCE and never
+  // changes identity. That's what makes `usePlayerActions()` free to consume.
+  const actionsValue = React.useMemo<PlayerActionsValue>(
+    () => ({
       loadQueue,
       play,
       pause,
@@ -929,22 +1048,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       toggleShuffle,
       setPlaybackRate,
       setVolume,
-      sleepTimerEndsAt,
-      sleepAtTrackEnd,
       setSleepTimer,
+      getIsPlaying,
     }),
     [
-      queue,
-      currentIndex,
-      isPlaying,
-      isBuffering,
-      errorMessage,
-      hasQueue,
-      currentTrack,
-      repeatModeState,
-      isShuffled,
-      playbackRate,
-      volumeState,
       loadQueue,
       play,
       pause,
@@ -959,9 +1066,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       toggleShuffle,
       setPlaybackRate,
       setVolume,
-      sleepTimerEndsAt,
-      sleepAtTrackEnd,
       setSleepTimer,
+      getIsPlaying,
     ],
   );
 
@@ -971,11 +1077,20 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     [progress.position, progress.duration],
   );
 
+  // Actions outermost (never changes) → prefs → queue → transport → progress
+  // (fastest). Nesting order doesn't affect correctness, but it reads as the
+  // update-frequency gradient it is.
   return (
-    <PlayerContext.Provider value={value}>
-      <PlayerProgressContext.Provider value={progressValue}>
-        {children}
-      </PlayerProgressContext.Provider>
-    </PlayerContext.Provider>
+    <PlayerActionsContext.Provider value={actionsValue}>
+      <PlayerPrefsContext.Provider value={prefsValue}>
+        <PlayerQueueContext.Provider value={queueValue}>
+          <PlayerTransportContext.Provider value={transportValue}>
+            <PlayerProgressContext.Provider value={progressValue}>
+              {children}
+            </PlayerProgressContext.Provider>
+          </PlayerTransportContext.Provider>
+        </PlayerQueueContext.Provider>
+      </PlayerPrefsContext.Provider>
+    </PlayerActionsContext.Provider>
   );
 }

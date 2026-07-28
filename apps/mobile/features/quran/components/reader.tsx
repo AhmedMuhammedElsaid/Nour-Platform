@@ -22,7 +22,7 @@ import {
   type QuranPrefs,
 } from "@/lib/device-local";
 import { cn } from "@/lib/cn";
-import { usePlayer } from "@/lib/player-context";
+import { usePlayerActions, usePlayerTransport } from "@/lib/player-context";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
 import { ayahTrackId, buildAyahQueue, buildPageQueue, parseAyahTrackId } from "../lib/ayah-queue";
 import { countAdvanceGlyphs, fitMushafFontSize } from "../lib/fit-mushaf-font";
@@ -61,13 +61,18 @@ export interface ReaderProps {
 // scroll for BOTH modes. It also owns the single themed header (back + title
 // + settings/repeat) — the Stack header is hidden to avoid the duplicate-title
 // white bar (point 25).
-// Rows belonging to one segment, or null when there are none. Returning [] here
-// would be TRUTHY and make MushafSegment render an empty page instead of
-// falling back to its reflow path.
-function segmentRows(pageRows: PageRow[] | null, surahNumber: number): PageRow[] | null {
-  if (!pageRows) return null;
-  const own = pageRows.filter((row) => row.surahNumber === surahNumber);
-  return own.length > 0 ? own : null;
+// Rows grouped by the surah they belong to. A surah with no rows is simply
+// absent from the map, so the lookup below yields `undefined` → `null` — never
+// a TRUTHY empty array, which would make MushafSegment render an empty page
+// instead of falling back to its reflow path.
+function groupRowsBySurah(pageRows: PageRow[] | null): Map<number, PageRow[]> {
+  const bySurah = new Map<number, PageRow[]>();
+  for (const row of pageRows ?? []) {
+    const own = bySurah.get(row.surahNumber);
+    if (own) own.push(row);
+    else bySurah.set(row.surahNumber, [row]);
+  }
+  return bySurah;
 }
 
 export function Reader({
@@ -164,7 +169,12 @@ export function Reader({
   // gets the mini-player + lock-screen controls and keeps playing when you leave
   // the reader. The reader builds a per-ayah queue and reads back the active ayah
   // from player.currentTrack for highlight + scroll.
-  const player = usePlayer();
+  // Transport + actions only: the reader highlights/scrolls from currentTrack
+  // and issues play commands, but never reads the queue array or the prefs
+  // (rate/volume/sleep-timer), so it must not re-render when those change.
+  const transport = usePlayerTransport();
+  const actions = usePlayerActions();
+  const player = useMemo(() => ({ ...transport, ...actions }), [transport, actions]);
 
   // List mode: one surah's queue (unchanged).
   const listQueue = useMemo(
@@ -251,6 +261,12 @@ export function Reader({
     [pageData],
   );
 
+  // Grouped once per page so each <MushafSegment> receives a STABLE rows array.
+  // Filtering inline in renderItem produced a fresh array every render, which
+  // changed identity all the way down and defeated the per-line memoisation in
+  // mushaf-page.tsx (an ayah tap re-rendered the entire page's word tree).
+  const rowsBySurah = useMemo(() => groupRowsBySurah(pageRows), [pageRows]);
+
   // Auto-fit the mushaf type to the measured reading area so the page's ayahs
   // FILL it — the owner's actual bar, and the thing four rounds of pure layout
   // tweaks never reached (they moved the footer toward the content; this grows
@@ -311,6 +327,20 @@ export function Reader({
       listRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.3 });
     }
   }, [activeGlobal, isMushaf, data, pageData]);
+
+  const renderMushafSegment = useCallback(
+    ({ item }: { item: PageSegment }) => (
+      <MushafSegment
+        segment={item}
+        rows={rowsBySurah.get(item.surah.number) ?? null}
+        fontSize={mushafFontSize}
+        activeGlobal={activeGlobal}
+        selectedGlobal={selectedGlobal}
+        onSelectAyah={onSelectAyah}
+      />
+    ),
+    [rowsBySurah, mushafFontSize, activeGlobal, selectedGlobal, onSelectAyah],
+  );
 
   const onToggleBookmark = useCallback(
     (ayah: ReaderAyah) => {
@@ -500,16 +530,7 @@ export function Reader({
                     paddingBottom: dockSpacing,
                   }}
                   onScrollToIndexFailed={() => undefined}
-                  renderItem={({ item }) => (
-                    <MushafSegment
-                      segment={item}
-                      rows={segmentRows(pageRows, item.surah.number)}
-                      fontSize={mushafFontSize}
-                      activeGlobal={activeGlobal}
-                      selectedGlobal={selectedGlobal}
-                      onSelectAyah={onSelectAyah}
-                    />
-                  )}
+                  renderItem={renderMushafSegment}
                 />
               </Animated.View>
             </>

@@ -11,7 +11,7 @@ import { Text } from "@/components/ui/text";
 import { assetUrl } from "@/lib/api";
 import { getQuranPrefs, setQuranPrefs } from "@/lib/device-local";
 import { initialLocale } from "@/lib/i18n";
-import { usePlayer } from "@/lib/player-context";
+import { usePlayerActions } from "@/lib/player-context";
 import { quranRecitersQuery } from "@/lib/queries";
 import { fetchAlFatihaQueue } from "@/features/quran/lib/al-fatiha-queue";
 
@@ -23,7 +23,9 @@ export function RecitersShelf() {
   const router = useRouter();
   const locale = initialLocale;
   const { data } = useQuery(quranRecitersQuery());
-  const { loadQueue } = usePlayer();
+  // Actions only — this shelf never renders playback state, so it must not
+  // re-render when playback changes.
+  const { loadQueue } = usePlayerActions();
 
   // Guard the always-visible home surface: drop any row without a usable slug/name
   // so a malformed API response can never white-screen the whole screen (a reciter

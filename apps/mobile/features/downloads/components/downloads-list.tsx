@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { formatBytes, getTotalDownloadSize } from "@/lib/downloads";
 import type { UseDownloads } from "@/features/downloads/hooks/use-downloads";
-import { usePlayer, type QueueTrack } from "@/lib/player-context";
+import { usePlayerActions, usePlayerTransport, type QueueTrack } from "@/lib/player-context";
 
 type Props = {
   downloads: UseDownloads;
@@ -15,7 +15,8 @@ type Props = {
 export function DownloadsList({ downloads }: Props) {
   const { t } = useTranslation();
   const { records, remove } = downloads;
-  const { loadQueue, currentTrack, isPlaying } = usePlayer();
+  const { currentTrack, isPlaying } = usePlayerTransport();
+  const { loadQueue } = usePlayerActions();
 
   const [totalBytes, setTotalBytes] = React.useState(0);
 

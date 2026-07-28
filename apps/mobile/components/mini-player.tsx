@@ -1,6 +1,7 @@
 // Sticky bottom mini-player bar — visible whenever a queue is loaded.
 // Mirrors the web audio-player.tsx bottom bar (compact: cover/title + play/pause + next).
 
+import { memo } from "react";
 import { Pressable, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
@@ -18,31 +19,25 @@ import {
 } from "@/components/icons/player-icons";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
-import { usePlayer, usePlayerProgress } from "@/lib/player-context";
+import {
+  usePlayerActions,
+  usePlayerProgress,
+  usePlayerQueue,
+  usePlayerTransport,
+} from "@/lib/player-context";
 import { useTheme } from "@/lib/theme-context";
 
-export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
+function MiniPlayerImpl({ bottomInset = 0 }: { bottomInset?: number }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const router = useRouter();
   const primaryColor = theme === "dark" ? "#f0e6cc" : "#13201a";
   const mutedColor = theme === "dark" ? "#5a4a38" : "#6b7670";
-  const {
-    hasQueue,
-    currentTrack,
-    isPlaying,
-    isBuffering,
-    errorMessage,
-    repeatMode,
-    isShuffled,
-    toggle,
-    next,
-    prev,
-    retry,
-    stop,
-    cycleRepeat,
-    toggleShuffle,
-  } = usePlayer();
+  const { hasQueue, currentTrack, isPlaying, isBuffering, errorMessage } =
+    usePlayerTransport();
+  const { repeatMode, isShuffled } = usePlayerQueue();
+  const { toggle, next, prev, retry, stop, cycleRepeat, toggleShuffle } =
+    usePlayerActions();
   const { currentTime, duration } = usePlayerProgress();
 
   if (!hasQueue || !currentTrack) return null;
@@ -180,3 +175,8 @@ export function MiniPlayer({ bottomInset = 0 }: { bottomInset?: number }) {
     </View>
   );
 }
+
+// Mounted on every route via the dock, so it re-rendered on every navigation
+// even though its only prop is a constant. Its own context subscriptions still
+// drive it — memo just stops the parent's pathname churn from reaching it.
+export const MiniPlayer = memo(MiniPlayerImpl);
