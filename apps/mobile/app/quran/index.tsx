@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 import { FlatList, Pressable, SectionList, View } from "react-native";
 import { JUZ_BOUNDARIES, surahsInJuz } from "@repo/shared-core/quran/juz";
+import type { JuzSurahEntry } from "@repo/shared-core/quran/juz";
 import type { QuranSurah } from "@repo/shared-core/schemas/quran";
 
 import { Button } from "@/components/ui/button";
@@ -14,8 +15,13 @@ import { JuzRow } from "@/features/quran/components/juz-shelf";
 import { SurahCard } from "@/features/quran/components/surah-index";
 import { SurahJuzTabs, type ReaderTab } from "@/features/quran/components/surah-juz-tabs";
 import { getQuranLastRead } from "@/lib/device-local";
-import { quranSurahsQuery } from "@/lib/queries";
+import { DEVICE_LOCAL_FRESHNESS, quranSurahsQuery } from "@/lib/queries";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
+
+// Module-level: a fresh options object each render makes the navigator re-apply
+// them. The screen draws its own themed header (see APP_CONTEXT: prefer
+// headerShown:false + <ScreenHeader> over the native header).
+const HEADERLESS = { headerShown: false } as const;
 
 export default function QuranIndexScreen() {
   const { t } = useTranslation();
@@ -26,7 +32,7 @@ export default function QuranIndexScreen() {
   const lastRead = useQuery({
     queryKey: ["quran-last-read"] as const,
     queryFn: getQuranLastRead,
-    staleTime: 0,
+    ...DEVICE_LOCAL_FRESHNESS,
   });
 
   // Only one surah can carry a progress ring — the device only stores a
@@ -49,7 +55,10 @@ export default function QuranIndexScreen() {
     [surahs.data],
   );
 
-  const header = (
+  // memo'd alongside the renderItem callbacks below so <SurahCard>'s React.memo
+  // actually holds — an unstable header/renderItem re-renders all 114 rows.
+  const header = useMemo(
+    () => (
     <View className="gap-4 pb-2">
       <Text variant="display" className="text-3xl">
         {t("quran.title")}
@@ -62,6 +71,26 @@ export default function QuranIndexScreen() {
       </Pressable>
       <SurahJuzTabs tab={tab} onChange={setTab} />
     </View>
+    ),
+    [t, router, tab],
+  );
+
+  const renderSurah = useCallback(
+    ({ item }: { item: QuranSurah }) => (
+      <SurahCard
+        surah={item}
+        progressPct={progress?.surah === item.number ? progress.pct : null}
+      />
+    ),
+    [progress],
+  );
+
+  const renderJuzRow = useCallback(
+    ({ item }: { item: JuzSurahEntry }) => {
+      const surah = surahByNumber.get(item.number);
+      return surah ? <JuzRow entry={item} surah={surah} /> : null;
+    },
+    [surahByNumber],
   );
 
   if (surahs.isPending) {
@@ -95,7 +124,7 @@ export default function QuranIndexScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: false }} />
+      <Stack.Screen options={HEADERLESS} />
       {tab === "surah" ? (
         <FlatList<QuranSurah>
           className="flex-1 bg-bg px-4 pt-16"
@@ -105,12 +134,10 @@ export default function QuranIndexScreen() {
           keyExtractor={(s) => String(s.number)}
           contentContainerStyle={{ paddingBottom: dockSpacing }}
           ListHeaderComponent={header}
-          renderItem={({ item }) => (
-            <SurahCard
-              surah={item}
-              progressPct={progress?.surah === item.number ? progress.pct : null}
-            />
-          )}
+          renderItem={renderSurah}
+          initialNumToRender={10}
+          windowSize={7}
+          removeClippedSubviews
         />
       ) : (
         <SectionList
@@ -122,10 +149,10 @@ export default function QuranIndexScreen() {
           renderSectionHeader={({ section }) => (
             <Text className="font-display mt-3 mb-1 text-lg text-primary">{section.title}</Text>
           )}
-          renderItem={({ item }) => {
-            const surah = surahByNumber.get(item.number);
-            return surah ? <JuzRow entry={item} surah={surah} /> : null;
-          }}
+          renderItem={renderJuzRow}
+          initialNumToRender={12}
+          windowSize={7}
+          removeClippedSubviews
         />
       )}
     </>

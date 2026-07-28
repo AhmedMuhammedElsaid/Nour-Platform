@@ -16,6 +16,16 @@ import { getJson } from "@/lib/api";
 import { readSurah } from "@/lib/quran-offline-store";
 import type { PlaylistDetailResponse } from "@/lib/types";
 
+// Device-local (AsyncStorage) reads opt back IN to refetch-on-mount. The global
+// default is `refetchOnMount: false` (see app/_layout.tsx) because network
+// screens should serve the cache instantly on a tab revisit — but these read
+// state the user just changed elsewhere in the app (last-read pointer, recently
+// played), and the read is a cheap local one, so they must re-run on mount.
+export const DEVICE_LOCAL_FRESHNESS = {
+  staleTime: 0,
+  refetchOnMount: "always",
+} as const;
+
 export const playlistsQuery = (locale: Locale) =>
   queryOptions({
     queryKey: ["playlists", locale] as const,

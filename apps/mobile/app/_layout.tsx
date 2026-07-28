@@ -2,10 +2,11 @@ import "@/global.css";
 import "@/lib/notifications"; // installs the foreground notification handler
 import { hydrateLocale, initialLocale } from "@/lib/i18n";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { QueryClient, defaultShouldDehydrateQuery } from "@tanstack/react-query";
+import type { Query } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -64,6 +65,11 @@ TrackPlayer.registerPlaybackService(() => playbackService);
 // Prevent the splash screen from auto-hiding until fonts have loaded.
 void SplashScreen.preventAutoHideAsync();
 
+// Module-level so the navigator doesn't see a fresh options object on every
+// root render (splashDone / localeReady / onboarding state all re-render it).
+// Every screen renders its own themed header — see components/screen-header.tsx.
+const STACK_SCREEN_OPTIONS = { headerShown: false } as const;
+
 export default function RootLayout() {
   const [queryClient] = useState(
     () =>
@@ -73,6 +79,16 @@ export default function RootLayout() {
             // Keep unmounted queries alive in memory at least as long as the
             // persisted cache is allowed to restore them (see CACHE_MAX_AGE_MS).
             gcTime: CACHE_MAX_AGE_MS,
+            // Perf: every screen unmounts when you leave its tab, so with the
+            // react-query default (staleTime 0 + refetchOnMount) each tab
+            // revisit fired a fresh network request and re-showed a skeleton —
+            // the main reason navigating between tabs felt slow. Content here
+            // is CMS-authored and changes on the order of days, so serving the
+            // cache for 5 minutes is safe; pull-to-refresh and the explicit
+            // invalidations still force a refetch when it matters.
+            staleTime: 5 * 60_000,
+            refetchOnMount: false,
+            retry: 1,
           },
         },
       }),
@@ -113,30 +129,33 @@ export default function RootLayout() {
     }
   }, [fontsLoaded]);
 
+  // Memoized: a fresh persistOptions object on every root render re-runs the
+  // provider's restore/subscribe effect, which touches AsyncStorage.
+  const persistOptions = useMemo(
+    () => ({
+      persister,
+      maxAge: CACHE_MAX_AGE_MS,
+      // Invalidates the persisted cache on an app version bump OR a
+      // server-side content change, so a data shape/content change ships
+      // with a guaranteed-clean cache instead of a stale restore. The
+      // content half is what lets a JS-only OTA bust the cache without
+      // touching expo.version (which would move the runtime version and
+      // strand the update) — see lib/data-version.ts.
+      buster: contentCacheBuster(appJson.expo.version),
+      dehydrateOptions: {
+        // Keep TanStack's own success-only predicate for everything else;
+        // only add the Quran-surah exclusion on top (see isQuranSurahQueryKey
+        // above) rather than reimplementing the default from scratch.
+        shouldDehydrateQuery: (query: Query) =>
+          defaultShouldDehydrateQuery(query) && !isQuranSurahQueryKey(query.queryKey),
+      },
+    }),
+    [persister],
+  );
+
   return (
     <SafeAreaProvider>
-      <PersistQueryClientProvider
-        client={queryClient}
-        persistOptions={{
-          persister,
-          maxAge: CACHE_MAX_AGE_MS,
-          // Invalidates the persisted cache on an app version bump OR a
-          // server-side content change, so a data shape/content change ships
-          // with a guaranteed-clean cache instead of a stale restore. The
-          // content half is what lets a JS-only OTA bust the cache without
-          // touching expo.version (which would move the runtime version and
-          // strand the update) — see lib/data-version.ts.
-          buster: contentCacheBuster(appJson.expo.version),
-          dehydrateOptions: {
-            // Keep TanStack's own success-only predicate for everything else;
-            // only add the Quran-surah exclusion on top (see
-            // isQuranSurahQueryKey above) rather than reimplementing the
-            // default from scratch.
-            shouldDehydrateQuery: (query) =>
-              defaultShouldDehydrateQuery(query) && !isQuranSurahQueryKey(query.queryKey),
-          },
-        }}
-      >
+      <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
         <ThemeProvider>
           <PlayerProvider>
             {localeReady && (
@@ -146,7 +165,7 @@ export default function RootLayout() {
                 <AdhkarQuickActions />
                 <AzanScheduler />
                 <OfflinePrefetchRunner queryClient={queryClient} />
-                <Stack screenOptions={{ headerShown: false }} />
+                <Stack screenOptions={STACK_SCREEN_OPTIONS} />
                 <NavigationProgress />
                 <BottomDock />
                 {onboarding.hydrated && !onboarding.done && (

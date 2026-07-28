@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Text } from "@/components/ui/text";
 import { Cover } from "@/features/playlists/components/cover";
 import { readRecentlyPlayed } from "@/lib/device-local";
+import { DEVICE_LOCAL_FRESHNESS } from "@/lib/queries";
 
 // Device-local shelf. The writer (audio engine) lands in Phase 6; until then
 // the read returns empty and the shelf renders nothing.
@@ -16,7 +17,7 @@ export function ContinueListening() {
   const { data } = useQuery({
     queryKey: ["recently-played"] as const,
     queryFn: readRecentlyPlayed,
-    staleTime: 0,
+    ...DEVICE_LOCAL_FRESHNESS,
   });
 
   const items = data ?? [];

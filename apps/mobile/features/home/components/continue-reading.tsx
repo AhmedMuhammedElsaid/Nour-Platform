@@ -6,6 +6,7 @@ import { Pressable, View } from "react-native";
 import { Card } from "@/components/ui/card";
 import { Text } from "@/components/ui/text";
 import { getQuranLastRead } from "@/lib/device-local";
+import { DEVICE_LOCAL_FRESHNESS } from "@/lib/queries";
 
 // Device-local Quran "continue reading" shelf. The writer (Quran reader) lands
 // in Phase 8; until then the read returns null and the shelf renders nothing.
@@ -15,7 +16,7 @@ export function ContinueReading() {
   const { data } = useQuery({
     queryKey: ["quran-last-read"] as const,
     queryFn: getQuranLastRead,
-    staleTime: 0,
+    ...DEVICE_LOCAL_FRESHNESS,
   });
 
   if (!data) return null;
