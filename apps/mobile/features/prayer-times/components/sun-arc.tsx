@@ -91,6 +91,10 @@ type SunArcProps = {
   // the full prayer-times screen enables this — the small Home widget's arc is too
   // cramped and already has a labeled row below it.
   showLabels?: boolean;
+  // Run the corona breathing pulse. Screens pass `useScreenActive()` so the
+  // loop stops when the screen is blurred or the app is backgrounded — the arc
+  // stays mounted under the router stack long after you've navigated away.
+  animate?: boolean;
 };
 
 export function SunArc({
@@ -100,6 +104,7 @@ export function SunArc({
   onNightBand = isNight,
   theme = "dark",
   showLabels = false,
+  animate = true,
 }: SunArcProps) {
   const { gold: GOLD, sun: SUN, moon: MOON, muted: MUTED } = PALETTES[theme];
   const point = arcPoint(tForFraction(fraction));
@@ -114,17 +119,29 @@ export function SunArc({
   // Mirror the web corona's `animate-pulse`: a 2s ease-in-out breathe between
   // full and half opacity (1s each way via the reversing repeat). Runs on the
   // UI thread, so there are no JS timers to leak under jest.
+  //
+  // `animate` gates the loop. The Home widget's arc stays MOUNTED under the
+  // router stack while the user is on Quran/Radio, so an ungated
+  // `withRepeat(-1)` kept the UI thread animating a view nobody could see for
+  // the lifetime of the app. Screens pass `useScreenActive()` (focused AND
+  // foregrounded); this component stays presentational and knows nothing about
+  // navigation. Parked at full opacity when off, i.e. the normal static frame.
   const coronaOpacity = useSharedValue(1);
   useEffect(() => {
+    if (!animate) {
+      cancelAnimation(coronaOpacity);
+      coronaOpacity.value = 1;
+      return;
+    }
     coronaOpacity.value = withRepeat(
       withTiming(0.5, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
       -1,
       true,
     );
     return () => cancelAnimation(coronaOpacity);
-    // coronaOpacity is a stable shared-value ref; run the pulse once on mount.
+    // coronaOpacity is a stable shared-value ref.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [animate]);
   const coronaProps = useAnimatedProps(() => ({ opacity: coronaOpacity.value }));
 
   return (

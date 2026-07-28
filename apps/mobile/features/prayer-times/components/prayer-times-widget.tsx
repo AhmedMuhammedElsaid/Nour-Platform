@@ -17,6 +17,7 @@ import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-sett
 import { cityLabel } from "@/features/prayer-times/data/cities";
 import { initialLocale } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme-context";
+import { useScreenActive } from "@/lib/use-screen-active";
 import {
   computePrayerTimes,
   getArcPosition,
@@ -46,6 +47,9 @@ export function PrayerTimesWidget() {
   const { theme } = useTheme();
   const { location, prefs, hydrated } = usePrayerSettings();
   const [now, setNow] = useState(() => new Date());
+  // Home stays mounted while the user is on Quran/Radio, so the arc's corona
+  // pulse has to be told when it's actually on screen (see lib/use-screen-active).
+  const screenActive = useScreenActive();
 
   // Tick once a MINUTE (only while Home is focused — the screen stays mounted in
   // the stack, so an ungated interval would keep recomputing on every screen).
@@ -124,7 +128,7 @@ export function PrayerTimesWidget() {
 
       {/* full-bleed arc */}
       <View className="mt-1">
-        <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} onNightBand={arc.onNightBand} theme={theme} showLabels />
+        <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} onNightBand={arc.onNightBand} theme={theme} showLabels animate={screenActive} />
       </View>
 
       {/* Isolated ticking leaf — only this re-renders every second, not the

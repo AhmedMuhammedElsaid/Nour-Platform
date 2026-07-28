@@ -30,6 +30,7 @@ import { cityLabel } from "@/features/prayer-times/data/cities";
 import { initialLocale } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme-context";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
+import { useScreenActive } from "@/lib/use-screen-active";
 import {
   computePrayerTimes,
   getArcPosition,
@@ -62,6 +63,8 @@ export default function PrayerTimesScreen() {
   const [now, setNow] = useState(() => new Date());
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [notifGranted, setNotifGranted] = useState(false);
+  // Gates the arc's corona pulse — this screen stays mounted after you leave it.
+  const screenActive = useScreenActive();
 
   // Tick once a MINUTE — only while this screen is focused (it stays mounted in
   // the stack after you leave it). The per-second countdown lives in the isolated
@@ -252,7 +255,7 @@ export default function PrayerTimesScreen() {
 
         {/* Sun/moon arc */}
         {hydrated && (
-          <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} onNightBand={arc.onNightBand} theme={theme} showLabels />
+          <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} onNightBand={arc.onNightBand} theme={theme} showLabels animate={screenActive} />
         )}
 
         {/* Isolated ticking leaf — only this re-renders every second, not the
