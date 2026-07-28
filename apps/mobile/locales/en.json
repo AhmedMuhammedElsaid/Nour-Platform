@@ -25,7 +25,8 @@
     "toggleTheme": "Toggle theme",
     "switchLocale": "Switch to {{locale}}",
     "localeChanged": "Language changed",
-    "restartRequired": "Restart the app to apply the new text direction."
+    "restartRequired": "Restart the app to apply the new text direction.",
+    "switchingLocale": "Switching language…"
   },
   "onboarding": {
     "title": "Welcome to Nour",

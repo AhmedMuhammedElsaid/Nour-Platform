@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, I18nManager, Pressable } from "react-native";
+import { Alert, I18nManager, Modal, Pressable, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Updates from "expo-updates";
 
+import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { type Locale } from "@repo/shared-core/schemas/locale";
 import i18n, { applyTextDirection, initialLocale, LOCALE_KEY } from "@/lib/i18n";
@@ -16,8 +18,14 @@ export function LocaleSwitcher() {
   const { t } = useTranslation();
   const currentLocale: Locale = (i18n.language as Locale) ?? initialLocale;
   const next: Locale = currentLocale === "ar" ? "en" : "ar";
+  // The reload below takes a couple of seconds and the OS shows nothing during
+  // it, so the app read as frozen at exactly the moment the user tapped. The
+  // overlay makes the restart legible as an intentional transition. It is never
+  // dismissed on the success path — the app restarts out from under it.
+  const [switching, setSwitching] = useState(false);
 
   const handleSwitch = () => {
+    setSwitching(true);
     void (async () => {
       await AsyncStorage.setItem(LOCALE_KEY, next);
       applyTextDirection(next);
@@ -34,6 +42,8 @@ export function LocaleSwitcher() {
       }
 
       await i18n.changeLanguage(next);
+      // Fallback path: no restart is coming, so drop the overlay.
+      setSwitching(false);
       const needsRtlFlip = (next === "ar") !== I18nManager.isRTL;
       if (needsRtlFlip) {
         Alert.alert(t("settings.localeChanged"), t("settings.restartRequired"), [
@@ -44,15 +54,24 @@ export function LocaleSwitcher() {
   };
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={t("settings.switchLocale", { locale: next.toUpperCase() })}
-      onPress={handleSwitch}
-      className="rounded-md border border-border px-2.5 py-1"
-    >
-      <Text className="text-sm font-semibold text-text">
-        {currentLocale === "ar" ? "EN" : "ع"}
-      </Text>
-    </Pressable>
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t("settings.switchLocale", { locale: next.toUpperCase() })}
+        onPress={handleSwitch}
+        className="rounded-md border border-border px-2.5 py-1"
+      >
+        <Text className="text-sm font-semibold text-text">
+          {currentLocale === "ar" ? "EN" : "ع"}
+        </Text>
+      </Pressable>
+
+      <Modal visible={switching} transparent={false} animationType="fade" statusBarTranslucent>
+        <View className="flex-1 items-center justify-center gap-4 bg-bg">
+          <Spinner label={t("settings.switchingLocale")} />
+          <Text variant="muted">{t("settings.switchingLocale")}</Text>
+        </View>
+      </Modal>
+    </>
   );
 }
