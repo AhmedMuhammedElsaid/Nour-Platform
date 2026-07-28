@@ -1,4 +1,5 @@
 import { BISMILLAH_UTHMANI } from "@repo/shared-core/quran/basmala";
+import { memo, useMemo } from "react";
 import { View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
@@ -60,7 +61,7 @@ export interface MushafSegmentProps {
 //  - `rows` is `null` → the ORIGINAL reflowed-paragraph rendering, kept
 //    verbatim. This fallback must keep working indefinitely, not just until
 //    the word-layout seed lands everywhere.
-export function MushafSegment({
+export const MushafSegment = memo(function MushafSegment({
   segment,
   rows,
   fontSize,
@@ -90,7 +91,7 @@ export function MushafSegment({
       )}
     </View>
   );
-}
+});
 
 interface MushafRowsProps {
   rows: PageRow[];
@@ -114,13 +115,20 @@ function MushafRows({
   selectedGlobal,
   onSelectAyah,
 }: MushafRowsProps) {
-  const firstLineByAyah = new Map<number, number>();
-  for (const row of rows) {
-    if (row.kind !== "line") continue;
-    for (const word of row.words) {
-      if (!firstLineByAyah.has(word.numberGlobal)) firstLineByAyah.set(word.numberGlobal, row.lineNumber);
+  // Built once per `rows` (not per render) and handed down as a STABLE
+  // function — an inline arrow here would change identity every render and
+  // defeat <MushafLine>'s memo, re-rendering the whole page's word tree on
+  // every ayah tap / playback tick.
+  const firstLine = useMemo(() => {
+    const firstLineByAyah = new Map<number, number>();
+    for (const row of rows) {
+      if (row.kind !== "line") continue;
+      for (const word of row.words) {
+        if (!firstLineByAyah.has(word.numberGlobal)) firstLineByAyah.set(word.numberGlobal, row.lineNumber);
+      }
     }
-  }
+    return (numberGlobal: number) => firstLineByAyah.get(numberGlobal);
+  }, [rows]);
 
   return (
     <>
@@ -156,7 +164,7 @@ function MushafRows({
             key={`line-${row.lineNumber}`}
             row={row}
             fontSize={fontSize}
-            firstLine={(numberGlobal) => firstLineByAyah.get(numberGlobal)}
+            firstLine={firstLine}
             activeGlobal={activeGlobal}
             selectedGlobal={selectedGlobal}
             onSelectAyah={onSelectAyah}
@@ -180,7 +188,7 @@ interface MushafLineProps {
 // run can carry its own press handler/testID — same one-span-per-ayah
 // contract as the reflow fallback (and web's MushafLine), just narrower when
 // an ayah is split across lines.
-function MushafLine({ row, fontSize, firstLine, activeGlobal, selectedGlobal, onSelectAyah }: MushafLineProps) {
+function MushafLineImpl({ row, fontSize, firstLine, activeGlobal, selectedGlobal, onSelectAyah }: MushafLineProps) {
   const runs: { numberGlobal: number; words: PageRowWord[] }[] = [];
   for (const word of row.words) {
     const last = runs[runs.length - 1];
@@ -245,6 +253,32 @@ function MushafLine({ row, fontSize, firstLine, activeGlobal, selectedGlobal, on
     </Text>
   );
 }
+
+function rowContains(row: MushafLineProps["row"], numberGlobal: number | null): boolean {
+  return numberGlobal != null && row.words.some((w) => w.numberGlobal === numberGlobal);
+}
+
+// A page holds ~15 lines, each a nested <Text> tree of every word on it. The
+// active/selected ayah pointers change on every tap and on every playback
+// advance, and a plain re-render rebuilt ALL of those trees. This comparator
+// re-renders only the lines that actually contain the ayah whose highlight
+// moved (the one losing it and the one gaining it) — everything else bails.
+const MushafLine = memo(MushafLineImpl, (prev, next) => {
+  if (
+    prev.row !== next.row ||
+    prev.fontSize !== next.fontSize ||
+    prev.firstLine !== next.firstLine ||
+    prev.onSelectAyah !== next.onSelectAyah
+  ) {
+    return false;
+  }
+  const highlightMoved = (before: number | null, after: number | null) =>
+    before !== after && (rowContains(next.row, before) || rowContains(next.row, after));
+  return !(
+    highlightMoved(prev.activeGlobal, next.activeGlobal) ||
+    highlightMoved(prev.selectedGlobal, next.selectedGlobal)
+  );
+});
 
 interface MushafReflowProps {
   segment: PageSegment;

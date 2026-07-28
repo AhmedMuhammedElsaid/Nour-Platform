@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { memo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Image, Pressable, View } from "react-native";
 import Animated, {
@@ -111,7 +111,9 @@ interface Props {
 // while-playing, star+waveform LIVE badge) adapted to RN grid tiles instead of
 // the row list this card used to be. Meant for a 2-col flex-wrap grid (see
 // app/radio/index.tsx and radio-preview-shelf.tsx).
-export function StationCard({
+// memo'd: 18 tiles render at once, so every parent state change (favorites or
+// recents resolving, playback ticking) re-rendered the whole grid.
+export const StationCard = memo(function StationCard({
   station,
   isCurrent,
   isPlaying,
@@ -174,4 +176,4 @@ export function StationCard({
       </Pressable>
     </View>
   );
-}
+});

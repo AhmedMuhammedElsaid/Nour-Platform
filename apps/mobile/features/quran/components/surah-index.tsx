@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 import Svg, { Circle } from "react-native-svg";
@@ -45,7 +46,9 @@ interface Props {
   progressPct: number | null;
 }
 
-export function SurahCard({ surah, progressPct }: Props) {
+// memo'd: 114 of these render in one FlatList, so without it every parent
+// re-render (last-read refetch, tab switch) re-rendered the whole grid.
+export const SurahCard = memo(function SurahCard({ surah, progressPct }: Props) {
   const router = useRouter();
   return (
     <Pressable
@@ -78,4 +81,4 @@ export function SurahCard({ surah, progressPct }: Props) {
       </Text>
     </Pressable>
   );
-}
+});
