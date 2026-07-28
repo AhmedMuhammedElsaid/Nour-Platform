@@ -18,10 +18,12 @@ export function BottomDock() {
   // (mini-player + tab bar) over it.
   if (pathname === "/player") return null;
 
+  // Pathname is read ONCE here and handed down — the tab bar used to subscribe
+  // to usePathname() itself, so every navigation re-rendered this subtree twice.
   return (
     <Fragment>
       <MiniPlayer bottomInset={0} />
-      <BottomTabBar bottomInset={insets.bottom} />
+      <BottomTabBar pathname={pathname} bottomInset={insets.bottom} />
     </Fragment>
   );
 }

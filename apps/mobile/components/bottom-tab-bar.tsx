@@ -6,9 +6,9 @@
 // so revisiting an already-open destination pops back to it (state preserved)
 // instead of pushing an ever-growing stack.
 
-import { useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { usePathname, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { Animated, Pressable, View } from "react-native";
 
 import {
@@ -44,11 +44,27 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function BottomTabBar({ bottomInset = 0 }: { bottomInset?: number }) {
+// `pathname` is a PROP, not a `usePathname()` call: the dock (bottom-dock.tsx)
+// already subscribes to it, so subscribing again here re-rendered this tree
+// twice per navigation. memo + the stable `onSelect`/`TabDef` props below mean
+// only the two tabs whose `active` actually flipped re-render.
+function BottomTabBarImpl({
+  pathname,
+  bottomInset = 0,
+}: {
+  pathname: string;
+  bottomInset?: number;
+}) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const router = useRouter();
-  const pathname = usePathname();
+
+  const select = useCallback(
+    (href: TabDef["href"]) => {
+      if (!isActive(pathname, href)) router.navigate(href);
+    },
+    [pathname, router],
+  );
 
   // SVG strokes can't read NativeWind classes (see tab-icons.tsx / sun-arc.tsx),
   // so map the active/inactive icon colours from the resolved token palette.
@@ -67,13 +83,12 @@ export function BottomTabBar({ bottomInset = 0 }: { bottomInset?: number }) {
         return (
           <TabItem
             key={tab.key}
+            href={tab.href}
             label={t(tab.labelKey)}
             active={active}
             Icon={tab.Icon}
             iconColor={active ? activeColor : inactiveColor}
-            onPress={() => {
-              if (!active) router.navigate(tab.href);
-            }}
+            onSelect={select}
           />
         );
       })}
@@ -81,18 +96,22 @@ export function BottomTabBar({ bottomInset = 0 }: { bottomInset?: number }) {
   );
 }
 
-function TabItem({
+export const BottomTabBar = memo(BottomTabBarImpl);
+
+const TabItem = memo(function TabItem({
+  href,
   label,
   active,
   Icon,
   iconColor,
-  onPress,
+  onSelect,
 }: {
+  href: TabDef["href"];
   label: string;
   active: boolean;
   Icon: TabIcon;
   iconColor: string;
-  onPress: () => void;
+  onSelect: (href: TabDef["href"]) => void;
 }) {
   // 0 -> inactive, 1 -> active. Drives the gold pill (opacity + scale) and a
   // subtle lift/scale of the icon. Native driver: only opacity + transform.
@@ -113,7 +132,7 @@ function TabItem({
 
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => onSelect(href)}
       className="flex-1 items-center justify-center gap-1 py-1"
       accessibilityRole="tab"
       accessibilityState={{ selected: active }}
@@ -141,4 +160,4 @@ function TabItem({
       </Text>
     </Pressable>
   );
-}
+});

@@ -18,7 +18,7 @@ describe("BottomTabBar", () => {
   });
 
   it("renders all five tabs", () => {
-    render(<BottomTabBar bottomInset={0} />);
+    render(<BottomTabBar pathname={mockPathname} bottomInset={0} />);
     expect(screen.getAllByRole("tab")).toHaveLength(5);
     for (const label of ["Home", "Quran", "Adhkar", "Prayer Times", "Downloads"]) {
       expect(screen.getByLabelText(label)).toBeTruthy();
@@ -27,26 +27,26 @@ describe("BottomTabBar", () => {
 
   it("marks the tab matching the current pathname as selected", () => {
     mockPathname = "/quran";
-    render(<BottomTabBar bottomInset={0} />);
+    render(<BottomTabBar pathname={mockPathname} bottomInset={0} />);
     expect(screen.getByLabelText("Quran").props.accessibilityState.selected).toBe(true);
     expect(screen.getByLabelText("Home").props.accessibilityState.selected).toBe(false);
   });
 
   it("renders and keeps the right tab active on a nested detail route", () => {
     mockPathname = "/quran/2";
-    render(<BottomTabBar bottomInset={0} />);
+    render(<BottomTabBar pathname={mockPathname} bottomInset={0} />);
     expect(screen.getAllByRole("tab")).toHaveLength(5);
     expect(screen.getByLabelText("Quran").props.accessibilityState.selected).toBe(true);
   });
 
   it("navigates to a tab's route when an inactive tab is pressed", () => {
-    render(<BottomTabBar bottomInset={0} />);
+    render(<BottomTabBar pathname={mockPathname} bottomInset={0} />);
     fireEvent.press(screen.getByLabelText("Adhkar"));
     expect(mockNavigate).toHaveBeenCalledWith("/adhkar");
   });
 
   it("does not re-navigate when the already-active tab is pressed", () => {
-    render(<BottomTabBar bottomInset={0} />);
+    render(<BottomTabBar pathname={mockPathname} bottomInset={0} />);
     fireEvent.press(screen.getByLabelText("Home"));
     expect(mockNavigate).not.toHaveBeenCalled();
   });
