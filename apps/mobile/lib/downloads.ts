@@ -34,18 +34,43 @@ export type DownloadRecord = {
 // Metadata persistence (AsyncStorage)
 // ---------------------------------------------------------------------------
 
+// In-process index of which track ids have a download record, plus the ids
+// whose file has already been confirmed on disk this session.
+//
+// Perf: `getLocalPath` sits in the player's track-load path (player-context
+// `loadQueue`/`next`/`prev`/repeat-one), so it ran on EVERY track change —
+// including ayah-by-ayah Quran autoplay. Each call did an AsyncStorage read +
+// a JSON.parse of the whole record list + a SYNCHRONOUS `File.exists` stat,
+// and the sync stat blocks the JS thread. Nearly every one of those calls is
+// for a track that was never downloaded (Quran ayahs stream), so the index
+// lets that case answer `null` with zero I/O.
+//
+// Both caches are process-local and are rebuilt from AsyncStorage on a cold
+// start; every write path funnels through `writeRecords`, which refreshes them.
+let idIndex: Set<string> | null = null;
+const verifiedUris = new Map<string, string>();
+
+function indexRecords(records: DownloadRecord[]): DownloadRecord[] {
+  idIndex = new Set(records.map((r) => r.trackId));
+  for (const trackId of verifiedUris.keys()) {
+    if (!idIndex.has(trackId)) verifiedUris.delete(trackId);
+  }
+  return records;
+}
+
 async function readRecords(): Promise<DownloadRecord[]> {
   try {
     const raw = await AsyncStorage.getItem(DOWNLOADS_KEY);
-    if (!raw) return [];
+    if (!raw) return indexRecords([]);
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as DownloadRecord[]) : [];
+    return indexRecords(Array.isArray(parsed) ? (parsed as DownloadRecord[]) : []);
   } catch {
     return [];
   }
 }
 
 async function writeRecords(records: DownloadRecord[]): Promise<void> {
+  indexRecords(records);
   try {
     await AsyncStorage.setItem(DOWNLOADS_KEY, JSON.stringify(records));
   } catch {
@@ -67,12 +92,23 @@ export async function getDownloads(): Promise<DownloadRecord[]> {
  * file still exists on disk. Returns null otherwise (stale record is pruned).
  */
 export async function getLocalPath(trackId: string): Promise<string | null> {
+  // Already resolved this session — no storage read, no filesystem stat.
+  const verified = verifiedUris.get(trackId);
+  if (verified) return verified;
+  // Known set of downloads is warm and this track isn't in it: the common case
+  // for streamed tracks. Answering here is what keeps track changes off the
+  // synchronous `File.exists` call below.
+  if (idIndex && !idIndex.has(trackId)) return null;
+
   const records = await readRecords();
   const record = records.find((r) => r.trackId === trackId);
   if (!record) return null;
 
   const file = getTrackFile(trackId);
-  if (file.exists) return file.uri;
+  if (file.exists) {
+    verifiedUris.set(trackId, file.uri);
+    return file.uri;
+  }
 
   // Stale — file was deleted externally; prune the metadata record.
   await writeRecords(records.filter((r) => r.trackId !== trackId));
