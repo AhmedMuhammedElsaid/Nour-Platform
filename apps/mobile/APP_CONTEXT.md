@@ -2271,3 +2271,63 @@ four-wasted-rounds history:
   "reproduces the printed mushaf page" feature does not actually reproduce on the surface
   the owner reviews on hardware — needs a different technique (e.g. manual justification
   via measured word-gap padding) since there's no RN prop for it.
+
+## Perf pass #3 — tab nav / theme+locale switch / radio→Quran freeze (2026-07-28, JS-only → OTA-able)
+
+Owner: "app is really slow, laggy, freezing" navigating tabs, switching AR/EN + light/dark,
+moving radio↔Quran. Three-agent audit found the causes were structural, not incremental.
+8 commits `66f043b`..`1cd2da7`, **committed NOT pushed**. Full monorepo gate green (25/25),
+45 jest suites / 218 tests, `expo export --platform android` compiles.
+
+- **`66f043b` query cache** — root cause of "tabs are slow": screens unmount on tab leave and
+  react-query's defaults are `staleTime 0` + `refetchOnMount`, so EVERY revisit refetched over
+  the network and re-showed a skeleton. `app/_layout.tsx` defaults now `staleTime: 5*60_000`,
+  `refetchOnMount:false`, `retry:1`. ⚠️ Device-local AsyncStorage reads had to opt back IN —
+  new `DEVICE_LOCAL_FRESHNESS` const in `lib/queries.ts` (`staleTime:0` + `refetchOnMount:"always"`)
+  applied to `quran-last-read` + `recently-played`, or "continue reading/listening" would show
+  stale rows. Also memoized `persistOptions` (fresh literal re-ran the restore effect) + hoisted
+  `Stack screenOptions`.
+- **`1ad6d7f` PlayerContext split** — root cause of the radio→Quran freeze: ONE bundled value
+  meant any playback change re-rendered every consumer. Now four contexts (Transport / Queue /
+  Prefs / Actions), generalising the `PlayerProgressContext` split already there. `usePlayer()`
+  composes all four so nothing broke. **Actions is identity-STABLE** — `toggle` + `setSleepTimer`
+  read `isPlaying`/`volume` via new `isPlayingRef`/`volumeRef` so every callback has `[]` deps;
+  new `getIsPlaying()` lets root-mounted `use-foreground-adhan` branch on live state with ZERO
+  subscription. Resume-position persistence moved off the 250ms `useProgress` tick onto its own
+  5s interval + `positionRef` (it re-ran 4×/sec all session, incl. infinite live radio, to fail a
+  timestamp check 19/20 times); `lastSaveRef` deleted. ⚠️ The audit's claim that the sleep-timer
+  fade churned React `volumeState` 15× was WRONG — it only ever called `TrackPlayer.setVolume`.
+- **`343dd56` `lib/downloads.ts`** — `getLocalPath` sits in the RNTP track-load path
+  (`loadQueue`/`next`/`prev`/repeat-one), so every ayah advance did an AsyncStorage read + full
+  JSON.parse + a **synchronous `File.exists` stat that blocks the JS thread**. Added a
+  process-local id `Set` + verified-uri `Map`, refreshed by every write via `indexRecords()`.
+  Undownloaded track (the common case — ayahs stream) now answers `null` with zero I/O.
+- **`0ab9bb6` memo** — `SurahCard` (114 rows), `StationCard` (18 tiles), `MushafSegment`, and
+  `MushafLine` with a **row-scoped comparator** (only lines containing the ayah whose highlight
+  moved re-render, instead of the whole page's nested `<Text>` word tree on every tap/tick).
+  Required stabilising props: `MushafRows` builds `firstLineByAyah` in a `useMemo` and passes a
+  stable `firstLine` fn (was an inline arrow); `reader.tsx` replaced per-render `segmentRows()`
+  filtering with a `rowsBySurah` Map + `renderMushafSegment` useCallback. **Zero Arabic literals
+  touched** — verified `git diff | grep -P '[\x{0600}-\x{06FF}]'` returned nothing.
+- **`c902a49` dock** — `bottom-dock.tsx` and `bottom-tab-bar.tsx` each called `usePathname()`, so
+  every navigation re-rendered the dock subtree TWICE. Pathname read once in the dock and passed
+  as a prop; `BottomTabBar`/`TabItem`/`MiniPlayer` memoized; `TabItem` takes `href` + a stable
+  `onSelect` instead of a per-render closure. ⚠️ `BottomTabBar` now REQUIRES a `pathname` prop —
+  `__tests__/bottom-tab-bar.test.tsx` updated to pass it rather than rely on the router mock.
+- **`fd1f71a` sun-arc** — corona `withRepeat(-1)` only cancelled on unmount, but screens stay
+  mounted, so it animated an invisible view for the app's lifetime. New `lib/use-screen-active.ts`
+  (focused AND foregrounded). ⚠️ Gating had to live in the CALLERS, not `SunArc`: it's documented
+  presentational and `__tests__/sun-arc.test.tsx` renders it standalone, so calling `useFocusEffect`
+  inside it threw "Couldn't find a navigation object". It takes an `animate` prop (default `true`).
+- **`c520be2` locale overlay** — `Updates.reloadAsync()` kept (RTL↔LTR needs a native restart,
+  owner-confirmed choice) but now covered by a themed `<Spinner>` `<Modal>` + new
+  `settings.switchingLocale` string, so the multi-second restart reads as intentional rather than
+  a freeze. Fallback path clears the overlay (no restart coming).
+- **`1cd2da7`** new `__tests__/perf-regressions.test.tsx` — asserts actions-identity stability
+  (and that the probe DID re-render, so it can't pass vacuously) + `getLocalPath` filesystem
+  access counts.
+
+**Pending:** push; then `eas update --branch preview --environment preview` (all JS-only) and the
+owner verifies perceived speed on the A72 — tab switches instant/no skeleton on revisit, theme
+toggle immediate, radio→Quran scroll+tap (the freeze), ayah autoplay advance, language-switch
+overlay. Perf is device-only truth; nothing here is claimed device-verified.
