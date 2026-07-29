@@ -73,18 +73,21 @@ export default async function HomePage({
   const { category, sort } = await searchParams;
   const t = await getTranslations("home");
 
-  // Fetch all categories (no locale param — embedded ar/en on each doc).
-  const categories = await listCategories();
-
-  // Quran reciters for the home "Readers" shelf (immutable reference data).
-  const reciters = await listReciters();
-
-  // First few curated stations for the home "Radio" preview shelf.
-  const stations = await listStations();
+  // These four shelves are independent of each other, so they must not be
+  // awaited in sequence: the page is force-dynamic, so every visit paid four
+  // serial Atlas roundtrips before the first byte (~900 ms TTFB on Lighthouse
+  // mobile). Only `playlists` below genuinely depends on one of them.
+  //   categories — all categories (no locale param, embedded ar/en per doc)
+  //   reciters   — Quran "Readers" shelf (immutable reference data)
+  //   stations   — curated "Radio" preview shelf
+  //   azkarSets  — curated "Adhkar" preview shelf
+  const [categories, reciters, stations, azkarSets] = await Promise.all([
+    listCategories(),
+    listReciters(),
+    listStations(),
+    getPublishedAzkar(),
+  ]);
   const stationViews = stations.map((s) => toStationView(s, locale));
-
-  // First few curated adhkar sets for the home "Adhkar" preview shelf.
-  const azkarSets = await getPublishedAzkar();
 
   // Match the ?category= slug against the locale-specific slug field.
   const matchedCategory =
