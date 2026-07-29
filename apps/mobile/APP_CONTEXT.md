@@ -291,6 +291,16 @@ asks; otherwise keep using `eas build --profile preview --platform android` on `
 implemented and on `main`** (head `c8761e6`); full monorepo gate green, `expo export
 --platform android` compiles, 17 jest suites / 55 tests pass. Phase details below.
 
+**Re-audited 2026-07-29 (`e8b6198`)** — every point re-verified still in place against the
+tree, and the plan file now carries a `✅ CLOSED` header so it stops reading as live work
+(it had none, which is why it kept getting picked up). Two deviations recorded there, both
+intentional: `@react-native-community/slider` was **never added** (Phase 4 took the zero-dep
+Reanimated path from its own footnote, so it needed no rebuild — §4's dep table is wrong),
+and point 3a (double playback) was solved by unifying ayah audio onto the single RNTP player
+rather than the specced `onPlaybackStart` wiring — **`useAyahAudio` no longer exists**. Its
+file/line references have drifted badly since (211 mobile commits, incl. the `1ad6d7f`
+PlayerContext 4-way split); re-derive from the tree, never from that document.
+
 **Two honest caveats** before calling it 100%:
 1. **Point 6 tafsir "only first ayah / empty" is a BACKEND data-seeding gap, not a mobile
    bug** — the client + web route + `getTafsir`/`findTafsir` all key correctly by
@@ -2248,29 +2258,41 @@ the layout and whether the OTA actually delivered the new font asset — if Arab
 plain system serif on-device, the asset didn't ship and this needs a real `eas build`, not an
 OTA (font files are native assets, not JS).
 
-### Opus review of mushaf branch (`7b3f4aa..HEAD`, 2026-07-27) — 2 mobile-visual findings OPEN
+### Opus review of mushaf branch (`7b3f4aa..HEAD`, 2026-07-27) — A FIXED, B accepted-as-is
 
 `a7d6ea0` fixed the mechanical part (`buildPageRows` partial-bail + `reader.tsx`
-`segmentRows()` empty-array guard — both latent, not live). These two are NOT fixed —
-mobile-visual, need the A72 in hand per `project_mushaf_full_page_layout.md`'s
-four-wasted-rounds history:
+`segmentRows()` empty-array guard — both latent, not live). Both visual findings closed
+2026-07-29 (`3bdccfd`, `96c86f2`), gate green 25/25 · 220 tests. **A72 device-verify still
+pending** for A's rendering.
 
-- **A. Auto-fit ignores row gap.** `apps/mobile/features/quran/components/mushaf-page.tsx`
-  wraps rows in `<View className="gap-4 …">`; `MushafRows` returns a fragment, so every
-  row is a direct flex child of that gapped container → `16dp × (rowCount − 1)` of height
-  the model in `apps/mobile/features/quran/lib/fit-mushaf-font.ts` never subtracts. A
-  15-line page can overshoot the viewport ~40% (model hits the MIN_FONT floor and still
-  overflows). Fix: either add `+ Math.max(0, rowCount - 1) * ROW_GAP` inside `heightAt()`,
-  or drop `gap-4` from the rows wrapper and let `lineHeight` own the spacing so renderer
-  and model agree again.
-- **B. RN can't justify a one-line paragraph.** Each `kind: "line"` row is its own
-  `<Text>` holding exactly one line; iOS and Android both exclude a paragraph's LAST line
-  from justification, and a one-line paragraph is all last-line — no RN equivalent of
-  web/ext's `[text-align-last:justify]`. Mobile renders ragged start-aligned lines while
-  web/extension render true justified mushaf blocks on the same data. Net effect: the
-  "reproduces the printed mushaf page" feature does not actually reproduce on the surface
-  the owner reviews on hardware — needs a different technique (e.g. manual justification
-  via measured word-gap padding) since there's no RN prop for it.
+- **A. Auto-fit ignored row gap — FIXED `3bdccfd`.** `gap-4` on MushafSegment's container +
+  `MushafRows` returning a fragment put 16dp between every printed LINE (240dp on a 15-line
+  page, ~560dp viewport), which `fit-mushaf-font.ts`'s `heightAt()` never counted.
+  ⚠️ **The obvious fix — just modelling the gap — was tried first and does NOT work**: 15
+  line boxes *plus* 240dp of gap doesn't fit at any size ≥ `MIN_FONT`, so every dense page
+  floor-clamped and overflowed anyway. Had to remove the gap between lines: container is now
+  plain `border-b pb-6 pt-4`, `lineHeight` owns row spacing (uniform leading, as inside a
+  wrapped paragraph), and banner + Bismillah keep `mb-4` each — modelled as the flat
+  `BLOCK_GAP × (segmentCount + bismillahCount)` term, **never per line**.
+  ⚠️ **Residual, deliberately NOT taken:** a real 15-line Madani page still exceeds the A72
+  reading area and scrolls — `15 × 17 × 2.2 = 561dp` of text at the `MIN_FONT` floor is the
+  entire 560dp viewport before banner/Bismillah/footer. Closing that is a
+  `LINE_HEIGHT_RATIO` / `MIN_FONT` calibration call needing the owner's eye on device, not a
+  code bug. What changed is the overshoot: **~996dp → ~772dp**. Fitting range on this area is
+  now ≤ ~9 lines / ≤ 400 glyphs (the reflow test's old "500 fits" was only ever true because
+  the model ignored 32dp the renderer always applied).
+- **B. RN can't justify a one-line paragraph — root cause nailed, fix declined (`96c86f2`,
+  comment only).** Web's flush-both-margins look comes from a SECOND declaration,
+  `[text-align-last:justify]` (`apps/web/features/quran/components/mushaf-page-view.tsx:201`)
+  — `text-align: justify` alone never stretches a block's LAST line, and since each printed
+  line is its own `<Text>`, every line is a last line. RN exposes no `textAlignLast` on either
+  platform. ⚠️ The in-code comment used to blame **Android API 26**, which is a red herring —
+  it is ragged on every platform and API level; that comment is now corrected in place.
+  Only real fix is per-word flex distribution (`justifyContent: "space-between"` over one
+  `<Text>` per word), which trades the one-`<Text>`-per-line structure and the memoisation
+  from `1ad6d7f`..`0ab9bb6` for ~8× the view count. Declined against the owner's pinned bar —
+  *"i don't want it to be web identical more than i want the surah ayats to fill the page"*.
+  Re-open only if the owner asks for justification specifically.
 
 ## Perf pass #3 — tab nav / theme+locale switch / radio→Quran freeze (2026-07-28, JS-only → OTA-able)
 
