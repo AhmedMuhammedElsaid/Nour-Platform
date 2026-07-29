@@ -32,11 +32,15 @@ export function LocaleSwitcher() {
   const query = searchParams.toString();
   const target = query ? `${basePath}?${query}` : basePath;
 
+  // WCAG 2.5.3 (Label in Name): the visible label ("English"/"العربية") must be
+  // part of the accessible name, or voice control can't target the control.
+  const label = `${t("language")}: ${LOCALE_LABELS[nextLocale]}`;
+
   return (
     <Link
       href={target}
       locale={nextLocale}
-      aria-label={t("language")}
+      aria-label={label}
       className="ms-auto inline-flex items-center rounded-full px-3 py-1 text-sm font-medium border border-input hover:bg-accent transition-colors"
     >
       {LOCALE_LABELS[nextLocale]}

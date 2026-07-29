@@ -91,7 +91,7 @@ export function DhikrOfTheDayCard({ sets, locale }: Props) {
         <button
           type="button"
           data-testid="dhikr-of-the-day-counter"
-          aria-label={tAdhkar("countLabel")}
+          aria-label={`${tAdhkar("countLabel")} ${count} / ${item.repeat}`}
           aria-disabled={isDone || undefined}
           onClick={tap}
           className="relative z-10 flex size-14 flex-col items-center justify-center rounded-full border-2 border-primary bg-surface-2 text-text transition-colors hover:bg-primary hover:text-primary-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

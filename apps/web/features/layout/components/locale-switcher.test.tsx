@@ -51,7 +51,7 @@ describe("LocaleSwitcher", () => {
   it("falls back to a plain prefix-swap of the current path when no alternates are registered", () => {
     render(<LocaleSwitcher />);
 
-    const link = screen.getByRole("link", { name: "language" });
+    const link = screen.getByRole("link", { name: /^language: / });
     expect(link).toHaveAttribute("href", "/");
     // Active locale is ar, so it offers to switch to en.
     expect(link).toHaveAttribute("data-locale", "en");
@@ -64,7 +64,7 @@ describe("LocaleSwitcher", () => {
 
     render(<LocaleSwitcher />);
 
-    const link = screen.getByRole("link", { name: "language" });
+    const link = screen.getByRole("link", { name: /^language: / });
     // Uses the en alternate, NOT the current arabic-slug pathname.
     expect(link).toHaveAttribute("href", "/playlists/al-fatiha");
     expect(link).toHaveAttribute("data-locale", "en");
@@ -75,7 +75,7 @@ describe("LocaleSwitcher", () => {
 
     render(<LocaleSwitcher />);
 
-    const link = screen.getByRole("link", { name: "language" });
+    const link = screen.getByRole("link", { name: /^language: / });
     expect(link).toHaveAttribute("data-locale", "ar");
     expect(link).toHaveTextContent("العربية");
   });
@@ -85,7 +85,7 @@ describe("LocaleSwitcher", () => {
 
     render(<LocaleSwitcher />);
 
-    const link = screen.getByRole("link", { name: "language" });
+    const link = screen.getByRole("link", { name: /^language: / });
     expect(link).toHaveAttribute("href", "/?category=quran");
   });
 });
