@@ -213,8 +213,18 @@ function MushafLineImpl({ row, fontSize, firstLine, activeGlobal, selectedGlobal
       style={{
         fontSize,
         lineHeight: fontSize * 2.2,
-        // Android textAlign:"justify" needs API 26+; below that it silently
-        // falls back to start-aligned — acceptable degradation, not a bug.
+        // NOTE: this does NOT actually justify, and the API-26 story that used
+        // to be written here is a red herring — it's ragged on every platform
+        // and API level. `justify` never stretches the LAST line of a text
+        // block, and each printed line is its own <Text>, so every line is a
+        // last line. Web gets the flush-both-margins look from a SECOND
+        // declaration, `text-align-last: justify` (see apps/web/features/quran/
+        // components/mushaf-page-view.tsx), and RN exposes no textAlignLast on
+        // either platform. Kept because it costs nothing and is correct for any
+        // line that ever does wrap; the real fix is per-word flex distribution,
+        // which trades the one-<Text>-per-line structure (and its memoisation)
+        // for ~8x the view count. Deliberately not taken: the owner's bar is
+        // "the ayahs fill the page" over web-identical chrome.
         textAlign: row.endsSurah ? "center" : "justify",
         writingDirection: "rtl",
       }}
