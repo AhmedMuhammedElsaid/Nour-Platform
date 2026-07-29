@@ -2327,7 +2327,8 @@ moving radio↔Quran. Three-agent audit found the causes were structural, not in
   (and that the probe DID re-render, so it can't pass vacuously) + `getLocalPath` filesystem
   access counts.
 
-**Pending:** push; then `eas update --branch preview --environment preview` (all JS-only) and the
+**Pending:** ~~push~~ PUSHED 2026-07-29 (`origin/main` = `e8b6198`; a concurrent session's
+docs commit `e8b6198` rode along in the same push). Next: `eas update --branch preview --environment preview` (all JS-only) and the
 owner verifies perceived speed on the A72 — tab switches instant/no skeleton on revisit, theme
 toggle immediate, radio→Quran scroll+tap (the freeze), ayah autoplay advance, language-switch
 overlay. Perf is device-only truth; nothing here is claimed device-verified.
