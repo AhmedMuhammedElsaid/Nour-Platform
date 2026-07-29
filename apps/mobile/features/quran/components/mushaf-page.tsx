@@ -69,8 +69,13 @@ export const MushafSegment = memo(function MushafSegment({
   selectedGlobal,
   onSelectAyah,
 }: MushafSegmentProps) {
+  // No `gap-4` on the container, on purpose: MushafRows returns a fragment, so
+  // a gap here lands between every printed LINE — 16dp on top of each line box,
+  // ~240dp on a 15-line page, which no font size could fit in the viewport (see
+  // fit-mushaf-font.ts BLOCK_GAP). Line spacing is owned by lineHeight; the
+  // banner and Bismillah carry their own `mb-4`.
   return (
-    <View className="gap-4 border-b border-primary/20 pb-6 pt-4">
+    <View className="border-b border-primary/20 pb-6 pt-4">
       {rows ? (
         <MushafRows
           rows={rows}
@@ -134,21 +139,24 @@ function MushafRows({
     <>
       {rows.map((row, i) => {
         if (row.kind === "surah-banner") {
+          // mb-4 replaces the container's old `gap-4` for this element only —
+          // printed lines below get their spacing from lineHeight.
           return (
-            <SurahCartouche
-              key={`banner-${i}`}
-              name={segment.surah.name.ar}
-              englishName={segment.surah.name.en}
-              meaning={segment.surah.meaning}
-              fontSize={fontSize}
-            />
+            <View key={`banner-${i}`} className="mb-4">
+              <SurahCartouche
+                name={segment.surah.name.ar}
+                englishName={segment.surah.name.en}
+                meaning={segment.surah.meaning}
+                fontSize={fontSize}
+              />
+            </View>
           );
         }
         if (row.kind === "bismillah") {
           return (
             <Text
               key={`bismillah-${i}`}
-              className="text-center font-quran text-text"
+              className="mb-4 text-center font-quran text-text"
               style={{
                 fontSize: fontSize * BISMILLAH_RATIO,
                 lineHeight: fontSize * BISMILLAH_RATIO * DIACRITIC_LINE_RATIO,
@@ -302,7 +310,7 @@ function MushafReflow({ segment, fontSize, activeGlobal, selectedGlobal, onSelec
           `segments[0]` is whichever surah owns the page's FIRST ayah, which for
           a surah starting mid-page is the PRECEDING one — a page-level header
           built from it would caption Quraysh's page "Al-Fil". */}
-      <View className="items-center gap-2">
+      <View className="mb-4 items-center gap-2">
         {/* Explicit lineHeight is REQUIRED, not cosmetic: the Uthmani font's
             diacritics sit far above the cap height, and with RN's default line
             box they overflow onto whatever follows — the surah name was
@@ -325,7 +333,7 @@ function MushafReflow({ segment, fontSize, activeGlobal, selectedGlobal, onSelec
 
       {segment.showBismillah ? (
         <Text
-          className="text-center font-quran text-text"
+          className="mb-4 text-center font-quran text-text"
           style={{
             fontSize: fontSize * BISMILLAH_RATIO,
             lineHeight: fontSize * BISMILLAH_RATIO * DIACRITIC_LINE_RATIO,

@@ -61,10 +61,27 @@ const MIN_FONT = 17;
 const MAX_FONT = 40;
 
 // Non-font-scaled chrome inside the scroll area, in dp: per-segment padding +
-// borders + gaps (`gap-4 pb-6 pt-4` on the segment container), the EN subtitle
-// line under each banner, and the page footer row.
+// borders (`pb-6 pt-4` on the segment container), the EN subtitle line under
+// each banner, and the page footer row. The per-ROW gap is modelled separately
+// below — it scales with row count, so it can't live in a per-segment constant.
 const SEGMENT_FIXED_CHROME = 62;
 const FOOTER_CHROME = 52;
+
+// Separation below the surah banner and below the Bismillah, in dp (`mb-4` on
+// each in mushaf-page.tsx). Printed LINES deliberately carry no such gap:
+// LINE_HEIGHT_RATIO owns row spacing, exactly as it does inside a wrapped
+// paragraph, so a printed page has uniform leading.
+//
+// This used to be `gap-4` on the segment container, which — because MushafRows
+// returns a fragment — put 16dp between every pair of printed lines as well.
+// The model never counted it, so it undercounted a 15-line page by ~240dp on a
+// ~560dp viewport and the search picked a size that overflowed by ~40%. Merely
+// modelling that gap doesn't rescue it: 240dp of leading on top of 15 line
+// boxes cannot fit at any size ≥ MIN_FONT, so every dense page floor-clamped
+// and overflowed regardless. The gap between lines had to go, not just be
+// counted. Renderer and model must agree — same class of drift as the
+// BANNER/BISMILLAH/DIACRITIC ratios above.
+const BLOCK_GAP = 16;
 
 // Combining marks (fathatan…sukun, superscript alef, and the Quranic annotation
 // range) stack on the base letter and consume no horizontal space, so counting
@@ -95,7 +112,11 @@ function heightAt(font: number, input: FitMushafFontInput): number {
   const banners =
     segmentCount * (font * BANNER_NAME_RATIO * DIACRITIC_LINE_RATIO + SEGMENT_FIXED_CHROME);
   const bismillahs = bismillahCount * font * BISMILLAH_RATIO * DIACRITIC_LINE_RATIO;
-  return paragraph + banners + bismillahs + FOOTER_CHROME;
+  // One block gap under each banner and each Bismillah. Independent of line
+  // count and identical on both render paths, since only those two elements
+  // carry `mb-4` — printed lines are spaced by their line box alone.
+  const blockGaps = (segmentCount + bismillahCount) * BLOCK_GAP;
+  return paragraph + banners + bismillahs + blockGaps + FOOTER_CHROME;
 }
 
 /**

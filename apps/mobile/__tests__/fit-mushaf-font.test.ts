@@ -39,13 +39,19 @@ describe("fitMushafFontSize", () => {
     const lines = Math.ceil(glyphs / (AREA.width / (font * 0.42)));
     // Banner name and Bismillah each occupy a 1.6x-tall line box (the Uthmani
     // diacritics need it), so model the box, not the bare font size.
-    return lines * font * 2.2 + (font * 1.3 * 1.6 + 62) + font * 1.1 * 1.6 + 52;
+    // Reflow path: `gap-4` sits between the banner block, the Bismillah and the
+    // single paragraph Text — 2 gaps for this 1-segment/1-Bismillah fixture.
+    return lines * font * 2.2 + (font * 1.3 * 1.6 + 62) + font * 1.1 * 1.6 + 2 * 16 + 52;
   }
 
   // A Madani page carries roughly 15 lines of ~30 advance glyphs, so real pages
-  // land in the low hundreds; 100–500 spans sparse juz-30 pages to dense ones.
+  // land in the low hundreds; 100–400 spans sparse juz-30 pages to dense ones.
+  // 400 is the top of the fitting range on this area — beyond it the search
+  // reaches MIN_FONT and the page scrolls (covered by the next test). That
+  // ceiling used to read as ~500 only because the model wasn't counting the
+  // 32dp of block gap the renderer has always applied.
   it("fills the area without overflowing across the real page-size range", () => {
-    for (const glyphs of [100, 150, 200, 300, 400, 500]) {
+    for (const glyphs of [100, 150, 200, 300, 400]) {
       const height = laidOutHeight(fit(glyphs), glyphs);
       expect(height).toBeLessThanOrEqual(AREA.height + 1);
       // "Fills" is the actual requirement — a fit that merely doesn't overflow
@@ -85,8 +91,11 @@ describe("fitMushafFontSize", () => {
   describe("lineCount (real printed line count from buildPageRows)", () => {
     // Laid-out height using the FIXED line count, mirroring heightAt's
     // lineCount branch — no charsPerLine/width dependency at all.
+    // Rows path: printed lines are spaced by their line box alone. Only the
+    // banner and the Bismillah carry `mb-4`, so the gap total is flat in the
+    // line count — 2 × 16dp for this 1-segment/1-Bismillah fixture.
     function laidOutHeightFromLines(font: number, lines: number): number {
-      return lines * font * 2.2 + (font * 1.3 * 1.6 + 62) + font * 1.1 * 1.6 + 52;
+      return lines * font * 2.2 + (font * 1.3 * 1.6 + 62) + font * 1.1 * 1.6 + 2 * 16 + 52;
     }
 
     it("fills the area using the real line count instead of the glyph estimate", () => {
@@ -108,6 +117,38 @@ describe("fitMushafFontSize", () => {
     it("still clamps to floor/ceiling with a real line count", () => {
       expect(fit(300, { lineCount: 100 })).toBe(17);
       expect(fit(300, { lineCount: 1 })).toBeLessThanOrEqual(40);
+    });
+
+    // Closed-form check of the layout model, derived independently of the
+    // helper above so it can't drift along with it. An unclamped fit lands
+    // exactly on the viewport, so:
+    //   H = f·(lines·2.2 + BANNER·DIACRITIC + BISMILLAH·DIACRITIC) + SEG + GAPS + FOOT
+    // The gap term is the constant 2×16 — one under the banner, one under the
+    // Bismillah. If a per-LINE gap ever creeps back in (the `gap-4`-on-a-
+    // fragment bug), `lines` would pick up a ×16 coefficient and this breaks.
+    it("charges gap per block, not per printed line", () => {
+      for (const lines of [5, 8]) {
+        const expected = (AREA.height - 62 - 2 * 16 - 52) / (lines * 2.2 + 1.3 * 1.6 + 1.1 * 1.6);
+        expect(fit(450, { lineCount: lines })).toBeCloseTo(expected, 4);
+      }
+    });
+
+    // A real 15-line Madani page does NOT fit an A72 reading area: 15 line
+    // boxes at the MIN_FONT floor is 15×17×2.2 = 561dp, i.e. the whole 560dp
+    // viewport before any banner, Bismillah or footer. It therefore scrolls,
+    // by the same deliberate trade as the dense-page case above.
+    //
+    // What the row-gap removal bought is the size of that overflow: the
+    // container's old `gap-4` added 16dp between every printed line — 240dp on
+    // this page — so the same page laid out ~996dp against a 560dp viewport
+    // (~78% over). It is now ~772dp (~38% over), and the model finally agrees
+    // with the renderer instead of undercounting by the whole gap stack.
+    it("still floor-clamps a full 15-line page, but without the per-line gap stack", () => {
+      const font = fit(450, { lineCount: 15 });
+      expect(font).toBe(17);
+      const height = laidOutHeightFromLines(font, 15);
+      expect(height).toBeGreaterThan(AREA.height); // scrolls — accepted
+      expect(height).toBeLessThan(800); // was ~996 with a gap under every line
     });
   });
 });
