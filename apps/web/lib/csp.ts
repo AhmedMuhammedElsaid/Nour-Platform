@@ -51,7 +51,10 @@ export function buildWebCsp(nonce: string, r2Hostname: string): string {
     `media-src 'self'${r2Origin ? ` ${r2Origin}` : ""} ${RECITER_ORIGINS} ${RADIO_ORIGINS}`,
     // connect-src governs the service worker's fetch() of audio for offline
     // caching, so the R2 + reciter + radio origins must be allowed here too.
-    `connect-src 'self'${r2Origin ? ` ${r2Origin}` : ""} ${RECITER_ORIGINS} ${RADIO_ORIGINS}`,
+    // api.aladhan.com is the prayer-timetable source fetched by
+    // features/prayer-times/lib/aladhan.ts — omitting it silently blocked every
+    // month fetch in production (console CSP errors, local-compute fallback only).
+    `connect-src 'self'${r2Origin ? ` ${r2Origin}` : ""} https://api.aladhan.com ${RECITER_ORIGINS} ${RADIO_ORIGINS}`,
     // PWA: allow the same-origin service worker script and web app manifest.
     "worker-src 'self'",
     "manifest-src 'self'",
