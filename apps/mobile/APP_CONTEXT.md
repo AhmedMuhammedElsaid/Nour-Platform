@@ -2354,7 +2354,41 @@ moving radio↔Quran. Three-agent audit found the causes were structural, not in
   access counts.
 
 **Pending:** ~~push~~ PUSHED 2026-07-29 (`origin/main` = `e8b6198`; a concurrent session's
-docs commit `e8b6198` rode along in the same push). Next: `eas update --branch preview --environment preview` (all JS-only) and the
-owner verifies perceived speed on the A72 — tab switches instant/no skeleton on revisit, theme
-toggle immediate, radio→Quran scroll+tap (the freeze), ayah autoplay advance, language-switch
-overlay. Perf is device-only truth; nothing here is claimed device-verified.
+docs commit `e8b6198` rode along in the same push). ~~Next: `eas update`~~ OTA'd 2026-07-29
+(group `717fcfc7`, then `606ac128` for the row-gap fix). Owner still verifies perceived speed on
+the A72 — tab switches instant/no skeleton on revisit, theme toggle immediate, radio→Quran
+scroll+tap (the freeze), ayah autoplay advance, language-switch overlay.
+
+**A72 adb perf measurement, 2026-07-29 (pre- vs post-OTA, same session):**
+
+| metric | pre-OTA (build 2026-07-22) | post-OTA |
+|---|---|---|
+| cold start → first frame (×3 mean) | 1063 ms | 916 ms |
+| mushaf scroll, Al-Baqara (SurfaceFlinger) | p50 16.7 ms, 7 dropped/125 | p50 16.7, max 16.8, **0 dropped** |
+| Quran list scroll | p50 16.7, 0 dropped/125 | p50 16.7, 1 dropped/125 |
+| blurred-screen idle (empty Downloads, 15 s) | **249 frames** redrawn | **0** |
+| native heap / total PSS @25 s | 266 MB / 487 MB | 233 MB / 450 MB |
+
+- **`fd1f71a` is DEVICE-VERIFIED.** Pre-OTA the Home sun-arc corona redrew forever behind
+  whatever screen you were on (249 frames in 15 s on an EMPTY screen, no input); post-OTA that is
+  a flat 0, and 0 backgrounded. This was the app's one real perf bug.
+- ⛔ **`dumpsys gfxinfo` is USELESS on this app** — it reported "98% janky, p50 125 ms" even while
+  scrolling at a true 60 fps. It was measuring the idle-loop cadence, not scroll. Use
+  `dumpsys SurfaceFlinger --latency <layer>` (real presentation timestamps) instead; get the layer
+  from `--list` matching `^com\.nour\.mobile/com\.nour\.mobile\.MainActivity\$_\d+#\d+$`, and
+  `--latency-clear` first. Calibrate against another app (system Settings scrolled at 0.38% jank)
+  before believing any device-wide "everything is janky" reading.
+- ⚠️ **`eas update` bundles the WORKING TREE, and the message defaults to the LAST COMMIT** — so an
+  update's message can name a commit OLDER than the code inside it. Group `717fcfc7` is captioned
+  `2f5520a` but was exported ~41 s before `3bdccfd` was committed, so it most likely already
+  carried the row-gap fix: republishing it as `606ac128` left the reader **pixel-identical**
+  (0 differing pixels, sampled y=300..1900). Never infer bundle contents from the update message —
+  grep the exported `dist/_expo/static/js/android/*.hbc` for a changed string literal instead
+  (class names survive Hermes compilation; `assets.eascdn.net` 403s direct download).
+- Residual mushaf overflow on a dense page is EXPECTED per `3bdccfd`'s own text (a 15-line Madani
+  page exceeds the A72 reading area and scrolls) — it is NOT evidence the fix is missing.
+- **Top remaining item: memory.** 233 MB native heap is allocated within ~2 s of launch, before any
+  interaction, and stays flat across a full screen tour — a baseline cost, not a leak. ~450 MB PSS
+  on a device already at 7.4/7.6 GB makes the app a prime background-kill candidate. Needs a heap
+  dump, not adb sampling. Also: focused Home never idles (a frame every ~60 ms) — that is the
+  corona pulse working as designed, but it is a standing battery cost if you want it gated harder.
