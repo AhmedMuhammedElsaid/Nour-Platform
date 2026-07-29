@@ -27,15 +27,24 @@ import { organizationLd, webSiteLd } from "@/lib/seo";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
+// The two Latin faces are declared in this shared layout, so next/font emits a
+// <link rel="preload"> for them on EVERY route — including `ar`, the default
+// locale, where their latin `unicode-range` matches almost nothing on screen.
+// That was ~80 KB competing with the Arabic face for the mobile LCP budget.
+// preload:false keeps the @font-face rules (so `en` still gets real Inter /
+// Fraunces) but demotes the fetch to lazy-on-first-glyph; `display: "swap"`
+// means `en` paints in the metric-adjusted fallback meanwhile, never blank.
 const fontSans = Inter({
   subsets: ["latin"],
   display: "swap",
+  preload: false,
   variable: "--font-sans",
 });
 
 const fontDisplay = Fraunces({
   subsets: ["latin"],
   display: "swap",
+  preload: false,
   variable: "--font-display",
 });
 
