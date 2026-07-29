@@ -33,5 +33,6 @@ export default async function PrayerTimesRoute({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <PrayerPage locale={locale} />;
+  // Server clock passed down so the first client render matches SSR exactly.
+  return <PrayerPage locale={locale} serverNow={Date.now()} />;
 }

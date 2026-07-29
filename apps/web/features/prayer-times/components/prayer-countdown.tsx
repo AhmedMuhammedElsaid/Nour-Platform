@@ -1,27 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { formatCountdownClock } from "@/features/prayer-times/lib/format";
 import type { PrayerKey } from "@repo/api/services/prayer-times";
 
+/**
+ * `now` is owned by the parent (which already ticks one for the sun arc) rather
+ * than seeded here: a local `useState(() => Date.now())` disagreed with the SSR
+ * pass and tripped React's hydration text mismatch. It also means one interval
+ * per widget instead of two.
+ */
 export function PrayerCountdown({
   nextKey,
   target,
   locale,
+  now,
 }: {
   nextKey: PrayerKey;
   target: Date;
   locale: "ar" | "en";
+  now: number;
 }) {
   const t = useTranslations("prayer");
-  const [now, setNow] = useState<number>(() => Date.now());
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
 
   // Live MM:SS / HH:MM:SS clock, matching the extension + mobile.
   const countdown = formatCountdownClock(target.getTime() - now, locale);

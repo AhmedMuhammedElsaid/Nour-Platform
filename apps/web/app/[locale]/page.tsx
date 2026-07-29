@@ -135,7 +135,9 @@ export default async function HomePage({
         <p className="mt-2 text-base text-text-2 sm:text-lg">{pickHeroTextOfTheDay(locale)}</p>
       </div>
 
-      <PrayerTimesWidget locale={locale} />
+      {/* Date.now() is captured server-side and passed down so the widget's first
+          client render matches the SSR output (see use-live-now.ts). */}
+      <PrayerTimesWidget locale={locale} serverNow={Date.now()} />
 
       <hr className="border-border my-8" />
 

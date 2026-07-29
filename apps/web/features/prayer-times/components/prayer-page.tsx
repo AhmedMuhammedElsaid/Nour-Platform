@@ -7,6 +7,7 @@ import { DateCard } from "@/features/prayer-times/components/date-card";
 import { LocationPicker } from "@/features/prayer-times/components/location-picker";
 import { MethodSettings } from "@/features/prayer-times/components/method-settings";
 import { PrayerCountdown } from "@/features/prayer-times/components/prayer-countdown";
+import { useLiveNow } from "@/features/prayer-times/hooks/use-live-now";
 import { PrayerTimetable } from "@/features/prayer-times/components/prayer-timetable";
 import { SunArc } from "@/features/prayer-times/components/sun-arc";
 import { AdhanSettings } from "@/features/prayer-times/components/adhan-settings";
@@ -19,17 +20,20 @@ import {
   getNextPrayer,
 } from "@repo/api/services/prayer-times";
 
-export function PrayerPage({ locale }: { locale: "ar" | "en" }) {
+export function PrayerPage({
+  locale,
+  serverNow,
+}: {
+  locale: "ar" | "en";
+  serverNow: number;
+}) {
   const t = useTranslations("prayer");
   const { location, prefs, setLocation, setMethod, setMadhab } = usePrayerSettings();
-  const [now, setNow] = useState<number>(() => Date.now());
+  // Ticks every second so the sun glides along the arc as time passes. Seeded
+  // from the server's clock so the first client render matches the SSR output —
+  // see the hook for the hydration-mismatch this avoids.
+  const now = useLiveNow(serverNow);
   const [warm, setWarm] = useState(0);
-
-  // Tick every second so the sun glides along the arc as time passes.
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1_000);
-    return () => clearInterval(id);
-  }, []);
 
   // Warm the Aladhan month cache so the displayed timetable matches the
   // authoritative minute the adhan fires on (parity with mobile). Bump `warm`
@@ -97,7 +101,7 @@ export function PrayerPage({ locale }: { locale: "ar" | "en" }) {
         <SunArc dots={dots} sunFraction={sunFraction} nextLabel={t("next")} isNight={isNight} onNightBand={arc.onNightBand} />
         {next ? (
           <div className="pb-6">
-            <PrayerCountdown nextKey={next.key} target={next.time} locale={locale} />
+            <PrayerCountdown nextKey={next.key} target={next.time} locale={locale} now={now} />
           </div>
         ) : null}
       </div>

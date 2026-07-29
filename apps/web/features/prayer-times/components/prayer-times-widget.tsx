@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
 import { PrayerCountdown } from "@/features/prayer-times/components/prayer-countdown";
+import { useLiveNow } from "@/features/prayer-times/hooks/use-live-now";
 import { SunArc, type ArcDot } from "@/features/prayer-times/components/sun-arc";
 import { formatClock, hijriDate } from "@/features/prayer-times/lib/format";
 import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-settings";
@@ -39,17 +40,20 @@ export function buildArcDots(
     }));
 }
 
-export function PrayerTimesWidget({ locale }: { locale: "ar" | "en" }) {
+export function PrayerTimesWidget({
+  locale,
+  serverNow,
+}: {
+  locale: "ar" | "en";
+  serverNow: number;
+}) {
   const t = useTranslations("prayer");
   const { location, prefs } = usePrayerSettings();
-  const [now, setNow] = useState<number>(() => Date.now());
+  // Ticks every second so the sun visibly glides along the arc as time passes.
+  // Seeded from the server's clock so the first client render matches the SSR
+  // output — see the hook for the hydration-mismatch this avoids.
+  const now = useLiveNow(serverNow);
   const [warm, setWarm] = useState(0);
-
-  // Tick every second so the sun visibly glides along the arc as time passes.
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1_000);
-    return () => clearInterval(id);
-  }, []);
 
   // Warm the Aladhan month cache so the shown times match the authoritative
   // minute the adhan fires on (parity with mobile); bump `warm` once resolved.
@@ -140,7 +144,7 @@ export function PrayerTimesWidget({ locale }: { locale: "ar" | "en" }) {
 
       {next ? (
         <div className="mb-3">
-          <PrayerCountdown nextKey={next.key} target={next.time} locale={locale} />
+          <PrayerCountdown nextKey={next.key} target={next.time} locale={locale} now={now} />
         </div>
       ) : null}
 
