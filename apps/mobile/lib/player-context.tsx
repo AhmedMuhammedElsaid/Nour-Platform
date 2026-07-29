@@ -401,9 +401,27 @@ function buildPlayOrder(
 // ---------------------------------------------------------------------------
 
 let isSetup = false;
+// `isSetup` only flips true AFTER the native call resolves, so two effects
+// racing on mount (the standalone setup effect + the adopt-on-mount effect,
+// both empty-deps, both firing in the same commit) each saw it false and both
+// fired `TrackPlayer.setupPlayer()` concurrently — a second native ExoPlayer
+// init attempt on every single cold start, silently caught by the "throws if
+// called twice" branch below. This in-flight promise makes the second caller
+// await the first attempt instead of starting its own.
+let setupPromise: Promise<void> | null = null;
 
 async function setupPlayer(): Promise<void> {
   if (isSetup) return;
+  if (setupPromise) return setupPromise;
+  setupPromise = doSetupPlayer();
+  try {
+    await setupPromise;
+  } finally {
+    setupPromise = null;
+  }
+}
+
+async function doSetupPlayer(): Promise<void> {
   try {
     await TrackPlayer.setupPlayer({
       // Keep a small forward buffer for smooth playback on mobile data.
@@ -444,7 +462,9 @@ async function setupPlayer(): Promise<void> {
     await TrackPlayer.setRepeatMode(RNTPRepeatMode.Off);
     isSetup = true;
   } catch {
-    // setupPlayer throws if called twice; swallow — we're idempotent.
+    // Defensive: TrackPlayer.setupPlayer() throws if the native side is
+    // somehow already set up despite the in-flight guard above. Swallow and
+    // treat as done rather than retry into another native call.
     isSetup = true;
   }
 }
