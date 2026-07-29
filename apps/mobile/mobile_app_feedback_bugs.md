@@ -1,5 +1,24 @@
 # Mobile App — Post-Build Feedback, Bugs & Execution Plan
 
+> ## ✅ CLOSED — all 9 phases / 26 points shipped 2026-06-14 (`d64bdcd`)
+>
+> **This plan is complete. Do not execute it.** Status of record:
+> `apps/mobile/APP_CONTEXT.md` §"Post-build feedback fixes — ALL 9 PHASES DONE" (line ~287).
+> Re-audited against the tree on **2026-07-29** — every point verified still in place.
+>
+> Two deviations from the spec below, both intentional — don't "fix" them back:
+> - **`@react-native-community/slider` was never added.** `app/player.tsx` uses the zero-dep
+>   Reanimated/gesture alternative from Phase 4's own footnote, so Phase 4 needed no rebuild.
+>   §4's dependency table is therefore wrong: only the adhan asset + `expo-updates` shipped.
+> - **Point 3a (double playback) was solved structurally, not as specced.** `useAyahAudio` no
+>   longer exists; Quran ayah audio was unified onto the single RNTP player, so two streams
+>   cannot coexist by construction. The `onPlaybackStart` wiring in §4.1 was never needed.
+>
+> Retained as the historical record of the 26 reported points and their rationale.
+> File paths and line references below have drifted badly (211 mobile commits since) — in
+> particular `lib/player-context.tsx` was split into four contexts (`1ad6d7f`, 2026-07-28).
+> Re-derive from the tree, never from this document.
+
 > **Single source of truth** for the post-build fix pass on `apps/mobile`. Self-contained:
 > context, confirmed decisions, full spec for all 26 reported points, the model to use per
 > phase, and an explicit **model-switch stop point** at the end of each phase. Read
@@ -16,7 +35,7 @@
   next phase before continuing. This keeps cost optimal (Opus for design/state-machines,
   Sonnet for features, Haiku for mechanical work — per `CLAUDE.md` §15).
 - **One commit per concern**, message `[AhmedMuhammedElsaid][fix|feat|refactor]: …` with the
-  `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>` trailer. Never bundle
+  `Co-Authored-By: Ahmed Muhammed Elsaid <ahmed.muhammed.elsaid@gmail.com>` trailer. Never bundle
   concerns. Re-check `git rev-parse HEAD` / `origin/main` right before each push (multiple
   concurrent sessions run on this repo). Stage explicit paths, not `-A`.
 - Update `apps/mobile/APP_CONTEXT.md` in the same commit that ships each phase.
