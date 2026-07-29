@@ -72,8 +72,13 @@
   --color-surface-2: #252018;
   --color-border: rgb(200 160 80 / 15%);
   --color-text: #f0e6cc;
-  --color-text-2: #8a7a62;
-  --color-muted: #5a4a38;
+  /* Both secondary inks are WCAG-AA tuned against --color-surface (#1c1915)
+     and --color-surface-2 (#252018). The previous values (#8a7a62 / #5a4a38)
+     measured 3.88-4.20 and 2.06 — Lighthouse flagged the sort <select>, the
+     dhikr counter and the footer copyright. Keep any future warm-grey edit
+     above 4.5:1 on #252018, the lightest surface these sit on. */
+  --color-text-2: #9c8b70;
+  --color-muted: #948468;
   --color-primary: #c8a050;
   --color-primary-fg: #0f0d0a;
   /* Brighter gold for the prayer-times sun + next-prayer glow. */
