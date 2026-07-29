@@ -22,8 +22,9 @@ export async function PlaylistCard({ playlist, categories }: PlaylistCardProps) 
   const t = await getTranslations("playlist");
 
   // The scholar photo is a static file in apps/web/public (e.g. "/muhmd-bakr.png").
-  // Render it directly; gradient + emoji only when a playlist has no image.
-  // `unoptimized` serves the public file straight through (skips /_next/image).
+  // Render it through /_next/image (AVIF/WebP + per-breakpoint resize): the
+  // sources are multi-hundred-KB PNG/JPEG and served raw they were the whole
+  // mobile LCP budget. Gradient + emoji only when a playlist has no image.
   const image = playlist.scholarImage ?? null;
 
   const [gradFrom, gradTo] = getCoverGradient(playlist.id);
@@ -41,7 +42,6 @@ export async function PlaylistCard({ playlist, categories }: PlaylistCardProps) 
             src={image}
             alt={display?.scholarName ?? display?.title}
             fill
-            unoptimized
             sizes="(min-width: 1024px) 20vw, 40vw"
             className="object-cover transition-transform group-hover:scale-105"
           />
