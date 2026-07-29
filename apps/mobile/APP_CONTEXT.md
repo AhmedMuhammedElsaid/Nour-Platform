@@ -2389,6 +2389,35 @@ scroll+tap (the freeze), ayah autoplay advance, language-switch overlay.
   page exceeds the A72 reading area and scrolls) — it is NOT evidence the fix is missing.
 - **Top remaining item: memory.** 233 MB native heap is allocated within ~2 s of launch, before any
   interaction, and stays flat across a full screen tour — a baseline cost, not a leak. ~450 MB PSS
-  on a device already at 7.4/7.6 GB makes the app a prime background-kill candidate. Needs a heap
-  dump, not adb sampling. Also: focused Home never idles (a frame every ~60 ms) — that is the
-  corona pulse working as designed, but it is a standing battery cost if you want it gated harder.
+  on a device already at 7.4/7.6 GB makes the app a prime background-kill candidate. Also: focused
+  Home never idles (a frame every ~60 ms) — that is the corona pulse working as designed, but it is
+  a standing battery cost if you want it gated harder.
+- ⛔ **A real heap dump is BLOCKED on this build, confirmed two ways**: `am dumpheap` →
+  `SecurityException: Process not debuggable`; `/proc/<pid>/smaps*` → `Permission denied`. Release/
+  preview builds aren't debuggable and this device has no root (matches the existing `run-as`
+  block — see `reference_adb_wireless_debugging`). Getting an object-level breakdown needs
+  `eas build --profile development` + a profiler attached to that debuggable client; adb alone
+  cannot get past this wall on the current build.
+- **`dumpsys meminfo`'s Heap Size/Alloc/Free columns are the useful proxy** when a real dump is
+  blocked: Heap Free stayed ≤5 MB while Heap Alloc climbed to 265+ MB, meaning 95%+ of the native
+  arena is genuinely live-allocated, not fragmentation/retained-free pages. Sampling every ~0.3–0.4s
+  from `am start` showed the ramp is essentially DONE by t≈2.5s (91→265 MB) and is already at
+  91–163 MB **before** `ReactNativeJS: Running "main"` fires (~t=1.7–2.2s) — i.e. most of it is paid
+  during native module registration, not JS/Hermes heap growth, the TanStack Query cache, or image
+  decoding (all three need JS running first, and `am send-trim-memory RUNNING_CRITICAL`+`COMPLETE`
+  only moved it 274→264→272 MB, ruling out an evictable image cache too). Calibration: Instagram on
+  the same device sits at 32 MB native / 170 MB PSS — Nour is ~8× that.
+- **`df6f9c9` setupPlayer race — fixed, but NOT the memory answer.** `PlayerProvider`'s two
+  empty-deps mount effects (the standalone setup effect + the adopt-on-mount session-rehydration
+  effect) both called `setupPlayer()`; `isSetup` only flips true AFTER the native call resolves, so
+  both fired concurrently on every cold start and the second's `TrackPlayer.setupPlayer()` failure
+  was silently swallowed (the old comment "throws if called twice" shows this was tolerated, not
+  prevented). Added an in-flight promise guard — real bug, worth keeping, but A72-measured
+  before/after (3 runs each) showed **no heap change** (~273 MB steady state both ways). Don't
+  re-investigate this path; the ExoPlayer/RNTP native footprint itself isn't the 265 MB driver, or
+  isn't the dominant share of it.
+- **Still open, unattributed at the object level:** the native-module-registration-phase memory
+  cost. Reanimated 4 installs a second JSI/UI-thread runtime unconditionally at native init — same
+  timing window as the unexplained ramp — but this is an inference from dependency list + timing
+  correlation, NOT a measured attribution. Don't treat it as confirmed; the only way to actually
+  attribute this is the blocked heap dump (needs a debug build, see above).
