@@ -2262,8 +2262,12 @@ OTA (font files are native assets, not JS).
 
 `a7d6ea0` fixed the mechanical part (`buildPageRows` partial-bail + `reader.tsx`
 `segmentRows()` empty-array guard — both latent, not live). Both visual findings closed
-2026-07-29 (`3bdccfd`, `96c86f2`), gate green 25/25 · 220 tests. **A72 device-verify still
-pending** for A's rendering.
+2026-07-29 (`3bdccfd`, `96c86f2`), gate green 25/25 · 220 tests. Both changes are JS-only →
+OTA-eligible; **owner shipped the OTA and began A72 verification 2026-07-29** — result not
+yet recorded here. What to trust on device: uniform line leading (the visible change), banner
+and Bismillah still separated from the text below them (they carry the only remaining gap),
+and more text fitting before the page scrolls. A full 15-line page scrolling is EXPECTED, per
+the residual below.
 
 - **A. Auto-fit ignored row gap — FIXED `3bdccfd`.** `gap-4` on MushafSegment's container +
   `MushafRows` returning a fragment put 16dp between every printed LINE (240dp on a 15-line
