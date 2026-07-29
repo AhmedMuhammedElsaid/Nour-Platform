@@ -48,7 +48,7 @@ export function PrayerTimesWidget({
   serverNow: number;
 }) {
   const t = useTranslations("prayer");
-  const { location, prefs } = usePrayerSettings();
+  const { location, prefs, hydrated } = usePrayerSettings();
   // Ticks every second so the sun visibly glides along the arc as time passes.
   // Seeded from the server's clock so the first client render matches the SSR
   // output — see the hook for the hydration-mismatch this avoids.
@@ -115,6 +115,66 @@ export function PrayerTimesWidget({
   // Shrouq (sunrise) is shown for reference; it is not a prayer, so getNextPrayer
   // never marks it "next" and no adhan is scheduled for it.
   const rowKeys: PrayerKey[] = ["fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha"];
+
+  // Everything below is device-local: the times are formatted in the VIEWER's
+  // timezone and the location comes from localStorage. The server can know
+  // neither, so its render disagreed with the client's on both counts — React
+  // reported a hydration text mismatch (minified #418: "١٠:٣٣ ص" vs "١:٣٣ ص")
+  // and threw the subtree away. Worse than the wasted render, the pre-hydration
+  // HTML briefly showed prayer times computed in UTC for the default city —
+  // wrong times, which for adhan is not a cosmetic problem.
+  //
+  // So hold the real content until `usePrayerSettings` reports it has read
+  // localStorage, and render a same-shape placeholder until then. The skeleton
+  // mirrors the real markup element-for-element so the swap costs no layout
+  // shift (CLS stays 0); the arc reserves its 600×150 viewBox aspect ratio.
+  if (!hydrated) {
+    return (
+      <section
+        aria-labelledby="prayer-widget-heading"
+        aria-busy="true"
+        className="mt-8 overflow-hidden rounded-xl border border-border bg-surface"
+      >
+        <h2 id="prayer-widget-heading" className="sr-only">
+          {t("title")}
+        </h2>
+
+        <div className="px-6 pt-5">
+          <div className="flex items-center justify-between">
+            <span className="h-5 w-32 rounded bg-primary/10" />
+            <span className="h-4 w-24 rounded bg-primary/10" />
+          </div>
+        </div>
+
+        <div className="mt-1 aspect-[4/1] w-full" />
+
+        <div className="mb-3">
+          <div className="flex items-baseline justify-center gap-2.5">
+            <span className="text-xs uppercase tracking-widest text-text-2">
+              {t("next")}
+            </span>
+            <span className="font-display text-xl font-semibold text-text sm:text-2xl">
+              —
+            </span>
+            <span className="font-display text-lg font-semibold tabular-nums text-sun">
+              —
+            </span>
+          </div>
+        </div>
+
+        <div className="flex gap-1.5 border-t border-border px-6 py-4">
+          {rowKeys.map((key) => (
+            <div key={key} className="flex-1 rounded-md px-0.5 py-1 text-center">
+              <div className="text-2xs uppercase tracking-[0.05em] text-text-2">
+                {t(key)}
+              </div>
+              <div className="mt-1 text-sm tabular-nums text-text-2">—</div>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section

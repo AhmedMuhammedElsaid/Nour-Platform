@@ -28,7 +28,7 @@ export function PrayerPage({
   serverNow: number;
 }) {
   const t = useTranslations("prayer");
-  const { location, prefs, setLocation, setMethod, setMadhab } = usePrayerSettings();
+  const { location, prefs, hydrated, setLocation, setMethod, setMadhab } = usePrayerSettings();
   // Ticks every second so the sun glides along the arc as time passes. Seeded
   // from the server's clock so the first client render matches the SSR output —
   // see the hook for the hydration-mismatch this avoids.
@@ -91,6 +91,22 @@ export function PrayerPage({
   );
   const isNight = arc.isNight;
   const sunFraction = arc.fraction;
+
+  // Same device-local hydration problem as the home widget: times are formatted
+  // in the viewer's timezone and the city comes from localStorage, so the server
+  // render can't agree with the client's. Keep the heading (real content, good
+  // for SEO and the LCP) and hold the rest until localStorage has been read.
+  // See prayer-times-widget.tsx for the full reasoning.
+  if (!hydrated) {
+    return (
+      <section className="mx-auto max-w-5xl px-6 py-12" aria-busy="true">
+        <h1 className="font-display text-3xl font-bold text-text">{t("title")}</h1>
+        <p className="mt-1 text-sm text-text-2">🕌 —</p>
+        <div className="mt-6 aspect-[4/1] w-full rounded-xl border border-border bg-surface" />
+        <div className="mt-6 h-64 rounded-xl border border-border bg-surface" />
+      </section>
+    );
+  }
 
   return (
     <section className="mx-auto max-w-5xl px-6 py-12">
