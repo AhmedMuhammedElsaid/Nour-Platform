@@ -26,8 +26,15 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
+    // `geolocation=(self)` — NOT `()`. The prayer-times location picker calls
+    // navigator.geolocation ("use my location", plus the one-shot first-visit
+    // attempt behind nour.prayer.locationAsked), so a blanket deny meant the
+    // app shipped a feature its own header forbade: the button silently failed
+    // in production with "Geolocation access has been blocked because of a
+    // permissions policy". `self` grants it to our own documents only —
+    // cross-origin iframes still can't ask. Camera and mic stay fully denied.
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=()",
+    value: "camera=(), microphone=(), geolocation=(self)",
   },
   {
     key: "Strict-Transport-Security",
