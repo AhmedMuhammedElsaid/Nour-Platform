@@ -12,7 +12,7 @@ describe("web app manifest", () => {
     name?: string;
     start_url?: string;
     display?: string;
-    icons?: Array<{ src: string; sizes: string }>;
+    icons?: Array<{ src: string; sizes: string; purpose?: string }>;
   };
 
   it("declares the fields required for install", () => {
@@ -21,8 +21,23 @@ describe("web app manifest", () => {
     expect(manifest.display).toBe("standalone");
   });
 
-  it("ships at least one icon usable at any size", () => {
-    expect(manifest.icons?.length).toBeGreaterThan(0);
-    expect(manifest.icons?.some((i) => i.sizes === "any")).toBe(true);
+  // The brand mark is a photographic Quran scene, so there is deliberately no
+  // scalable sizes:"any" vector any more (the old ن SVG was the only one, and a
+  // photo cannot be meaningfully vectorised). Chromium's install contract is
+  // "192 and 512, OR any" — assert that arm instead of the vector-only arm.
+  it("ships the raster icon sizes Chromium needs to install", () => {
+    const icons = manifest.icons ?? [];
+    expect(icons.length).toBeGreaterThan(0);
+
+    const has = (size: string) =>
+      icons.some((i) => i.sizes === size || i.sizes === "any");
+    expect(has("192x192")).toBe(true);
+    expect(has("512x512")).toBe(true);
+  });
+
+  it("ships a maskable icon so Android does not letterbox the launcher", () => {
+    expect(
+      manifest.icons?.some((i) => i.purpose?.includes("maskable")),
+    ).toBe(true);
   });
 });
