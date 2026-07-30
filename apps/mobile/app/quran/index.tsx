@@ -26,7 +26,12 @@ const HEADERLESS = { headerShown: false } as const;
 export default function QuranIndexScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const dockSpacing = useDockSpacing();
+  // 2026-07-30: the shared 8dp base left the LAST grid row (surah 113/114 or
+  // the last juz row) fully hidden under the bottom tab bar — on-device pixel
+  // check showed the tab bar's own rendered height (icon+label row + padding,
+  // ~71dp on the A72) swallows the whole row, not just its bottom edge.
+  // Extend locally rather than raising the shared base (see use-dock-spacing.ts).
+  const dockSpacing = useDockSpacing() + 88;
   const [tab, setTab] = useState<ReaderTab>("surah");
   const surahs = useQuery(quranSurahsQuery());
   const lastRead = useQuery({
@@ -125,36 +130,38 @@ export default function QuranIndexScreen() {
   return (
     <>
       <Stack.Screen options={HEADERLESS} />
-      {tab === "surah" ? (
-        <FlatList<QuranSurah>
-          className="flex-1 bg-bg px-4 pt-16"
-          data={surahs.data}
-          numColumns={2}
-          columnWrapperStyle={{ gap: 12 }}
-          keyExtractor={(s) => String(s.number)}
-          contentContainerStyle={{ paddingBottom: dockSpacing }}
-          ListHeaderComponent={header}
-          renderItem={renderSurah}
-          initialNumToRender={10}
-          windowSize={7}
-          removeClippedSubviews
-        />
-      ) : (
-        <SectionList
-          className="flex-1 bg-bg px-4 pt-16"
-          sections={juzSections}
-          keyExtractor={(entry, index) => `${entry.number}-${index}`}
-          contentContainerStyle={{ paddingBottom: dockSpacing }}
-          ListHeaderComponent={header}
-          renderSectionHeader={({ section }) => (
-            <Text className="font-display mt-3 mb-1 text-lg text-primary">{section.title}</Text>
-          )}
-          renderItem={renderJuzRow}
-          initialNumToRender={12}
-          windowSize={7}
-          removeClippedSubviews
-        />
-      )}
+      <View className="flex-1 bg-bg">
+        {tab === "surah" ? (
+          <FlatList<QuranSurah>
+            className="flex-1 px-4 pt-16"
+            data={surahs.data}
+            numColumns={2}
+            columnWrapperStyle={{ gap: 12 }}
+            keyExtractor={(s) => String(s.number)}
+            contentContainerStyle={{ paddingBottom: dockSpacing }}
+            ListHeaderComponent={header}
+            renderItem={renderSurah}
+            initialNumToRender={10}
+            windowSize={7}
+            removeClippedSubviews
+          />
+        ) : (
+          <SectionList
+            className="flex-1 px-4 pt-16"
+            sections={juzSections}
+            keyExtractor={(entry, index) => `${entry.number}-${index}`}
+            contentContainerStyle={{ paddingBottom: dockSpacing }}
+            ListHeaderComponent={header}
+            renderSectionHeader={({ section }) => (
+              <Text className="font-display mt-3 mb-1 text-lg text-primary">{section.title}</Text>
+            )}
+            renderItem={renderJuzRow}
+            initialNumToRender={12}
+            windowSize={7}
+            removeClippedSubviews
+          />
+        )}
+      </View>
     </>
   );
 }

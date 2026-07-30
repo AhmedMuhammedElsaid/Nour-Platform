@@ -2449,3 +2449,26 @@ scroll+tap (the freeze), ayah autoplay advance, language-switch overlay.
   `am start -a android.intent.action.VIEW -d "nour://playlist/<url-encoded-slug>" com.nour.mobile`
   — slug must match the app's CURRENT locale (the public `/api/v1/playlists` response has both
   `ar.slug`/`en.slug`; Arabic slugs need `encodeURIComponent` before the adb command).
+- ✅ **`b084eb7` downloads-list perf fix, OTA'd + A72-verified 2026-07-31** (group `2b830401`):
+  found during the same sweep, `DownloadsList` had the identical bug ONE LEVEL WORSE — a plain
+  `ScrollView` + `.map()` with **zero virtualization** (not even a FlatList), subscribing to
+  `usePlayerTransport()` unconditionally so it re-rendered every row on every play/pause/
+  track-switch **anywhere in the app**, not just within Downloads. Converted to `FlatList` +
+  extracted `DownloadRow` (same `React.memo` row-scoped-comparator pattern as `TrackRow`).
+  Device-verified full loop: play a downloaded track → row correctly shows ▶ + mini-player
+  updates → delete → list correctly transitions to the empty state, playback keeps running
+  uninterrupted. No dedicated component test existed for `DownloadsList` before or after this
+  change (`downloads.test.tsx` only covers the `use-downloads` hook) — pre-existing gap.
+- ✅ **2026-07-31 owner-reported bottom-dock overlap — ROOT-CAUSED + FIXED (Quran + Adhkar list;
+  Prayer Times fixed independently by a concurrent session, see its own entry above).** Screens
+  that returned a bare `<>` Fragment with the FlatList/ScrollView itself carrying `flex-1` (no
+  wrapping View) let their LAST row render behind `BottomTabBar` — reproduced on-device at the
+  true list end (Quran surahs 113/114, both fully hidden) with the mini-player BOTH present and
+  absent, ruling out a mini-player-height theory. `playlist/[slug].tsx` and `downloads-list.tsx`
+  never showed this because they already wrap their list in `<View className="flex-1 bg-bg">`
+  alongside a `<ScreenHeader>` sibling. Fix: wrap the bare-FlatList screens the same way. Tested
+  the theory on `quran/index.tsx` ALONE first (OTA'd, A72-verified: 113/114 fully clear) before
+  applying to `adhkar/index.tsx`. Root mechanism not fully nailed down (React Navigation's
+  per-screen container arguably should size correctly either way per `use-dock-spacing.ts`'s own
+  comment) — but the wrap is proven to work empirically and costs nothing, so ship it rather than
+  chase the exact Yoga/RN-Navigation explanation further.

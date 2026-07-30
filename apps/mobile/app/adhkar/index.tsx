@@ -72,44 +72,46 @@ export default function AdhkarListScreen() {
   const sets = azkar.data ?? [];
 
   return (
-    <FlatList
-      className="flex-1 bg-bg px-4 pt-16"
-      data={sets}
-      keyExtractor={(item) => item.id}
-      contentContainerClassName="gap-3"
-      contentContainerStyle={{ paddingBottom: dockSpacing }}
-      initialNumToRender={12}
-      windowSize={7}
-      removeClippedSubviews
-      ListHeaderComponent={
-        <Text variant="display" className="mb-2">
-          {t("adhkar.heading")}
-        </Text>
-      }
-      ListEmptyComponent={<Text variant="muted">{t("adhkar.empty")}</Text>}
-      renderItem={({ item }) => {
-        const display = item[locale] ?? item.ar ?? item.en;
-        if (display == null) return null;
-        const repeats = item.items.map((d) => d.repeat);
-        const done = progress != null ? azkarCompletedCount(progress, item.id, repeats) : 0;
-        const total = repeats.length;
-        const value = total > 0 ? (done / total) * 100 : 0;
+    <View className="flex-1 bg-bg">
+      <FlatList
+        className="flex-1 px-4 pt-16"
+        data={sets}
+        keyExtractor={(item) => item.id}
+        contentContainerClassName="gap-3"
+        contentContainerStyle={{ paddingBottom: dockSpacing }}
+        initialNumToRender={12}
+        windowSize={7}
+        removeClippedSubviews
+        ListHeaderComponent={
+          <Text variant="display" className="mb-2">
+            {t("adhkar.heading")}
+          </Text>
+        }
+        ListEmptyComponent={<Text variant="muted">{t("adhkar.empty")}</Text>}
+        renderItem={({ item }) => {
+          const display = item[locale] ?? item.ar ?? item.en;
+          if (display == null) return null;
+          const repeats = item.items.map((d) => d.repeat);
+          const done = progress != null ? azkarCompletedCount(progress, item.id, repeats) : 0;
+          const total = repeats.length;
+          const value = total > 0 ? (done / total) * 100 : 0;
 
-        return (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push(`/adhkar/${encodeURIComponent(display.slug)}`)}
-          >
-            <Card className="gap-2 p-4">
-              <Text variant="title">{display.title}</Text>
-              <Progress value={value} />
-              <Text variant="muted">
-                {done} / {total}
-              </Text>
-            </Card>
-          </Pressable>
-        );
-      }}
-    />
+          return (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push(`/adhkar/${encodeURIComponent(display.slug)}`)}
+            >
+              <Card className="gap-2 p-4">
+                <Text variant="title">{display.title}</Text>
+                <Progress value={value} />
+                <Text variant="muted">
+                  {done} / {total}
+                </Text>
+              </Card>
+            </Pressable>
+          );
+        }}
+      />
+    </View>
   );
 }
