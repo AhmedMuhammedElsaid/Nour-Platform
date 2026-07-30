@@ -172,6 +172,7 @@ apps/mobile/
        wordmark, so no separate text layer). Honours reduce-motion; 2.6s safety timeout. Uses
        `require("../assets/icon.png")` with a `@typescript-eslint/no-require-imports` disable
        (that rule IS on for `.tsx` here — only off for config/jest files).
+       - **2026-07-30 update (`722ca74`)**: icon.png now renders on cold start with no intervening ن flash; the noon mark is retired repo-wide (including deleted `apps/web/public/icons/icon.svg`). JS-only change, OTA-eligible.
 - **Sun-arc moon**: `isNight` swaps the rayed sun for a glowing crescent. Mobile
   carves the crescent with an RN-SVG `<Mask>` using **absolute** cx/cy (no
   transforms in this SVG), so it always aligns — and degrades to a visible full

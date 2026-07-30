@@ -350,8 +350,8 @@ apps/web/
   features/seo/components/json-ld.tsx    → <JsonLd data={...}> async server component: reads x-nonce header, stamps nonce on
                                             ld+json script (mandatory — CSP strict-dynamic blocks unnonce'd inline scripts).
                                             Escapes < to prevent </script> breakout.
-  public/manifest.webmanifest            → PWA manifest (start_url /ar, standalone, SVG + android-chrome 192/512 PNG icons)
-  public/og-image.webp                   → default/fallback social share image (1200×630); used by defaultOpenGraph/Twitter
+  public/manifest.webmanifest            → PWA manifest (start_url /ar, standalone, Quran-scene PNG icons for 192/512)
+  public/og-image.png                    → default/fallback social share image (1200×630); used by defaultOpenGraph/Twitter
   public/favicon.ico                     → browser favicon (raster)
   public/favicon-32x32.png / favicon-16x16.png → explicit-size favicon PNGs
   public/apple-touch-icon.png            → 180×180 iOS home screen icon
@@ -359,7 +359,6 @@ apps/web/
   public/sw.js                           → hand-rolled service worker (ADR 0003): nav network-first→offline.html,
                                             static cache-first, R2 audio cache-played + Range 206, /api never cached
   public/offline.html                    → static offline fallback (precached by sw.js)
-  public/icons/icon.svg                  → SVG app icon (sizes:"any", maskable)
   features/pwa/components/
     service-worker-register.tsx          → registers /sw.js (production only); mounted in [locale]/layout
     install-prompt.tsx                   → captures beforeinstallprompt → dismissible "Install" banner (localStorage dismiss)
