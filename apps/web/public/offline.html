@@ -17,7 +17,7 @@
         text-align: center;
         padding: 2rem;
       }
-      .mark { width: 72px; height: 72px; margin: 0 auto 1.25rem; }
+      .mark { width: 72px; height: 72px; margin: 0 auto 1.25rem; border-radius: 16px; }
       h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
       p { color: #555; margin: 0; max-width: 32ch; }
       @media (prefers-color-scheme: dark) {
@@ -28,7 +28,9 @@
   </head>
   <body>
     <div>
-      <img class="mark" src="/icons/icon.svg" alt="Nour" />
+      <!-- Must be a path sw.js precaches, or the mark 404s in the very
+           offline state this page exists to handle. -->
+      <img class="mark" src="/android-chrome-192x192.png" alt="Nour" />
       <h1>You're offline · أنت غير متصل</h1>
       <p>
         This page isn't available offline. Reconnect to keep listening.

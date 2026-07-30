@@ -54,9 +54,13 @@ Rationale:
   for the web origin (allow `GET`, `Range`; expose `Content-Range`,
   `Content-Length`, `Accept-Ranges`). Without it the SW transparently falls
   back to streaming (online-only audio). Add this to the deploy runbook.
-- **Icons.** Ships an SVG app icon (`/icons/icon.svg`, `sizes:"any"`), which
-  Chromium accepts for install. iOS home-screen and richer maskable rendering
-  want raster PNGs (192/512/apple-touch) — a follow-up design task.
+- **Icons.** Originally shipped an SVG app icon (`/icons/icon.svg`, `sizes:"any"`)
+  with raster PNGs noted as a follow-up. **Superseded 2026-07-30**: the brand mark
+  is now a photographic Quran scene, which cannot be meaningfully vectorised, so
+  the SVG was deleted and the manifest ships rasters only (192/512 + maskable-512
+  + apple-touch). Chromium installability now rests on the "192 and 512" arm of its
+  contract rather than the `sizes:"any"` arm — guarded by
+  `apps/web/features/pwa/manifest.test.ts`.
 - **CSP additions.** `worker-src 'self'`, `manifest-src 'self'`, and the R2
   origin added to `connect-src` (the SW fetch is governed by `connect-src`).
 - Updating to ISR/static caching later would let us revisit precaching, but
