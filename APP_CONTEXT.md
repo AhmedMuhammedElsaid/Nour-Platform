@@ -358,6 +358,12 @@ apps/web/
     ≥128px = plain downscale of the full scene. ≤48px = tight crop box (210,410,770,970) +
     brightness ×1.35 / contrast ×1.25 — the full scene is an unreadable dark smudge at tab size.
     Same rule governs apps/extension/public/icons/icon-32.png. The old "ن" mark is retired (a9dd1bb).
+    ⚠ icons/icon.svg (the ن vector) was DELETED and had FOUR referrers — manifest.webmanifest,
+    [locale]/layout.tsx, sw.js PRECACHE, and public/offline.html (0b7ea7f, a0e7247). The 4th is HTML,
+    so an extension-filtered grep misses it: `git grep` with NO --include when deleting an asset.
+    offline.html's mark must be a path sw.js precaches or it 404s offline. Dropping the SVG also
+    removed the manifest's only sizes:"any" icon — features/pwa/manifest.test.ts now asserts
+    Chromium's "192 and 512" arm instead; ADR 0003 marked superseded on that point.
   public/apple-touch-icon.png            → 180×180 iOS home screen icon
   public/android-chrome-192x192.png / android-chrome-512x512.png → PWA icons (also in manifest)
   public/sw.js                           → hand-rolled service worker (ADR 0003): nav network-first→offline.html,
