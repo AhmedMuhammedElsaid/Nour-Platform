@@ -44,20 +44,20 @@ export default function PrayerTimesScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const locale = initialLocale;
-  // Owner-reported 2026-07-22: the shared useDockSpacing() base gap (8dp,
-  // right for most screens) still let the last settings card sit under the
-  // bottom dock here specifically. Extend locally rather than raising the
-  // shared base (that would re-open the doubled-padding bug on every other
-  // screen using the hook).
-  const dockSpacing = useDockSpacing() + 24;
+  // Owner-reported 2026-07-22 (+24 fix) and again 2026-07-30: the last card
+  // (Kahf reminder toggle) still sat flush against — even visually under —
+  // the bottom tab bar. On-device pixel check confirmed the tab bar's own
+  // rendered height (icon+label row + its internal padding, ~71dp on the A72)
+  // is bigger than the +24 clearance this screen was adding, so the bar simply
+  // covered the gap along with part of the last card. Extend locally rather
+  // than raising the shared base (that would re-open the doubled-padding bug
+  // on every other screen using the hook).
+  const dockSpacing = useDockSpacing() + 88;
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const { location, prefs, hydrated, setLocation, setMethod, setMadhab } =
-    usePrayerSettings();
-  const { settings: azkar, setEnabled: setAzkarEnabled } =
-    useAzkarReminderSettings();
-  const { settings: kahf, setEnabled: setKahfEnabled } =
-    useKahfReminderSettings();
+  const { location, prefs, hydrated, setLocation, setMethod, setMadhab } = usePrayerSettings();
+  const { settings: azkar, setEnabled: setAzkarEnabled } = useAzkarReminderSettings();
+  const { settings: kahf, setEnabled: setKahfEnabled } = useKahfReminderSettings();
   const { settings: adhan, setEnabled: setAdhanEnabled } = useAdhanSettings();
 
   const [now, setNow] = useState(() => new Date());
@@ -215,165 +215,181 @@ export default function PrayerTimesScreen() {
 
   return (
     <>
-      <ScrollView
-        className="flex-1 bg-bg px-4 pt-16"
-        contentContainerClassName="gap-6"
-        contentContainerStyle={{ paddingBottom: dockSpacing }}
-      >
-        {/* Heading */}
-        <View className="gap-1">
-          <Text variant="display" className="text-2xl">
-            {t("prayer.title")}
-          </Text>
+      <View className="bg-bg flex-1">
+        <ScrollView
+          className="flex-1 px-4 pt-16"
+          contentContainerClassName="gap-6"
+          contentContainerStyle={{ paddingBottom: dockSpacing }}
+        >
+          {/* Heading */}
+          <View className="gap-1">
+            <Text variant="display" className="text-2xl">
+              {t("prayer.title")}
+            </Text>
+            <Pressable accessibilityRole="button" onPress={() => setShowLocationPicker(true)}>
+              <Text variant="muted" className="text-primary underline">
+                {cityLabel(location, initialLocale)} · {t("prayer.changeCity")}
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Qibla entry — a prominent banner (the compass shares this screen's
+            stored location). Mirrors the Home Qibla/Radio cards. */}
           <Pressable
             accessibilityRole="button"
-            onPress={() => setShowLocationPicker(true)}
+            accessibilityLabel={t("qibla.title")}
+            onPress={() => router.push("/qibla")}
+            className="border-border bg-surface flex-row items-center gap-4 rounded-xl border p-4"
           >
-            <Text variant="muted" className="text-primary underline">
-              {cityLabel(location, initialLocale)} · {t("prayer.changeCity")}
+            <View className="bg-primary/10 size-12 items-center justify-center rounded-lg">
+              <Text className="text-2xl">🕋</Text>
+            </View>
+            <View className="min-w-0 flex-1">
+              <Text variant="body" className="font-medium">
+                {t("qibla.title")}
+              </Text>
+              <Text variant="muted" numberOfLines={1}>
+                {t("qibla.homeCardSubtitle")}
+              </Text>
+            </View>
+            <Text variant="muted" className="text-xl">
+              ›
             </Text>
           </Pressable>
-        </View>
 
-        {/* Qibla entry — a prominent banner (the compass shares this screen's
-            stored location). Mirrors the Home Qibla/Radio cards. */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t("qibla.title")}
-          onPress={() => router.push("/qibla")}
-          className="flex-row items-center gap-4 rounded-xl border border-border bg-surface p-4"
-        >
-          <View className="size-12 items-center justify-center rounded-lg bg-primary/10">
-            <Text className="text-2xl">🕋</Text>
-          </View>
-          <View className="min-w-0 flex-1">
-            <Text variant="body" className="font-medium">{t("qibla.title")}</Text>
-            <Text variant="muted" numberOfLines={1}>{t("qibla.homeCardSubtitle")}</Text>
-          </View>
-          <Text variant="muted" className="text-xl">›</Text>
-        </Pressable>
-
-        {/* Sun/moon arc */}
-        {hydrated && (
-          <SunArc dots={dots} fraction={arc.fraction} isNight={arc.isNight} onNightBand={arc.onNightBand} theme={theme} showLabels animate={screenActive} />
-        )}
-
-        {/* Isolated ticking leaf — only this re-renders every second, not the
-            whole screen (see prayer-countdown.tsx). */}
-        <PrayerCountdown nextKey={upcoming.key} target={upcoming.time} locale={locale} size="lg" />
-
-        {/* Timetable */}
-        {hydrated && (
-          <PrayerTimetable day={day} nextPrayerKey={upcoming.key} />
-        )}
-
-        {/* Method settings */}
-        <MethodSettings
-          method={prefs.method}
-          madhab={prefs.madhab}
-          onMethodChange={setMethod}
-          onMadhabChange={setMadhab}
-        />
-
-        {/* Notification toggle */}
-        <View className="gap-3 rounded-lg border border-border bg-surface p-4">
-          <Text variant="label">{t("prayer.adhan.title")}</Text>
-          {!notifGranted ? (
-            <Button
-              label={t("prayer.adhan.background")}
-              variant="outline"
-              onPress={() => void requestNotifs()}
+          {/* Sun/moon arc */}
+          {hydrated && (
+            <SunArc
+              dots={dots}
+              fraction={arc.fraction}
+              isNight={arc.isNight}
+              onNightBand={arc.onNightBand}
+              theme={theme}
+              showLabels
+              animate={screenActive}
             />
-          ) : (
+          )}
+
+          {/* Isolated ticking leaf — only this re-renders every second, not the
+            whole screen (see prayer-countdown.tsx). */}
+          <PrayerCountdown
+            nextKey={upcoming.key}
+            target={upcoming.time}
+            locale={locale}
+            size="lg"
+          />
+
+          {/* Timetable */}
+          {hydrated && <PrayerTimetable day={day} nextPrayerKey={upcoming.key} />}
+
+          {/* Method settings */}
+          <MethodSettings
+            method={prefs.method}
+            madhab={prefs.madhab}
+            onMethodChange={setMethod}
+            onMadhabChange={setMadhab}
+          />
+
+          {/* Notification toggle */}
+          <View className="border-border bg-surface gap-3 rounded-lg border p-4">
+            <Text variant="label">{t("prayer.adhan.title")}</Text>
+            {!notifGranted ? (
+              <Button
+                label={t("prayer.adhan.background")}
+                variant="outline"
+                onPress={() => void requestNotifs()}
+              />
+            ) : (
+              <View className="flex-row items-center justify-between">
+                <Text variant="body">{t("prayer.adhan.enable")}</Text>
+                <Pressable
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: adhan.enabled }}
+                  onPress={() => setAdhanEnabled(!adhan.enabled)}
+                  className={`h-7 w-12 rounded-full ${adhan.enabled ? "bg-primary" : "bg-surface-2"}`}
+                >
+                  <View
+                    className={`m-1 size-5 rounded-full bg-white shadow ${adhan.enabled ? "ms-auto" : ""}`}
+                  />
+                </Pressable>
+              </View>
+            )}
+            {notifGranted && adhan.enabled ? (
+              <Button
+                label={t("prayer.adhan.test")}
+                variant="ghost"
+                onPress={() => void runTestAdhan()}
+              />
+            ) : null}
+          </View>
+
+          {/* Adhkar reminder toggle — sabah after Fajr, masaa after Asr */}
+          <View className="border-border bg-surface gap-3 rounded-lg border p-4">
+            <Text variant="label">{t("prayer.azkar.title")}</Text>
             <View className="flex-row items-center justify-between">
-              <Text variant="body">{t("prayer.adhan.enable")}</Text>
+              <Text variant="body" className="flex-1 pe-3">
+                {t("prayer.azkar.enable")}
+              </Text>
               <Pressable
                 accessibilityRole="switch"
-                accessibilityState={{ checked: adhan.enabled }}
-                onPress={() => setAdhanEnabled(!adhan.enabled)}
-                className={`h-7 w-12 rounded-full ${adhan.enabled ? "bg-primary" : "bg-surface-2"}`}
+                accessibilityState={{ checked: azkar.enabled }}
+                accessibilityLabel={t("prayer.azkar.enable")}
+                onPress={() => toggleAzkar(!azkar.enabled)}
+                className={`h-7 w-12 rounded-full ${azkar.enabled ? "bg-primary" : "bg-surface-2"}`}
               >
                 <View
-                  className={`size-5 rounded-full bg-white shadow m-1 ${adhan.enabled ? "ms-auto" : ""}`}
+                  className={`m-1 size-5 rounded-full bg-white shadow ${azkar.enabled ? "ms-auto" : ""}`}
                 />
               </Pressable>
             </View>
-          )}
-          {notifGranted && adhan.enabled ? (
-            <Button
-              label={t("prayer.adhan.test")}
-              variant="ghost"
-              onPress={() => void runTestAdhan()}
-            />
-          ) : null}
-        </View>
-
-        {/* Adhkar reminder toggle — sabah after Fajr, masaa after Asr */}
-        <View className="gap-3 rounded-lg border border-border bg-surface p-4">
-          <Text variant="label">{t("prayer.azkar.title")}</Text>
-          <View className="flex-row items-center justify-between">
-            <Text variant="body" className="flex-1 pe-3">
-              {t("prayer.azkar.enable")}
-            </Text>
-            <Pressable
-              accessibilityRole="switch"
-              accessibilityState={{ checked: azkar.enabled }}
-              accessibilityLabel={t("prayer.azkar.enable")}
-              onPress={() => toggleAzkar(!azkar.enabled)}
-              className={`h-7 w-12 rounded-full ${azkar.enabled ? "bg-primary" : "bg-surface-2"}`}
-            >
-              <View
-                className={`size-5 rounded-full bg-white shadow m-1 ${azkar.enabled ? "ms-auto" : ""}`}
+            {azkar.enabled ? (
+              <Text variant="muted" className="text-xs">
+                {notifGranted ? t("prayer.azkar.hint") : t("prayer.azkar.foregroundOnly")}
+              </Text>
+            ) : null}
+            {notifGranted && azkar.enabled ? (
+              <Button
+                label={t("prayer.azkar.test")}
+                variant="ghost"
+                onPress={() => void runTestAzkar()}
               />
-            </Pressable>
+            ) : null}
           </View>
-          {azkar.enabled ? (
-            <Text variant="muted" className="text-xs">
-              {notifGranted ? t("prayer.azkar.hint") : t("prayer.azkar.foregroundOnly")}
-            </Text>
-          ) : null}
-          {notifGranted && azkar.enabled ? (
-            <Button
-              label={t("prayer.azkar.test")}
-              variant="ghost"
-              onPress={() => void runTestAzkar()}
-            />
-          ) : null}
-        </View>
 
-        {/* Friday Surah Al-Kahf reminder toggle — fixed Friday 12:00 local */}
-        <View className="gap-3 rounded-lg border border-border bg-surface p-4">
-          <Text variant="label">{t("prayer.kahf.title")}</Text>
-          <View className="flex-row items-center justify-between">
-            <Text variant="body" className="flex-1 pe-3">
-              {t("prayer.kahf.enable")}
-            </Text>
-            <Pressable
-              accessibilityRole="switch"
-              accessibilityState={{ checked: kahf.enabled }}
-              accessibilityLabel={t("prayer.kahf.enable")}
-              onPress={() => toggleKahf(!kahf.enabled)}
-              className={`h-7 w-12 rounded-full ${kahf.enabled ? "bg-primary" : "bg-surface-2"}`}
-            >
-              <View
-                className={`size-5 rounded-full bg-white shadow m-1 ${kahf.enabled ? "ms-auto" : ""}`}
+          {/* Friday Surah Al-Kahf reminder toggle — fixed Friday 12:00 local */}
+          <View className="border-border bg-surface gap-3 rounded-lg border p-4">
+            <Text variant="label">{t("prayer.kahf.title")}</Text>
+            <View className="flex-row items-center justify-between">
+              <Text variant="body" className="flex-1 pe-3">
+                {t("prayer.kahf.enable")}
+              </Text>
+              <Pressable
+                accessibilityRole="switch"
+                accessibilityState={{ checked: kahf.enabled }}
+                accessibilityLabel={t("prayer.kahf.enable")}
+                onPress={() => toggleKahf(!kahf.enabled)}
+                className={`h-7 w-12 rounded-full ${kahf.enabled ? "bg-primary" : "bg-surface-2"}`}
+              >
+                <View
+                  className={`m-1 size-5 rounded-full bg-white shadow ${kahf.enabled ? "ms-auto" : ""}`}
+                />
+              </Pressable>
+            </View>
+            {kahf.enabled ? (
+              <Text variant="muted" className="text-xs">
+                {t("prayer.kahf.hint")}
+              </Text>
+            ) : null}
+            {notifGranted && kahf.enabled ? (
+              <Button
+                label={t("prayer.kahf.test")}
+                variant="ghost"
+                onPress={() => void runTestKahf()}
               />
-            </Pressable>
+            ) : null}
           </View>
-          {kahf.enabled ? (
-            <Text variant="muted" className="text-xs">
-              {t("prayer.kahf.hint")}
-            </Text>
-          ) : null}
-          {notifGranted && kahf.enabled ? (
-            <Button
-              label={t("prayer.kahf.test")}
-              variant="ghost"
-              onPress={() => void runTestKahf()}
-            />
-          ) : null}
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
 
       {/* Location picker modal */}
       <Modal
@@ -382,7 +398,7 @@ export default function PrayerTimesScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowLocationPicker(false)}
       >
-        <View className="flex-1 bg-bg">
+        <View className="bg-bg flex-1">
           <View
             className="flex-row items-center justify-end px-4"
             style={{ paddingTop: insets.top + 16 }}
@@ -393,13 +409,12 @@ export default function PrayerTimesScreen() {
               onPress={() => setShowLocationPicker(false)}
               className="size-9 items-center justify-center"
             >
-              <Text variant="muted" className="text-lg">✕</Text>
+              <Text variant="muted" className="text-lg">
+                ✕
+              </Text>
             </Pressable>
           </View>
-          <LocationPicker
-            onSelect={setLocation}
-            onClose={() => setShowLocationPicker(false)}
-          />
+          <LocationPicker onSelect={setLocation} onClose={() => setShowLocationPicker(false)} />
         </View>
       </Modal>
     </>
