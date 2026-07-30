@@ -352,8 +352,12 @@ apps/web/
                                             Escapes < to prevent </script> breakout.
   public/manifest.webmanifest            → PWA manifest (start_url /ar, standalone, Quran-scene PNG icons for 192/512)
   public/og-image.png                    → default/fallback social share image (1200×630); used by defaultOpenGraph/Twitter
-  public/favicon.ico                     → browser favicon (raster)
+  public/favicon.ico                     → browser favicon (raster, multi-size 16/32/48)
   public/favicon-32x32.png / favicon-16x16.png → explicit-size favicon PNGs
+  ⚠ ALL icons derive from the Quran scene (source: apps/mobile/assets/icon.png, 1024² opaque RGB).
+    ≥128px = plain downscale of the full scene. ≤48px = tight crop box (210,410,770,970) +
+    brightness ×1.35 / contrast ×1.25 — the full scene is an unreadable dark smudge at tab size.
+    Same rule governs apps/extension/public/icons/icon-32.png. The old "ن" mark is retired (a9dd1bb).
   public/apple-touch-icon.png            → 180×180 iOS home screen icon
   public/android-chrome-192x192.png / android-chrome-512x512.png → PWA icons (also in manifest)
   public/sw.js                           → hand-rolled service worker (ADR 0003): nav network-first→offline.html,
