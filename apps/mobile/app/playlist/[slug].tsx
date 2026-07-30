@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { memo, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -8,6 +8,7 @@ import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Text } from "@/components/ui/text";
+import type { DownloadStatus } from "@/features/downloads/hooks/use-downloads";
 import { DownloadButton } from "@/features/downloads/components/download-button";
 import { useDownloads } from "@/features/downloads/hooks/use-downloads";
 import { Cover } from "@/features/playlists/components/cover";
@@ -15,6 +16,7 @@ import { initialLocale } from "@/lib/i18n";
 import { usePlayerActions, usePlayerTransport, type QueueTrack } from "@/lib/player-context";
 import { categoriesQuery, playlistDetailQuery } from "@/lib/queries";
 import type { CategoryChip, PlayableTrack } from "@/lib/types";
+import type { Locale } from "@repo/shared-core/schemas/locale";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
 
 function formatDuration(secs?: number): string | null {
@@ -23,6 +25,111 @@ function formatDuration(secs?: number): string | null {
   const s = Math.floor(secs % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
+
+type TrackRowProps = {
+  item: PlayableTrack;
+  index: number;
+  isActive: boolean;
+  isPlaying: boolean;
+  queueIndex: number;
+  dlStatus: DownloadStatus;
+  locale: Locale;
+  playlistTitle: string;
+  playlistSlug: string;
+  onPlay: (queueIndex: number) => void;
+  onStartDownload: (track: {
+    id: string;
+    title: string;
+    srcUrl: string;
+    playlistTitle: string;
+    playlistSlug: string;
+  }) => void;
+  onDelete: (trackId: string) => void;
+};
+
+// `currentTrack`/`isPlaying` come from usePlayerTransport() and change on every
+// play/pause/track-switch — without this memo, that re-renders every visible
+// row on every transport event instead of just the one whose active state
+// changed (same row-scoped-comparator pattern as SurahCard/StationCard/
+// MushafSegment, see APP_CONTEXT `0ab9bb6`). Callback identities are NOT
+// compared: they're allowed to change every parent render (playTrack/
+// downloadAll aren't stabilised — they're defined after the early-return
+// guards, so wrapping them in useCallback there would break Rules of Hooks)
+// and don't affect what this row renders.
+const TrackRow = memo(
+  function TrackRow({
+    item,
+    index,
+    isActive,
+    isPlaying,
+    queueIndex,
+    dlStatus,
+    locale,
+    playlistTitle,
+    playlistSlug,
+    onPlay,
+    onStartDownload,
+    onDelete,
+  }: TrackRowProps) {
+    const dur = formatDuration(item.durationSecs);
+    const playable = item.srcUrl != null;
+    const display = item[locale] ?? item.ar ?? item.en;
+
+    return (
+      <Pressable
+        accessibilityRole="button"
+        disabled={!playable}
+        onPress={() => {
+          if (queueIndex >= 0) onPlay(queueIndex);
+        }}
+      >
+        <View className="flex-row items-center gap-3 border-b border-border py-3">
+          <Text
+            variant="muted"
+            className={`w-6 text-center ${isActive && isPlaying ? "text-primary font-bold" : ""}`}
+          >
+            {isActive && isPlaying ? "▶" : String(index + 1)}
+          </Text>
+          <Text
+            variant="body"
+            numberOfLines={1}
+            className={`flex-1 ${isActive ? "text-primary font-medium" : ""}`}
+          >
+            {display.title}
+          </Text>
+          {dur != null && <Text variant="muted">{dur}</Text>}
+          {playable && (
+            <DownloadButton
+              trackId={item.id}
+              title={display.title}
+              status={dlStatus}
+              onDownload={() =>
+                onStartDownload({
+                  id: item.id,
+                  title: display.title,
+                  srcUrl: item.srcUrl as string,
+                  playlistTitle,
+                  playlistSlug,
+                })
+              }
+              onDelete={() => onDelete(item.id)}
+            />
+          )}
+        </View>
+      </Pressable>
+    );
+  },
+  (prev, next) =>
+    prev.item === next.item &&
+    prev.index === next.index &&
+    prev.isActive === next.isActive &&
+    prev.isPlaying === next.isPlaying &&
+    prev.queueIndex === next.queueIndex &&
+    prev.dlStatus === next.dlStatus &&
+    prev.locale === next.locale &&
+    prev.playlistTitle === next.playlistTitle &&
+    prev.playlistSlug === next.playlistSlug,
+);
 
 export default function PlaylistDetailScreen() {
   const { t } = useTranslation();
@@ -215,57 +322,29 @@ export default function PlaylistDetailScreen() {
         contentContainerClassName="gap-1"
         contentContainerStyle={{ paddingBottom: dockSpacing }}
         ListEmptyComponent={<Text variant="muted">{t("playlist.noTracks")}</Text>}
+        initialNumToRender={12}
+        windowSize={7}
+        removeClippedSubviews
         renderItem={({ item, index }) => {
-          const dur = formatDuration(item.durationSecs);
           const isActive = currentTrack?.id === item.id;
-          const playable = item.srcUrl != null;
-          const queueIndex = playable
-            ? queueTracks.findIndex((q) => q.id === item.id)
-            : -1;
-          const dlStatus = downloads.getStatus(item.id);
+          const queueIndex =
+            item.srcUrl != null ? queueTracks.findIndex((q) => q.id === item.id) : -1;
 
           return (
-            <Pressable
-              accessibilityRole="button"
-              disabled={!playable}
-              onPress={() => {
-                if (queueIndex >= 0) playTrack(queueIndex);
-              }}
-            >
-              <View className="flex-row items-center gap-3 border-b border-border py-3">
-                <Text
-                  variant="muted"
-                  className={`w-6 text-center ${isActive && isPlaying ? "text-primary font-bold" : ""}`}
-                >
-                  {isActive && isPlaying ? "▶" : String(index + 1)}
-                </Text>
-                <Text
-                  variant="body"
-                  numberOfLines={1}
-                  className={`flex-1 ${isActive ? "text-primary font-medium" : ""}`}
-                >
-                  {(item[locale] ?? item.ar ?? item.en).title}
-                </Text>
-                {dur != null && <Text variant="muted">{dur}</Text>}
-                {playable && (
-                  <DownloadButton
-                    trackId={item.id}
-                    title={(item[locale] ?? item.ar ?? item.en).title}
-                    status={dlStatus}
-                    onDownload={() =>
-                      downloads.startDownload({
-                        id: item.id,
-                        title: (item[locale] ?? item.ar ?? item.en).title,
-                        srcUrl: item.srcUrl as string,
-                        playlistTitle: display.title,
-                        playlistSlug: display.slug,
-                      })
-                    }
-                    onDelete={() => downloads.remove(item.id)}
-                  />
-                )}
-              </View>
-            </Pressable>
+            <TrackRow
+              item={item}
+              index={index}
+              isActive={isActive}
+              isPlaying={isPlaying}
+              queueIndex={queueIndex}
+              dlStatus={downloads.getStatus(item.id)}
+              locale={locale}
+              playlistTitle={display.title}
+              playlistSlug={display.slug}
+              onPlay={playTrack}
+              onStartDownload={downloads.startDownload}
+              onDelete={downloads.remove}
+            />
           );
         }}
         />

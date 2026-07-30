@@ -36,12 +36,24 @@ import { contentCacheBuster } from "@/lib/data-version";
 import { runOfflinePrefetch } from "@/lib/offline-prefetch";
 import appJson from "@/app.json";
 
-// One month — how long a persisted query stays eligible for restore on cold
-// start, and (as QueryClient's default gcTime below) how long an in-memory
-// query survives without an active observer. gcTime must stay >= maxAge or
-// the persisted cache could restore entries the in-memory client would have
-// already garbage-collected.
+// One month — how long a persisted query stays eligible for RESTORE on cold
+// start (the AsyncStorage-backed persister's `maxAge`, below).
 const CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+// 24h — how long an unmounted query survives IN MEMORY without an active
+// observer (QueryClient's default gcTime). This is a different concern from
+// CACHE_MAX_AGE_MS above: maxAge gates whether a COLD-START restore from disk
+// is still eligible; gcTime gates whether an ALREADY-RUNNING process keeps a
+// query resident after its last screen unmounts. The two don't need to match
+// — no single app session runs continuously for 30 days, so the old
+// `gcTime: CACHE_MAX_AGE_MS` bought nothing over a much shorter value and
+// just meant every query ever fetched (all 114 Quran surahs from the offline
+// prefetch included, even though those are deliberately excluded from disk
+// persistence below and can never benefit from a long in-memory retention)
+// stayed resident in the live QueryClient for the life of the process. 24h
+// comfortably covers any realistic single-launch session while giving the
+// in-memory cache a real ceiling instead of an effectively-unbounded one.
+const IN_MEMORY_GC_TIME_MS = 24 * 60 * 60 * 1000;
 
 // Post-boot delay before background prefetch starts, so it never competes
 // with first paint / the animated splash for the JS thread or the network.
@@ -76,9 +88,8 @@ export default function RootLayout() {
       new QueryClient({
         defaultOptions: {
           queries: {
-            // Keep unmounted queries alive in memory at least as long as the
-            // persisted cache is allowed to restore them (see CACHE_MAX_AGE_MS).
-            gcTime: CACHE_MAX_AGE_MS,
+            // See IN_MEMORY_GC_TIME_MS above for why this is NOT CACHE_MAX_AGE_MS.
+            gcTime: IN_MEMORY_GC_TIME_MS,
             // Perf: every screen unmounts when you leave its tab, so with the
             // react-query default (staleTime 0 + refetchOnMount) each tab
             // revisit fired a fresh network request and re-showed a skeleton —

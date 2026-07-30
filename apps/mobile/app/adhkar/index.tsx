@@ -78,6 +78,9 @@ export default function AdhkarListScreen() {
       keyExtractor={(item) => item.id}
       contentContainerClassName="gap-3"
       contentContainerStyle={{ paddingBottom: dockSpacing }}
+      initialNumToRender={12}
+      windowSize={7}
+      removeClippedSubviews
       ListHeaderComponent={
         <Text variant="display" className="mb-2">
           {t("adhkar.heading")}
