@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { AccessibilityInfo, StyleSheet, View } from "react-native";
+import { AccessibilityInfo, Image, StyleSheet, View } from "react-native";
 import Animated, {
   Easing,
   runOnJS,
@@ -9,7 +9,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import Svg, { Circle, Defs, Path, RadialGradient, Stop } from "react-native-svg";
+import Svg, { Circle, Defs, RadialGradient, Stop } from "react-native-svg";
 
 import { Text } from "@/components/ui/text";
 
@@ -17,12 +17,14 @@ import { Text } from "@/components/ui/text";
 // SVG fills + animated styles can't use NativeWind classes — same local-const
 // pattern as features/prayer-times/components/sun-arc.tsx.
 const BG = "#0f0d0a"; // --color-bg (near-black canvas)
-const GOLD = "#c8a050"; // --color-primary (noon stroke + bloom)
-const SUN = "#e4c57e"; // --color-sun (brighter gold for the dot + shimmer)
+const GOLD = "#c8a050"; // --color-primary (bloom gradient)
+const SUN = "#e4c57e"; // --color-sun (brighter gold for the gloss shimmer)
 
-// "Minimal Rise" — the ن mark springs up out of a soft gold bloom, a gloss
-// shimmer wipes across it, then the wordmark rises in. Plays once on cold start
-// as a JS overlay above the native splash, then fades out and unmounts.
+// "Minimal Rise" — the Quran scene mark (assets/icon.png, the same asset the
+// native splash and launcher icon use) springs up out of a soft gold bloom, a
+// gloss shimmer wipes across it, then the wordmark rises in. Plays once on
+// cold start as a JS overlay above the native splash, then fades out and
+// unmounts.
 type AnimatedSplashProps = {
   /** Called once the exit fade completes (or the safety timeout fires). */
   onFinish: () => void;
@@ -160,17 +162,13 @@ export function AnimatedSplash({ onFinish }: AnimatedSplashProps) {
           {/* Mark + gloss shimmer, clipped to the box so the shimmer wipes through. */}
           <View style={styles.markBox} accessibilityLabel="Nour">
             <Animated.View style={markStyle}>
-              <Svg width={104} height={104} viewBox="0 0 512 512">
-                {/* Stylised Arabic ن (noon) with its dot — the brand mark. */}
-                <Path
-                  d="M150 196v44c0 64 47 104 106 104s106-40 106-104v-44"
-                  fill="none"
-                  stroke={GOLD}
-                  strokeWidth={34}
-                  strokeLinecap="round"
-                />
-                <Circle cx={256} cy={150} r={22} fill={SUN} />
-              </Svg>
+              {/* Quran scene brand mark — same asset as the native splash/launcher icon. */}
+              <Image
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                source={require("../assets/icon.png")}
+                style={styles.mark}
+                resizeMode="contain"
+              />
             </Animated.View>
             <Animated.View style={[styles.shimmer, shimmerStyle]} />
           </View>
@@ -212,6 +210,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
   },
+  mark: { width: 104, height: 104, borderRadius: 24 },
   shimmer: {
     position: "absolute",
     top: -30,
