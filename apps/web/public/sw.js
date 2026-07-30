@@ -33,7 +33,7 @@
 // v9 (2026-07-11): one-time cache-bust so every client purges stale shell/pages
 // caches and re-claims — evicts any cached HTML/JS still running the old
 // adhan-fires-on-open code (superseded by the active-tab + tight-window fire gate).
-const VERSION = "v9";
+const VERSION = "v10";
 const SHELL_CACHE = `nour-shell-${VERSION}`;
 const PAGES_CACHE = `nour-pages-${VERSION}`;
 const STATIC_CACHE = `nour-static-${VERSION}`;
@@ -41,7 +41,7 @@ const AUDIO_CACHE = `nour-audio-${VERSION}`;
 const KEEP = new Set([SHELL_CACHE, PAGES_CACHE, STATIC_CACHE, AUDIO_CACHE]);
 
 const OFFLINE_URL = "/offline.html";
-const PRECACHE = [OFFLINE_URL, "/icons/icon.svg", "/manifest.webmanifest"];
+const PRECACHE = [OFFLINE_URL, "/android-chrome-192x192.png", "/manifest.webmanifest"];
 
 // Adhan recordings are large and only useful to users who enable azan, so they
 // are NOT precached. The adhan controller posts "nour:cache-adhan" when azan
