@@ -2421,3 +2421,30 @@ scroll+tap (the freeze), ayah autoplay advance, language-switch overlay.
   timing window as the unexplained ramp — but this is an inference from dependency list + timing
   correlation, NOT a measured attribution. Don't treat it as confirmed; the only way to actually
   attribute this is the blocked heap dump (needs a debug build, see above).
+- ✅ **2026-07-30 `pm clear` + fresh-prefetch trace CLOSES the query-cache-retention lead too.**
+  Forced a genuine first-ever launch (no completion marker to skip `runOfflinePrefetch`, so all
+  114 Quran surahs + full adhkar catalog actually fetch) and sampled native heap every 15-30s for
+  150s: stayed in the same 235-283 MB band the whole time, no growth trend. The offline prefetch
+  is NOT a meaningful memory contributor despite every fetched surah sitting in the in-memory
+  query cache. `df6f9c9` (setupPlayer race, above) already closed the RNTP/ExoPlayer lead. Between
+  this and that, every cheaply-testable hypothesis is now closed — the 265 MB baseline stays
+  unattributed at the object level without a debug build; stop re-testing memory theories via adb.
+- ✅ **`796f593` playlist perf/best-practice pass, OTA'd + A72-verified 2026-07-30** (group
+  `0f7e53f9`): (1) `playlist/[slug].tsx`'s FlatList `renderItem` was an inline closure reading
+  `currentTrack`/`isPlaying` from `usePlayerTransport()`, so every play/pause/track-switch
+  re-rendered EVERY visible row, not just the one whose active state changed — extracted `TrackRow`
+  as `React.memo` with a row-scoped comparator (same pattern as `SurahCard`/`StationCard`/
+  `MushafSegment`, `0ab9bb6`), verified on-device: playing track 1 then switching to track 3
+  correctly updated both rows (1 reverted to "1", 3 showed ▶) and left rows 2/4 untouched. (2) Added
+  `windowSize`/`initialNumToRender`/`removeClippedSubviews` to the playlist + adhkar FlatLists,
+  matching `quran/index.tsx`'s already-established values. (3) `_layout.tsx`'s QueryClient had
+  `gcTime: CACHE_MAX_AGE_MS` (30 days) — conflated the persisted-cache `maxAge` (correctly 30 days,
+  gates cold-start restore) with in-memory `gcTime` (a different concern: how long an unmounted
+  query survives in the RUNNING process). Split into `IN_MEMORY_GC_TIME_MS` (24h) — a correctness
+  fix on its own merits (no session runs 30 days continuously, and Quran surah queries are excluded
+  from persistence so they got zero benefit from the long retention), NOT a memory fix — already
+  measured not to move the heap number (see the `pm clear` trace above). Deep-link recipe used to
+  reach `/playlist/[slug]` for verification without hunting through the UI:
+  `am start -a android.intent.action.VIEW -d "nour://playlist/<url-encoded-slug>" com.nour.mobile`
+  — slug must match the app's CURRENT locale (the public `/api/v1/playlists` response has both
+  `ar.slug`/`en.slug`; Arabic slugs need `encodeURIComponent` before the adb command).
