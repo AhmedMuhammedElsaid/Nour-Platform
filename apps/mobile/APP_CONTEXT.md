@@ -2472,3 +2472,18 @@ scroll+tap (the freeze), ayah autoplay advance, language-switch overlay.
   per-screen container arguably should size correctly either way per `use-dock-spacing.ts`'s own
   comment) — but the wrap is proven to work empirically and costs nothing, so ship it rather than
   chase the exact Yoga/RN-Navigation explanation further.
+- ✅ **`7a587eb` prayer-times half of the same bug, OTA'd (preview channel) + A72-verified
+  2026-07-31.** Same wrap (`<View className="flex-1 bg-bg">` around the bare `ScrollView`) plus
+  bumped the local `dockSpacing` extension `useDockSpacing() + 24` → `+ 88` (the earlier `+24`,
+  from `ef4da31` 2026-07-22, was already live on-device and still wasn't enough on its own —
+  the wrap made the padding start actually showing, but the last card (Kahf toggle) needed real
+  clearance ≥ the tab bar's own rendered height, ~71dp on the A72). ⚠️ **Debugging trap for next
+  time**: this A72's installed dev-client build is on the **`preview`** EAS channel, not
+  `production` — `eas update --channel production` publishes silently succeed and the CDN serves
+  the new manifest fine (curl-verified), but the device's own `expo-channel-name` request header
+  never matches, so it reports `CheckCompleteUnavailable` forever and you burn cycles thinking the
+  fix "isn't landing." Confirm a device's actual channel via `unzip base.apk AndroidManifest.xml`
+  → search the extracted bytes (UTF-16) for `{"expo-channel-name":"..."}`, or just always publish
+  to both channels when unsure. Also confirms `use-dock-spacing.ts`'s doc-comment claim ("Stack
+  already excludes the dock via flexbox, screens can never render behind it") is empirically
+  false for a bare-Fragment screen — don't trust it as a reason to skip the wrap on a new screen.
