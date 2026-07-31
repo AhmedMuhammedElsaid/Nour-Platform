@@ -270,9 +270,21 @@ export function AudioPlayer() {
     };
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
-      if (entry) setHeight(entry.contentRect.height);
+      if (!entry) return;
+      // borderBoxSize, NOT contentRect: contentRect is the content box, which
+      // excludes the border-t and the pb-[env(safe-area-inset-bottom)] below.
+      // On a home-indicator iPhone that inset is ~34px, so measuring the
+      // content box under-reports the bar by exactly the amount of clearance
+      // those devices need — the defect this property exists to prevent.
+      const borderBox = entry.borderBoxSize?.[0];
+      setHeight(
+        borderBox ? borderBox.blockSize : el.getBoundingClientRect().height,
+      );
     });
-    observer.observe(el);
+    // box: "border-box" — the default observes the CONTENT box, so a change to
+    // the safe-area padding alone would never fire the callback. That is a real
+    // case: env(safe-area-inset-bottom) differs between portrait and landscape.
+    observer.observe(el, { box: "border-box" });
     setHeight(el.getBoundingClientRect().height);
     return () => {
       observer.disconnect();
@@ -341,7 +353,10 @@ export function AudioPlayer() {
               128px unshrinkable. `order` is direction-agnostic, so `dir="rtl"`
               still mirrors this correctly without `flex-row-reverse`. */}
           <div className="max-w-5xl mx-auto px-3 sm:px-6 h-auto min-h-16 md:h-[72px] py-2 sm:py-0 flex flex-wrap sm:flex-nowrap items-center gap-x-2 gap-y-1 sm:gap-4">
-            <div className="order-1 min-w-0 flex-1 flex items-center gap-3">
+            {/* sm:order-none is required, not decorative: its siblings reset
+                their order at sm, so leaving this at order-1 pushes the track
+                info to the END of the desktop bar. */}
+            <div className="order-1 sm:order-none min-w-0 flex-1 flex items-center gap-3">
               {currentTrack.coverUrl && (
                 // Decorative — the adjacent track title carries the label.
                 // next/image is unavailable inside packages/ui; a sized, lazy
@@ -594,9 +609,14 @@ export function AudioPlayer() {
                 <div
                   role="group"
                   aria-label="Transport controls"
-                  className="sm:hidden mb-2 flex items-center justify-center gap-1 border-b border-border pb-3"
+                  // gap-0 + shrink-0: five 44px targets need 220px and the
+                  // Sheet offers ~221px, so any gap forced them to shrink to
+                  // 41px — silently undoing the touch-target work for the very
+                  // controls that were relocated here. flex-wrap is the safety
+                  // valve if a narrower Sheet ever appears.
+                  className="sm:hidden mb-2 flex flex-wrap items-center justify-center gap-0 border-b border-border pb-3"
                 >
-                  <SecondaryTransport />
+                  <SecondaryTransport className="shrink-0" />
                 </div>
               )}
               <ol className="-mx-2 overflow-y-auto">
