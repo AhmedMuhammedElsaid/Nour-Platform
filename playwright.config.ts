@@ -19,6 +19,18 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
+    {
+      // Phone-width guardrail. Scoped to the responsive spec on purpose: the
+      // other suites (incl. the admin CMS, which is desktop-only) have no
+      // phone-specific assertions, so running them here would only add noise.
+      name: "mobile-chromium",
+      // Pixel 5 for a real mobile UA / touch / DPR, but the viewport is pinned
+      // to 360px — the narrowest width in common Android use, and the width the
+      // responsive work targets. Pixel 5's own 393px would let 360-only
+      // regressions through.
+      use: { ...devices["Pixel 5"], viewport: { width: 360, height: 800 } },
+      testMatch: /responsive\.smoke\.test\.ts/,
+    },
   ],
   // When PLAYWRIGHT_WEB_URL / PLAYWRIGHT_ADMIN_URL are set (CI/preview), skip
   // auto-start. Locally, start both dev servers if they're not already running.
