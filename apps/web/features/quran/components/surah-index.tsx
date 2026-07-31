@@ -27,7 +27,7 @@ export function SurahIndex({ surahs }: { surahs: QuranSurah[] }) {
           <Link
             key={s.number}
             href={`/quran/${s.number}?autoplay=1`}
-            className="border-border bg-surface hover:border-primary/40 before:content-[''] after:content-[''] before:border-primary/40 after:border-primary/40 relative flex flex-col items-center gap-1 rounded-lg border p-4 pt-5 text-center transition-[transform,box-shadow,border-color] duration-300 before:absolute before:top-2 before:start-2 before:h-3 before:w-3 before:border-t before:border-l after:absolute after:end-2 after:bottom-2 after:h-3 after:w-3 after:border-r after:border-b hover:-translate-y-1 hover:shadow-[0_16px_40px_rgb(0_0_0/25%)]"
+            className="border-border bg-surface hover:border-primary/40 before:content-[''] after:content-[''] before:border-primary/40 after:border-primary/40 relative flex flex-col items-center gap-1 rounded-lg border p-4 pt-5 text-center transition-[transform,box-shadow,border-color] duration-300 before:absolute before:top-2 before:start-2 before:h-3 before:w-3 before:border-t before:border-s after:absolute after:end-2 after:bottom-2 after:h-3 after:w-3 after:border-e after:border-b hover:-translate-y-1 hover:shadow-[0_16px_40px_rgb(0_0_0/25%)]"
           >
             {pct !== null ? (
               <span
