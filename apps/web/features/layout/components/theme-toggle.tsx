@@ -44,7 +44,9 @@ export function ThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label={t("toggleTheme")}
-      className="inline-flex size-9 items-center justify-center rounded-md text-text-2 transition-colors hover:bg-surface-2 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+      // size-11 (44px) hit area; the header row is h-14 (56px) so this fits
+      // without changing header height. Icon stays size-5 via Moon/SunIcon.
+      className="inline-flex size-11 items-center justify-center rounded-md text-text-2 transition-colors hover:bg-surface-2 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
     >
       {theme === "dark" ? <MoonIcon /> : <SunIcon />}
     </button>

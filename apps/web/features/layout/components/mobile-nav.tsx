@@ -27,7 +27,9 @@ export function MobileNav({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-text-2 transition-colors hover:text-primary"
+        // h-11 w-11 (44px) hit area; the header row is h-14 (56px) so this fits
+        // without changing header height. The hamburger glyph stays 20x20.
+        className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border text-text-2 transition-colors hover:text-primary"
       >
         <svg
           width="20"

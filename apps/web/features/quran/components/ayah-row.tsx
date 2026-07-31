@@ -48,7 +48,9 @@ export function AyahRow({
             aria-pressed={isCurrent && isPlaying}
             onClick={() => onPlay(ayah.numberGlobal)}
             disabled={!ayah.audioUrl}
-            className="hover:text-primary rounded p-1.5 disabled:opacity-40"
+            // p-3.5 (14px) around a size-4 (16px) icon = exactly 44px hit area;
+            // the icon itself stays size-4 — only the tappable box grows.
+            className="hover:text-primary rounded p-3.5 disabled:opacity-40"
           >
             {isCurrent && isPlaying ? (
               <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden="true">
@@ -65,7 +67,7 @@ export function AyahRow({
             aria-label={isBookmarked ? "Remove bookmark" : "Add bookmark"}
             aria-pressed={isBookmarked}
             onClick={() => onToggleBookmark(ayah)}
-            className={`rounded p-1.5 ${isBookmarked ? "text-primary" : "hover:text-primary"}`}
+            className={`rounded p-3.5 ${isBookmarked ? "text-primary" : "hover:text-primary"}`}
           >
             <svg
               viewBox="0 0 24 24"
@@ -84,7 +86,7 @@ export function AyahRow({
             type="button"
             aria-label="Tafsir"
             onClick={() => onOpenTafsir(ayah.numberGlobal)}
-            className="hover:text-primary rounded p-1.5"
+            className="hover:text-primary rounded p-3.5"
           >
             <svg
               viewBox="0 0 24 24"

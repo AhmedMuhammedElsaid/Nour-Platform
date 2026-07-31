@@ -37,8 +37,12 @@ const buttonVariants = cva(
         sm: "h-8 px-3 text-sm whitespace-nowrap",
         default: "h-10 px-4 text-sm whitespace-nowrap",
         lg: "h-11 px-6 text-md whitespace-nowrap",
-        // Icon buttons render no text — nowrap is inapplicable.
-        icon: "size-10",
+        // Icon buttons render no text — nowrap is inapplicable. 44px (WCAG
+        // 2.5.5) below `sm`, 40px above. Note `sm:` is a viewport-width query,
+        // not a pointer query: a touch tablet ≥640px gets the 40px box. That
+        // is an accepted trade-off — phones are the constrained case here —
+        // not an assertion that everything ≥640px is mouse-driven.
+        icon: "size-11 sm:size-10",
       },
     },
     defaultVariants: { variant: "default", size: "default" },

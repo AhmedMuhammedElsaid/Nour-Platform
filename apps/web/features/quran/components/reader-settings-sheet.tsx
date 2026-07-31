@@ -71,7 +71,8 @@ export function ReaderSettingsSheet({
         aria-label="Reading settings"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="border-border text-text-2 hover:text-primary inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm"
+        // min-h-11 (44px) hit area; the gear icon stays size-4.
+        className="border-border text-text-2 hover:text-primary inline-flex min-h-11 items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm"
       >
         <svg
           viewBox="0 0 24 24"

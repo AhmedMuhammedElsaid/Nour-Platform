@@ -319,7 +319,8 @@ function MushafPageNav({
         aria-label={t("prevPage")}
         onClick={onPrevPage}
         disabled={prevDisabled}
-        className="border-border text-text-2 hover:text-primary rounded-md border px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+        // min-h-11 (44px) hit area — this is the core reader paging gesture.
+        className="border-border text-text-2 hover:text-primary min-h-11 rounded-md border px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
       >
         {t("prevPage")}
       </button>
@@ -329,7 +330,8 @@ function MushafPageNav({
         aria-label={t("nextPage")}
         onClick={onNextPage}
         disabled={nextDisabled}
-        className="border-border text-text-2 hover:text-primary rounded-md border px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+        // min-h-11 (44px) hit area — this is the core reader paging gesture.
+        className="border-border text-text-2 hover:text-primary min-h-11 rounded-md border px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
       >
         {t("nextPage")}
       </button>

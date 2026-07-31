@@ -41,7 +41,9 @@ export function LocaleSwitcher() {
       href={target}
       locale={nextLocale}
       aria-label={label}
-      className="ms-auto inline-flex items-center rounded-full px-3 py-1 text-sm font-medium border border-input hover:bg-accent transition-colors"
+      // min-h-11 (44px) hit area on a text pill — width already exceeds 44px
+      // from the label + px-3 padding, so only height needed the floor.
+      className="ms-auto inline-flex min-h-11 items-center rounded-full px-3 py-1 text-sm font-medium border border-input hover:bg-accent transition-colors"
     >
       {LOCALE_LABELS[nextLocale]}
     </Link>

@@ -128,7 +128,11 @@ export function StationCard({
         aria-pressed={isFavorite}
         aria-label={isFavorite ? t("unfavorite") : t("favorite")}
         className={cn(
-          "absolute top-2 end-2 z-10 inline-flex size-8 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-surface-2",
+          // size-11 = 44px real hit area (grown from the visual size-8 the
+          // star used to sit in); the icon itself stays size-4 via StarIcon.
+          // z-10 keeps it above the card-wide play button (`z-0` below) across
+          // the whole enlarged box, so a slightly-off tap still hits the star.
+          "absolute top-2 end-2 z-10 inline-flex size-11 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-surface-2",
           isFavorite ? "text-primary" : "text-text-2",
         )}
       >
