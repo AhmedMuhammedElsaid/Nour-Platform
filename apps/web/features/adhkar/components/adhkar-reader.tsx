@@ -234,7 +234,12 @@ export function AdhkarReader({ azkar }: Props) {
           aria-label={t("scrollTop")}
           title={t("scrollTop")}
           onClick={scrollToTop}
-          className="fixed bottom-6 end-6 z-40 flex size-12 items-center justify-center rounded-full border border-primary bg-surface text-primary shadow-up-3 transition-colors hover:bg-primary hover:text-primary-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          // Offset above the fixed audio player bar by its real measured
+          // height (--player-height, written by packages/ui's AudioPlayer via
+          // ResizeObserver) so the FAB isn't occluded by the bar's z-40 band
+          // whenever a track is queued; falls back to a plain 1.5rem gap
+          // when idle (var resolves to 0px).
+          className="fixed bottom-[calc(var(--player-height,0px)+1.5rem)] end-6 z-40 flex size-12 items-center justify-center rounded-full border border-primary bg-surface text-primary shadow-up-3 transition-[bottom,background-color,color] duration-[var(--motion-base)] ease-[var(--ease-standard)] hover:bg-primary hover:text-primary-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <svg
             aria-hidden="true"

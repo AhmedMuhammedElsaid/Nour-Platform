@@ -58,7 +58,11 @@ export function InstallPrompt() {
     <div
       role="dialog"
       aria-label={t("title")}
-      className="fixed inset-x-0 bottom-24 z-30 mx-auto w-[min(92%,28rem)] rounded-lg border border-border bg-surface p-4 shadow-up-2"
+      // Was a hard-coded bottom-24 that desynced from the player bar's real
+      // (breakpoint-dependent) height. Derive from the same --player-height
+      // custom property the bar publishes via ResizeObserver, falling back
+      // to a plain 1.5rem gap above the page bottom when idle.
+      className="fixed inset-x-0 bottom-[calc(var(--player-height,0px)+1.5rem)] z-30 mx-auto w-[min(92%,28rem)] rounded-lg border border-border bg-surface p-4 shadow-up-2 transition-[bottom] duration-[var(--motion-base)] ease-[var(--ease-standard)]"
     >
       <p className="text-sm font-medium text-foreground">{t("title")}</p>
       <p className="mt-1 text-xs text-text-2">{t("description")}</p>

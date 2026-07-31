@@ -15,6 +15,7 @@ import { SiteFooter } from "@/features/layout/components/site-footer";
 import { SiteHeader } from "@/features/layout/components/site-header";
 import { NavigationProgress } from "@/features/layout/components/navigation-progress";
 import { PlaybackPersistence } from "@/features/player/components/playback-persistence";
+import { PlayerClearanceSpacer } from "@/features/player/components/player-clearance-spacer";
 import { ServiceWorkerRegister } from "@/features/pwa/components/service-worker-register";
 import { InstallPrompt } from "@/features/pwa/components/install-prompt";
 import { AzkarReminderController } from "@/features/prayer-times/components/azkar-reminder-controller";
@@ -104,6 +105,10 @@ export const viewport = {
     { media: "(prefers-color-scheme: dark)", color: "#0f0d0a" },
     { media: "(prefers-color-scheme: light)", color: "#fdfaf4" },
   ],
+  // Required for env(safe-area-inset-*) to resolve to anything but 0 on
+  // notched devices (Phase 1.3). No maximumScale/userScalable here — and
+  // none should be added — pinch-zoom a11y is intentional.
+  viewportFit: "cover",
 };
 
 export default async function LocaleLayout({
@@ -159,6 +164,9 @@ export default async function LocaleLayout({
                 {children}
               </main>
               <SiteFooter />
+              {/* Reserves space for the fixed <AudioPlayer/> below so it never
+                  covers the footer's last row — see player-clearance-spacer.tsx. */}
+              <PlayerClearanceSpacer />
               <AudioPlayer />
               <PlaybackPersistence />
               <InstallPrompt />

@@ -250,6 +250,36 @@ export function AudioPlayer() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [hasQueue, isLive, toggle, seek, currentTime, next, prev, toggleShuffle, cycleRepeat]);
 
+  // Publish the bar's real rendered height (mobile ~101px wrapped vs desktop
+  // 72px, both including the safe-area padding below) as a CSS custom
+  // property on the document root. Layout-level consumers (the clearance
+  // spacer in app/[locale]/layout.tsx, the adhkar reset FAB, the install
+  // prompt) read `var(--player-height, 0px)` instead of hardcoding a number
+  // that is already wrong on mobile. ResizeObserver (not a state-driven
+  // layout read) so this never triggers a React re-render — it only writes
+  // the DOM property that CSS `calc()` elsewhere consumes.
+  const barRef = React.useRef<HTMLElement | null>(null);
+  React.useEffect(() => {
+    const el = barRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const setHeight = (height: number): void => {
+      document.documentElement.style.setProperty(
+        "--player-height",
+        `${height}px`,
+      );
+    };
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) setHeight(entry.contentRect.height);
+    });
+    observer.observe(el);
+    setHeight(el.getBoundingClientRect().height);
+    return () => {
+      observer.disconnect();
+      setHeight(0);
+    };
+  }, []);
+
   const sliderMax =
     currentTrack != null
       ? duration > 0
@@ -285,6 +315,7 @@ export function AudioPlayer() {
   // §17.1/§17.5) instead of unmounting. Inner content guards on currentTrack.
   return (
     <section
+      ref={barRef}
       role="region"
       aria-label="Audio player"
       aria-hidden={!hasQueue}
@@ -294,7 +325,7 @@ export function AudioPlayer() {
         "transition-transform transition-opacity",
         "duration-[var(--motion-base)] ease-[var(--ease-standard)]",
         hasQueue
-          ? "translate-y-0 opacity-100"
+          ? "translate-y-0 opacity-100 pb-[env(safe-area-inset-bottom)]"
           : "translate-y-full opacity-0 pointer-events-none",
       )}
     >
