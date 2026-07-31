@@ -6,7 +6,14 @@ import { cn } from "../lib/utils";
 
 const buttonVariants = cva(
   cn(
-    "inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium",
+    // `whitespace-nowrap` deliberately lives on the fixed-height size variants
+    // rather than here: it is a consequence of `h-8`/`h-10`/`h-11` (wrapped
+    // text would overflow a fixed box), not a property of every button. Keeping
+    // it out of the base means a Button given a custom auto-height className
+    // wraps instead of widening its row — the failure mode long Arabic labels
+    // hit. Call sites that need a wrapping label pass `whitespace-normal
+    // h-auto` (twMerge in `cn` lets className win).
+    "inline-flex items-center justify-center gap-2 font-medium",
     "rounded-md transition-colors outline-none",
     "disabled:pointer-events-none disabled:opacity-55",
     "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg",
@@ -27,9 +34,10 @@ const buttonVariants = cva(
         link: "bg-transparent text-primary underline-offset-4 hover:underline",
       },
       size: {
-        sm: "h-8 px-3 text-sm",
-        default: "h-10 px-4 text-sm",
-        lg: "h-11 px-6 text-md",
+        sm: "h-8 px-3 text-sm whitespace-nowrap",
+        default: "h-10 px-4 text-sm whitespace-nowrap",
+        lg: "h-11 px-6 text-md whitespace-nowrap",
+        // Icon buttons render no text — nowrap is inapplicable.
         icon: "size-10",
       },
     },

@@ -52,6 +52,101 @@ function isEditableTarget(node: Element | null): boolean {
   return false;
 }
 
+// The secondary transport — replay · shuffle · prev · next · repeat — renders
+// in two places: inline in the bar at `sm`+, and inside the queue Sheet below
+// `sm`, where the bar only has room for play/pause. Both copies must stay in
+// lockstep (handlers, disabled logic, and the accent styling), so they share
+// this one definition and differ only by the visibility class the call site
+// passes. It reads the player context directly rather than taking a dozen
+// props. `center` is the slot between prev and next: the bar puts play/pause
+// there so it stays visually centred; the Sheet leaves it empty.
+function SecondaryTransport({
+  className,
+  center,
+}: {
+  className?: string;
+  center?: React.ReactNode;
+}) {
+  const {
+    currentIndex,
+    queue,
+    repeatMode,
+    isShuffled,
+    seek,
+    next,
+    prev,
+    cycleRepeat,
+    toggleShuffle,
+  } = usePlayer();
+
+  // With repeat-all or shuffle on there is always a track to move to, so the
+  // transport ends are only "hard" boundaries in plain sequential mode.
+  const atSequentialEnd = repeatMode !== "all" && !isShuffled;
+  const disablePrev = atSequentialEnd && currentIndex <= 0;
+  const disableNext = atSequentialEnd && currentIndex >= queue.length - 1;
+  const repeatLabel =
+    repeatMode === "one"
+      ? "Repeat one"
+      : repeatMode === "all"
+        ? "Repeat all"
+        : "Repeat off";
+
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Replay from start"
+        onClick={() => seek(0)}
+        className={className}
+      >
+        <RotateCcw />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Shuffle"
+        aria-pressed={isShuffled}
+        onClick={toggleShuffle}
+        className={cn(className, isShuffled && "text-primary")}
+      >
+        <Shuffle />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Previous track"
+        onClick={prev}
+        disabled={disablePrev}
+        className={className}
+      >
+        <SkipBack className="rtl:scale-x-[-1]" />
+      </Button>
+      {center}
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Next track"
+        onClick={next}
+        disabled={disableNext}
+        className={className}
+      >
+        <SkipForward className="rtl:scale-x-[-1]" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label={repeatLabel}
+        aria-pressed={repeatMode !== "off"}
+        onClick={cycleRepeat}
+        className={cn(className, repeatMode !== "off" && "text-primary")}
+      >
+        {repeatMode === "one" ? <Repeat1 /> : <Repeat />}
+      </Button>
+    </>
+  );
+}
+
 export function AudioPlayer() {
   const {
     hasQueue,
@@ -63,8 +158,6 @@ export function AudioPlayer() {
     currentTrack,
     currentIndex,
     queue,
-    repeatMode,
-    isShuffled,
     playbackRate,
     volume,
     toggle,
@@ -96,20 +189,9 @@ export function AudioPlayer() {
   const sleepRemainingMs =
     sleepTimerEndsAt != null ? Math.max(0, sleepTimerEndsAt - now) : 0;
 
-  // With repeat-all or shuffle on there is always a track to move to, so the
-  // transport ends are only "hard" boundaries in plain sequential mode.
-  const atSequentialEnd = repeatMode !== "all" && !isShuffled;
-  const disablePrev = atSequentialEnd && currentIndex <= 0;
-  const disableNext = atSequentialEnd && currentIndex >= queue.length - 1;
   // A live radio stream: no seeking, no queue navigation — show a LIVE badge and
   // hide the seek bar + shuffle/skip/repeat transport (radio feature).
   const isLive = currentTrack?.isLive ?? false;
-  const repeatLabel =
-    repeatMode === "one"
-      ? "Repeat one"
-      : repeatMode === "all"
-        ? "Repeat all"
-        : "Repeat off";
 
   // Mirror playback errors to a transient toast (DESIGN.md §17.1); the inline
   // chip remains the persistent, in-bar surface.
@@ -178,6 +260,27 @@ export function AudioPlayer() {
   const displayTime = scrubValue ?? currentTime;
   const sliderValue = sliderMax > 0 ? Math.min(displayTime, sliderMax) : 0;
 
+  // Hoisted so it can be handed to <SecondaryTransport> as the `center` slot
+  // (it sits between prev and next) without duplicating the markup.
+  const playPause = (
+    <Button
+      variant="default"
+      size="icon"
+      aria-label={isPlaying ? "Pause" : "Play"}
+      onClick={toggle}
+      className="rounded-full hover:scale-105 transition-transform"
+    >
+      {/* Spinner while buffering; control stays enabled (§17.1). */}
+      {isBuffering ? (
+        <Loader2 className="animate-spin" aria-hidden="true" />
+      ) : isPlaying ? (
+        <Pause />
+      ) : (
+        <Play />
+      )}
+    </Button>
+  );
+
   // Render the bar even when idle so it slides out via CSS (DESIGN.md
   // §17.1/§17.5) instead of unmounting. Inner content guards on currentTrack.
   return (
@@ -201,8 +304,13 @@ export function AudioPlayer() {
           <p className="sr-only" aria-live="polite">
             Now playing: {currentTrack.title}
           </p>
-          <div className="max-w-5xl mx-auto px-6 h-16 md:h-[72px] flex items-center gap-4">
-            <div className="min-w-0 flex-1 flex items-center gap-3">
+          {/* Below `sm` the row wraps: [track info | right cluster] on line 1,
+              the transport + seek row on line 2 (`order-3` + `basis-full`). A
+              single row cannot hold both at 360px — the right cluster alone is
+              128px unshrinkable. `order` is direction-agnostic, so `dir="rtl"`
+              still mirrors this correctly without `flex-row-reverse`. */}
+          <div className="max-w-5xl mx-auto px-3 sm:px-6 h-auto min-h-16 md:h-[72px] py-2 sm:py-0 flex flex-wrap sm:flex-nowrap items-center gap-x-2 gap-y-1 sm:gap-4">
+            <div className="order-1 min-w-0 flex-1 flex items-center gap-3">
               {currentTrack.coverUrl && (
                 // Decorative — the adjacent track title carries the label.
                 // next/image is unavailable inside packages/ui; a sized, lazy
@@ -228,81 +336,24 @@ export function AudioPlayer() {
               </div>
             </div>
 
-        <div className="flex-1 flex flex-col items-center gap-1">
-          <div className="flex items-center gap-2">
-            {!isLive && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Replay from start"
-                  onClick={() => seek(0)}
-                >
-                  <RotateCcw />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Shuffle"
-                  aria-pressed={isShuffled}
-                  onClick={toggleShuffle}
-                  className={cn(isShuffled && "text-primary")}
-                >
-                  <Shuffle />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Previous track"
-                  onClick={prev}
-                  disabled={disablePrev}
-                >
-                  <SkipBack className="rtl:scale-x-[-1]" />
-                </Button>
-              </>
-            )}
-            <Button
-              variant="default"
-              size="icon"
-              aria-label={isPlaying ? "Pause" : "Play"}
-              onClick={toggle}
-              className="rounded-full hover:scale-105 transition-transform"
-            >
-              {/* Spinner while buffering; control stays enabled (§17.1). */}
-              {isBuffering ? (
-                <Loader2 className="animate-spin" aria-hidden="true" />
-              ) : isPlaying ? (
-                <Pause />
-              ) : (
-                <Play />
-              )}
-            </Button>
-            {!isLive && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Next track"
-                  onClick={next}
-                  disabled={disableNext}
-                >
-                  <SkipForward className="rtl:scale-x-[-1]" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={repeatLabel}
-                  aria-pressed={repeatMode !== "off"}
-                  onClick={cycleRepeat}
-                  className={cn(repeatMode !== "off" && "text-primary")}
-                >
-                  {repeatMode === "one" ? <Repeat1 /> : <Repeat />}
-                </Button>
-              </>
+        {/* `basis-full` (not `flex-1`) below `sm` is what forces the wrap; at
+            `sm` it reverts to a shared, growable column. */}
+        <div className="order-3 sm:order-none basis-full sm:basis-0 grow min-w-0 flex flex-row sm:flex-col items-center gap-2 sm:gap-1">
+          {/* Secondary transport is `hidden` below `sm` — the same <SecondaryTransport>
+              is rendered inside the queue Sheet at that width (see below), so
+              nothing becomes unreachable. */}
+          <div className="shrink-0 flex items-center gap-2">
+            {isLive ? (
+              playPause
+            ) : (
+              <SecondaryTransport
+                className="hidden sm:inline-flex"
+                center={playPause}
+              />
             )}
           </div>
           {isLive ? (
-            <div className="w-full flex items-center justify-center gap-2 py-1">
+            <div className="min-w-0 grow sm:grow-0 sm:w-full flex items-center justify-center gap-2 py-1">
               <span
                 className="size-2 rounded-full bg-destructive animate-pulse"
                 aria-hidden="true"
@@ -312,9 +363,9 @@ export function AudioPlayer() {
               </span>
             </div>
           ) : (
-            <div className="w-full flex items-center gap-3">
+            <div className="min-w-0 grow sm:grow-0 sm:w-full flex items-center gap-2 sm:gap-3">
               <span
-                className="text-2xs text-text-2 tabular-nums w-10 text-end"
+                className="text-2xs text-text-2 tabular-nums w-10 shrink-0 text-end"
                 aria-hidden="true"
               >
                 {formatTime(displayTime)}
@@ -337,8 +388,10 @@ export function AudioPlayer() {
                   setScrubValue(null);
                 }}
               />
+              {/* Duration is redundant on a phone (it is also in the slider's
+                  aria-valuetext) and costs 40px of an already-tight seek row. */}
               <span
-                className="text-2xs text-text-2 tabular-nums w-10"
+                className="hidden sm:block text-2xs text-text-2 tabular-nums w-10 shrink-0"
                 aria-hidden="true"
               >
                 {formatTime(sliderMax)}
@@ -347,7 +400,7 @@ export function AudioPlayer() {
           )}
         </div>
 
-        <div className="shrink-0 flex items-center gap-1">
+        <div className="order-2 sm:order-none flex items-center gap-1">
           {/* Volume control — desktop only */}
           <div className="hidden md:flex items-center gap-1.5">
             <button
@@ -384,10 +437,13 @@ export function AudioPlayer() {
             <button
               type="button"
               onClick={retry}
-              className="inline-flex items-center gap-1 rounded-sm px-2 py-1 text-xs font-medium text-destructive hover:bg-surface-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+              aria-label="Retry"
+              className="inline-flex shrink-0 items-center gap-1 rounded-sm px-2 py-1 text-xs font-medium text-destructive hover:bg-surface-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
             >
               <RotateCw className="size-3.5" aria-hidden="true" />
-              Retry
+              {/* Label is dropped below `sm`; aria-label above keeps the
+                  accessible name. */}
+              <span className="hidden sm:inline">Retry</span>
             </button>
           )}
           <Sheet>
@@ -498,6 +554,20 @@ export function AudioPlayer() {
                   The list of tracks queued to play.
                 </SheetDescription>
               </SheetHeader>
+              {/* The secondary transport, relocated. Below `sm` the bar has
+                  room for play/pause only, so these live here instead — the
+                  Sheet is the one surface always reachable from the bar.
+                  Deliberately NOT wrapped in SheetClose: skipping tracks or
+                  toggling repeat should not dismiss the queue. */}
+              {!isLive && (
+                <div
+                  role="group"
+                  aria-label="Transport controls"
+                  className="sm:hidden mb-2 flex items-center justify-center gap-1 border-b border-border pb-3"
+                >
+                  <SecondaryTransport />
+                </div>
+              )}
               <ol className="-mx-2 overflow-y-auto">
                 {queue.map((track, index) => (
                   <li key={track.id}>
