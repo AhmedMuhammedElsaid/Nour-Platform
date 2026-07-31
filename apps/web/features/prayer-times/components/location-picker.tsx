@@ -93,7 +93,7 @@ export function LocationPicker({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t("searchCity")}
-          className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text placeholder:text-text-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-base sm:text-sm text-text placeholder:text-text-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
         <button
           type="button"

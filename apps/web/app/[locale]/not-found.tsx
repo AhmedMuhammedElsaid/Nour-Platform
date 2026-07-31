@@ -12,11 +12,11 @@ export default async function LocaleNotFound() {
   const t = await getTranslations("errors");
 
   return (
-    <section className="mx-auto max-w-3xl px-6 py-24">
+    <section className="mx-auto max-w-3xl px-4 sm:px-6 py-24">
       <p className="mb-2 text-xs font-semibold uppercase tracking-[3px] text-primary">
         {t("notFoundEyebrow")}
       </p>
-      <h1 className="font-display text-4xl font-bold tracking-tight text-text">
+      <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-text">
         {t("notFoundTitle")}
       </h1>
       <hr className="my-8 border-border" />

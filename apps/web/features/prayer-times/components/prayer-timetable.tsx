@@ -32,36 +32,35 @@ export function PrayerTimetable({
         return (
           <div
             key={inst.key}
-            className={`flex items-center gap-3.5 border-b border-border px-4 py-3 last:border-b-0 ${
+            className={`flex flex-wrap items-center gap-2 border-b border-border px-4 py-3 last:border-b-0 ${
               isNext ? "bg-primary/10" : ""
             }`}
           >
             <span
-              className={`flex size-8 items-center justify-center rounded-md ${
+              className={`flex shrink-0 size-8 items-center justify-center rounded-md ${
                 isNext ? "bg-primary" : "bg-surface-2"
               }`}
               aria-hidden="true"
             >
               {ICON[inst.key]}
             </span>
-            <div className="flex-1">
-              <div className={`font-display text-base ${isNext ? "text-sun" : "text-text"}`}>
+            <div className="flex-1 min-w-0">
+              <div className={`font-display text-base truncate ${isNext ? "text-sun" : "text-text"}`}>
                 {t(inst.key)}
               </div>
             </div>
-                     {isNext ? (
-              <span className="ms-2 text-2xs uppercase tracking-[0.08em] text-primary">
+            {isNext ? (
+              <span className="shrink-0 ms-2 text-2xs uppercase tracking-[0.08em] text-primary">
                 {t("next")}
               </span>
             ) : null}
             <div
-              className={`font-display text-lg tabular-nums ${
+              className={`shrink-0 font-display text-lg tabular-nums ${
                 isNext ? "font-semibold text-sun" : "text-text"
               }`}
             >
               {formatClock(inst.time, locale)}
             </div>
-   
           </div>
         );
       })}

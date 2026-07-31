@@ -84,14 +84,14 @@ export default async function PrivacyRoute({
   ];
 
   return (
-    <section className="mx-auto max-w-3xl px-6 py-16">
+    <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-16">
       <JsonLd data={jsonLd} />
 
       <header className="mb-8">
         <p className="mb-2 text-xs font-semibold uppercase tracking-[3px] text-primary">
           {t("eyebrow")}
         </p>
-        <h1 className="font-display text-4xl font-bold tracking-tight text-text">
+        <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-text">
           {t("title")}
         </h1>
         <p className="mt-2 text-sm text-text-2">{t("updated")}</p>

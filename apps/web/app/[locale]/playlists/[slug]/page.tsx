@@ -175,7 +175,7 @@ export default async function PlaylistDetailPage({
   const emoji = getCoverEmoji(playlist.id);
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10">
+    <div className="max-w-3xl mx-auto px-4 py-8 sm:px-6 sm:py-10">
       <Link
         href="/"
         className="inline-flex items-center gap-1 text-sm text-text-2 hover:text-primary mb-6"
@@ -235,7 +235,7 @@ export default async function PlaylistDetailPage({
       </div>
 
       <header>
-        <h1 className="font-display text-4xl tracking-tight">{display.title}</h1>
+        <h1 className="font-display text-3xl sm:text-4xl md:text-5xl tracking-tight">{display.title}</h1>
         {display.scholarName != null && (
           <div className="mt-3 flex items-center gap-3">
             {serializedPlaylist.scholarImage != null && (

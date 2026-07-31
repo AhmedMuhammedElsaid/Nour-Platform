@@ -44,7 +44,7 @@ export default async function SearchPage({
   const total = results.playlists.length + results.tracks.length;
 
   return (
-    <section className="mx-auto max-w-3xl px-6 py-10">
+    <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
       <h1 className="font-display text-3xl tracking-tight">{t("title")}</h1>
 
       {query.length === 0 ? (

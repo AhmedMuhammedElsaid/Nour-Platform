@@ -49,13 +49,13 @@ export default async function AdhkarPage({
   const azkarSets = await getPublishedAzkar();
 
   return (
-    <section className="mx-auto max-w-6xl px-6 py-16">
+    <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-16">
       {/* Hero */}
       <div className="mb-8">
         <p className="text-xs font-semibold uppercase tracking-[3px] text-primary mb-2">
           {locale === "ar" ? "ذكر الله" : "Dhikr"}
         </p>
-        <h1 className="font-display text-4xl font-bold tracking-tight text-text">
+        <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-text">
           {TITLES[locale]}
         </h1>
         <p className="mt-2 text-sm text-text-2">{SUBTITLES[locale]}</p>

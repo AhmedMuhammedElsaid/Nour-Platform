@@ -32,6 +32,11 @@ export function PlaylistEmbed({ embed, sourceUrl, playlistTitle }: Props) {
 
   return (
     <div className="mt-10">
+      {/* Fixed height + fluid width is correct for these providers, not a bug:
+          ResolvedEmbed carries no width (SoundCloud oEmbed resolves to 450,
+          direct-iframe to 720), so there is no real aspect ratio to preserve.
+          Deriving one from an assumed width makes the frame grow with the
+          container — a 450px SoundCloud player becomes ~720px tall on desktop. */}
       <iframe
         title={playlistTitle}
         src={embed.src}

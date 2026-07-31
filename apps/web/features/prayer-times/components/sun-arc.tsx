@@ -242,17 +242,21 @@ export function SunArc({
           shrinks below legible as the container narrows — unlike the in-SVG
           <text> above, which scales with the viewBox and gets ~7px on phones. */}
       <div className="pointer-events-none absolute inset-0 sm:hidden">
-        {points.map(({ p, labelY, key, isNext, label }) => (
-          <span
-            key={key}
-            className={`font-display text-2xs absolute -translate-x-1/2 -translate-y-full whitespace-nowrap ${
-              isNext ? "text-sun font-semibold" : "text-text-2"
-            }`}
-            style={{ left: `${(p.x / ARC.w) * 100}%`, top: `${(labelY / ARC.h) * 100}%` }}
-          >
-            {label}
-          </span>
-        ))}
+        {points.map(({ p, labelY, key, isNext, label }) => {
+          // Clamp the label position between 8% and 92% to keep it inside the parent
+          const clampedPercent = Math.max(8, Math.min(92, (p.x / ARC.w) * 100));
+          return (
+            <span
+              key={key}
+              className={`font-display text-2xs absolute -translate-x-1/2 -translate-y-full whitespace-nowrap ${
+                isNext ? "text-sun font-semibold" : "text-text-2"
+              }`}
+              style={{ left: `${clampedPercent}%`, top: `${(labelY / ARC.h) * 100}%` }}
+            >
+              {label}
+            </span>
+          );
+        })}
       </div>
     </div>
   );

@@ -126,7 +126,7 @@ export default async function HomePage({
   );
 
   return (
-    <section className="mx-auto max-w-6xl px-6 py-16">
+    <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-16">
       {/* Hero */}
       <div className="mb-8">
         <h1 className="font-display text-3xl font-bold tracking-tight text-text sm:text-4xl md:text-5xl">
@@ -187,7 +187,9 @@ export default async function HomePage({
       )}
 
       {/* Continue reading shelf */}
-      <section className="mx-auto max-w-5xl px-6 mt-8">
+      {/* px-6 dropped (the parent section already gutters); max-w-5xl kept —
+          this shelf is deliberately narrower than the page's max-w-6xl. */}
+      <section className="mx-auto max-w-5xl mt-8">
         <ContinueReadingShelf />
       </section>
 
