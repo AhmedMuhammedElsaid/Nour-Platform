@@ -24,7 +24,7 @@ export function MushafAyahParagraph({
   return (
     <p
       dir="rtl"
-      className="font-quran text-text text-justify leading-[2.2]"
+      className="font-quran text-text text-justify leading-[1.8] sm:leading-[2.2]"
       // Font-size slider: scales the ayah text via the --quran-scale var the
       // reader sets on its wrapper (text-3xl base = 1.875rem) — same var
       // ayah-row.tsx reads for list mode.

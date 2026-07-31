@@ -197,7 +197,7 @@ function MushafLine({ row, firstLineByAyah, activeGlobal, isPlaying, onPlay }: M
     <p
       dir="rtl"
       className={cn(
-        "font-quran text-text leading-[2.2]",
+        "font-quran text-text leading-[1.8] sm:leading-[2.2]",
         row.endsSurah ? "text-center" : "[text-align:justify] [text-align-last:justify]",
       )}
       // Font-size slider: scales the ayah text via the --quran-scale var the

@@ -199,6 +199,16 @@ export function Reader({
 
   const editions = data.translationEdition ? [data.translationEdition] : [];
 
+  const pageNav = (
+    <MushafPageNav
+      pageNumber={pageData?.page ?? currentPage}
+      onPrevPage={onPrevPage}
+      onNextPage={onNextPage}
+      prevDisabled={!pageData || pageData.prevPage === null || pageStatus === "loading"}
+      nextDisabled={!pageData || pageData.nextPage === null || pageStatus === "loading"}
+    />
+  );
+
   // Surah-scoped Mushaf fallback groups (SSR + pre-fetch) — the same ayahs by
   // their `page` field (1-604, already on every ReaderAyah) instead of one
   // row per ayah. Only ONE group (the one matching `currentPage`) is ever
@@ -214,33 +224,7 @@ export function Reader({
   return (
     <div style={{ ["--quran-scale" as string]: prefs.fontScale }}>
       <div className="mb-4 flex items-center justify-between gap-2">
-        {prefs.layout === "mushaf" ? (
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              aria-label={t("prevPage")}
-              onClick={onPrevPage}
-              disabled={!pageData || pageData.prevPage === null || pageStatus === "loading"}
-              className="border-border text-text-2 hover:text-primary rounded-md border px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {t("prevPage")}
-            </button>
-            <span className="text-text-2 text-sm">
-              {t("pageN", { number: pageData?.page ?? currentPage })}
-            </span>
-            <button
-              type="button"
-              aria-label={t("nextPage")}
-              onClick={onNextPage}
-              disabled={!pageData || pageData.nextPage === null || pageStatus === "loading"}
-              className="border-border text-text-2 hover:text-primary rounded-md border px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {t("nextPage")}
-            </button>
-          </div>
-        ) : (
-          <div />
-        )}
+        {prefs.layout === "mushaf" ? pageNav : <div />}
         <ReaderSettingsSheet
           prefs={prefs}
           onChange={setPrefs}
@@ -250,12 +234,15 @@ export function Reader({
       </div>
       {prefs.layout === "mushaf" ? (
         pageData ? (
-          <MushafPageView
-            page={pageData}
-            activeGlobal={audio.currentGlobal}
-            isPlaying={audio.isPlaying}
-            onPlay={onPlayToggle}
-          />
+          <>
+            <MushafPageView
+              page={pageData}
+              activeGlobal={audio.currentGlobal}
+              isPlaying={audio.isPlaying}
+              onPlay={onPlayToggle}
+            />
+            <div className="mt-4 flex justify-center">{pageNav}</div>
+          </>
         ) : pageStatus === "error" ? (
           <div className="border-border flex flex-col items-center gap-3 rounded-md border py-10 text-center">
             <p className="text-text-2 text-sm">{t("pageLoadError")}</p>
@@ -269,13 +256,16 @@ export function Reader({
           </div>
         ) : (
           fallbackGroup && (
-            <MushafPage
-              key={fallbackGroup.page}
-              group={fallbackGroup}
-              activeGlobal={audio.currentGlobal}
-              isPlaying={audio.isPlaying}
-              onPlay={onPlayToggle}
-            />
+            <>
+              <MushafPage
+                key={fallbackGroup.page}
+                group={fallbackGroup}
+                activeGlobal={audio.currentGlobal}
+                isPlaying={audio.isPlaying}
+                onPlay={onPlayToggle}
+              />
+              <div className="mt-4 flex justify-center">{pageNav}</div>
+            </>
           )
         )
       ) : (
@@ -299,6 +289,50 @@ export function Reader({
         ))
       )}
       <TafsirSheet ayah={tafsirAyah} locale={locale} onClose={() => setTafsirAyah(null)} />
+    </div>
+  );
+}
+
+interface MushafPageNavProps {
+  pageNumber: number;
+  onPrevPage: () => void;
+  onNextPage: () => void;
+  prevDisabled: boolean;
+  nextDisabled: boolean;
+}
+
+// Prev/page-number/next controls. Rendered once above the page (existing)
+// and once again below it (owner-requested, mobile web: paging forward
+// otherwise means scrolling back up to the top controls every page).
+function MushafPageNav({
+  pageNumber,
+  onPrevPage,
+  onNextPage,
+  prevDisabled,
+  nextDisabled,
+}: MushafPageNavProps) {
+  const t = useTranslations("quran");
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        aria-label={t("prevPage")}
+        onClick={onPrevPage}
+        disabled={prevDisabled}
+        className="border-border text-text-2 hover:text-primary rounded-md border px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {t("prevPage")}
+      </button>
+      <span className="text-text-2 text-sm">{t("pageN", { number: pageNumber })}</span>
+      <button
+        type="button"
+        aria-label={t("nextPage")}
+        onClick={onNextPage}
+        disabled={nextDisabled}
+        className="border-border text-text-2 hover:text-primary rounded-md border px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {t("nextPage")}
+      </button>
     </div>
   );
 }
