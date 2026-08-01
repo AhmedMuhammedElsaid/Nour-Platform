@@ -120,6 +120,32 @@ test.describe("Responsive — no horizontal overflow", () => {
   }
 });
 
+test.describe("Responsive — Quran reader list layout", () => {
+  // DEFAULT_PREFS.layout is "mushaf" (features/quran/lib/quran-prefs.ts), so a
+  // fresh context renders ZERO AyahRow components and the route cases above
+  // never exercise them — the per-ayah controls were the smallest targets in
+  // the app and were entirely uncovered. Seed the pref to force list layout.
+  for (const locale of LOCALES) {
+    test(`${locale} /quran/1 in list layout has no horizontal overflow`, async ({ page }) => {
+      await page.addInitScript(() => {
+        window.localStorage.setItem(
+          "nour.quran.prefs",
+          JSON.stringify({ layout: "list", showTranslation: true }),
+        );
+      });
+
+      await page.goto(`${webUrl}/${locale}/quran/1`);
+      await waitForShell(page);
+
+      // Confirm we are actually testing what we think we are.
+      const ayahControls = page.getByRole("button", { name: /tafsir|التفسير/i });
+      await ayahControls.first().waitFor({ state: "visible", timeout: 15_000 });
+
+      await assertNoHorizontalOverflow(page, `${locale} /quran/1 (list layout)`);
+    });
+  }
+});
+
 test.describe("Responsive — audio player bar", () => {
   // The critical case (plan §1.1): load a track into the shared player, then
   // assert no overflow. Expected RED on the mobile project until Phase 1.2
