@@ -1,0 +1,29 @@
+version: 2
+updates:
+  # pnpm workspace — one root ecosystem entry covers all apps/packages since
+  # they share the single root lockfile (pnpm-workspace.yaml).
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      # Collapse routine bumps into one PR instead of one-per-package; keeps
+      # the "30 PRs on Monday" problem from happening. Security patches still
+      # open their own PR immediately regardless of grouping/schedule.
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns:
+          - "*"

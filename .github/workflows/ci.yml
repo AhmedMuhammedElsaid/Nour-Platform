@@ -21,20 +21,20 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           # Full history required so Turborepo can resolve origin/main as a
           # diff base on PRs with merge commits (fetch-depth: 2 is too shallow).
           fetch-depth: 0
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.4.0
         with:
           version: 9.15.0
           run_install: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: pnpm
@@ -43,7 +43,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Restore Turborepo cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: .turbo
           key: turbo-${{ runner.os }}-${{ github.sha }}
@@ -69,3 +69,38 @@ jobs:
           MONGODB_URI: mongodb://localhost:27017/ci
           AUTH_SECRET: ci-only-dummy-secret-that-is-thirty-two-or-more-chars
           NEXT_TELEMETRY_DISABLED: 1
+
+  audit:
+    name: pnpm audit (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Advisory, not a gate: a transitive dependency with a known advisory and
+    # no upstream fix yet (common in a fast-moving JS ecosystem) would
+    # otherwise wedge every future merge until some third party ships a patch
+    # we don't control. `continue-on-error` keeps the job green in the PR
+    # checks list while the step output still surfaces every finding in the
+    # Actions log for a human to triage. --prod scopes to what actually ships
+    # (devDependencies don't run in production); --audit-level=high drops
+    # low/moderate noise so the signal stays worth reading.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.4.0
+        with:
+          version: 9.15.0
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: pnpm audit --prod
+        continue-on-error: true
+        run: pnpm audit --prod --audit-level=high
