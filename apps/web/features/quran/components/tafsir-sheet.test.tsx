@@ -16,7 +16,7 @@ describe("TafsirSheet", () => {
     render(<TafsirSheet ayah={{ numberGlobal: 1, ref: "1:1" }} locale="en" onClose={vi.fn()} />);
     await waitFor(() => expect(screen.getByText("Explanation")).toBeInTheDocument());
     expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining("/api/quran/tafsir?ayah=1&locale=en"),
+      expect.stringContaining("/api/v1/quran/tafsir?ayah=1&locale=en"),
     );
   });
 
