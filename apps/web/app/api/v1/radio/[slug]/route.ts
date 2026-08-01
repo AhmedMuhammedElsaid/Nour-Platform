@@ -1,7 +1,7 @@
 import { getStationBySlug } from "@repo/api/services/radio";
 
 import { corsPreflight } from "@/lib/cors";
-import { jsonOk, jsonError } from "../../_lib/respond";
+import { apiRoute, jsonOk, jsonError } from "../../_lib/respond";
 import { withIsoDates } from "../../_lib/serialize";
 
 export const runtime = "nodejs";
@@ -13,10 +13,9 @@ export function OPTIONS(): Response {
 
 // Single station lookup. getStationBySlug throws NotFound for missing or
 // disabled (!isLive) stations, which jsonError maps to 404.
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ slug: string }> },
-): Promise<Response> {
+type SlugContext = { params: Promise<{ slug: string }> };
+
+export const GET = apiRoute("catalog", async (_request: Request, { params }: SlugContext): Promise<Response> => {
   try {
     const { slug } = await params;
     const station = await getStationBySlug(slug);
@@ -24,4 +23,4 @@ export async function GET(
   } catch (error) {
     return jsonError(error);
   }
-}
+});

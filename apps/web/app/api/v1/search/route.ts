@@ -2,7 +2,7 @@ import { searchContent } from "@repo/api/services/search";
 import type { Locale } from "@repo/api/schemas/locale";
 
 import { corsPreflight } from "@/lib/cors";
-import { jsonOk, jsonError } from "../_lib/respond";
+import { apiRoute, jsonOk, jsonError } from "../_lib/respond";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,7 +11,7 @@ export function OPTIONS(): Response {
   return corsPreflight();
 }
 
-export async function GET(request: Request): Promise<Response> {
+export const GET = apiRoute("search", async (request: Request): Promise<Response> => {
   try {
     const { searchParams } = new URL(request.url);
     const q = searchParams.get("q") ?? "";
@@ -22,4 +22,4 @@ export async function GET(request: Request): Promise<Response> {
   } catch (error) {
     return jsonError(error);
   }
-}
+});

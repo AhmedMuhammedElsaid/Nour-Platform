@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getTafsir } from "@repo/api/services/quran";
 import { isLocale } from "@repo/api/schemas/locale";
 
+import { apiRoute } from "../../v1/_lib/respond";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -11,7 +13,10 @@ function stripScripts(html: string): string {
   return html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
 }
 
-export async function GET(request: Request): Promise<Response> {
+// Deprecated twin of /api/v1/quran/tafsir (deleted in plan phase 3.3). Rate
+// limited in the same "tafsir" class so it cannot be used as the unlimited door
+// to the same query while it still exists; nothing else here is changed.
+export const GET = apiRoute("tafsir", async (request: Request): Promise<Response> => {
   const url = new URL(request.url);
   const ayah = Number(url.searchParams.get("ayah"));
   const localeRaw = url.searchParams.get("locale") ?? "ar";
@@ -31,4 +36,4 @@ export async function GET(request: Request): Promise<Response> {
     { edition: result.edition, html: stripScripts(result.html) },
     { headers: { "Cache-Control": "public, max-age=31536000, immutable" } },
   );
-}
+});

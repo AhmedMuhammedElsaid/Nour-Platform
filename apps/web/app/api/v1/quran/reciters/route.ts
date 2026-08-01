@@ -1,7 +1,7 @@
 import { listReciters } from "@repo/api/services/quran";
 
 import { corsPreflight } from "@/lib/cors";
-import { jsonOk, jsonError } from "../../_lib/respond";
+import { apiRoute, jsonOk, jsonError } from "../../_lib/respond";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,10 +10,10 @@ export function OPTIONS(): Response {
   return corsPreflight();
 }
 
-export async function GET(): Promise<Response> {
+export const GET = apiRoute("static", async (): Promise<Response> => {
   try {
     return jsonOk(await listReciters());
   } catch (error) {
     return jsonError(error);
   }
-}
+});

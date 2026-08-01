@@ -3,7 +3,7 @@ import { getSurahReader } from "@repo/api/services/quran";
 import { isLocale } from "@repo/shared-core/schemas/locale";
 
 import { corsPreflight } from "@/lib/cors";
-import { jsonOk, jsonError } from "../../../_lib/respond";
+import { apiRoute, jsonOk, jsonError } from "../../../_lib/respond";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,10 +12,9 @@ export function OPTIONS(): Response {
   return corsPreflight();
 }
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ n: string }> },
-): Promise<Response> {
+type NumberContext = { params: Promise<{ n: string }> };
+
+export const GET = apiRoute("static", async (request: Request, { params }: NumberContext): Promise<Response> => {
   try {
     const { n } = await params;
     const surahNumber = Number(n);
@@ -34,4 +33,4 @@ export async function GET(
   } catch (error) {
     return jsonError(error);
   }
-}
+});

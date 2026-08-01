@@ -3,7 +3,7 @@ import { getTafsir } from "@repo/api/services/quran";
 import { isLocale } from "@repo/shared-core/schemas/locale";
 
 import { corsPreflight } from "@/lib/cors";
-import { jsonOk, jsonError } from "../../_lib/respond";
+import { apiRoute, jsonOk, jsonError } from "../../_lib/respond";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +18,7 @@ export function OPTIONS(): Response {
   return corsPreflight();
 }
 
-export async function GET(request: Request): Promise<Response> {
+export const GET = apiRoute("tafsir", async (request: Request): Promise<Response> => {
   try {
     const url = new URL(request.url);
     const ayah = Number(url.searchParams.get("ayah"));
@@ -39,4 +39,4 @@ export async function GET(request: Request): Promise<Response> {
   } catch (error) {
     return jsonError(error);
   }
-}
+});

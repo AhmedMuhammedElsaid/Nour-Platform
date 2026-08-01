@@ -4,7 +4,7 @@ import { getTracksWithUrls } from "@repo/api/services/track";
 import { isLocale } from "@repo/shared-core/schemas/locale";
 
 import { corsPreflight } from "@/lib/cors";
-import { jsonOk, jsonError } from "../../_lib/respond";
+import { apiRoute, jsonOk, jsonError } from "../../_lib/respond";
 import { withIsoDates } from "../../_lib/serialize";
 
 export const runtime = "nodejs";
@@ -14,10 +14,9 @@ export function OPTIONS(): Response {
   return corsPreflight();
 }
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ slug: string }> },
-): Promise<Response> {
+type SlugContext = { params: Promise<{ slug: string }> };
+
+export const GET = apiRoute("catalog", async (request: Request, { params }: SlugContext): Promise<Response> => {
   try {
     const { slug } = await params;
     const url = new URL(request.url);
@@ -37,4 +36,4 @@ export async function GET(
   } catch (error) {
     return jsonError(error);
   }
-}
+});

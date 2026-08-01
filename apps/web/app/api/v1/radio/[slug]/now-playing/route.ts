@@ -3,7 +3,7 @@ import type { RadioStation } from "@repo/api/schemas/radio";
 import { NextResponse } from "next/server";
 
 import { corsPreflight, withCors } from "@/lib/cors";
-import { jsonError } from "../../../_lib/respond";
+import { apiRoute, jsonError } from "../../../_lib/respond";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,10 +28,12 @@ export function OPTIONS(): Response {
   return corsPreflight();
 }
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ slug: string }> },
-): Promise<Response> {
+type SlugContext = { params: Promise<{ slug: string }> };
+
+// Rate-limited as "now-playing": this is the only route that opens an OUTBOUND
+// socket per request, so unlimited traffic here amplifies onto third-party
+// stream hosts as well as onto us.
+export const GET = apiRoute("now-playing", async (_request: Request, { params }: SlugContext): Promise<Response> => {
   try {
     const { slug } = await params;
     // Throws NotFound (→404) for an unknown or disabled station.
@@ -48,7 +50,7 @@ export async function GET(
   } catch (error) {
     return jsonError(error);
   }
-}
+});
 
 // Never throws — any failure resolves to null so the client shows "Live broadcast".
 async function resolveNowPlaying(station: RadioStation): Promise<string | null> {

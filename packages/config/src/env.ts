@@ -45,6 +45,13 @@ const envSchema = z.object({
   // Observability (Wave 5).
   SENTRY_DSN: z.string().url().optional(),
 
+  // Upstash Redis — public API rate limiting (ADR 0015). Optional on purpose:
+  // both unset means the limiter is disabled, which is the correct behaviour in
+  // local dev and CI. Read at request time via `./upstash`, never from here —
+  // this module's `parseEnv()` runs at import and is not build-safe.
+  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+
   // Vercel-injected build metadata. Available in production builds; absent in
   // local dev. Health endpoints expose the short SHA as `version`.
   NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA: z.string().optional(),

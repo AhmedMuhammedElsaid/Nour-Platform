@@ -2,7 +2,7 @@ import { getPublishedPlaylists } from "@repo/api/services/playlist";
 import { listCategories } from "@repo/api/services/category";
 
 import { corsPreflight } from "@/lib/cors";
-import { jsonOk, jsonError } from "../_lib/respond";
+import { apiRoute, jsonOk, jsonError } from "../_lib/respond";
 import { withIsoDates } from "../_lib/serialize";
 
 export const runtime = "nodejs";
@@ -12,7 +12,7 @@ export function OPTIONS(): Response {
   return corsPreflight();
 }
 
-export async function GET(request: Request): Promise<Response> {
+export const GET = apiRoute("catalog", async (request: Request): Promise<Response> => {
   try {
     const url = new URL(request.url);
     const categorySlug = url.searchParams.get("category") ?? undefined;
@@ -39,4 +39,4 @@ export async function GET(request: Request): Promise<Response> {
   } catch (error) {
     return jsonError(error);
   }
-}
+});

@@ -17,6 +17,8 @@
     "@repo/config": "workspace:*",
     "@repo/shared-core": "workspace:*",
     "@repo/ui": "workspace:*",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.1",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "next": "16.2.0",
