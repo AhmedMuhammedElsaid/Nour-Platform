@@ -10,6 +10,7 @@
  * (no user-generated HTML rendered server-side in the MVP).
  */
 import { EMBED_CSP_FRAME_SRC } from "@repo/config/embed-hosts";
+import { RADIO_CSP_SOURCES } from "@repo/config/radio-hosts";
 
 export function buildWebCsp(nonce: string, r2Hostname: string): string {
   const r2Origin = r2Hostname ? `https://${r2Hostname}` : "";
@@ -18,19 +19,11 @@ export function buildWebCsp(nonce: string, r2Hostname: string): string {
   // play button does nothing. Add additional reciter hosts here if seeded.
   const RECITER_ORIGINS = "https://everyayah.com";
   // Live radio stream hosts (radio feature), for both the <audio> fetch
-  // (media-src) and the SW/redirect (connect-src):
-  //   *.qurango.net       — Quran reciter radios incl. the Haram (Al-Sudais) & mix (mp3quran)
-  //   *.radioca.st        — As-Sunnah An-Nabawiyyah radio
-  //   *.zeno.fm           — Cairo live Quran re-broadcast (quran-cairo-live), Nabulsi lectures,
-  //                         Sha'rawi lectures, and tawasheeh stations
-  //   *.surfernetwork.com — the CDN edge *.zeno.fm 302s to; media redirect targets are
-  //                         CSP-checked too (same reason radiojar's edge once needed listing)
-  //   *.mp3islam.com      — Sheikh Mohamed Rifat radio (direct HTTPS Shoutcast, no redirect)
-  // NOTE: radiojar (http-only edges) and mixlr (dropped 2026-07-03 when the Haram
-  // station moved to an HTTPS qurango mount) are intentionally absent. Add further
-  // station stream hosts here as seeded.
-  const RADIO_ORIGINS =
-    "https://*.qurango.net https://*.radioca.st https://*.zeno.fm https://*.surfernetwork.com https://*.mp3islam.com";
+  // (media-src) and the SW/redirect (connect-src). The list itself lives in
+  // @repo/config/radio-hosts because the same hosts gate the Zod schema and the
+  // server-side now-playing fetch (SSRF boundary) — three layers, one list, so
+  // "playable" and "fetchable" can never drift. Add new station hosts THERE.
+  const RADIO_ORIGINS = RADIO_CSP_SOURCES.join(" ");
   return [
     "default-src 'self'",
     // 'strict-dynamic' lets the nonce-trusted root script load further

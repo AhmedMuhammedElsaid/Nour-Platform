@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isAllowedRadioUrl } from "@repo/config/radio-hosts";
+
 // A live Islamic radio station (e.g. إذاعة القرآن الكريم – القاهرة). The first
 // vertical whose playable source is an infinite live stream rather than a finite
 // track — see the radio plan. Embedded-locale shape mirrors playlists
@@ -24,6 +26,18 @@ const localeContentSchema = z.object({
   description: z.string().max(2000).optional(),
 });
 
+// Both station URLs are fetched SERVER-SIDE by the now-playing route, so an
+// arbitrary stored URL is a stored-SSRF primitive, not just a broken link.
+// Host-restricted to the shared radio allow-list (which also drives CSP
+// media-src/connect-src) so a value written through the app can never point the
+// server at an internal address. The route re-checks at fetch time — this layer
+// only covers writes that actually go through Zod.
+const radioUrlSchema = z
+  .string()
+  .url()
+  .max(1000)
+  .refine(isAllowedRadioUrl, "Host not allowed for radio streams");
+
 export const radioStationSchema = z.object({
   id: objectIdSchema,
   slug: slugSchema,
@@ -36,7 +50,7 @@ export const radioStationSchema = z.object({
   // `.url()` so relative bundled logos are allowed.
   image: z.string().max(500).optional(),
   // The live stream endpoint (mp3/aac icecast or an HLS .m3u8). Absolute URL.
-  streamUrl: z.string().url().max(1000),
+  streamUrl: radioUrlSchema,
   streamType: radioStreamTypeSchema,
   bitrate: z.number().int().positive().optional(),
   // BCP-47-ish language tag of the broadcast (e.g. "ar").
@@ -44,7 +58,7 @@ export const radioStationSchema = z.object({
   category: radioCategorySchema,
   // Optional station-provided "now playing" JSON endpoint. When present the
   // server-side now-playing route proxies it instead of parsing ICY metadata.
-  nowPlayingUrl: z.string().url().max(1000).optional(),
+  nowPlayingUrl: radioUrlSchema.optional(),
   // Enabled/available flag — public reads only return `isLive: true` stations.
   isLive: z.boolean(),
   isFeatured: z.boolean(),
@@ -63,12 +77,12 @@ export const radioStationCreateInputSchema = z.object({
   country: z.string().length(2),
   city: z.string().max(100).optional(),
   image: z.string().max(500).optional(),
-  streamUrl: z.string().url().max(1000),
+  streamUrl: radioUrlSchema,
   streamType: radioStreamTypeSchema.default("mp3"),
   bitrate: z.number().int().positive().optional(),
   language: z.string().min(2).max(10).default("ar"),
   category: radioCategorySchema.default("quran"),
-  nowPlayingUrl: z.string().url().max(1000).optional(),
+  nowPlayingUrl: radioUrlSchema.optional(),
   isLive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
   order: z.number().int().nonnegative().optional(),
@@ -82,12 +96,12 @@ export const radioStationUpdateInputSchema = z
     country: z.string().length(2),
     city: z.string().max(100).nullable(),
     image: z.string().max(500).nullable(),
-    streamUrl: z.string().url().max(1000),
+    streamUrl: radioUrlSchema,
     streamType: radioStreamTypeSchema,
     bitrate: z.number().int().positive().nullable(),
     language: z.string().min(2).max(10),
     category: radioCategorySchema,
-    nowPlayingUrl: z.string().url().max(1000).nullable(),
+    nowPlayingUrl: radioUrlSchema.nullable(),
     isLive: z.boolean(),
     isFeatured: z.boolean(),
     order: z.number().int().nonnegative(),

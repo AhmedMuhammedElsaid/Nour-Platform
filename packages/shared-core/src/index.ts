@@ -1,6 +1,7 @@
 // `@repo/shared-core` — pure, framework-agnostic contract shared by `apps/web`
 // (server) and `apps/mobile` (Metro/RN). Forbidden imports: mongoose, next/*,
-// react, any DOM API. Allowed: zod, adhan, the pure @repo/config/embed-hosts.
+// react, any DOM API. Allowed: zod, adhan, and the pure @repo/config leaves
+// (embed-hosts, radio-hosts) — never @repo/config/env.
 //
 // Apps should prefer the scoped subpath exports (see package.json `exports`)
 // to keep bundles lean; this barrel exists for convenience in shared tooling.

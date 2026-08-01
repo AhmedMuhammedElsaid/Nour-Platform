@@ -6,6 +6,7 @@
   "exports": {
     "./env": "./src/env.ts",
     "./embed-hosts": "./src/embed-hosts.ts",
+    "./radio-hosts": "./src/radio-hosts.ts",
     "./upstash": "./src/upstash.ts"
   },
   "scripts": {

@@ -1,5 +1,6 @@
 import { getStationBySlug } from "@repo/api/services/radio";
 import type { RadioStation } from "@repo/api/schemas/radio";
+import { isAllowedRadioUrl } from "@repo/config/radio-hosts";
 import { NextResponse } from "next/server";
 
 import { corsPreflight, withCors } from "@/lib/cors";
@@ -23,6 +24,9 @@ export const dynamic = "force-dynamic";
 const FETCH_TIMEOUT_MS = 5000;
 // ICY metadata length byte is a count of 16-byte blocks; max 255 ⇒ 4080 bytes.
 const MAX_META_BYTES = 255 * 16;
+// stream.zeno.fm 302s to *.surfernetwork.com, so redirects must be followed —
+// but manually, re-validating every hop. Two is enough for every seeded station.
+const MAX_REDIRECTS = 2;
 
 export function OPTIONS(): Response {
   return corsPreflight();
@@ -53,12 +57,26 @@ export const GET = apiRoute("now-playing", async (_request: Request, { params }:
 });
 
 // Never throws — any failure resolves to null so the client shows "Live broadcast".
+//
+// SSRF re-check (defence in depth). Both URLs come straight off a Mongo doc and
+// are fetched by the server, which then reflects part of the response back to an
+// unauthenticated caller. The Zod schema already host-restricts them, but a row
+// inserted directly into Atlas (this repo has a documented history of exactly
+// that) or written before the schema gained the refinement never saw Zod. So
+// re-assert the allow-list here, at the last point before the socket opens.
+//
+// A rejected URL is treated as "no metadata source": the response is the same
+// `{ title: null }` the client already handles for the many streams that emit no
+// title at all. No 500, no error body, and the rejected URL is never echoed —
+// an unauthenticated caller cannot use this endpoint to probe what is stored.
 async function resolveNowPlaying(station: RadioStation): Promise<string | null> {
   let raw: string | null = null;
-  if (station.nowPlayingUrl) {
+  if (station.nowPlayingUrl && isAllowedRadioUrl(station.nowPlayingUrl)) {
     raw = await fetchNowPlayingJson(station.nowPlayingUrl);
   }
-  raw ??= await fetchIcyStreamTitle(station.streamUrl);
+  if (raw === null && isAllowedRadioUrl(station.streamUrl)) {
+    raw = await fetchIcyStreamTitle(station.streamUrl);
+  }
   return raw ? decodeStreamTitle(raw) : null;
 }
 
@@ -82,7 +100,7 @@ function decodeStreamTitle(raw: string): string {
 async function fetchNowPlayingJson(url: string): Promise<string | null> {
   try {
     const res = await fetchWithTimeout(url, { headers: { Accept: "application/json" } });
-    if (!res.ok) return null;
+    if (!res || !res.ok) return null;
     const data: unknown = await res.json();
     return extractTitle(data);
   } catch {
@@ -118,11 +136,11 @@ async function fetchIcyStreamTitle(streamUrl: string): Promise<string | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(streamUrl, {
+    const res = await fetchAllowlisted(streamUrl, {
       headers: { "Icy-MetaData": "1", "User-Agent": "NourRadio/1.0 (+nour-platform)", Accept: "*/*" },
       signal: controller.signal,
-      cache: "no-store",
     });
+    if (!res) return null;
     const metaint = Number(res.headers.get("icy-metaint"));
     if (!res.body || !Number.isFinite(metaint) || metaint <= 0) return null;
     return await readIcyTitle(res.body, metaint);
@@ -177,12 +195,49 @@ async function readIcyTitle(
   return title && title.length > 0 ? title : null;
 }
 
-async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    return await fetch(url, { ...init, signal: controller.signal, cache: "no-store" });
+    return await fetchAllowlisted(url, { ...init, signal: controller.signal });
   } finally {
     clearTimeout(timeout);
   }
+}
+
+/*
+ * The SSRF-safe fetch. Redirects are followed MANUALLY, re-validating every hop
+ * against the radio allow-list.
+ *
+ * `redirect: "follow"` (the fetch default, and what this route used before)
+ * re-opens the entire hole from the other end: an allow-listed host is free to
+ * answer 302 → http://169.254.169.254/… and undici follows it without ever
+ * consulting the allow-list again, so validating only the first URL proves
+ * nothing. `redirect: "error"` is not an option either — the Cairo station's
+ * stream.zeno.fm mount legitimately 302s to *.surfernetwork.com (which is why
+ * that host is in the allow-list at all). Manual following is the only policy
+ * that keeps the legitimate hop and closes the illegitimate one.
+ *
+ * Returns null — never throws — for a blocked hop, a redirect with no Location,
+ * or more than MAX_REDIRECTS hops. Callers already map null to `{ title: null }`.
+ */
+async function fetchAllowlisted(url: string, init: RequestInit): Promise<Response | null> {
+  let target = url;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
+    if (!isAllowedRadioUrl(target)) return null;
+    const res = await fetch(target, { ...init, redirect: "manual", cache: "no-store" });
+    if (res.status < 300 || res.status > 399) return res;
+    const location = res.headers.get("location");
+    // Never leave the 3xx body draining once we've decided to move on.
+    if (res.body) await res.body.cancel().catch(() => {});
+    if (!location) return null;
+    try {
+      // A relative Location is legal (RFC 9110 §10.2.2) — resolve against the
+      // hop we actually requested, not the original URL.
+      target = new URL(location, target).toString();
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
