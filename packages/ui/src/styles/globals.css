@@ -111,6 +111,20 @@
     border-radius: var(--radius-sm);
   }
 
+  /* Tailwind v4 preflight resets button cursor to `default` — restore the
+     pointer affordance on every clickable element across all apps. */
+  button:not(:disabled),
+  a[href],
+  [role="button"]:not([aria-disabled="true"]),
+  input[type="button"]:not(:disabled),
+  input[type="submit"]:not(:disabled),
+  input[type="reset"]:not(:disabled),
+  label[for],
+  select,
+  summary {
+    cursor: pointer;
+  }
+
   /* Tailwind v4 base resets `border-color` to currentColor. Restore the
      classic v3 default so `border` utilities use our border token. */
   *,
