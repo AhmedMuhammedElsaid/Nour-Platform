@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege for GITHUB_TOKEN. CI only reads the repo — pinning the
+# actions is half the supply-chain mitigation; capping what a compromised one
+# could do with the token is the other half.
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}

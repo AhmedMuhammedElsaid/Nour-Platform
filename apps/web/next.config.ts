@@ -75,18 +75,34 @@ const nextConfig: NextConfig = {
       // responses cross-origin. Scoped in two mutually-exclusive matches
       // (not a single "/(.*)" + override) so behavior never depends on
       // Next's header-merge ordering:
-      //  - everything except /api/v1 stays same-origin (pages, assets,
-      //    manifest/icons — social-scraper OG fetches don't need CORP).
-      //  - /api/v1/* must stay cross-origin: it's the public contract the
-      //    mobile app and browser extension fetch from their own origins
+      //  - HTML documents (extensionless paths) get same-origin. That is where
+      //    CORP is worth having; everything this site serves is public, so the
+      //    protection on static assets is marginal.
+      //  - /api/v1/* stays cross-origin: it is the public contract the mobile
+      //    app and the browser extension fetch from their own origins
       //    (CLAUDE.md — apps/mobile and apps/extension talk to /api/v1/*).
-      //    same-origin here would silently break both shipped surfaces.
+      //  - /audio/* stays cross-origin: the extension sets the adhan clips as
+      //    an <audio src> on ITS origin (apps/extension/src/lib/audio-router.ts
+      //    builds `${SITE}/audio/adhan.mp3`), which is a no-cors subresource
+      //    load and exactly what CORP blocks.
+      //  - Dotted paths (images, manifest, icons, sw.js) get NO CORP header at
+      //    all, so they keep the permissive default. The extension resolves
+      //    origin-relative image paths against this origin via assetUrl() in
+      //    apps/extension/src/lib/api.ts and renders them as <img>; a
+      //    same-origin CORP would blank every station and scholar image with
+      //    no error visible on the web side.
+      // The three matchers below are mutually exclusive, so the result never
+      // depends on Next's header-merge ordering for a repeated key.
       {
-        source: "/:path((?!api/v1/).*)",
+        source: "/:path((?!api/v1/|audio/)[^.]*)",
         headers: [{ key: "Cross-Origin-Resource-Policy", value: "same-origin" }],
       },
       {
         source: "/api/v1/:path*",
+        headers: [{ key: "Cross-Origin-Resource-Policy", value: "cross-origin" }],
+      },
+      {
+        source: "/audio/:path*",
         headers: [{ key: "Cross-Origin-Resource-Policy", value: "cross-origin" }],
       },
       // The service worker must not be long-cached (so updates ship) and needs
