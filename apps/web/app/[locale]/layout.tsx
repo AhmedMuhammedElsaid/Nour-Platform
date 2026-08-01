@@ -13,12 +13,14 @@ import { PlayerProvider } from "@repo/ui/blocks/player-context";
 import { type Locale } from "@repo/api/schemas/locale";
 import { SiteFooter } from "@/features/layout/components/site-footer";
 import { SiteHeader } from "@/features/layout/components/site-header";
-import { NavigationProgress } from "@/features/layout/components/navigation-progress";
-import { PlaybackPersistence } from "@/features/player/components/playback-persistence";
+import {
+  NavigationProgress,
+  PlaybackPersistence,
+  InstallPrompt,
+  ServiceWorkerRegister,
+  AzkarReminderController,
+} from "@/features/layout/components/deferred-layout-islands";
 import { PlayerClearanceSpacer } from "@/features/player/components/player-clearance-spacer";
-import { ServiceWorkerRegister } from "@/features/pwa/components/service-worker-register";
-import { InstallPrompt } from "@/features/pwa/components/install-prompt";
-import { AzkarReminderController } from "@/features/prayer-times/components/azkar-reminder-controller";
 import { LocaleAlternatesProvider } from "@/features/layout/locale-alternates-context";
 import { BUILD_VERSION } from "@/lib/build-version";
 import { routing } from "@/i18n/routing";

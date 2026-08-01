@@ -17,14 +17,16 @@ import { localeAlternates, defaultOpenGraph, defaultTwitter } from "@/lib/seo";
 export const dynamic = "force-dynamic";
 import { PlaylistCard } from "@/features/playlists/components/playlist-card";
 import { CategoryFilterBar } from "@/features/categories/components/category-filter-bar";
-import { ContinueListening } from "@/features/player/components/continue-listening";
-import { ContinueReadingShelf } from "@/features/quran/components/continue-reading-shelf";
 import { PlaylistSortSelect } from "@/features/playlists/components/playlist-sort-select";
 import { PrayerTimesWidget } from "@/features/prayer-times/components/prayer-times-widget";
 import { ReadersShelf } from "@/features/quran/components/readers-shelf";
 import { RadioPreviewShelf } from "@/features/radio/components/radio-preview-shelf";
 import { AdhkarPreviewShelf } from "@/features/adhkar/components/adhkar-preview-shelf";
-import { DhikrOfTheDayCard } from "@/features/adhkar/components/dhikr-of-the-day-card";
+import {
+  ContinueListening,
+  ContinueReadingShelf,
+  DhikrOfTheDayCard,
+} from "@/features/layout/components/deferred-home-islands";
 import { toStationView } from "@/features/radio/lib/station-view";
 import type { SerializedPlaylist } from "@/features/playlists/types";
 

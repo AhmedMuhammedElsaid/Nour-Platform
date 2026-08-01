@@ -10,7 +10,7 @@ import { reciterGradient, reciterInitials } from "@repo/shared-core/quran/recite
 import { usePlayer } from "@repo/ui/blocks/player-context";
 
 import { useRouter } from "@/i18n/navigation";
-import { startNavigationProgress } from "@/features/layout/components/navigation-progress";
+import { startNavigationProgress } from "@/features/layout/lib/nav-progress-event";
 import { loadPrefs, savePrefs } from "@/features/quran/lib/quran-prefs";
 import { fetchAlFatihaQueue } from "@/features/quran/lib/al-fatiha-queue";
 

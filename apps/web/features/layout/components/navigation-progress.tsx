@@ -3,15 +3,12 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
-// Client islands that navigate imperatively (router.push instead of an <a>,
-// e.g. the home ReadersShelf) fire this so the bar still starts on their tap.
-export const NAV_START_EVENT = "nour:nav-start";
+import { NAV_START_EVENT, startNavigationProgress } from "../lib/nav-progress-event";
 
-export function startNavigationProgress(): void {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(NAV_START_EVENT));
-  }
-}
+// Re-exported for back-compat (existing test imports these from this module).
+// New callers that only need the imperative fire should import from
+// "../lib/nav-progress-event" directly so they don't pull this component in.
+export { NAV_START_EVENT, startNavigationProgress };
 
 const TRICKLE_INTERVAL_MS = 250;
 const DONE_FADE_MS = 400;
