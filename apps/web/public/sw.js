@@ -33,7 +33,17 @@
 // v9 (2026-07-11): one-time cache-bust so every client purges stale shell/pages
 // caches and re-claims — evicts any cached HTML/JS still running the old
 // adhan-fires-on-open code (superseded by the active-tab + tight-window fire gate).
-const VERSION = "v10";
+// v11 (2026-08-01): AUDIO_CACHE hardening (plan phase 3.4). (1) A total-bytes
+// cap + LRU eviction — previously a single entry was capped at 100MB but the
+// cache as a whole had no ceiling, so enough distinct audio URLs could fill the
+// origin's storage quota and get the browser to evict everything, including the
+// offline PWA shell. (2) Caching (not fetching) is now restricted to same-origin
+// plus a static allowlist of known audio hosts — see AUDIO_CACHE_HOST_PATTERNS.
+// Cross-origin *poisoning* was never possible here (handleAudio only caches
+// status===200, which excludes opaque cross-origin responses), so this is a
+// quota-exhaustion mitigation, not a new trust boundary. Bump purges the old
+// cache generation (and its now-unbounded audio entries).
+const VERSION = "v11";
 const SHELL_CACHE = `nour-shell-${VERSION}`;
 const PAGES_CACHE = `nour-pages-${VERSION}`;
 const STATIC_CACHE = `nour-static-${VERSION}`;
@@ -56,6 +66,103 @@ const AUDIO_EXT = /\.(mp3|m4a|aac|ogg|oga|wav|flac)(\?|$)/i;
 // well under this; a live radio stream has no Content-Length (or an absurd one)
 // and must never be buffered — see handleAudio.
 const MAX_CACHEABLE_AUDIO = 100 * 1024 * 1024; // 100 MB
+
+// Total budget across every entry in AUDIO_CACHE. Without this, enough
+// distinct audio URLs (reciter tracks, radio stations, adhan clips) fill the
+// origin's storage quota and the browser starts evicting caches wholesale —
+// including SHELL_CACHE/PAGES_CACHE, which breaks the offline PWA shell.
+// Oldest-accessed entries are evicted first (see evictAudioCacheIfNeeded) to
+// stay under this ceiling on every new write.
+const MAX_AUDIO_CACHE_TOTAL_BYTES = 250 * 1024 * 1024; // 250 MB
+
+// Cross-origin audio is only ever WRITTEN to AUDIO_CACHE when its host is on
+// this list — same-origin audio (uploaded R2 tracks proxied through our own
+// domain, if any) is always allowed. This is not a fetch/playback restriction
+// (an off-list URL still plays, just uncached) — it bounds which origins can
+// consume the shared cache quota. Mirrors, but cannot directly import (this
+// file is a plain-JS static asset with no build step):
+//   - apps/web/lib/csp.ts RECITER_ORIGINS ("https://everyayah.com")
+//   - packages/config/src/radio-hosts.ts RADIO_HOST_PATTERNS
+// Keep these two lists and this one in sync by hand when a host is added.
+// R2_PUBLIC_BASE (packages/config/src/env.ts) is a deployment-time env var
+// with no fixed value this static file can read — "*.r2.dev" covers Cloudflare's
+// default public dev domain; a custom R2 domain (e.g. cdn.example.com) must be
+// added here explicitly if/when one is configured.
+const AUDIO_CACHE_HOST_PATTERNS = [
+  "everyayah.com",
+  "*.qurango.net",
+  "*.radioca.st",
+  "*.zeno.fm",
+  "*.surfernetwork.com",
+  "*.mp3islam.com",
+  "*.r2.dev",
+];
+
+function hostMatchesPattern(host, pattern) {
+  if (pattern.indexOf("*.") === 0) {
+    const suffix = pattern.slice(1); // "*.qurango.net" -> ".qurango.net"
+    return host.length > suffix.length && host.slice(-suffix.length) === suffix;
+  }
+  return host === pattern;
+}
+
+function isCacheableAudioOrigin(url) {
+  if (url.origin === self.location.origin) return true;
+  const host = url.hostname.toLowerCase();
+  return AUDIO_CACHE_HOST_PATTERNS.some((pattern) => hostMatchesPattern(host, pattern));
+}
+
+// Cache-metadata "entry" — not a real network resource, only ever read/written
+// via cache.match/cache.put directly (never reachable through the fetch
+// listener), so it can't collide with anything the app actually requests.
+const AUDIO_META_URL = new URL("/__nour-audio-cache-meta__", self.location.origin).toString();
+
+async function readAudioCacheMeta(cache) {
+  const res = await cache.match(AUDIO_META_URL);
+  if (!res) return {};
+  try {
+    return await res.json();
+  } catch {
+    return {};
+  }
+}
+
+async function writeAudioCacheMeta(cache, meta) {
+  await cache.put(
+    AUDIO_META_URL,
+    new Response(JSON.stringify(meta), { headers: { "Content-Type": "application/json" } }),
+  );
+}
+
+// LRU by last-access time. Evicts the least-recently-used entries first until
+// projected total (existing entries minus what's evicted, plus the incoming
+// entry) fits the budget.
+async function evictAudioCacheIfNeeded(cache, meta, incomingBytes) {
+  let total = incomingBytes;
+  for (const key in meta) {
+    total += meta[key].size;
+  }
+  if (total <= MAX_AUDIO_CACHE_TOTAL_BYTES) return;
+
+  const byOldest = Object.keys(meta).sort((a, b) => meta[a].ts - meta[b].ts);
+  for (const key of byOldest) {
+    if (total <= MAX_AUDIO_CACHE_TOTAL_BYTES) break;
+    await cache.delete(key);
+    total -= meta[key].size;
+    delete meta[key];
+  }
+}
+
+// Records a fresh write and touches last-access time on a hit — call on every
+// cache read/write so eviction reflects actual usage, not just insertion order.
+async function touchAudioCacheEntry(cache, key, size) {
+  const meta = await readAudioCacheMeta(cache);
+  if (typeof size === "number") {
+    await evictAudioCacheIfNeeded(cache, meta, size);
+  }
+  meta[key] = { size: typeof size === "number" ? size : (meta[key] && meta[key].size) || 0, ts: Date.now() };
+  await writeAudioCacheMeta(cache, meta);
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -217,9 +324,21 @@ async function handleAudio(request, url) {
   const cache = await caches.open(AUDIO_CACHE);
   const cacheKey = new Request(url.toString(), { method: "GET" });
   const range = request.headers.get("range");
+  const cacheable = isCacheableAudioOrigin(url);
 
-  let full = await cache.match(cacheKey);
+  let full = cacheable ? await cache.match(cacheKey) : undefined;
+  if (full) {
+    // Touch last-access so LRU eviction reflects real usage, not just when the
+    // entry was first written. Best-effort: never block the response on it.
+    void touchAudioCacheEntry(cache, cacheKey.url);
+  }
   if (!full) {
+    if (!cacheable) {
+      // Off-allowlist cross-origin host: still play it (this is not a
+      // playback restriction), just never let it consume the shared audio
+      // cache's storage quota.
+      return fetch(request);
+    }
     try {
       const response = await fetch(url.toString(), { mode: "cors" });
       if (response && response.status === 200) {
@@ -232,6 +351,7 @@ async function handleAudio(request, url) {
           return response;
         }
         await cache.put(cacheKey, response.clone());
+        await touchAudioCacheEntry(cache, cacheKey.url, len);
         full = response;
       } else {
         // Couldn't read a full body (opaque/error) — stream the original.
@@ -308,7 +428,18 @@ self.addEventListener("notificationclick", (event) => {
     const raw = (notification.data && notification.data.url) || "/";
     // Resolve to an absolute, same-origin URL so navigate()/openWindow() and
     // the focused-tab match below all compare against the same string.
-    const url = new URL(raw, self.location.origin).href;
+    // `raw` is app-internal today (data.url is only ever set to an in-app
+    // path), but new URL(raw, base) resolves an ABSOLUTE raw to itself,
+    // ignoring `base` entirely — so a same-origin-looking check on the result
+    // is not enough on its own; reject anything that doesn't resolve to our
+    // own origin and fall back to "/" instead of ever navigating off-site.
+    let url;
+    try {
+      const parsed = new URL(raw, self.location.origin);
+      url = parsed.origin === self.location.origin ? parsed.href : new URL("/", self.location.origin).href;
+    } catch {
+      url = new URL("/", self.location.origin).href;
+    }
     event.waitUntil(
       (async () => {
         const clients = await self.clients.matchAll({
