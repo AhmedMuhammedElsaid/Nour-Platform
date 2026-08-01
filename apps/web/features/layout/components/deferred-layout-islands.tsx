@@ -31,10 +31,14 @@ export const PlaybackPersistence = dynamic(
   { ssr: false },
 );
 
-export const InstallPrompt = dynamic(
-  () => import("@/features/pwa/components/install-prompt").then((m) => m.InstallPrompt),
-  { ssr: false },
-);
+// InstallPrompt is deliberately NOT deferred. Every other island here is
+// self-triggered on mount, so arriving late costs nothing. InstallPrompt
+// instead waits for `beforeinstallprompt`, an event the browser fires once and
+// never replays — if it fires during the extra chunk fetch a lazy import adds,
+// the listener is not attached yet, the event is lost, and the install
+// affordance is silently dead for that visit with no error and no test signal.
+// Chrome can fire it early on a repeat visit with the SW already controlling,
+// so this is a real race, not a theoretical one.
 
 export const ServiceWorkerRegister = dynamic(
   () =>

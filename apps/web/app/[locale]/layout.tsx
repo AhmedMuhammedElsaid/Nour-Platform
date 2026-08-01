@@ -17,10 +17,12 @@ import { SiteHeader } from "@/features/layout/components/site-header";
 import {
   NavigationProgress,
   PlaybackPersistence,
-  InstallPrompt,
   ServiceWorkerRegister,
   AzkarReminderController,
 } from "@/features/layout/components/deferred-layout-islands";
+// Eager on purpose — it must be listening before `beforeinstallprompt` fires;
+// see the note in deferred-layout-islands.tsx.
+import { InstallPrompt } from "@/features/pwa/components/install-prompt";
 import { PlayerClearanceSpacer } from "@/features/player/components/player-clearance-spacer";
 import { LocaleAlternatesProvider } from "@/features/layout/locale-alternates-context";
 import { BUILD_VERSION } from "@/lib/build-version";
@@ -28,6 +30,7 @@ import { routing } from "@/i18n/routing";
 import { defaultOpenGraph, defaultTwitter } from "@/lib/seo";
 import { JsonLd } from "@/features/seo/components/json-ld";
 import { organizationLd, webSiteLd } from "@/lib/seo";
+import { CLIENT_MESSAGE_NAMESPACES } from "@/i18n/client-namespaces";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -128,36 +131,10 @@ export default async function LocaleLayout({
   // Enable static rendering / request-scoped locale for this subtree.
   setRequestLocale(locale);
 
-  // NextIntlClientProvider ships whatever's in `messages` to the client on
-  // EVERY route — getMessages() returns the entire locale catalogue
-  // unfiltered. Server components read strings via getTranslations() (a
-  // separate, server-only request-scoped store) and never touch this object,
-  // so it only needs to cover namespaces a CLIENT component actually calls
-  // useTranslations() on. That set was enumerated by grepping every
-  // `useTranslations(` call under apps/web (Phase 2.3 bundle-trim; see
-  // CLAUDE.md §5 boundary on this file) — 12 namespaces, all consumed by a
-  // "use client" component: nav, home, categories, search, player, prayer,
-  // pwa, adhkar, quran, qibla, radio, errors. `metadata` (generateMetadata
-  // only), `footer`/`playlist` (server components, no useTranslations call
-  // anywhere), and `privacy` (server-rendered page, no useTranslations call)
-  // are server-only and deliberately excluded. If a future client component
-  // reads a namespace not in this list, next-intl throws at runtime on the
-  // missing key — re-grep and add it here, do not widen back to the whole
-  // catalogue "to be safe".
-  const CLIENT_MESSAGE_NAMESPACES = [
-    "nav",
-    "home",
-    "categories",
-    "search",
-    "player",
-    "prayer",
-    "pwa",
-    "adhkar",
-    "quran",
-    "qibla",
-    "radio",
-    "errors",
-  ] as const;
+  // NextIntlClientProvider ships whatever is in `messages` to the client on
+  // EVERY route, and getMessages() returns the entire locale catalogue. Only
+  // the namespaces a client component actually reads are needed — the list and
+  // the reasoning live in i18n/client-namespaces.ts, kept honest by its test.
   const allMessages = await getMessages();
   const messages = Object.fromEntries(
     CLIENT_MESSAGE_NAMESPACES.map((ns) => [ns, allMessages[ns]]),
