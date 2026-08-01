@@ -3,9 +3,31 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CATEGORIES, PLAYLISTS_HOME } from "../cache/tags";
 import { AppError } from "../errors";
 
+// Recording next/cache mock — see playlist.service.test.ts for why a
+// call-through-only mock would be vacuous here.
+const cacheMock = vi.hoisted(() => {
+  const calls: Array<{
+    keyParts: readonly string[];
+    tags: readonly string[];
+    revalidate: unknown;
+  }> = [];
+  return {
+    calls,
+    unstable_cache: (
+      cb: () => Promise<unknown>,
+      keyParts: readonly string[],
+      opts: { tags: readonly string[]; revalidate: unknown },
+    ) => {
+      calls.push({ keyParts, tags: opts.tags, revalidate: opts.revalidate });
+      return cb;
+    },
+  };
+});
+
 // Module-level mocks. Hoisted by vitest before service import.
 vi.mock("next/cache", () => ({
   revalidateTag: vi.fn(),
+  unstable_cache: cacheMock.unstable_cache,
 }));
 
 vi.mock("../auth/require-session", () => ({
@@ -55,6 +77,7 @@ function makeLean(overrides: Record<string, unknown> = {}): any {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  cacheMock.calls.length = 0;
 });
 
 describe("category.service", () => {
@@ -83,6 +106,30 @@ describe("category.service", () => {
       const result = await service.listCategories();
 
       expect(result).toHaveLength(0);
+    });
+
+    it("wraps the read under the CATEGORIES tag with a constant key", async () => {
+      vi.mocked(repo.findAll).mockResolvedValueOnce([]);
+
+      await service.listCategories();
+
+      // No arguments and an unfiltered repo read, so a constant key IS the
+      // complete key — nothing can vary the result set.
+      expect(cacheMock.calls).toHaveLength(1);
+      expect(cacheMock.calls[0]).toMatchObject({
+        keyParts: ["category", "list"],
+        tags: [CATEGORIES],
+      });
+    });
+
+    it("does NOT cache getCategoryBySlug or getCategoryById", async () => {
+      vi.mocked(repo.findBySlug).mockResolvedValueOnce(makeLean());
+      vi.mocked(repo.findById).mockResolvedValueOnce(makeLean());
+
+      await service.getCategoryBySlug("en", "category");
+      await service.getCategoryById("cat1234567890123456");
+
+      expect(cacheMock.calls).toHaveLength(0);
     });
   });
 

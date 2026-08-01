@@ -13,6 +13,8 @@ import {
   findTafsir,
 } from "../repositories/quran.repo";
 import { AppError } from "../errors";
+import { QURAN } from "../cache/tags";
+import { IMMUTABLE_TTL_SECONDS, cachedRead } from "../cache/cached";
 import type {
   QuranSurah,
   QuranEdition,
@@ -33,7 +35,26 @@ import type { QuranReciterDoc } from "../db/models/quran-reciter.model";
  * Quran service — public, read-only. No requireSession: Quran content is public
  * and immutable. Audio URLs are COMPUTED from the reciter base, never stored.
  * Default translation edition is locale-derived but caller-overridable.
+ *
+ * Every read here is wrapped in unstable_cache under the QURAN tag with a
+ * 24 h TTL (../cache/cached). Content only changes via `pnpm seed:quran`,
+ * which runs outside Next and cannot revalidateTag — after a reseed the TTL is
+ * what eventually clears these entries, so allow a day (or redeploy).
+ *
+ * No DTO in this service carries a Date, so none of these need reviveDates.
  */
+
+/*
+ * Cache-key note for the reader functions: the translation edition and reciter
+ * are resolved from `opts` INSIDE the read, and both fall back to a
+ * locale-derived default (DEFAULT_TRANSLATION_BY_LOCALE / DEFAULT_RECITER_SLUG).
+ * All three of `translationSlug`, `reciterSlug` and `locale` therefore change
+ * the payload and all three must be key parts. The empty string marks "not
+ * supplied" and cannot collide with a real slug, which is never empty.
+ */
+function readerOptsKey(opts: SurahReaderOptions): string[] {
+  return [opts.translationSlug ?? "", opts.reciterSlug ?? "", opts.locale ?? ""];
+}
 
 const DEFAULT_TRANSLATION_BY_LOCALE: Record<Locale, string> = {
   ar: "ar.muyassar",
@@ -124,19 +145,26 @@ function ayahToReaderDto(
   };
 }
 
+// Key completeness (all three): no arguments, unfiltered repo reads.
 export async function listSurahs(): Promise<QuranSurah[]> {
-  const docs = await findAllSurahs();
-  return docs.map(surahToDto);
+  return cachedRead(["quran", "surahs"], [QURAN], IMMUTABLE_TTL_SECONDS, async () => {
+    const docs = await findAllSurahs();
+    return docs.map(surahToDto);
+  });
 }
 
 export async function listEditions(): Promise<QuranEdition[]> {
-  const docs = await findEditions();
-  return docs.map(editionToDto);
+  return cachedRead(["quran", "editions"], [QURAN], IMMUTABLE_TTL_SECONDS, async () => {
+    const docs = await findEditions();
+    return docs.map(editionToDto);
+  });
 }
 
 export async function listReciters(): Promise<QuranReciter[]> {
-  const docs = await findReciters();
-  return docs.map(reciterToDto);
+  return cachedRead(["quran", "reciters"], [QURAN], IMMUTABLE_TTL_SECONDS, async () => {
+    const docs = await findReciters();
+    return docs.map(reciterToDto);
+  });
 }
 
 export interface SurahReaderOptions {
@@ -174,52 +202,84 @@ async function resolveEditionAndReciter(
   return { edition, reciter, translationByGlobal };
 }
 
+// Key completeness: surahNumber + every readerOptsKey part. The NotFound throw
+// stays inside the cached body; unstable_cache only writes an entry after the
+// callback resolves, so the error path is never cached.
 export async function getSurahReader(
   surahNumber: number,
   opts: SurahReaderOptions,
 ): Promise<SurahReader> {
-  const surah = await findSurah(surahNumber);
-  if (!surah) throw AppError.NotFound("Surah");
+  return cachedRead(
+    ["quran", "surah", String(surahNumber), ...readerOptsKey(opts)],
+    [QURAN],
+    IMMUTABLE_TTL_SECONDS,
+    async () => {
+      const surah = await findSurah(surahNumber);
+      if (!surah) throw AppError.NotFound("Surah");
 
-  const ayahDocs = await findAyahsBySurah(surahNumber);
-  const { edition, reciter, translationByGlobal } = await resolveEditionAndReciter(
-    ayahDocs,
-    opts,
+      const ayahDocs = await findAyahsBySurah(surahNumber);
+      const { edition, reciter, translationByGlobal } =
+        await resolveEditionAndReciter(ayahDocs, opts);
+
+      return {
+        surah: surahToDto(surah),
+        ayahs: ayahDocs.map((a) => ayahToReaderDto(a, translationByGlobal, reciter)),
+        translationEdition: edition ? editionToDto(edition) : null,
+        reciter: reciter ? reciterToDto(reciter) : null,
+      };
+    },
   );
-
-  return {
-    surah: surahToDto(surah),
-    ayahs: ayahDocs.map((a) => ayahToReaderDto(a, translationByGlobal, reciter)),
-    translationEdition: edition ? editionToDto(edition) : null,
-    reciter: reciter ? reciterToDto(reciter) : null,
-  };
 }
 
+// Key completeness: numberGlobal picks the row; editionSlug and locale between
+// them pick the edition (locale only via DEFAULT_TAFSIR_BY_LOCALE when
+// editionSlug is absent). Both are key parts.
 export async function getTafsir(
   numberGlobal: number,
   opts: { locale?: Locale; editionSlug?: string },
 ): Promise<TafsirResult | null> {
-  const slug = opts.editionSlug ?? DEFAULT_TAFSIR_BY_LOCALE[opts.locale ?? "ar"];
-  const edition = await findEditionBySlug(slug);
-  if (!edition) return null;
-  const row = await findTafsir(edition.slug, numberGlobal);
-  if (!row) return null;
-  return { edition: editionToDto(edition), html: row.text };
+  return cachedRead(
+    [
+      "quran",
+      "tafsir",
+      String(numberGlobal),
+      opts.editionSlug ?? "",
+      opts.locale ?? "",
+    ],
+    [QURAN],
+    IMMUTABLE_TTL_SECONDS,
+    async () => {
+      const slug = opts.editionSlug ?? DEFAULT_TAFSIR_BY_LOCALE[opts.locale ?? "ar"];
+      const edition = await findEditionBySlug(slug);
+      if (!edition) return null;
+      const row = await findTafsir(edition.slug, numberGlobal);
+      if (!row) return null;
+      return { edition: editionToDto(edition), html: row.text };
+    },
+  );
 }
 
+// Key completeness: juz + every readerOptsKey part.
 export async function getJuzReader(
   juz: number,
   opts: SurahReaderOptions,
 ): Promise<ReaderAyah[]> {
-  const ayahDocs = await findAyahsByJuz(juz);
-  if (ayahDocs.length === 0) throw AppError.NotFound("Juz");
+  return cachedRead(
+    ["quran", "juz", String(juz), ...readerOptsKey(opts)],
+    [QURAN],
+    IMMUTABLE_TTL_SECONDS,
+    async () => {
+      const ayahDocs = await findAyahsByJuz(juz);
+      if (ayahDocs.length === 0) throw AppError.NotFound("Juz");
 
-  const { reciter, translationByGlobal } = await resolveEditionAndReciter(
-    ayahDocs,
-    opts,
+      const { reciter, translationByGlobal } = await resolveEditionAndReciter(
+        ayahDocs,
+        opts,
+      );
+
+      return ayahDocs.map((a) => ayahToReaderDto(a, translationByGlobal, reciter));
+    },
   );
-
-  return ayahDocs.map((a) => ayahToReaderDto(a, translationByGlobal, reciter));
 }
 
 // Cross-surah Madani mushaf page reader: a page's ayahs are pre-filtered by
@@ -231,62 +291,71 @@ export async function getPageReader(
   page: number,
   opts: SurahReaderOptions,
 ): Promise<PageReader> {
+  // Input validation stays OUTSIDE the cache: it is a pure guard on the
+  // argument, so there is nothing to memoise and no reason to spin up a cache
+  // lookup for a request that is already invalid.
   if (!Number.isInteger(page) || page < MIN_PAGE || page > MAX_PAGE) {
     throw AppError.Validation([], "Invalid page number.");
   }
 
-  const ayahDocs = await findAyahsByPage(page);
-  if (ayahDocs.length === 0) throw AppError.NotFound("Page");
+  // Key completeness: page + every readerOptsKey part.
+  return cachedRead(
+    ["quran", "page", String(page), ...readerOptsKey(opts)],
+    [QURAN],
+    IMMUTABLE_TTL_SECONDS,
+    async () => {
+      const ayahDocs = await findAyahsByPage(page);
+      if (ayahDocs.length === 0) throw AppError.NotFound("Page");
 
-  const { edition, reciter, translationByGlobal } = await resolveEditionAndReciter(
-    ayahDocs,
-    opts,
+      const { edition, reciter, translationByGlobal } =
+        await resolveEditionAndReciter(ayahDocs, opts);
+
+      const surahNumbers = Array.from(new Set(ayahDocs.map((a) => a.surah)));
+      const surahDocs = await findSurahsByNumbers(surahNumbers);
+      const surahByNumber = new Map(surahDocs.map((s) => [s.number, s]));
+
+      const segments: PageSegment[] = [];
+      for (const ayahDoc of ayahDocs) {
+        const readerAyah = ayahToReaderDto(ayahDoc, translationByGlobal, reciter);
+        const last = segments[segments.length - 1];
+        if (last && last.surah.number === ayahDoc.surah) {
+          last.ayahs.push(readerAyah);
+          continue;
+        }
+
+        const surahDoc = surahByNumber.get(ayahDoc.surah);
+        if (!surahDoc) {
+          // Data-integrity gap (ayah references a surah row that doesn't exist) —
+          // not a caller input error, so this is a 500, not a 400/404.
+          throw AppError.Internal(`Surah ${ayahDoc.surah} not found for page ${page}.`);
+        }
+
+        segments.push({
+          surah: {
+            number: surahDoc.number,
+            name: {
+              ar: (surahDoc.name as { ar: string }).ar,
+              en: (surahDoc.name as { en: string }).en,
+            },
+            meaning: surahDoc.meaning,
+            bismillahPre: surahDoc.bismillahPre,
+            ayahCount: surahDoc.ayahCount,
+          },
+          showBismillah:
+            ayahDoc.ayahInSurah === 1 && surahDoc.bismillahPre && surahDoc.number !== 1,
+          ayahs: [readerAyah],
+        });
+      }
+
+      return {
+        page,
+        juz: ayahDocs[0]!.juz,
+        prevPage: page > MIN_PAGE ? page - 1 : null,
+        nextPage: page < MAX_PAGE ? page + 1 : null,
+        segments,
+        translationEdition: edition ? editionToDto(edition) : null,
+        reciter: reciter ? reciterToDto(reciter) : null,
+      };
+    },
   );
-
-  const surahNumbers = Array.from(new Set(ayahDocs.map((a) => a.surah)));
-  const surahDocs = await findSurahsByNumbers(surahNumbers);
-  const surahByNumber = new Map(surahDocs.map((s) => [s.number, s]));
-
-  const segments: PageSegment[] = [];
-  for (const ayahDoc of ayahDocs) {
-    const readerAyah = ayahToReaderDto(ayahDoc, translationByGlobal, reciter);
-    const last = segments[segments.length - 1];
-    if (last && last.surah.number === ayahDoc.surah) {
-      last.ayahs.push(readerAyah);
-      continue;
-    }
-
-    const surahDoc = surahByNumber.get(ayahDoc.surah);
-    if (!surahDoc) {
-      // Data-integrity gap (ayah references a surah row that doesn't exist) —
-      // not a caller input error, so this is a 500, not a 400/404.
-      throw AppError.Internal(`Surah ${ayahDoc.surah} not found for page ${page}.`);
-    }
-
-    segments.push({
-      surah: {
-        number: surahDoc.number,
-        name: {
-          ar: (surahDoc.name as { ar: string }).ar,
-          en: (surahDoc.name as { en: string }).en,
-        },
-        meaning: surahDoc.meaning,
-        bismillahPre: surahDoc.bismillahPre,
-        ayahCount: surahDoc.ayahCount,
-      },
-      showBismillah:
-        ayahDoc.ayahInSurah === 1 && surahDoc.bismillahPre && surahDoc.number !== 1,
-      ayahs: [readerAyah],
-    });
-  }
-
-  return {
-    page,
-    juz: ayahDocs[0]!.juz,
-    prevPage: page > MIN_PAGE ? page - 1 : null,
-    nextPage: page < MAX_PAGE ? page + 1 : null,
-    segments,
-    translationEdition: edition ? editionToDto(edition) : null,
-    reciter: reciter ? reciterToDto(reciter) : null,
-  };
 }

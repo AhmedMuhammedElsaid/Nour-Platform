@@ -1,5 +1,35 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// Recording next/cache mock — see playlist.service.test.ts for why a
+// call-through-only mock would be vacuous here. `simulateHit` reproduces Next's
+// real JSON.stringify/JSON.parse storage round-trip.
+const cacheMock = vi.hoisted(() => {
+  const calls: Array<{
+    keyParts: readonly string[];
+    tags: readonly string[];
+    revalidate: unknown;
+  }> = [];
+  const state = { simulateHit: false };
+  return {
+    calls,
+    state,
+    unstable_cache: (
+      cb: () => Promise<unknown>,
+      keyParts: readonly string[],
+      opts: { tags: readonly string[]; revalidate: unknown },
+    ) => {
+      calls.push({ keyParts, tags: opts.tags, revalidate: opts.revalidate });
+      if (!state.simulateHit) return cb;
+      return async () => JSON.parse(JSON.stringify(await cb())) as unknown;
+    },
+  };
+});
+
+vi.mock("next/cache", () => ({
+  revalidateTag: vi.fn(),
+  unstable_cache: cacheMock.unstable_cache,
+}));
+
 vi.mock("../repositories/radio.repo", () => ({
   findAllStations: vi.fn(),
   findFeaturedStations: vi.fn(),
@@ -34,7 +64,11 @@ function stationDoc(over: Record<string, unknown> = {}): any {
   };
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  cacheMock.calls.length = 0;
+  cacheMock.state.simulateHit = false;
+});
 
 describe("radio.service", () => {
   it("listStations maps lean docs to DTOs", async () => {
@@ -75,6 +109,50 @@ describe("radio.service", () => {
   it("getStationBySlug hides a disabled (isLive:false) station", async () => {
     vi.mocked(repo.findStationBySlug).mockResolvedValueOnce(stationDoc({ isLive: false }));
     await expect(service.getStationBySlug("quran-cairo")).rejects.toThrow();
+  });
+
+  it("wraps each read under the RADIO tag with a distinct key", async () => {
+    vi.mocked(repo.findAllStations).mockResolvedValueOnce([]);
+    vi.mocked(repo.findFeaturedStations).mockResolvedValueOnce([]);
+    vi.mocked(repo.findStationBySlug).mockResolvedValueOnce(stationDoc());
+
+    await service.listStations();
+    await service.getFeaturedStations();
+    await service.getStationBySlug("quran-cairo");
+
+    expect(cacheMock.calls.map((c) => c.keyParts)).toEqual([
+      ["radio", "stations"],
+      ["radio", "featured"],
+      ["radio", "by-slug", "quran-cairo"],
+    ]);
+    expect(cacheMock.calls.every((c) => c.tags[0] === "radio")).toBe(true);
+  });
+
+  it("gives two different slugs two different keys", async () => {
+    vi.mocked(repo.findStationBySlug).mockResolvedValue(stationDoc());
+
+    await service.getStationBySlug("quran-cairo");
+    await service.getStationBySlug("quran-makkah");
+
+    expect(cacheMock.calls[0]!.keyParts).not.toEqual(cacheMock.calls[1]!.keyParts);
+  });
+
+  it("still hides a disabled station when the entry comes back from cache", async () => {
+    // The isLive gate lives outside the cache, so it must still fire on a hit.
+    cacheMock.state.simulateHit = true;
+    vi.mocked(repo.findStationBySlug).mockResolvedValueOnce(stationDoc({ isLive: false }));
+
+    await expect(service.getStationBySlug("quran-cairo")).rejects.toThrow();
+  });
+
+  it("still returns real Dates on a cache HIT (JSON round-trip)", async () => {
+    cacheMock.state.simulateHit = true;
+    vi.mocked(repo.findAllStations).mockResolvedValueOnce([stationDoc()]);
+
+    const [dto] = await service.listStations();
+
+    expect(dto!.createdAt).toBeInstanceOf(Date);
+    expect(dto!.updatedAt).toBeInstanceOf(Date);
   });
 
   it("omits optional fields that are absent on the doc", async () => {

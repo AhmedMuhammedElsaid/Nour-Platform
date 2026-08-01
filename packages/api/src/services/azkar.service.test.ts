@@ -1,7 +1,32 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../auth/require-session", () => ({ requireSession: vi.fn() }));
-vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }));
+
+// Recording next/cache mock — see playlist.service.test.ts for why a
+// call-through-only mock would be vacuous here.
+const cacheMock = vi.hoisted(() => {
+  const calls: Array<{
+    keyParts: readonly string[];
+    tags: readonly string[];
+    revalidate: unknown;
+  }> = [];
+  return {
+    calls,
+    unstable_cache: (
+      cb: () => Promise<unknown>,
+      keyParts: readonly string[],
+      opts: { tags: readonly string[]; revalidate: unknown },
+    ) => {
+      calls.push({ keyParts, tags: opts.tags, revalidate: opts.revalidate });
+      return cb;
+    },
+  };
+});
+
+vi.mock("next/cache", () => ({
+  revalidateTag: vi.fn(),
+  unstable_cache: cacheMock.unstable_cache,
+}));
 vi.mock("../repositories/azkar.repo", () => ({
   findPublishedAzkar: vi.fn(),
   findAllAzkar: vi.fn(),
@@ -18,6 +43,7 @@ vi.mock("../db/models/azkar.model", () => ({
 
 import { requireSession } from "../auth/require-session";
 import { revalidateTag } from "next/cache";
+import { ADHKAR } from "../cache/tags";
 import * as repo from "../repositories/azkar.repo";
 import {
   getPublishedAzkar,
@@ -44,7 +70,65 @@ const lean = {
   updatedAt: new Date(),
 };
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  cacheMock.calls.length = 0;
+});
+
+describe("azkar.service cache activation", () => {
+  it("keys getPublishedAzkar constantly and tags it ADHKAR", async () => {
+    vi.mocked(repo.findPublishedAzkar).mockResolvedValue([] as never);
+    await getPublishedAzkar();
+    expect(cacheMock.calls).toHaveLength(1);
+    expect(cacheMock.calls[0]).toMatchObject({
+      keyParts: ["azkar", "published"],
+      tags: [ADHKAR],
+    });
+  });
+
+  it("keys getAzkarBySlug by BOTH locale and slug", async () => {
+    vi.mocked(repo.findAzkarBySlug).mockResolvedValue(lean as never);
+    await getAzkarBySlug("ar", "azkar-alsabah");
+    await getAzkarBySlug("en", "azkar-alsabah");
+    expect(cacheMock.calls[0]).toMatchObject({
+      keyParts: ["azkar", "by-slug", "ar", "azkar-alsabah"],
+      tags: [ADHKAR],
+    });
+    // Same slug, different locale — must not collide.
+    expect(cacheMock.calls[0]!.keyParts).not.toEqual(cacheMock.calls[1]!.keyParts);
+  });
+
+  it("every tag the cached reads subscribe to is emitted by the mutations", async () => {
+    // Same coupling check as playlist.service.test.ts: a read subscribing to a
+    // tag no mutation emits would go stale for a full TTL, undetected.
+    vi.mocked(repo.findPublishedAzkar).mockResolvedValue([] as never);
+    vi.mocked(repo.findAzkarBySlug).mockResolvedValue(lean as never);
+    await getPublishedAzkar();
+    await getAzkarBySlug("ar", "azkar-alsabah");
+    const subscribed = new Set(cacheMock.calls.flatMap((c) => c.tags));
+    expect(subscribed.size).toBeGreaterThan(0);
+
+    for (const mutate of [
+      () => publishAzkar("a1"),
+      () => unpublishAzkar("a1"),
+      () => updateAzkar("a1", { order: 1 }),
+    ]) {
+      vi.mocked(revalidateTag).mockClear();
+      vi.mocked(repo.updateAzkarById).mockResolvedValue(lean as never);
+      await mutate();
+      const emitted = new Set(vi.mocked(revalidateTag).mock.calls.map((c) => c[0]));
+      for (const tag of subscribed) expect(emitted).toContain(tag);
+    }
+  });
+
+  it("does NOT cache the draft-exposing admin reads", async () => {
+    vi.mocked(repo.findAllAzkar).mockResolvedValue([lean] as never);
+    vi.mocked(repo.findAzkarById).mockResolvedValue(lean as never);
+    await getAllAzkar({ user: { role: "admin" } } as never);
+    await getAzkarById("a1", { user: { role: "admin" } } as never);
+    expect(cacheMock.calls).toHaveLength(0);
+  });
+});
 
 describe("azkar.service reads", () => {
   it("getPublishedAzkar maps DTOs", async () => {

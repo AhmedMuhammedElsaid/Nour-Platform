@@ -1,5 +1,31 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// Recording next/cache mock — see playlist.service.test.ts for why a
+// call-through-only mock would be vacuous here.
+const cacheMock = vi.hoisted(() => {
+  const calls: Array<{
+    keyParts: readonly string[];
+    tags: readonly string[];
+    revalidate: unknown;
+  }> = [];
+  return {
+    calls,
+    unstable_cache: (
+      cb: () => Promise<unknown>,
+      keyParts: readonly string[],
+      opts: { tags: readonly string[]; revalidate: unknown },
+    ) => {
+      calls.push({ keyParts, tags: opts.tags, revalidate: opts.revalidate });
+      return cb;
+    },
+  };
+});
+
+vi.mock("next/cache", () => ({
+  revalidateTag: vi.fn(),
+  unstable_cache: cacheMock.unstable_cache,
+}));
+
 vi.mock("../repositories/quran.repo", () => ({
   findAllSurahs: vi.fn(),
   findSurah: vi.fn(),
@@ -67,7 +93,80 @@ const reciterDoc = {
   audioBase: "https://everyayah.com/data/Alafasy_128kbps/",
 };
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  cacheMock.calls.length = 0;
+});
+
+describe("quran.service cache activation", () => {
+  it("tags every read QURAN with the immutable 24h TTL", async () => {
+    vi.mocked(repo.findAllSurahs).mockResolvedValueOnce([]);
+    vi.mocked(repo.findEditions).mockResolvedValueOnce([]);
+    vi.mocked(repo.findReciters).mockResolvedValueOnce([]);
+
+    await service.listSurahs();
+    await service.listEditions();
+    await service.listReciters();
+
+    expect(cacheMock.calls.map((c) => c.keyParts)).toEqual([
+      ["quran", "surahs"],
+      ["quran", "editions"],
+      ["quran", "reciters"],
+    ]);
+    expect(cacheMock.calls.every((c) => c.tags[0] === "quran")).toBe(true);
+    expect(cacheMock.calls.every((c) => c.revalidate === 86_400)).toBe(true);
+  });
+
+  it("keys getSurahReader by surah AND every reader option", async () => {
+    // translationSlug / reciterSlug / locale all change the payload — locale
+    // because it selects the default translation edition. Missing any of them
+    // from the key would serve one reader's translation to another.
+    vi.mocked(repo.findSurah).mockResolvedValue(surahDoc() as any);
+    vi.mocked(repo.findAyahsBySurah).mockResolvedValue([]);
+    vi.mocked(repo.findEditionBySlug).mockResolvedValue(null);
+    vi.mocked(repo.findReciterBySlug).mockResolvedValue(null);
+
+    await service.getSurahReader(1, { locale: "ar" });
+    await service.getSurahReader(1, { locale: "en" });
+    await service.getSurahReader(1, { locale: "ar", translationSlug: "en.sahih" });
+    await service.getSurahReader(1, { locale: "ar", reciterSlug: "husary" });
+    await service.getSurahReader(2, { locale: "ar" });
+
+    expect(cacheMock.calls[0]!.keyParts).toEqual(["quran", "surah", "1", "", "", "ar"]);
+    const keys = cacheMock.calls.map((c) => c.keyParts.join("|"));
+    // Five materially different requests ⇒ five distinct keys.
+    expect(new Set(keys).size).toBe(5);
+  });
+
+  it("keys getTafsir by ayah, edition slug and locale", async () => {
+    vi.mocked(repo.findEditionBySlug).mockResolvedValue(null);
+
+    await service.getTafsir(1, { locale: "ar" });
+    await service.getTafsir(1, { locale: "en" });
+    await service.getTafsir(2, { locale: "ar" });
+    await service.getTafsir(1, { locale: "ar", editionSlug: "en.ibnkathir" });
+
+    expect(cacheMock.calls[0]!.keyParts).toEqual(["quran", "tafsir", "1", "", "ar"]);
+    expect(new Set(cacheMock.calls.map((c) => c.keyParts.join("|"))).size).toBe(4);
+  });
+
+  it("keys getPageReader by page and reader options, and rejects a bad page BEFORE the cache", async () => {
+    vi.mocked(repo.findAyahsByPage).mockResolvedValue([
+      ayahDoc({ surah: 1, ayahInSurah: 1, numberGlobal: 1, juz: 1, page: 1 }),
+    ]);
+    vi.mocked(repo.findSurahsByNumbers).mockResolvedValue([surahDoc()] as any);
+    vi.mocked(repo.findEditionBySlug).mockResolvedValue(null);
+    vi.mocked(repo.findReciterBySlug).mockResolvedValue(null);
+
+    await service.getPageReader(1, { locale: "ar" });
+    expect(cacheMock.calls[0]!.keyParts).toEqual(["quran", "page", "1", "", "", "ar"]);
+
+    // Negative case: an out-of-range page must not reach the cache layer at all.
+    cacheMock.calls.length = 0;
+    await expect(service.getPageReader(999, { locale: "ar" })).rejects.toThrow();
+    expect(cacheMock.calls).toHaveLength(0);
+  });
+});
 
 describe("quran.service", () => {
   describe("listSurahs", () => {

@@ -2,6 +2,7 @@ import { revalidateTag } from "next/cache";
 
 import { requireSession } from "../auth/require-session";
 import { PLAYLISTS_HOME, playlistTag } from "../cache/tags";
+import { CONTENT_TTL_SECONDS, cachedRead, reviveDates } from "../cache/cached";
 import {
   createPlaylist as repoCreatePlaylist,
   deletePlaylistById,
@@ -35,6 +36,9 @@ import type { Session } from "next-auth";
  * - Public read methods (no session): getPublishedPlaylists, getPlaylistBySlug.
  * - Admin-only mutations all begin with requireSession(['admin']) before any I/O.
  * - revalidateTag is called after every mutation that affects public cache entries.
+ * - The two public reads are wrapped in unstable_cache (see ../cache/cached).
+ *   The admin reads (getAllPlaylists, getPlaylistById) are NOT: they include
+ *   drafts and are role-gated, so a session-free cache key would leak them.
  * Services return plain DTO objects; Mongoose Documents never escape this layer.
  */
 
@@ -90,18 +94,55 @@ function toDto(doc: {
 export async function getPublishedPlaylists(
   filter?: { categoryId?: string },
 ): Promise<Playlist[]> {
-  const docs = await findPublishedPlaylists(
-    filter?.categoryId != null ? { categoryId: filter.categoryId } : undefined,
+  const categoryId = filter?.categoryId;
+  /*
+   * Key completeness: `filter.categoryId` is the only input that changes the
+   * result set, and it is in the key. The unfiltered variant is keyed "all",
+   * which cannot collide with a real value (categoryId is a 24-char ObjectId
+   * hex string). Status is not a key part because the repo hard-codes
+   * published-only.
+   */
+  const dtos = await cachedRead(
+    ["playlist", "published", categoryId ?? "all"],
+    [PLAYLISTS_HOME],
+    CONTENT_TTL_SECONDS,
+    async () => {
+      const docs = await findPublishedPlaylists(
+        categoryId != null ? { categoryId } : undefined,
+      );
+      return docs.map(toDto);
+    },
   );
-  return docs.map(toDto);
+  return dtos.map(reviveDates);
 }
 
 export async function getPlaylistBySlug(
   locale: Locale,
   slug: string,
 ): Promise<Playlist | null> {
-  const doc = await findPlaylistBySlug(locale, slug);
-  return doc ? toDto(doc) : null;
+  /*
+   * Key completeness: both arguments (locale, slug) are in the key, and slugs
+   * are unique per locale.
+   *
+   * Tag choice: this entry is keyed by slug, so the playlist id is unknown
+   * until after the read and cannot be turned into a `playlistTag(id)` — Next
+   * fixes tags at wrap time. PLAYLISTS_HOME is not a weaker substitute: every
+   * mutation that emits `playlistTag(id)` for a playlist (updatePlaylist,
+   * deletePlaylist, publishPlaylist, unpublishPlaylist) emits PLAYLISTS_HOME
+   * in the same call, so subscribing to PLAYLISTS_HOME strictly covers them.
+   * Track mutations, which emit ONLY playlistTag(id), do not alter this
+   * payload (tracks are fetched separately by track.service, uncached).
+   */
+  const dto = await cachedRead(
+    ["playlist", "by-slug", locale, slug],
+    [PLAYLISTS_HOME],
+    CONTENT_TTL_SECONDS,
+    async () => {
+      const doc = await findPlaylistBySlug(locale, slug);
+      return doc ? toDto(doc) : null;
+    },
+  );
+  return dto ? reviveDates(dto) : null;
 }
 
 // ---------------------------------------------------------------------------

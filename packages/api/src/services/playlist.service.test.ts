@@ -3,9 +3,43 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PLAYLISTS_HOME, playlistTag } from "../cache/tags";
 import { AppError } from "../errors";
 
+/*
+ * next/cache mock.
+ *
+ * A mock that merely calls the callback through proves nothing: the whole
+ * correctness risk in unstable_cache is the KEY, not the invocation. So this
+ * mock records (keyParts, tags, revalidate) for assertion, and can optionally
+ * JSON round-trip the result to simulate a real cache HIT — which is how Next
+ * actually stores and returns entries, and the only way to catch Date fields
+ * silently degrading to ISO strings.
+ */
+const cacheMock = vi.hoisted(() => {
+  const calls: Array<{
+    keyParts: readonly string[];
+    tags: readonly string[];
+    revalidate: unknown;
+  }> = [];
+  const state = { simulateHit: false };
+  return {
+    calls,
+    state,
+    unstable_cache: (
+      cb: () => Promise<unknown>,
+      keyParts: readonly string[],
+      opts: { tags: readonly string[]; revalidate: unknown },
+    ) => {
+      calls.push({ keyParts, tags: opts.tags, revalidate: opts.revalidate });
+      if (!state.simulateHit) return cb;
+      // Next stores with JSON.stringify and returns with JSON.parse.
+      return async () => JSON.parse(JSON.stringify(await cb())) as unknown;
+    },
+  };
+});
+
 // Module-level mocks. Hoisted by vitest before service import.
 vi.mock("next/cache", () => ({
   revalidateTag: vi.fn(),
+  unstable_cache: cacheMock.unstable_cache,
 }));
 
 vi.mock("../auth/require-session", () => ({
@@ -62,6 +96,8 @@ function makeLean(overrides: Record<string, unknown> = {}): PlaylistLeanWithCoun
 
 beforeEach(() => {
   vi.clearAllMocks();
+  cacheMock.calls.length = 0;
+  cacheMock.state.simulateHit = false;
 });
 
 describe("playlist.service", () => {
@@ -125,6 +161,115 @@ describe("playlist.service", () => {
       const result = await service.getPlaylistBySlug("ar", "missing");
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe("cache activation (unstable_cache)", () => {
+    it("keys getPublishedPlaylists by categoryId and tags it PLAYLISTS_HOME", async () => {
+      vi.mocked(repo.findPublishedPlaylists).mockResolvedValue([]);
+
+      await service.getPublishedPlaylists();
+      await service.getPublishedPlaylists({ categoryId: "aaaaaaaaaaaaaaaaaaaaaaaa" });
+
+      expect(cacheMock.calls).toHaveLength(2);
+      expect(cacheMock.calls[0]).toMatchObject({
+        keyParts: ["playlist", "published", "all"],
+        tags: [PLAYLISTS_HOME],
+      });
+      expect(cacheMock.calls[1]).toMatchObject({
+        keyParts: ["playlist", "published", "aaaaaaaaaaaaaaaaaaaaaaaa"],
+        tags: [PLAYLISTS_HOME],
+      });
+    });
+
+    it("gives two different categoryId filters two different keys", async () => {
+      // The failure this guards against is one visitor's filtered list being
+      // served to everyone. Different filter ⇒ different key, always.
+      vi.mocked(repo.findPublishedPlaylists).mockResolvedValue([]);
+
+      await service.getPublishedPlaylists({ categoryId: "aaaaaaaaaaaaaaaaaaaaaaaa" });
+      await service.getPublishedPlaylists({ categoryId: "bbbbbbbbbbbbbbbbbbbbbbbb" });
+
+      expect(cacheMock.calls[0]!.keyParts).not.toEqual(cacheMock.calls[1]!.keyParts);
+    });
+
+    it("keys getPlaylistBySlug by BOTH locale and slug", async () => {
+      vi.mocked(repo.findPlaylistBySlug).mockResolvedValue(null);
+
+      await service.getPlaylistBySlug("ar", "alpha");
+      await service.getPlaylistBySlug("en", "alpha");
+
+      expect(cacheMock.calls[0]).toMatchObject({
+        keyParts: ["playlist", "by-slug", "ar", "alpha"],
+        tags: [PLAYLISTS_HOME],
+      });
+      // Same slug, different locale — must not collide.
+      expect(cacheMock.calls[0]!.keyParts).not.toEqual(cacheMock.calls[1]!.keyParts);
+    });
+
+    it("does NOT cache the admin reads (they include drafts and are role-gated)", async () => {
+      vi.mocked(repo.findAllPlaylists).mockResolvedValueOnce([makeLean()]);
+      vi.mocked(repo.findPlaylistById).mockResolvedValueOnce(makeLean());
+
+      await service.getAllPlaylists({ user: { role: "admin" } } as never);
+      await service.getPlaylistById("playlist123456789012", {
+        user: { role: "admin" },
+      } as never);
+
+      expect(cacheMock.calls).toHaveLength(0);
+    });
+
+    it("still returns real Dates on a cache HIT (JSON round-trip)", async () => {
+      // Without reviveDates the same function returns Date on a miss and an
+      // ISO string on a hit — the exact bug this asserts against.
+      cacheMock.state.simulateHit = true;
+      vi.mocked(repo.findPublishedPlaylists).mockResolvedValueOnce([makeLean()]);
+
+      const [dto] = await service.getPublishedPlaylists();
+
+      expect(dto!.createdAt).toBeInstanceOf(Date);
+      expect(dto!.updatedAt).toBeInstanceOf(Date);
+      expect(dto!.createdAt.toISOString()).toBe(new Date("2024-01-01").toISOString());
+    });
+
+    it("every tag the cached reads subscribe to is emitted by the mutations", async () => {
+      /*
+       * This is the coupling that makes revalidateTag actually bust these
+       * entries. Asserting the two sides separately is not enough — a read
+       * could subscribe to a tag no mutation emits and silently go stale for a
+       * full TTL. So: collect what the reads subscribe to, collect what a
+       * mutation emits, and require the second to cover the first.
+       */
+      vi.mocked(repo.findPublishedPlaylists).mockResolvedValueOnce([]);
+      vi.mocked(repo.findPlaylistBySlug).mockResolvedValueOnce(null);
+      await service.getPublishedPlaylists();
+      await service.getPlaylistBySlug("ar", "alpha");
+      const subscribed = new Set(cacheMock.calls.flatMap((c) => c.tags));
+      expect(subscribed.size).toBeGreaterThan(0);
+
+      for (const mutate of [
+        () => service.publishPlaylist("playlist123456789012"),
+        () => service.unpublishPlaylist("playlist123456789012"),
+        () => service.updatePlaylist("playlist123456789012", { order: 1 }),
+      ]) {
+        vi.mocked(revalidateTag).mockClear();
+        vi.mocked(requireSession).mockResolvedValueOnce({} as never);
+        vi.mocked(repo.updatePlaylistById).mockResolvedValueOnce(makeLean());
+        await mutate();
+        const emitted = new Set(
+          vi.mocked(revalidateTag).mock.calls.map((c) => c[0]),
+        );
+        for (const tag of subscribed) expect(emitted).toContain(tag);
+      }
+    });
+
+    it("still returns a real Date from getPlaylistBySlug on a cache HIT", async () => {
+      cacheMock.state.simulateHit = true;
+      vi.mocked(repo.findPlaylistBySlug).mockResolvedValueOnce(makeLean());
+
+      const dto = await service.getPlaylistBySlug("en", "title");
+
+      expect(dto!.createdAt).toBeInstanceOf(Date);
     });
   });
 

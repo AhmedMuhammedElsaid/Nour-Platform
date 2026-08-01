@@ -2,6 +2,7 @@ import { revalidateTag } from "next/cache";
 
 import { requireSession } from "../auth/require-session";
 import { ADHKAR, azkarTag } from "../cache/tags";
+import { CONTENT_TTL_SECONDS, cachedRead, reviveDates } from "../cache/cached";
 import {
   createAzkar as repoCreate,
   deleteAzkarById as repoDelete,
@@ -35,6 +36,9 @@ import type { Session } from "next-auth";
  *   the RSC already holds the session object).
  * - Admin mutations call requireSession(['admin']) FIRST (before any I/O),
  *   then Zod-parse input, then repo, then revalidateTag.
+ * - The two public reads are wrapped in unstable_cache (see ../cache/cached).
+ *   The admin reads (getAllAzkar, getAzkarById) are NOT: they include drafts
+ *   and are role-gated, so a session-free cache key would leak them.
  * Services return plain DTOs; Mongoose documents never escape this layer.
  */
 
@@ -105,14 +109,43 @@ function toDto(doc: AzkarLean): Azkar {
 // ---------------------------------------------------------------------------
 
 export async function getPublishedAzkar(): Promise<Azkar[]> {
-  const docs = await findPublishedAzkar();
-  return docs.map(toDto);
+  // Key completeness: no arguments, published-only filter is hard-coded in the
+  // repo — a constant key is the complete key.
+  const dtos = await cachedRead(
+    ["azkar", "published"],
+    [ADHKAR],
+    CONTENT_TTL_SECONDS,
+    async () => {
+      const docs = await findPublishedAzkar();
+      return docs.map(toDto);
+    },
+  );
+  return dtos.map(reviveDates);
 }
 
 export async function getAzkarBySlug(locale: Locale, slug: string): Promise<Azkar> {
-  const doc = await findAzkarBySlug(locale, slug);
-  if (!doc) throw AppError.NotFound("Azkar");
-  return toDto(doc);
+  /*
+   * Key completeness: both arguments (locale, slug) are in the key; slugs are
+   * unique per locale.
+   *
+   * Tag choice: the id is unknown before the read, so `azkarTag(id)` cannot be
+   * a wrap-time tag here. ADHKAR strictly covers it — every mutation that
+   * emits azkarTag(id) (updateAzkar, deleteAzkar, publishAzkar, unpublishAzkar)
+   * emits ADHKAR in the same call.
+   *
+   * NotFound is thrown outside the cache so the miss is never cached.
+   */
+  const dto = await cachedRead(
+    ["azkar", "by-slug", locale, slug],
+    [ADHKAR],
+    CONTENT_TTL_SECONDS,
+    async () => {
+      const doc = await findAzkarBySlug(locale, slug);
+      return doc ? toDto(doc) : null;
+    },
+  );
+  if (!dto) throw AppError.NotFound("Azkar");
+  return reviveDates(dto);
 }
 
 // ---------------------------------------------------------------------------

@@ -20,6 +20,7 @@ import {
 import { getDb } from "../db/client";
 import { PlaylistModel } from "../db/models/playlist.model";
 import { PLAYLISTS_HOME, CATEGORIES } from "../cache/tags";
+import { CONTENT_TTL_SECONDS, cachedRead, reviveDates } from "../cache/cached";
 import type { Locale } from "../schemas/locale";
 import { slugify } from "../utils/slug";
 import type { CategoryLean } from "../repositories/category.repo";
@@ -30,6 +31,10 @@ import type { CategoryLean } from "../repositories/category.repo";
  * - Public reads (no session): listCategories, getCategoryBySlug, getCategoryById.
  * - Admin-only mutations begin with requireSession(['admin']) before any I/O.
  * - revalidateTag is called after every mutation that affects cached responses.
+ * - listCategories is wrapped in unstable_cache (see ../cache/cached).
+ *   getCategoryBySlug / getCategoryById are left uncached on purpose: neither
+ *   is on a public page-render path today (getCategoryById serves the admin
+ *   edit form, where a stale row would be written back over a fresh one).
  */
 
 // Converts a lean Mongo doc to the public-facing Category DTO.
@@ -66,8 +71,24 @@ function toDto(doc: CategoryLean): Category {
 // ---------------------------------------------------------------------------
 
 export async function listCategories(): Promise<Category[]> {
-  const docs = await findAll();
-  return docs.map(toDto);
+  /*
+   * Key completeness: the function takes no arguments and the repo read is
+   * unfiltered, so a constant key is the complete key.
+   *
+   * apps/admin also calls this (categories list, playlist form) — safe,
+   * because it is the same unfiltered public list for every caller and all
+   * three category mutations emit CATEGORIES.
+   */
+  const dtos = await cachedRead(
+    ["category", "list"],
+    [CATEGORIES],
+    CONTENT_TTL_SECONDS,
+    async () => {
+      const docs = await findAll();
+      return docs.map(toDto);
+    },
+  );
+  return dtos.map(reviveDates);
 }
 
 export async function getCategoryBySlug(
