@@ -10,6 +10,7 @@ import { getMessages, getTranslations, setRequestLocale } from "next-intl/server
 import { cn } from "@repo/ui/lib/utils";
 import { AudioPlayer } from "@repo/ui/blocks/audio-player";
 import { PlayerProvider } from "@repo/ui/blocks/player-context";
+import { Toaster } from "@repo/ui/primitives/toaster";
 import { type Locale } from "@repo/api/schemas/locale";
 import { SiteFooter } from "@/features/layout/components/site-footer";
 import { SiteHeader } from "@/features/layout/components/site-header";
@@ -127,7 +128,40 @@ export default async function LocaleLayout({
   // Enable static rendering / request-scoped locale for this subtree.
   setRequestLocale(locale);
 
-  const messages = await getMessages();
+  // NextIntlClientProvider ships whatever's in `messages` to the client on
+  // EVERY route — getMessages() returns the entire locale catalogue
+  // unfiltered. Server components read strings via getTranslations() (a
+  // separate, server-only request-scoped store) and never touch this object,
+  // so it only needs to cover namespaces a CLIENT component actually calls
+  // useTranslations() on. That set was enumerated by grepping every
+  // `useTranslations(` call under apps/web (Phase 2.3 bundle-trim; see
+  // CLAUDE.md §5 boundary on this file) — 12 namespaces, all consumed by a
+  // "use client" component: nav, home, categories, search, player, prayer,
+  // pwa, adhkar, quran, qibla, radio, errors. `metadata` (generateMetadata
+  // only), `footer`/`playlist` (server components, no useTranslations call
+  // anywhere), and `privacy` (server-rendered page, no useTranslations call)
+  // are server-only and deliberately excluded. If a future client component
+  // reads a namespace not in this list, next-intl throws at runtime on the
+  // missing key — re-grep and add it here, do not widen back to the whole
+  // catalogue "to be safe".
+  const CLIENT_MESSAGE_NAMESPACES = [
+    "nav",
+    "home",
+    "categories",
+    "search",
+    "player",
+    "prayer",
+    "pwa",
+    "adhkar",
+    "quran",
+    "qibla",
+    "radio",
+    "errors",
+  ] as const;
+  const allMessages = await getMessages();
+  const messages = Object.fromEntries(
+    CLIENT_MESSAGE_NAMESPACES.map((ns) => [ns, allMessages[ns]]),
+  );
   const t = await getTranslations("nav");
   const isRtl = locale === "ar";
 
@@ -170,6 +204,14 @@ export default async function LocaleLayout({
                   covers the footer's last row — see player-clearance-spacer.tsx. */}
               <PlayerClearanceSpacer />
               <AudioPlayer />
+              {/* sonner's <Toaster/> host — the player's error toasts
+                  (audio-player.tsx `toast.error(errorMessage)`) were firing
+                  into a provider that was never mounted, so they rendered
+                  nowhere (Phase 2.3 bundle-trim finding). The dependency was
+                  already always-on for every route, so mounting it here is
+                  the zero-cost fix that actually restores the intended UX
+                  rather than deleting user-facing error feedback. */}
+              <Toaster />
               <PlaybackPersistence />
               <InstallPrompt />
               <ServiceWorkerRegister />

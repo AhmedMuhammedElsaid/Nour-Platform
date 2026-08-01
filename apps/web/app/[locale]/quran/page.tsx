@@ -54,7 +54,7 @@ export default async function QuranIndexPage({
       <Link href="/quran/bookmarks" className="text-primary mb-4 inline-block text-sm">
         {t("bookmarks")}
       </Link>
-      <ContinueReading surahNames={surahNames} />
+      <ContinueReading surahNames={surahNames} className="mb-6" />
       <SurahJuzTabs surahs={surahs} />
     </div>
   );

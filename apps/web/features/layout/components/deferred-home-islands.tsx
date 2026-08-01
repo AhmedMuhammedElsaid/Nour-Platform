@@ -13,10 +13,14 @@ import dynamic from "next/dynamic";
 import type { Azkar } from "@repo/api/schemas/azkar";
 import type { Locale } from "@repo/api/schemas/locale";
 
+// `continue-reading-shelf.tsx` was a near-identical duplicate of
+// `continue-reading.tsx` (differing only in a margin class + surahNames
+// fallback) — merged during the Phase 2.3 bundle-trim; this island now
+// imports the shared component under its home-route alias.
 export const ContinueReadingShelf = dynamic(
   () =>
-    import("@/features/quran/components/continue-reading-shelf").then(
-      (m) => m.ContinueReadingShelf,
+    import("@/features/quran/components/continue-reading").then(
+      (m) => m.ContinueReading,
     ),
   { ssr: false },
 );

@@ -37,4 +37,22 @@ describe("ContinueReading", () => {
     expect(link).toHaveAttribute("href", expect.stringContaining("/quran/2"));
     expect(screen.getByText(/Al-Baqarah/)).toBeInTheDocument();
   });
+
+  // Merged from the deleted continue-reading-shelf.test.tsx: the shelf usage
+  // (home route) omits surahNames and relies on the ref's own surahName +
+  // numberGlobal instead.
+  it("renders with no surahNames prop, using the ref's own surahName and numberGlobal", () => {
+    window.localStorage.setItem(
+      "nour.quran.lastread",
+      JSON.stringify({
+        surah: 2,
+        ayah: 255,
+        numberGlobal: 262,
+        surahName: "Al-Baqara",
+      }),
+    );
+    render(<ContinueReading />);
+    expect(screen.getByRole("link")).toHaveAttribute("href", "/quran/2#ayah-262");
+    expect(screen.getByText(/Al-Baqara/)).toBeInTheDocument();
+  });
 });
