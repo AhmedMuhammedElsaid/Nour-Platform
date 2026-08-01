@@ -34,12 +34,18 @@ const securityHeaders = [
     // permissions policy". `self` grants it to our own documents only —
     // cross-origin iframes still can't ask. Camera and mic stay fully denied.
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(self)",
+    value:
+      "camera=(), microphone=(), geolocation=(self), payment=(), usb=(), serial=(), midi=(), browsing-topics=(), display-capture=(), idle-detection=()",
   },
   {
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
   },
+  // Isolate our top-level browsing context from cross-origin openers/openees
+  // (Spectre-class mitigation) and force a dedicated OS process. Neither
+  // affects <audio> playback or the /api/v1 JSON responses — safe everywhere.
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  { key: "Origin-Agent-Cluster", value: "?1" },
 ];
 
 const nextConfig: NextConfig = {
@@ -65,6 +71,24 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/(.*)", headers: securityHeaders },
+      // Cross-Origin-Resource-Policy says who may *embed/fetch* our
+      // responses cross-origin. Scoped in two mutually-exclusive matches
+      // (not a single "/(.*)" + override) so behavior never depends on
+      // Next's header-merge ordering:
+      //  - everything except /api/v1 stays same-origin (pages, assets,
+      //    manifest/icons — social-scraper OG fetches don't need CORP).
+      //  - /api/v1/* must stay cross-origin: it's the public contract the
+      //    mobile app and browser extension fetch from their own origins
+      //    (CLAUDE.md — apps/mobile and apps/extension talk to /api/v1/*).
+      //    same-origin here would silently break both shipped surfaces.
+      {
+        source: "/:path((?!api/v1/).*)",
+        headers: [{ key: "Cross-Origin-Resource-Policy", value: "same-origin" }],
+      },
+      {
+        source: "/api/v1/:path*",
+        headers: [{ key: "Cross-Origin-Resource-Policy", value: "cross-origin" }],
+      },
       // The service worker must not be long-cached (so updates ship) and needs
       // a root scope to control all navigations.
       {

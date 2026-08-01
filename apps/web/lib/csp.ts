@@ -58,5 +58,11 @@ export function buildWebCsp(nonce: string, r2Hostname: string): string {
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
+    // No <object>/<embed>/<applet> anywhere in the app — closes off a legacy
+    // plugin-based XSS vector at zero feature cost.
+    "object-src 'none'",
+    // Belt-and-suspenders alongside HSTS: rewrite any accidental http:// sub-
+    // resource reference to https:// instead of blocking it outright.
+    "upgrade-insecure-requests",
   ].join("; ");
 }
