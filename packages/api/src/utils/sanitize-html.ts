@@ -12,10 +12,20 @@ import sanitizeHtml from "sanitize-html";
  * behavior applies; script/style/iframe/etc. content is dropped entirely by
  * sanitize-html's own handling of non-text tags).
  */
+// ⚠️ h1/h2/div are NOT optional. The seeded Ibn Kathir edition uses them
+// heavily (a 2000-row sample holds h2 ×1415, div ×3410); omitting them does
+// not just lose styling — `discard` mode concatenates their text with no
+// separator, so every section heading runs into the body as one unbroken
+// string. They carry no attributes after `allowedAttributes: {}`, so they are
+// inert. Check a real `en` row before trimming this list; the `ar` edition uses
+// only span/br and will not show the damage.
 const ALLOWED_TAGS = [
   "p",
   "br",
   "span",
+  "div",
+  "h1",
+  "h2",
   "b",
   "i",
   "em",
