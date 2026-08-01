@@ -10,15 +10,19 @@ function req(url: string): Request {
 }
 
 describe("GET /api/v1/quran/tafsir", () => {
-  it("returns tafsir json for ar+en and strips <script>", async () => {
+  it("returns the tafsir json the service resolves", async () => {
+    // Sanitization happens in quran.service.ts getTafsir (before the cache
+    // write) — see packages/api/src/utils/sanitize-html.test.ts and
+    // quran.service.test.ts. The route is a thin passthrough; here the mock
+    // stands in for an already-sanitized service result.
     vi.mocked(getTafsir).mockResolvedValueOnce({
       edition: { slug: "ar.saadi", language: "ar", name: "x", author: "x", type: "tafsir", dir: "rtl" },
-      html: "<p>ok</p><script>alert(1)</script>",
+      html: "<p>ok</p>",
     });
     const res = await GET(req("/api/v1/quran/tafsir?ayah=1&locale=ar"));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.html).not.toContain("<script>");
+    expect(body.html).toBe("<p>ok</p>");
   });
 
   it("400s on invalid ayah", async () => {

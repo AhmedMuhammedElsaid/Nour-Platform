@@ -15,6 +15,7 @@ import {
 import { AppError } from "../errors";
 import { QURAN } from "../cache/tags";
 import { IMMUTABLE_TTL_SECONDS, cachedRead } from "../cache/cached";
+import { sanitizeTafsirHtml } from "../utils/sanitize-html";
 import type {
   QuranSurah,
   QuranEdition,
@@ -254,7 +255,10 @@ export async function getTafsir(
       if (!edition) return null;
       const row = await findTafsir(edition.slug, numberGlobal);
       if (!row) return null;
-      return { edition: editionToDto(edition), html: row.text };
+      // Sanitize BEFORE the value is cached (unstable_cache) — the cache must
+      // never hold unsanitized HTML, since a cache hit skips this function
+      // entirely on subsequent reads.
+      return { edition: editionToDto(edition), html: sanitizeTafsirHtml(row.text) };
     },
   );
 }

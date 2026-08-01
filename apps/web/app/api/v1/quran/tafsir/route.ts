@@ -8,11 +8,10 @@ import { apiRoute, jsonOk, jsonError } from "../../_lib/respond";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Defense-in-depth: tafsir HTML is trusted (seeded from quran.com) but strip
-// any <script> before sending it to the client for dangerouslySetInnerHTML.
-function stripScripts(html: string): string {
-  return html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
-}
+// HTML sanitization happens at the service boundary (quran.service.ts
+// getTafsir → sanitizeTafsirHtml, before the unstable_cache write) so every
+// consumer of this payload is protected — including the mobile app, which
+// hits this same /api/v1 endpoint with no CSP at all.
 
 export function OPTIONS(): Response {
   return corsPreflight();
@@ -35,7 +34,7 @@ export const GET = apiRoute("tafsir", async (request: Request): Promise<Response
       throw AppError.NotFound("Tafsir");
     }
 
-    return jsonOk({ edition: result.edition, html: stripScripts(result.html) });
+    return jsonOk({ edition: result.edition, html: result.html });
   } catch (error) {
     return jsonError(error);
   }

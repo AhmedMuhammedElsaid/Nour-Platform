@@ -34,7 +34,7 @@ export function TafsirSheet({ ayah, locale, onClose }: TafsirSheetProps) {
     let cancelled = false;
     setStatus("loading");
     setData(null);
-    fetch(`/api/quran/tafsir?ayah=${ayah.numberGlobal}&locale=${locale}`)
+    fetch(`/api/v1/quran/tafsir?ayah=${ayah.numberGlobal}&locale=${locale}`)
       .then((r) => {
         if (!r.ok) throw new Error(String(r.status));
         return r.json() as Promise<TafsirData>;
