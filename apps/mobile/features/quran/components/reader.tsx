@@ -307,10 +307,19 @@ export function Reader({
       glyphCount,
       segmentCount: pageData.segments.length,
       bismillahCount,
-      // The FlatList carries px-4 (16dp each side) inside the measured wrapper,
-      // and reserves dockSpacing at the bottom for the mini-player + tab bar.
+      // The FlatList carries px-4 (16dp each side) inside the measured wrapper.
+      // Deliberately NOT subtracting dockSpacing here (a prior version did) —
+      // the FlatList's contentContainerStyle already applies dockSpacing as
+      // paddingBottom, and because this content is flexGrow:1 +
+      // justifyContent:"space-between" (fills the viewport, THEN padding adds
+      // on top of that), subtracting it a second time here reserved the same
+      // space twice: once by under-sizing the fitted content, and again via
+      // the padding. With the old flat ~8dp dockSpacing the double-count was
+      // ~16dp and invisible; once dockSpacing became the real dock height
+      // (~150dp+, see use-dock-spacing.ts) it showed up as a large empty gap
+      // between the footer and the mini-player — owner-reported 2026-08-02.
       width: readingArea.width - 32,
-      height: readingArea.height - dockSpacing - 4,
+      height: readingArea.height - 4,
       fontScale: prefs.fontScale,
       // The page's REAL printed line count, when the layout data is there — a
       // fixed number of rows is strictly better information than estimating
@@ -318,7 +327,7 @@ export function Reader({
       // the measured width, which is only what the FALLBACK path does).
       lineCount: pageRows?.filter((row) => row.kind === "line").length,
     });
-  }, [pageData, pageRows, readingArea, dockSpacing, prefs.fontScale]);
+  }, [pageData, pageRows, readingArea, prefs.fontScale]);
 
   const translationDir =
     (isMushaf ? pageData?.translationEdition?.dir : data?.translationEdition?.dir) ??
@@ -454,17 +463,15 @@ export function Reader({
   // the two call sites below). `disabled` mirrors the old pill row's bounds
   // logic exactly (mushaf: page 1 / the last page; list: surah 1 / 114).
   //
-  // Vertical centering is done via inline `style` (top: "50%" + a translateY
-  // transform), NOT the `top-1/2 -mt-[18px]` NativeWind combo this shipped
-  // with originally: on-device the button was fully functional (correct tap
-  // target, correct navigation, confirmed via accessibility-tree bounds) but
-  // painted NOTHING — an invisible-but-working button, worse than no button
-  // at all for the exact "make it easier to discover" goal this exists for.
-  // `insetInlineStart`/`insetInlineEnd` are used instead of `-start-1`/
-  // `-end-1` for the same reason — this positioning combination is novel to
-  // the app (no other screen combines `absolute` + a percentage inset), so it
-  // gets the most conservative, RN-native approach rather than another
-  // NativeWind arbitrary-value guess.
+  // History: this shipped TWICE with the button fully functional (correct
+  // tap target per the accessibility tree, correct navigation) but painting
+  // NOTHING — first with a NativeWind `top-1/2 -mt-[18px]` combo, then with
+  // an inline `top: "50%"` + translateY transform. Neither is used now.
+  // Instead: a full-height strip (top:0, bottom:0 — both anchors, no
+  // percentage-of-self or transform math for Yoga to get wrong) centers the
+  // button via plain flexbox (justifyContent/alignItems), the same proven
+  // centering mechanism used everywhere else in this app. If a THIRD attempt
+  // is ever needed, suspect something other than the positioning technique.
   function EdgeNav({
     onPrev,
     onNext,
@@ -482,32 +489,40 @@ export function Reader({
   }) {
     return (
       <>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={prevLabel}
-          disabled={prevDisabled}
-          onPress={onPrev}
-          style={{ position: "absolute", top: "50%", transform: [{ translateY: -18 }], insetInlineStart: 4 }}
-          className={cn(
-            "size-9 items-center justify-center rounded-full bg-surface/90",
-            prevDisabled && "opacity-0",
-          )}
+        <View
+          pointerEvents="box-none"
+          style={{ position: "absolute", top: 0, bottom: 0, insetInlineStart: 4, justifyContent: "center" }}
         >
-          <ChevronLeftIcon color={textColor} size={20} />
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={nextLabel}
-          disabled={nextDisabled}
-          onPress={onNext}
-          style={{ position: "absolute", top: "50%", transform: [{ translateY: -18 }], insetInlineEnd: 4 }}
-          className={cn(
-            "size-9 items-center justify-center rounded-full bg-surface/90",
-            nextDisabled && "opacity-0",
-          )}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={prevLabel}
+            disabled={prevDisabled}
+            onPress={onPrev}
+            className={cn(
+              "size-9 items-center justify-center rounded-full bg-surface/90",
+              prevDisabled && "opacity-0",
+            )}
+          >
+            <ChevronLeftIcon color={textColor} size={20} />
+          </Pressable>
+        </View>
+        <View
+          pointerEvents="box-none"
+          style={{ position: "absolute", top: 0, bottom: 0, insetInlineEnd: 4, justifyContent: "center" }}
         >
-          <ChevronRightIcon color={textColor} size={20} />
-        </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={nextLabel}
+            disabled={nextDisabled}
+            onPress={onNext}
+            className={cn(
+              "size-9 items-center justify-center rounded-full bg-surface/90",
+              nextDisabled && "opacity-0",
+            )}
+          >
+            <ChevronRightIcon color={textColor} size={20} />
+          </Pressable>
+        </View>
       </>
     );
   }
@@ -602,12 +617,16 @@ export function Reader({
                     </Text>
                   </View>
                 }
-                contentContainerStyle={{
-                  flexGrow: 1,
-                  justifyContent: "space-between",
-                  paddingTop: 4,
-                  paddingBottom: dockSpacing,
-                }}
+                // Plain scroll, unlike the mushaf FlatList below — list mode has
+                // no "fill the page" mandate (that's specific to the printed-page
+                // mushaf illusion), so there is no reason to flexGrow+space-between
+                // pin the footer to the viewport bottom. Doing that on a SHORT
+                // surah (e.g. Al-Fatihah) stretched the content to fill the
+                // viewport and then ADDED dockSpacing padding on top of that
+                // already-filled height, double-reserving space and showing as a
+                // large empty gap above the mini-player — same bug as the mushaf
+                // fit model's now-removed `- dockSpacing` term, different cause.
+                contentContainerStyle={{ paddingTop: 4, paddingBottom: dockSpacing }}
                 onScrollToIndexFailed={() => undefined}
                 renderItem={({ item }) => (
                   <AyahRow
