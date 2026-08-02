@@ -18,6 +18,15 @@
         "NEXT_PUBLIC_ADMIN_URL",
         "NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA",
         "SENTRY_DSN",
+        // Read lazily at request time inside a serverless function (see
+        // packages/config/src/upstash.ts), never at build time — Vercel
+        // injects them into the function runtime directly, a separate path
+        // from turbo's build-time env filtering, so omitting them here does
+        // NOT disable rate limiting (confirmed live: 20 requests then a 429).
+        // Declared anyway to silence turbo's "set on the project but missing
+        // from turbo.json" build warning.
+        "UPSTASH_REDIS_REST_URL",
+        "UPSTASH_REDIS_REST_TOKEN",
         // Escape hatch for apps/web/scripts/check-bundle-budget.mjs. Turbo runs
         // in strict env mode, so without this the variable is filtered out and
         // the script's "re-run with BUNDLE_BUDGET_STRICT=1" instruction can
