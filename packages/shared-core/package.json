@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "@repo/config": "workspace:*",
-    "adhan": "^4.4.3",
+    "adhan": "^4.4.4",
     "zod": "^3.23.8"
   },
   "devDependencies": {
