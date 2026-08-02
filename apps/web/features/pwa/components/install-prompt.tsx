@@ -15,11 +15,24 @@ type BeforeInstallPromptEvent = Event & {
 
 // Captures the browser's install event and offers a dismissible "Install"
 // affordance. Sits above the player bar; remembers dismissal device-locally.
+// Hold the banner back after the event arrives. Two reasons, and the first is
+// measurable: this component was the LCP element on /en — a hydration-and-
+// event-gated banner was winning "largest contentful paint" over the hero
+// heading, so the metric described a nag rather than content. Rendering after
+// the LCP window lets the <h1> be the LCP element it should be. The second is
+// simply that an install prompt on first paint is pushy.
+//
+// ⚠️ This delays the RENDER only. The listener below must stay eager, because
+// `beforeinstallprompt` fires once and is never replayed — miss it and the
+// install affordance is silently dead for the whole visit.
+const REVEAL_DELAY_MS = 4000;
+
 export function InstallPrompt() {
   const t = useTranslations("pwa");
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(
     null,
   );
+  const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -37,7 +50,15 @@ export function InstallPrompt() {
       window.removeEventListener("beforeinstallprompt", onBeforeInstall);
   }, []);
 
-  if (!deferred) return null;
+  // Start the reveal timer only once the event has actually been captured, so
+  // the delay is measured from "installable", not from mount.
+  useEffect(() => {
+    if (!deferred) return;
+    const timer = window.setTimeout(() => setRevealed(true), REVEAL_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [deferred]);
+
+  if (!deferred || !revealed) return null;
 
   const handleInstall = async (): Promise<void> => {
     await deferred.prompt();
