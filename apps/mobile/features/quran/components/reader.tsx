@@ -464,14 +464,20 @@ export function Reader({
   // logic exactly (mushaf: page 1 / the last page; list: surah 1 / 114).
   //
   // History: this shipped TWICE with the button fully functional (correct
-  // tap target per the accessibility tree, correct navigation) but painting
-  // NOTHING — first with a NativeWind `top-1/2 -mt-[18px]` combo, then with
-  // an inline `top: "50%"` + translateY transform. Neither is used now.
-  // Instead: a full-height strip (top:0, bottom:0 — both anchors, no
-  // percentage-of-self or transform math for Yoga to get wrong) centers the
-  // button via plain flexbox (justifyContent/alignItems), the same proven
-  // centering mechanism used everywhere else in this app. If a THIRD attempt
-  // is ever needed, suspect something other than the positioning technique.
+  // tap target per the accessibility tree, correct size, correct position)
+  // but painting NOTHING — first with a NativeWind `top-1/2 -mt-[18px]`
+  // combo, then with an inline `top:"50%"` + translateY transform. BOTH
+  // attempts wrongly assumed the problem was the positioning technique.
+  // Real cause: the sibling FlatList gets its own Android compositing layer
+  // (this app already has three other cases of exactly this — see
+  // animated-splash.tsx/navigation-progress.tsx/adhan-stop-card.tsx, all of
+  // which pin `zIndex` explicitly), and this was the only absolutely-
+  // positioned overlay in the app missing it. JSX paint order (this renders
+  // AFTER the FlatList) is irrelevant once a sibling has its own layer —
+  // without an explicit zIndex/elevation ABOVE it, Android can composite the
+  // FlatList's layer on top regardless of source order. `elevation` is the
+  // Android-specific property; `zIndex` alone is not sufficient on this
+  // platform for this exact class of sibling.
   function EdgeNav({
     onPrev,
     onNext,
@@ -491,7 +497,15 @@ export function Reader({
       <>
         <View
           pointerEvents="box-none"
-          style={{ position: "absolute", top: 0, bottom: 0, insetInlineStart: 4, justifyContent: "center" }}
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            insetInlineStart: 4,
+            justifyContent: "center",
+            zIndex: 20,
+            elevation: 20,
+          }}
         >
           <Pressable
             accessibilityRole="button"
@@ -508,7 +522,15 @@ export function Reader({
         </View>
         <View
           pointerEvents="box-none"
-          style={{ position: "absolute", top: 0, bottom: 0, insetInlineEnd: 4, justifyContent: "center" }}
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            insetInlineEnd: 4,
+            justifyContent: "center",
+            zIndex: 20,
+            elevation: 20,
+          }}
         >
           <Pressable
             accessibilityRole="button"
