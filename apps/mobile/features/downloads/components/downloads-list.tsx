@@ -1,14 +1,22 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
+import { useRouter } from "expo-router";
 import { FlatList, Pressable, View } from "react-native";
 
+import { DownloadsIcon } from "@/components/icons/tab-icons";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { formatBytes, getTotalDownloadSize } from "@/lib/downloads";
 import type { DownloadRecord } from "@/lib/downloads";
 import type { UseDownloads } from "@/features/downloads/hooks/use-downloads";
 import { usePlayerActions, usePlayerTransport, type QueueTrack } from "@/lib/player-context";
+import { useTheme } from "@/lib/theme-context";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
+
+// SVG strokes can't read NativeWind classes/CSS vars (see components/icons/tab-icons.tsx),
+// so the empty-state icon resolves the text-2 token to a hex by hand, same
+// pattern as bottom-tab-bar.tsx.
+const TEXT_2_HEX = { dark: "#8a7a62", light: "#3f4a44" } as const;
 
 type Props = {
   downloads: UseDownloads;
@@ -96,6 +104,8 @@ const DownloadRow = React.memo(
 
 export function DownloadsList({ downloads }: Props) {
   const { t } = useTranslation();
+  const router = useRouter();
+  const { theme } = useTheme();
   const { records, remove } = downloads;
   const { currentTrack, isPlaying } = usePlayerTransport();
   const { loadQueue } = usePlayerActions();
@@ -129,8 +139,23 @@ export function DownloadsList({ downloads }: Props) {
 
   if (records.length === 0) {
     return (
-      <View className="flex-1 items-center justify-center bg-bg px-4">
-        <Text variant="muted">{t("downloads.empty")}</Text>
+      <View className="flex-1 items-center justify-center gap-4 bg-bg px-8">
+        <View className="items-center justify-center rounded-full bg-surface-2 p-6">
+          <DownloadsIcon color={TEXT_2_HEX[theme]} size={40} />
+        </View>
+        <View className="items-center gap-1.5">
+          <Text variant="title" className="text-center">
+            {t("downloads.emptyTitle")}
+          </Text>
+          <Text variant="muted" className="text-center">
+            {t("downloads.emptyBody")}
+          </Text>
+        </View>
+        <Button
+          label={t("downloads.emptyCta")}
+          variant="outline"
+          onPress={() => router.navigate("/")}
+        />
       </View>
     );
   }

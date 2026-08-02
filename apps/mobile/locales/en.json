@@ -52,7 +52,9 @@
   },
   "downloads": {
     "heading": "Downloads",
-    "empty": "No downloads yet. Download tracks to listen offline.",
+    "emptyTitle": "No downloads yet",
+    "emptyBody": "Download tracks to listen anytime, even without a connection.",
+    "emptyCta": "Browse the library",
     "downloadAll": "Download all",
     "playAll": "Play all",
     "play": "Play {{title}}",

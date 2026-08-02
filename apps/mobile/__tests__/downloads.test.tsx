@@ -9,8 +9,9 @@ import { getJson } from "@/lib/api";
 import { PlayerProvider } from "@/lib/player-context";
 
 jest.mock("@/lib/api", () => ({ getJson: jest.fn() }));
+const mockNavigate = jest.fn();
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: jest.fn() }),
+  useRouter: () => ({ push: jest.fn(), navigate: mockNavigate }),
   useLocalSearchParams: () => ({ slug: "test-playlist" }),
   usePathname: () => "/playlist/test-playlist",
   Stack: { Screen: () => null },
@@ -64,6 +65,15 @@ describe("DownloadsScreen", () => {
     await waitFor(() =>
       expect(screen.getByText(/No downloads yet/i)).toBeTruthy(),
     );
+    expect(screen.getByText(/Browse the library/i)).toBeTruthy();
+  });
+
+  it("navigates Home when the empty-state CTA is pressed", async () => {
+    renderWith(<DownloadsScreen />);
+    const cta = await screen.findByText(/Browse the library/i);
+    mockNavigate.mockClear();
+    fireEvent.press(cta);
+    expect(mockNavigate).toHaveBeenCalledWith("/");
   });
 
   it("shows a downloaded track after it is saved to AsyncStorage", async () => {
