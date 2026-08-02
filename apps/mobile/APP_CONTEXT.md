@@ -2487,3 +2487,85 @@ scroll+tap (the freeze), ayah autoplay advance, language-switch overlay.
   to both channels when unsure. Also confirms `use-dock-spacing.ts`'s doc-comment claim ("Stack
   already excludes the dock via flexbox, screens can never render behind it") is empirically
   false for a bare-Fragment screen — don't trust it as a reason to skip the wrap on a new screen.
+
+## Perf pass #4 — progress-tick containment + background-render gating (2026-08-02, JS-only → OTA'd)
+
+Owner filed 9 on-device points; the two perf ones ("light/dark switching is really slow",
+"navigating from Quran to Home while audio plays takes a lot") are addressed here. Plan lives
+at `~/.claude/plans/please-i-have-a-glowing-moon.md` (points 1–7 are still open). Commits
+`5a6db7d`..`34b8e96`, pushed (a concurrent session's `da05e6e` rode along). Gate 25/25 green,
+46 jest suites / 221 tests. OTA'd to **both** channels: preview group `0ecdca0e`, production
+group `4e3c69c7` (runtime 1.1.1).
+
+- **`5a6db7d` — the real cause of "nav is slow while Quran plays".** `PlayerProvider` called
+  `useProgress(250)` in its own body, so the provider AND all five of its context `useMemo`s
+  re-ran **4×/sec for the whole duration of playback** (infinite live radio included), on the
+  JS thread, competing with every navigation transition. The `1ad6d7f` 4-way split insulated
+  *consumers* but never the provider itself. New `<PlayerProgressProvider>` leaf owns the tick
+  and writes `positionRef` (which the provider's 5s resume-position interval still reads);
+  `children` is a stable element so React bails on the subtree. ⚠️ **Do not move `useProgress`
+  back into `PlayerProvider`** — `__tests__/perf-regressions.test.tsx` now guards this by
+  probing `usePlaybackState`'s call count (it is called only from the provider body), and the
+  test is written to fail rather than pass vacuously.
+- Same commit: `mini-player.tsx` called `usePlayerProgress()` unconditionally. It is mounted on
+  EVERY route via `bottom-dock.tsx`, and hooks run before the `return null` / live-stream
+  early-exits, so it re-rendered 4×/sec app-wide even when showing nothing. Extracted
+  `<MiniPlayerProgress>` as the sole subscriber.
+- Same commit: new **`PlayerHasQueueContext` + `usePlayerHasQueue()`** — a standalone boolean
+  for layout consumers (`useDockSpacing`, plan point 7) that must NOT re-render on every
+  play/pause or track advance the way `usePlayerTransport().hasQueue` does. **Currently unused**;
+  it exists so the dock-spacing work doesn't have to reopen this file.
+- **`631a398`** — theme persistence moved out of the `setTheme` updater into an effect on
+  `[theme]`, guarded by a `hydratedRef`. Real bug, not just tidiness: the `"dark"` default could
+  be written over a stored `"light"` in the frames before hydration resolved.
+- **`b0d94c1`** — `freezeOnBlur: true` on `STACK_SCREEN_OPTIONS`. Screens stay mounted (that is
+  what makes tab returns instant) but were still re-rendering in the background on every context
+  change/query settle. Complements `use-screen-active.ts`: that stops timers, this stops renders.
+- **`9c44841`** — `bottom-tab-bar.tsx`'s `select` had `[pathname]` deps, changing identity every
+  navigation and invalidating `onSelect` on all five memoized `<TabItem>`s. Now reads pathname
+  through a ref, `[]` deps.
+- **`69197e9`** — `navigation-progress.tsx` animated a width PERCENTAGE, which is not
+  native-driver-animatable, so all three animations ran on the JS thread — the very thread busy
+  with the navigation this bar exists to cover. Now `transform: scaleX` on a full-width bar with
+  `useNativeDriver: true`; `transformOrigin` follows `I18nManager.isRTL` so it still grows from
+  the leading edge in Arabic (the percentage layout got that for free).
+- **`34b8e96`** — `kahf-friday-card.tsx` held the last ungated 60s interval, on Home, which stays
+  mounted all session. Gated on `useScreenActive` + re-syncs the clock on refocus.
+
+### A72 measurements (adb, same session, pre- vs post-OTA)
+
+⛔ Method note: **frame COUNT over a window is useless on Home** — the sun-arc corona pulse
+redraws continuously (~1 frame/64–100 ms), so every window looks "busy". Use the **max
+inter-frame gap** from `dumpsys SurfaceFlinger --latency`, always against a no-tap control run
+in the same app state. (`dumpsys gfxinfo` remains banned per perf pass #3.)
+
+| condition | pre-OTA | post-OTA |
+|---|---|---|
+| theme toggle, NOT playing (control 100 ms) | 150 ms | — |
+| theme toggle, PLAYING (control 84–100 → 67–84 ms) | 268–318 ms | **167–217 ms** |
+| Quran → Home nav, NOT playing | — | 201–234 ms |
+| Quran → Home nav, PLAYING | — | **435–669 ms** (+ secondary 251–268 ms) |
+
+- ✅ **The `vars()` → NativeWind `colorScheme` migration was CONSIDERED AND DECLINED**, on
+  evidence. `global.css` exists and `darkMode: "class"` is already set, so it was available —
+  but a screen recording (`screenrecord` + ffmpeg at 60 fps, luma-delta analysis) showed the
+  flip completes in **ONE frame (17 ms)** even with every screen mounted. The perceived slowness
+  was the 4Hz tick competing for the JS thread, which is why the toggle cost HALVED from the
+  progress-leaf fix alone without touching theming. Don't re-propose the migration without a new
+  measurement — it is a whole-app refactor for no demonstrated gain.
+- ⚠️ **Point 9 is IMPROVED, NOT CLOSED.** Quran → Home while playing is still 435–669 ms vs
+  201–234 ms idle. Remaining leads, unverified: Home renders ~6 independent queries and a
+  **non-virtualized** `ScrollView` + flex-wrap playlist grid (every `PlaylistCard` eager, see
+  `app/index.tsx:182-189`), and `radio-preview-shelf.tsx:29` subscribes to `usePlayerTransport()`
+  while sitting ON Home, so it re-renders on every play/pause/track advance. Needs its own scoped
+  pass. No pre-OTA navigation baseline was captured before the device updated — measure nav
+  BEFORE publishing next time.
+- ⚠️ `eas update --non-interactive` now **requires `--environment`** (`--channel preview
+  --environment preview`). Without it the command fails outright.
+- ⚠️ `CheckCompleteUnavailable` in logcat is ambiguous: it means EITHER the documented
+  channel-mismatch trap OR "already up to date". Disambiguate with a behavioural measurement,
+  not by re-reading the log.
+- ⚠️ Git Bash mangles device paths — `adb shell ... /sdcard/x.mp4` becomes `C:/Program Files/Git/sdcard/...`.
+  Prefix with `MSYS_NO_PATHCONV=1`. Separately, a layer name containing `$_` must be quoted for
+  the REMOTE shell (`adb shell "dumpsys SurfaceFlinger --latency '$LAYER'"`) or `$_` expands
+  device-side and silently returns no data.
