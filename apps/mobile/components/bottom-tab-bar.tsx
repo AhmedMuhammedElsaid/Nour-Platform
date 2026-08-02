@@ -59,11 +59,18 @@ function BottomTabBarImpl({
   const { theme } = useTheme();
   const router = useRouter();
 
+  // Read the live pathname through a ref so this callback keeps a `[]` dep list.
+  // With `[pathname]` it changed identity on every navigation, which invalidated
+  // the `onSelect` prop on all five memoized <TabItem>s and re-rendered the whole
+  // row — the memo only ever saved the icon subtree.
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
+
   const select = useCallback(
     (href: TabDef["href"]) => {
-      if (!isActive(pathname, href)) router.navigate(href);
+      if (!isActive(pathnameRef.current, href)) router.navigate(href);
     },
-    [pathname, router],
+    [router],
   );
 
   // SVG strokes can't read NativeWind classes (see tab-icons.tsx / sun-arc.tsx),
