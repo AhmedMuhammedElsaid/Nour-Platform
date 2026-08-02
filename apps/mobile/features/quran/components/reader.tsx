@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, FlatList, PanResponder, Pressable, View } from "react-native";
+import { Animated, FlatList, I18nManager, PanResponder, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import type {
@@ -77,6 +77,15 @@ const MAX_SURAH = 114;
 // resolved by hand, same pattern as bottom-tab-bar.tsx.
 const TEXT_HEX = { dark: "#f0e6cc", light: "#13201a" } as const;
 const TEXT_2_HEX = { dark: "#8a7a62", light: "#3f4a44" } as const;
+// EdgeNav's translucent circle backdrop, hand-resolved for the same reason as
+// the two maps above — but this one bit NativeWind, not just SVG. The
+// `bg-surface/90` className (opacity modifier on a CSS-custom-property-based
+// token, `--color-surface`) compiled to something that painted NOTHING on
+// Android: no error, no fallback color, just a fully transparent Pressable —
+// confirmed via a debug build swapped to a solid `bg-danger`, which rendered
+// fine. NativeWind's opacity modifier apparently can't decompose a var()-based
+// color for RGBA blending; use a literal rgba() instead of the class.
+const EDGE_NAV_BG = { dark: "rgba(28, 25, 21, 0.9)", light: "rgba(255, 255, 255, 0.9)" } as const;
 
 function groupRowsBySurah(pageRows: PageRow[] | null): Map<number, PageRow[]> {
   const bySurah = new Map<number, PageRow[]>();
@@ -463,21 +472,30 @@ export function Reader({
   // the two call sites below). `disabled` mirrors the old pill row's bounds
   // logic exactly (mushaf: page 1 / the last page; list: surah 1 / 114).
   //
-  // History: this shipped TWICE with the button fully functional (correct
-  // tap target per the accessibility tree, correct size, correct position)
-  // but painting NOTHING — first with a NativeWind `top-1/2 -mt-[18px]`
-  // combo, then with an inline `top:"50%"` + translateY transform. BOTH
-  // attempts wrongly assumed the problem was the positioning technique.
-  // Real cause: the sibling FlatList gets its own Android compositing layer
-  // (this app already has three other cases of exactly this — see
-  // animated-splash.tsx/navigation-progress.tsx/adhan-stop-card.tsx, all of
-  // which pin `zIndex` explicitly), and this was the only absolutely-
-  // positioned overlay in the app missing it. JSX paint order (this renders
-  // AFTER the FlatList) is irrelevant once a sibling has its own layer —
-  // without an explicit zIndex/elevation ABOVE it, Android can composite the
-  // FlatList's layer on top regardless of source order. `elevation` is the
-  // Android-specific property; `zIndex` alone is not sufficient on this
-  // platform for this exact class of sibling.
+  // History (three device round-trips to root-cause): the button was always
+  // functional (correct tap target, size, and position per the accessibility
+  // tree) but painted NOTHING. Two attempts wrongly assumed a positioning
+  // technique was at fault (NativeWind `top-1/2 -mt-[18px]`, then inline
+  // `top:"50%"`+translateY); a third added zIndex/elevation on the theory the
+  // sibling FlatList's own Android compositing layer was painting over it
+  // (a real, separately-useful fix — this app has 3 other cases of exactly
+  // that, see animated-splash.tsx/navigation-progress.tsx/adhan-stop-card.tsx
+  // — but not what was hiding THIS button). A debug build with a solid
+  // `bg-danger` in place of `bg-surface/90` finally isolated it: NativeWind's
+  // opacity modifier (`/90`) apparently cannot decompose a CSS-custom-
+  // property-based color (`--color-surface`) for RGBA blending, and silently
+  // produces no paint at all rather than an error or a fallback color. Fixed
+  // by resolving the translucent backdrop to a literal rgba() by hand
+  // (EDGE_NAV_BG), same reasoning as TEXT_HEX/TEXT_2_HEX above — those exist
+  // because SVG can't read NativeWind classes; this is a DIFFERENT class of
+  // NativeWind gap (an opacity modifier on a var()-based token), worth
+  // knowing about if a future `bg-<token>/NN` silently vanishes elsewhere.
+  //
+  // Chevron GLYPH direction also needs to flip under RTL, unlike the old
+  // pill row's plain text: a Unicode "‹"/"›" is bidi-mirrored automatically
+  // by the text renderer, but an SVG path is not. `insetInlineStart`/`-End`
+  // already swap which screen edge prev/next sit on for RTL; swapping which
+  // icon each uses keeps the arrow pointing toward the edge it's next to.
   function EdgeNav({
     onPrev,
     onNext,
@@ -493,6 +511,9 @@ export function Reader({
     prevLabel: string;
     nextLabel: string;
   }) {
+    const edgeBg = EDGE_NAV_BG[theme];
+    const PrevIcon = I18nManager.isRTL ? ChevronRightIcon : ChevronLeftIcon;
+    const NextIcon = I18nManager.isRTL ? ChevronLeftIcon : ChevronRightIcon;
     return (
       <>
         <View
@@ -512,12 +533,13 @@ export function Reader({
             accessibilityLabel={prevLabel}
             disabled={prevDisabled}
             onPress={onPrev}
+            style={{ backgroundColor: edgeBg }}
             className={cn(
-              "size-9 items-center justify-center rounded-full bg-surface/90",
+              "size-9 items-center justify-center rounded-full",
               prevDisabled && "opacity-0",
             )}
           >
-            <ChevronLeftIcon color={textColor} size={20} />
+            <PrevIcon color={textColor} size={20} />
           </Pressable>
         </View>
         <View
@@ -537,12 +559,13 @@ export function Reader({
             accessibilityLabel={nextLabel}
             disabled={nextDisabled}
             onPress={onNext}
+            style={{ backgroundColor: edgeBg }}
             className={cn(
-              "size-9 items-center justify-center rounded-full bg-surface/90",
+              "size-9 items-center justify-center rounded-full",
               nextDisabled && "opacity-0",
             )}
           >
-            <ChevronRightIcon color={textColor} size={20} />
+            <NextIcon color={textColor} size={20} />
           </Pressable>
         </View>
       </>
