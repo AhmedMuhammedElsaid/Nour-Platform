@@ -28,12 +28,10 @@ const HEADERLESS = { headerShown: false } as const;
 export default function QuranIndexScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  // 2026-07-30: the shared 8dp base left the LAST grid row (surah 113/114 or
-  // the last juz row) fully hidden under the bottom tab bar — on-device pixel
-  // check showed the tab bar's own rendered height (icon+label row + padding,
-  // ~71dp on the A72) swallows the whole row, not just its bottom edge.
-  // Extend locally rather than raising the shared base (see use-dock-spacing.ts).
-  const dockSpacing = useDockSpacing() + 88;
+  // useDockSpacing() now accounts for the real tab-bar + mini-player height
+  // itself (2026-08-02) — this screen's local `+88` patch is gone; see the
+  // hook's own comment for why the flat-8dp premise it replaced didn't hold.
+  const dockSpacing = useDockSpacing();
   const [tab, setTab] = useState<ReaderTab>("surah");
   const surahs = useQuery(quranSurahsQuery());
   const lastRead = useQuery({

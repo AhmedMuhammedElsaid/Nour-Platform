@@ -46,15 +46,10 @@ export default function PrayerTimesScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const locale = initialLocale;
-  // Owner-reported 2026-07-22 (+24 fix) and again 2026-07-30: the last card
-  // (Kahf reminder toggle) still sat flush against — even visually under —
-  // the bottom tab bar. On-device pixel check confirmed the tab bar's own
-  // rendered height (icon+label row + its internal padding, ~71dp on the A72)
-  // is bigger than the +24 clearance this screen was adding, so the bar simply
-  // covered the gap along with part of the last card. Extend locally rather
-  // than raising the shared base (that would re-open the doubled-padding bug
-  // on every other screen using the hook).
-  const dockSpacing = useDockSpacing() + 88;
+  // useDockSpacing() now accounts for the real tab-bar + mini-player height
+  // itself (2026-08-02) — this screen's local `+88` patch is gone; see the
+  // hook's own comment for why the flat-8dp premise it replaced didn't hold.
+  const dockSpacing = useDockSpacing();
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { location, prefs, hydrated, setLocation, setMethod, setMadhab } = usePrayerSettings();

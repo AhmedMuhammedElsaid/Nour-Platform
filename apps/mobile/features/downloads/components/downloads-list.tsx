@@ -8,6 +8,7 @@ import { formatBytes, getTotalDownloadSize } from "@/lib/downloads";
 import type { DownloadRecord } from "@/lib/downloads";
 import type { UseDownloads } from "@/features/downloads/hooks/use-downloads";
 import { usePlayerActions, usePlayerTransport, type QueueTrack } from "@/lib/player-context";
+import { useDockSpacing } from "@/lib/use-dock-spacing";
 
 type Props = {
   downloads: UseDownloads;
@@ -98,6 +99,7 @@ export function DownloadsList({ downloads }: Props) {
   const { records, remove } = downloads;
   const { currentTrack, isPlaying } = usePlayerTransport();
   const { loadQueue } = usePlayerActions();
+  const dockSpacing = useDockSpacing();
 
   const [totalBytes, setTotalBytes] = React.useState(0);
 
@@ -140,6 +142,7 @@ export function DownloadsList({ downloads }: Props) {
       className="flex-1 bg-bg px-4"
       data={records}
       keyExtractor={(record) => record.trackId}
+      contentContainerStyle={{ paddingBottom: dockSpacing }}
       initialNumToRender={12}
       windowSize={7}
       removeClippedSubviews

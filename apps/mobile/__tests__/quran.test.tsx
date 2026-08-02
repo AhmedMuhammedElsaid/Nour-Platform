@@ -46,6 +46,7 @@ jest.mock("@/lib/player-context", () => {
     }),
     usePlayer: () => ({ ...transport(), ...actions() }),
     usePlayerProgress: () => ({ currentTime: 0, duration: 0 }),
+    usePlayerHasQueue: () => false,
     PlayerProvider: ({ children }: { children: React.ReactNode }) => children,
   };
 });

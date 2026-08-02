@@ -22,6 +22,14 @@ import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 import { useTheme } from "@/lib/theme-context";
 
+// Rendered height EXCLUDING the safe-area bottom inset (which the caller adds
+// separately — see lib/use-dock-spacing.ts). Measured on the A72, not derived:
+// border-t(1) + pt-2(8) + style paddingBottom(8) + TabItem's py-1(8) + icon
+// box h-9(36) + gap-1(4) + the text-xs label line (~14). Kept as one named
+// constant instead of three separate call sites re-guessing the same number
+// (see APP_CONTEXT: "bottom-dock overlap" for the history of that going wrong).
+export const TAB_BAR_HEIGHT = 71;
+
 type TabIcon = (props: { color: string; size?: number }) => React.ReactElement;
 
 type TabDef = {

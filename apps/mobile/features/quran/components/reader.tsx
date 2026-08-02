@@ -89,14 +89,11 @@ export function Reader({
   autoStart,
 }: ReaderProps) {
   const { t, i18n } = useTranslation();
-  // Owner-reported 2026-07-22: the shared useDockSpacing() base gap (8dp,
-  // right for the other screens using it) still let the last ayah/mushaf
-  // footer sit under the bottom dock here specifically — this reader is the
-  // one screen where the last item is routinely a full-width text block, not
-  // a short row, so it needs more clearance. Extend locally rather than
-  // raising the shared base (that would re-open the doubled-padding bug on
-  // every other screen using the hook).
-  const dockSpacing = useDockSpacing() + 24;
+  // The local `+24` this screen carried is gone: it was compensating for the
+  // OLD useDockSpacing() flat-8dp base, which under-covered the real tab-bar
+  // (+ mini-player, when ayah audio has a queue loaded) height everywhere, not
+  // just here. The hook now computes that real height directly (2026-08-02).
+  const dockSpacing = useDockSpacing();
   const insets = useSafeAreaInsets();
   const isMushaf = prefs.layout === "mushaf";
   const [bookmarks, setBookmarks] = useState<AyahRef[]>([]);

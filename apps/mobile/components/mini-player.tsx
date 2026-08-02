@@ -27,6 +27,13 @@ import {
 } from "@/lib/player-context";
 import { useTheme } from "@/lib/theme-context";
 
+// Rendered height when a queue is loaded and bottomInset is 0 (the dock always
+// passes 0 here — see bottom-dock.tsx). Measured on the A72: border-t(1) +
+// pt-2(8) + style paddingBottom(8) + the mb-2 progress bar row(4+2) + the
+// tallest row content, the size-11 play button(44). Named so
+// lib/use-dock-spacing.ts doesn't re-guess it.
+export const MINI_PLAYER_HEIGHT = 73;
+
 // The ONLY subscriber to the 250ms progress tick in this file. The mini-player
 // is mounted globally (bottom-dock.tsx) on every route, so subscribing in
 // MiniPlayerImpl re-rendered its whole transport row 4×/sec during playback on
