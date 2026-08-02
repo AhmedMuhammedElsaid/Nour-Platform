@@ -37,11 +37,12 @@ describe("fitMushafFontSize", () => {
   // Laid-out height at a given size, mirroring the module's own model.
   function laidOutHeight(font: number, glyphs: number): number {
     const lines = Math.ceil(glyphs / (AREA.width / (font * 0.42)));
-    // Banner name and Bismillah each occupy a 1.6x-tall line box (the Uthmani
-    // diacritics need it), so model the box, not the bare font size.
-    // Reflow path: `gap-4` sits between the banner block, the Bismillah and the
-    // single paragraph Text — 2 gaps for this 1-segment/1-Bismillah fixture.
-    return lines * font * 2.2 + (font * 1.3 * 1.6 + 62) + font * 1.1 * 1.6 + 2 * 16 + 52;
+    // Banner name and Bismillah each occupy a 2.2x-tall line box — matched to
+    // ordinary printed lines (owner-reported clip bug: 1.6 gave the Bismillah a
+    // line box 27% tighter than the SAME font's printed lines get, so Android
+    // clipped it). Reflow path: `gap-4` sits between the banner block, the
+    // Bismillah and the single paragraph Text — 2 gaps for this fixture.
+    return lines * font * 2.2 + (font * 1.3 * 2.2 + 62) + font * 1.1 * 2.2 + 2 * 16 + 52;
   }
 
   // A Madani page carries roughly 15 lines of ~30 advance glyphs, so real pages
@@ -95,7 +96,7 @@ describe("fitMushafFontSize", () => {
     // banner and the Bismillah carry `mb-4`, so the gap total is flat in the
     // line count — 2 × 16dp for this 1-segment/1-Bismillah fixture.
     function laidOutHeightFromLines(font: number, lines: number): number {
-      return lines * font * 2.2 + (font * 1.3 * 1.6 + 62) + font * 1.1 * 1.6 + 2 * 16 + 52;
+      return lines * font * 2.2 + (font * 1.3 * 2.2 + 62) + font * 1.1 * 2.2 + 2 * 16 + 52;
     }
 
     it("fills the area using the real line count instead of the glyph estimate", () => {
@@ -128,7 +129,7 @@ describe("fitMushafFontSize", () => {
     // fragment bug), `lines` would pick up a ×16 coefficient and this breaks.
     it("charges gap per block, not per printed line", () => {
       for (const lines of [5, 8]) {
-        const expected = (AREA.height - 62 - 2 * 16 - 52) / (lines * 2.2 + 1.3 * 1.6 + 1.1 * 1.6);
+        const expected = (AREA.height - 62 - 2 * 16 - 52) / (lines * 2.2 + 1.3 * 2.2 + 1.1 * 2.2);
         expect(fit(450, { lineCount: lines })).toBeCloseTo(expected, 4);
       }
     });

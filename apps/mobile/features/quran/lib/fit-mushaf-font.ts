@@ -52,8 +52,13 @@ export const BANNER_NAME_RATIO = 1.3;
 export const BISMILLAH_RATIO = 1.1;
 // Single-line Uthmani needs a line box well above its font size or the tall
 // diacritics overflow onto the next element (device-confirmed: the surah name
-// was colliding with the EN subtitle under it).
-export const DIACRITIC_LINE_RATIO = 1.6;
+// was colliding with the EN subtitle under it). Owner-reported 2026-08-01: the
+// Bismillah itself was clipped top/bottom on device — 1.6 gave it a line box
+// 27% TIGHTER than ordinary printed lines get from LINE_HEIGHT_RATIO (2.2) in
+// the SAME font, so Android clipped whatever exceeded the box. Matched to 2.2:
+// a single line of Uthmani needs the same headroom whether it's a printed ayah
+// or the banner/Bismillah, since it's the same glyphs' diacritic stack.
+export const DIACRITIC_LINE_RATIO = 2.2;
 
 // Floor keeps a dense page legible even if that means it scrolls; ceiling stops
 // a 3-ayah page (juz 30) from rendering absurd poster-sized text.
