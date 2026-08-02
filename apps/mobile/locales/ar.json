@@ -240,7 +240,7 @@
     "loading": "جارٍ التحميل…",
     "tafsirError": "التفسير غير متوفر لهذه الآية.",
     "display": "العرض",
-    "layout": "تخطيط القراءة",
+    "layout": "طريقة عرض المصحف",
     "layoutList": "آية",
     "layoutMushaf": "صفحة",
     "pageN": "صفحة {{number}}",

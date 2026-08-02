@@ -240,7 +240,7 @@
     "loading": "Loading…",
     "tafsirError": "Tafsir unavailable for this ayah.",
     "display": "Display",
-    "layout": "Layout",
+    "layout": "Mushaf View",
     "layoutList": "Ayah",
     "layoutMushaf": "Mushaf",
     "pageN": "Page {{number}}",
