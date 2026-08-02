@@ -7,7 +7,7 @@
 // doesn't need the worklet thread.
 
 import { useEffect, useRef, useState } from "react";
-import { Animated, Easing } from "react-native";
+import { Animated, Easing, I18nManager } from "react-native";
 import { useIsFetching } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -65,7 +65,7 @@ export function NavigationProgress() {
               toValue: Math.min(current + TRICKLE_STEP, TRICKLE_CEILING),
               duration: TRICKLE_INTERVAL_MS,
               easing: Easing.out(Easing.ease),
-              useNativeDriver: false,
+              useNativeDriver: true,
             }).start();
           });
         }, TRICKLE_INTERVAL_MS);
@@ -80,12 +80,12 @@ export function NavigationProgress() {
         Animated.timing(progress, {
           toValue: 1,
           duration: FINISH_DURATION_MS,
-          useNativeDriver: false,
+          useNativeDriver: true,
         }).start(() => {
           Animated.timing(opacity, {
             toValue: 0,
             duration: FADE_DURATION_MS,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }).start(() => {
             visibleRef.current = false;
             setVisible(false);
@@ -118,13 +118,17 @@ export function NavigationProgress() {
         zIndex: 60,
       }}
     >
+      {/* scaleX on a full-width bar, not an animated `width` percentage: width
+          is not a native-driver-animatable property, so the old version drove
+          this from JS — a timing loop on the same thread that is busy running
+          the navigation transition this bar exists to cover. Origin follows the
+          writing direction so the bar still grows from the leading edge in RTL,
+          which the percentage layout got for free. */}
       <Animated.View
-        className="h-full bg-primary"
+        className="h-full w-full bg-primary"
         style={{
-          width: progress.interpolate({
-            inputRange: [0, 1],
-            outputRange: ["0%", "100%"],
-          }),
+          transformOrigin: I18nManager.isRTL ? "right" : "left",
+          transform: [{ scaleX: progress }],
         }}
       />
     </Animated.View>
