@@ -30,11 +30,22 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const webRoot = join(__dirname, "..");
 
-// Baseline measured fresh 2026-08-02 (this phase) via this exact method:
-// 381,443 bytes. Budget = baseline + ~8% headroom, rounded, so routine
-// dependency/content churn doesn't false-fail but a real regression (a new
-// always-on import, a dropped `next/dynamic` split, etc.) does.
-const BUDGET_BYTES = 412_000;
+// Baseline measured fresh 2026-08-02 via this exact method: 381,443 bytes.
+//
+// Headroom is deliberately small. The home route is `ƒ` (dynamic), so DB
+// content never reaches these build artifacts, and repeated clean builds
+// produce byte-identical output — the measurement is far more stable than a
+// generous budget assumes. An earlier 412,000 was measured to be theatre:
+// un-deferring ALL FOUR next/dynamic islands (i.e. reverting the whole
+// deferral pass) landed at 404,217 and still passed.
+//
+// 390,000 is ~2.2% over baseline, so it catches any regression above ~8.5 KB —
+// a new always-on dependency, or a dropped code-split of any consequential
+// island. It will NOT catch sub-8 KB drift; catching a ~1 KB island would mean
+// near-zero headroom and routine false failures on dependency bumps, which is
+// the fastest way to get a gate deleted. Re-measure and move this number
+// deliberately, never to make a red build go green.
+const BUDGET_BYTES = 390_000;
 
 const MANIFEST_PATH = join(
   webRoot,
@@ -72,7 +83,12 @@ if (!existsSync(MANIFEST_PATH)) {
   );
 }
 
-const source = readFileSync(MANIFEST_PATH, "utf8");
+let source;
+try {
+  source = readFileSync(MANIFEST_PATH, "utf8");
+} catch (err) {
+  cannotMeasure(`could not read the manifest: ${err.message}`);
+}
 const marker = `__RSC_MANIFEST["${MANIFEST_GLOBAL_KEY}"] =`;
 const markerIndex = source.indexOf(marker);
 if (markerIndex === -1) {

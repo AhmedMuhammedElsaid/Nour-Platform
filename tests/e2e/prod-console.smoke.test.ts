@@ -33,12 +33,20 @@ const ROUTES = ["/", "/prayer-times", "/quran", "/radio", "/adhkar", "/search"] 
 // `nonce` IDL property back to "" once the CSP nonce has been consumed, so
 // React's dev-mode hydration-mismatch check for the `nonce` prop logs a
 // warning that is never present in a production build (React strips that
-// check's detailed message in prod). Matched narrowly — BOTH "nonce" and a
-// mismatch/hydration keyword must be present — so it can never swallow an
-// unrelated error that merely mentions "nonce" or "hydrate".
+// check's detailed message in prod).
+//
+// Anchored on the `nonce` PROP specifically. A bare "nonce" + "hydrat" match is
+// too broad: React 19 prints the surrounding attributes of a mismatched
+// element, and this app injects nonced inline scripts on every route, so a
+// genuine hydration mismatch near a <script nonce> satisfies both halves and
+// would be swallowed. Requiring the prop form keeps that from happening.
 function isKnownNonceHydrationWarning(text: string): boolean {
   const lower = text.toLowerCase();
-  return lower.includes("nonce") && (lower.includes("did not match") || lower.includes("hydrat"));
+  const namesNonceProp =
+    lower.includes("prop `nonce`") ||
+    lower.includes('prop "nonce"') ||
+    lower.includes("nonce attribute");
+  return namesNonceProp && (lower.includes("did not match") || lower.includes("hydrat"));
 }
 
 async function collectPageErrors(
@@ -73,7 +81,7 @@ test.describe("Prod console smoke", () => {
       test(`${path} has a clean console (no console errors, no pageerror)`, async ({ page }) => {
         const { consoleErrors, pageErrors } = await collectPageErrors(page);
 
-        const response = await page.goto(`${BASE_URL}${path}`, { waitUntil: "networkidle" });
+        const response = await page.goto(`${BASE_URL}${path}`, { waitUntil: "load" });
         expect(response?.ok(), `${path}: navigation response not ok (status ${response?.status()})`).toBe(true);
 
         // Settle any late microtask/async errors (e.g. a rejected promise

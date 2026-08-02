@@ -69,6 +69,11 @@ jobs:
       - name: Build
         run: pnpm turbo run build ${{ github.event_name == 'pull_request' && '--filter=...[origin/main]' || '' }}
         env:
+          # Make the bundle-budget check hard-fail here if it cannot measure
+          # (renamed manifest, changed Next output shape). CI is where that
+          # should surface; Vercel deliberately keeps the warn-and-continue
+          # behaviour so a tooling break never blocks a production deploy.
+          BUNDLE_BUDGET_STRICT: "1"
           # MVP CI doesn't talk to MongoDB/R2 during build; provide a dummy
           # URI so the env Zod parser passes. Real values land in Vercel
           # at deploy time (DEPLOYMENT.md).

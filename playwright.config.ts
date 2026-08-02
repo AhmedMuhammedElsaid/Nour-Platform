@@ -34,8 +34,11 @@ export default defineConfig({
   ],
   // When PLAYWRIGHT_WEB_URL / PLAYWRIGHT_ADMIN_URL are set (CI/preview), skip
   // auto-start. Locally, start both dev servers if they're not already running.
+  // PROD_CONSOLE_URL also skips it: that run targets a deployed origin, so
+  // booting two local dev servers costs up to two minutes and, on a machine
+  // without MONGODB_URI, fails the run outright before it can reach prod.
   webServer:
-    process.env.PLAYWRIGHT_WEB_URL
+    process.env.PLAYWRIGHT_WEB_URL || process.env.PROD_CONSOLE_URL
       ? undefined
       : [
           {

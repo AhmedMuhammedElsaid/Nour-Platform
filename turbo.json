@@ -17,7 +17,13 @@
         "NEXT_PUBLIC_WEB_URL",
         "NEXT_PUBLIC_ADMIN_URL",
         "NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA",
-        "SENTRY_DSN"
+        "SENTRY_DSN",
+        // Escape hatch for apps/web/scripts/check-bundle-budget.mjs. Turbo runs
+        // in strict env mode, so without this the variable is filtered out and
+        // the script's "re-run with BUNDLE_BUDGET_STRICT=1" instruction can
+        // never work through `turbo run build` — which is the only way CI and
+        // Vercel invoke it.
+        "BUNDLE_BUDGET_STRICT"
       ],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
