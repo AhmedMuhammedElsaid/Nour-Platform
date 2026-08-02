@@ -9,6 +9,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import * as Notifications from "expo-notifications";
 
 import { Button } from "@/components/ui/button";
+import { ScreenHeader } from "@/components/screen-header";
 import { Text } from "@/components/ui/text";
 import { SunArc } from "@/features/prayer-times/components/sun-arc";
 import { buildArcDots } from "@/features/prayer-times/lib/arc-dots";
@@ -29,6 +30,7 @@ import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-sett
 import { cityLabel } from "@/features/prayer-times/data/cities";
 import { initialLocale } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme-context";
+import { goBackOrHome } from "@/lib/nav";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
 import { useScreenActive } from "@/lib/use-screen-active";
 import {
@@ -216,22 +218,19 @@ export default function PrayerTimesScreen() {
   return (
     <>
       <View className="bg-bg flex-1">
+        <ScreenHeader title={t("prayer.title")} onBack={goBackOrHome} backLabel={t("common.back")} />
         <ScrollView
-          className="flex-1 px-4 pt-16"
-          contentContainerClassName="gap-6"
+          className="flex-1 px-4"
+          contentContainerClassName="gap-6 pt-4"
           contentContainerStyle={{ paddingBottom: dockSpacing }}
         >
-          {/* Heading */}
-          <View className="gap-1">
-            <Text variant="display" className="text-2xl">
-              {t("prayer.title")}
+          {/* Sub-heading: current city + change-city link. The screen title
+              itself now lives in the pinned ScreenHeader above. */}
+          <Pressable accessibilityRole="button" onPress={() => setShowLocationPicker(true)}>
+            <Text variant="muted" className="text-primary underline">
+              {cityLabel(location, initialLocale)} · {t("prayer.changeCity")}
             </Text>
-            <Pressable accessibilityRole="button" onPress={() => setShowLocationPicker(true)}>
-              <Text variant="muted" className="text-primary underline">
-                {cityLabel(location, initialLocale)} · {t("prayer.changeCity")}
-              </Text>
-            </Pressable>
-          </View>
+          </Pressable>
 
           {/* Qibla entry — a prominent banner (the compass shares this screen's
             stored location). Mirrors the Home Qibla/Radio cards. */}

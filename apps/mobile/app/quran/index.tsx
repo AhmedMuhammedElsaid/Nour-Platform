@@ -7,6 +7,7 @@ import { JUZ_BOUNDARIES, surahsInJuz } from "@repo/shared-core/quran/juz";
 import type { JuzSurahEntry } from "@repo/shared-core/quran/juz";
 import type { QuranSurah } from "@repo/shared-core/schemas/quran";
 
+import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,6 +16,7 @@ import { JuzRow } from "@/features/quran/components/juz-shelf";
 import { SurahCard } from "@/features/quran/components/surah-index";
 import { SurahJuzTabs, type ReaderTab } from "@/features/quran/components/surah-juz-tabs";
 import { getQuranLastRead } from "@/lib/device-local";
+import { goBackOrHome } from "@/lib/nav";
 import { DEVICE_LOCAL_FRESHNESS, quranSurahsQuery } from "@/lib/queries";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
 
@@ -64,10 +66,7 @@ export default function QuranIndexScreen() {
   // actually holds — an unstable header/renderItem re-renders all 114 rows.
   const header = useMemo(
     () => (
-    <View className="gap-4 pb-2">
-      <Text variant="display" className="text-3xl">
-        {t("quran.title")}
-      </Text>
+    <View className="gap-4 pb-2 pt-4">
       <Pressable accessibilityRole="button" onPress={() => router.push("/quran/bookmarks")}>
         <Card className="flex-row items-center justify-between p-4">
           <Text variant="title">{t("quran.bookmarks")}</Text>
@@ -100,19 +99,21 @@ export default function QuranIndexScreen() {
 
   if (surahs.isPending) {
     return (
-      <View className="flex-1 gap-4 bg-bg px-4 pt-16">
-        <Skeleton className="h-9 w-40" />
-        <View className="flex-row flex-wrap gap-3">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <View
-              key={i}
-              className="w-[48%] gap-2 rounded-xl border border-border bg-surface p-3"
-            >
-              <Skeleton className="h-11 w-11 rounded-full" />
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-3 w-1/2" />
-            </View>
-          ))}
+      <View className="flex-1 bg-bg">
+        <ScreenHeader title={t("quran.title")} onBack={goBackOrHome} backLabel={t("common.back")} />
+        <View className="flex-1 gap-4 px-4 pt-4">
+          <View className="flex-row flex-wrap gap-3">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <View
+                key={i}
+                className="w-[48%] gap-2 rounded-xl border border-border bg-surface p-3"
+              >
+                <Skeleton className="h-11 w-11 rounded-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </View>
+            ))}
+          </View>
         </View>
       </View>
     );
@@ -131,9 +132,10 @@ export default function QuranIndexScreen() {
     <>
       <Stack.Screen options={HEADERLESS} />
       <View className="flex-1 bg-bg">
+        <ScreenHeader title={t("quran.title")} onBack={goBackOrHome} backLabel={t("common.back")} />
         {tab === "surah" ? (
           <FlatList<QuranSurah>
-            className="flex-1 px-4 pt-16"
+            className="flex-1 px-4"
             data={surahs.data}
             numColumns={2}
             columnWrapperStyle={{ gap: 12 }}
@@ -147,7 +149,7 @@ export default function QuranIndexScreen() {
           />
         ) : (
           <SectionList
-            className="flex-1 px-4 pt-16"
+            className="flex-1 px-4"
             sections={juzSections}
             keyExtractor={(entry, index) => `${entry.number}-${index}`}
             contentContainerStyle={{ paddingBottom: dockSpacing }}

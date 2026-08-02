@@ -4,12 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { FlatList, Pressable, View } from "react-native";
 
+import { ScreenHeader } from "@/components/screen-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
 import { initialLocale } from "@/lib/i18n";
+import { goBackOrHome } from "@/lib/nav";
 import { adhkarListQuery } from "@/lib/queries";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
 import {
@@ -51,11 +53,13 @@ export default function AdhkarListScreen() {
 
   if (azkar.isPending) {
     return (
-      <View className="flex-1 gap-3 bg-bg px-4 pt-16">
-        <Text variant="display">{t("adhkar.heading")}</Text>
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-20 w-full" />
-        ))}
+      <View className="flex-1 bg-bg">
+        <ScreenHeader title={t("adhkar.heading")} onBack={goBackOrHome} backLabel={t("common.back")} />
+        <View className="flex-1 gap-3 px-4 pt-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full" />
+          ))}
+        </View>
       </View>
     );
   }
@@ -73,8 +77,9 @@ export default function AdhkarListScreen() {
 
   return (
     <View className="flex-1 bg-bg">
+      <ScreenHeader title={t("adhkar.heading")} onBack={goBackOrHome} backLabel={t("common.back")} />
       <FlatList
-        className="flex-1 px-4 pt-16"
+        className="flex-1 px-4 pt-4"
         data={sets}
         keyExtractor={(item) => item.id}
         contentContainerClassName="gap-3"
@@ -82,11 +87,6 @@ export default function AdhkarListScreen() {
         initialNumToRender={12}
         windowSize={7}
         removeClippedSubviews
-        ListHeaderComponent={
-          <Text variant="display" className="mb-2">
-            {t("adhkar.heading")}
-          </Text>
-        }
         ListEmptyComponent={<Text variant="muted">{t("adhkar.empty")}</Text>}
         renderItem={({ item }) => {
           const display = item[locale] ?? item.ar ?? item.en;

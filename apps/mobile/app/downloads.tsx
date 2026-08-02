@@ -5,6 +5,7 @@ import { View } from "react-native";
 import { ScreenHeader } from "@/components/screen-header";
 import { DownloadsList } from "@/features/downloads/components/downloads-list";
 import { useDownloads } from "@/features/downloads/hooks/use-downloads";
+import { goBackOrHome } from "@/lib/nav";
 
 export default function DownloadsScreen() {
   const { t } = useTranslation();
@@ -14,7 +15,11 @@ export default function DownloadsScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1 bg-bg">
-        <ScreenHeader title={t("downloads.heading")} />
+        <ScreenHeader
+          title={t("downloads.heading")}
+          onBack={goBackOrHome}
+          backLabel={t("common.back")}
+        />
         <DownloadsList downloads={downloads} />
       </View>
     </>
