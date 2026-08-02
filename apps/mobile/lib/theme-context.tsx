@@ -75,20 +75,32 @@ export function useTheme(): ThemeContextValue {
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = React.useState<ThemeMode>("dark");
+  // False until the stored choice has been read. Guards the persistence effect
+  // below from writing the "dark" default over a stored "light" during the
+  // frames before hydration resolves.
+  const hydratedRef = React.useRef(false);
 
   // Hydrate from storage.
   React.useEffect(() => {
-    void AsyncStorage.getItem(THEME_KEY).then((stored) => {
-      if (stored === "light" || stored === "dark") setTheme(stored);
-    });
+    void AsyncStorage.getItem(THEME_KEY)
+      .then((stored) => {
+        if (stored === "light" || stored === "dark") setTheme(stored);
+      })
+      .finally(() => {
+        hydratedRef.current = true;
+      });
   }, []);
 
+  // Persistence belongs in an effect, not inside the setTheme updater it used
+  // to live in: an updater is expected to be pure, and React may invoke it
+  // twice (StrictMode / a re-entrant render), firing a duplicate write.
+  React.useEffect(() => {
+    if (!hydratedRef.current) return;
+    void AsyncStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
+
   const toggleTheme = React.useCallback(() => {
-    setTheme((prev) => {
-      const next: ThemeMode = prev === "dark" ? "light" : "dark";
-      void AsyncStorage.setItem(THEME_KEY, next);
-      return next;
-    });
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
   }, []);
 
   const value = React.useMemo<ThemeContextValue>(
