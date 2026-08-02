@@ -239,6 +239,7 @@
     "tafsir": "Tafsir",
     "loading": "Loading…",
     "tafsirError": "Tafsir unavailable for this ayah.",
+    "display": "Display",
     "layout": "Layout",
     "layoutList": "List",
     "layoutMushaf": "Mushaf",
@@ -248,7 +249,8 @@
     "nextPage": "Next page",
     "prevSurah": "Previous surah",
     "nextSurah": "Next surah",
-    "surahNOfTotal": "Surah {{number}} of {{total}}"
+    "surahNOfTotal": "Surah {{number}} of {{total}}",
+    "settingsPreviewTranslation": "In the name of Allah, the Most Gracious, the Most Merciful."
   },
   "qibla": {
     "title": "Qibla Direction",

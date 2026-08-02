@@ -1,5 +1,6 @@
 import "@/lib/i18n"; // initialise i18next so labels resolve (default: en)
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { BISMILLAH_UTHMANI } from "@repo/shared-core/quran/basmala";
 
 import { ReaderSettingsSheet } from "@/features/quran/components/reader-settings-sheet";
 import { DEFAULT_QURAN_PREFS } from "@/lib/device-local";
@@ -64,6 +65,47 @@ describe("ReaderSettingsSheet — Layout toggle (Mushaf page view)", () => {
     fireEvent.press(screen.getByText("Mushaf"));
     fireEvent.press(screen.getByText("Cancel"));
 
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
+  });
+});
+
+// The live preview (owner-picked: B1's grouped cards + B3's live Bismillah
+// sample, cloned onto B1). It reads the DRAFT, so — unlike every other
+// setting here — its own restyle is NOT staged behind Save; only the
+// COMMITTED reader is.
+describe("ReaderSettingsSheet — live preview (B3 clone onto B1)", () => {
+  it("scales the preview's Bismillah immediately when font size changes, before Save", () => {
+    renderSheet();
+    const before = screen.getByText(BISMILLAH_UTHMANI).props.style.fontSize;
+
+    fireEvent.press(screen.getByLabelText("Larger text"));
+
+    const after = screen.getByText(BISMILLAH_UTHMANI).props.style.fontSize;
+    expect(after).toBeGreaterThan(before);
+  });
+
+  it("shows/hides the preview's translation line immediately when the toggle flips, before Save", () => {
+    renderSheet(); // DEFAULT_QURAN_PREFS.showTranslation is true
+    expect(
+      screen.getByText("In the name of Allah, the Most Gracious, the Most Merciful."),
+    ).toBeTruthy();
+
+    fireEvent(screen.getByLabelText("Show translation"), "valueChange", false);
+
+    expect(
+      screen.queryByText("In the name of Allah, the Most Gracious, the Most Merciful."),
+    ).toBeNull();
+  });
+
+  it("never commits the previewed font size on Cancel", () => {
+    const { onChange, onClose } = renderSheet();
+
+    fireEvent.press(screen.getByLabelText("Larger text"));
+    fireEvent.press(screen.getByText("Cancel"));
+
+    // The preview restyled live (previous test), but Cancel must still leave
+    // the committed prefs — and therefore the actual reader — untouched.
     expect(onChange).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
   });

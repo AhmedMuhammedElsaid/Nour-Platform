@@ -239,6 +239,7 @@
     "tafsir": "التفسير",
     "loading": "جارٍ التحميل…",
     "tafsirError": "التفسير غير متوفر لهذه الآية.",
+    "display": "العرض",
     "layout": "تخطيط القراءة",
     "layoutList": "قائمة",
     "layoutMushaf": "مصحف",
@@ -248,7 +249,8 @@
     "nextPage": "الصفحة التالية",
     "prevSurah": "السورة السابقة",
     "nextSurah": "السورة التالية",
-    "surahNOfTotal": "سورة {{number}} من {{total}}"
+    "surahNOfTotal": "سورة {{number}} من {{total}}",
+    "settingsPreviewTranslation": "In the name of Allah, the Most Gracious, the Most Merciful."
   },
   "qibla": {
     "title": "اتجاه القبلة",
