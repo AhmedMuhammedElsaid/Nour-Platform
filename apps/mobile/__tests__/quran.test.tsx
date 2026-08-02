@@ -167,17 +167,19 @@ describe("QuranReaderScreen", () => {
     await AsyncStorage.clear();
   });
 
-  it("defaults to Mushaf (page) mode: fetches by page and shows Prev/Next controls", async () => {
+  it("defaults to Mushaf (page) mode: fetches by page", async () => {
     mockApi();
     renderWith(<QuranReaderScreen />);
 
     await waitFor(() => expect(screen.getByTestId("mushaf-ayah-1")).toBeTruthy());
     expect(getJson).toHaveBeenCalledWith("/quran/page/1", expect.anything());
     expect(getJson).not.toHaveBeenCalledWith("/quran/surah/1", expect.anything());
-
-    // Page 1 has no previous page — the control is disabled; next is enabled.
-    expect(screen.getByLabelText("Previous page").props.accessibilityState.disabled).toBe(true);
-    expect(screen.getByLabelText("Next page").props.accessibilityState.disabled).toBe(false);
+    // Page turning is swipe-only (no visible prev/next buttons — a floating
+    // overlay on the reading content read as a web pattern, not a native
+    // one). The gesture's own forward/backward logic is unit-tested directly
+    // in swipe.test.ts; PanResponder gesture state isn't reproducible via a
+    // single synthetic RNTL event, so it isn't re-tested at this level,
+    // matching this app's existing precedent for the mushaf swipe.
   });
 
   it("Mushaf mode: shows the current juz as a top-bar chip", async () => {
@@ -205,23 +207,6 @@ describe("QuranReaderScreen", () => {
     const [tracks, startIndex] = mockLoadQueue.mock.calls[0]!;
     expect(tracks[0].id).toBe("quran:1");
     expect(startIndex).toBe(0);
-  });
-
-  it("List mode: surah 1 disables Previous surah, Next surah replaces the route", async () => {
-    await AsyncStorage.setItem(
-      "nour.quran.prefs",
-      JSON.stringify({ ...DEFAULT_QURAN_PREFS, layout: "list" }),
-    );
-    mockApi();
-    renderWith(<QuranReaderScreen />);
-    await waitFor(() => expect(screen.getByText(/In the name of Allah/)).toBeTruthy());
-
-    // Fixture surah is #1 — the first surah, so Previous is disabled.
-    expect(screen.getByLabelText("Previous surah").props.accessibilityState.disabled).toBe(true);
-    expect(screen.getByLabelText("Next surah").props.accessibilityState.disabled).toBe(false);
-
-    fireEvent.press(screen.getByLabelText("Next surah"));
-    expect(mockReplace).toHaveBeenCalledWith("/quran/2");
   });
 
   it("List mode: shows the current juz as a top-bar chip and a surah-position footer", async () => {

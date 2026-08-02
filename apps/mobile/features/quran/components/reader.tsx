@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, FlatList, I18nManager, PanResponder, Pressable, View } from "react-native";
+import { Animated, FlatList, PanResponder, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import type {
@@ -12,7 +12,7 @@ import type {
 } from "@repo/shared-core/schemas/quran";
 import { buildPageRows, type PageRow } from "@repo/shared-core/quran/page-rows";
 
-import { ChevronLeftIcon, ChevronRightIcon, SettingsIcon } from "@/components/icons/player-icons";
+import { ChevronLeftIcon, SettingsIcon } from "@/components/icons/player-icons";
 import { Text } from "@/components/ui/text";
 import {
   getQuranBookmarks,
@@ -23,7 +23,6 @@ import {
   type QuranPrefs,
 } from "@/lib/device-local";
 import { useTheme } from "@/lib/theme-context";
-import { cn } from "@/lib/cn";
 import { usePlayerActions, usePlayerTransport } from "@/lib/player-context";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
 import { ayahTrackId, buildAyahQueue, buildPageQueue, parseAyahTrackId } from "../lib/ayah-queue";
@@ -77,15 +76,6 @@ const MAX_SURAH = 114;
 // resolved by hand, same pattern as bottom-tab-bar.tsx.
 const TEXT_HEX = { dark: "#f0e6cc", light: "#13201a" } as const;
 const TEXT_2_HEX = { dark: "#8a7a62", light: "#3f4a44" } as const;
-// EdgeNav's translucent circle backdrop, hand-resolved for the same reason as
-// the two maps above — but this one bit NativeWind, not just SVG. The
-// `bg-surface/90` className (opacity modifier on a CSS-custom-property-based
-// token, `--color-surface`) compiled to something that painted NOTHING on
-// Android: no error, no fallback color, just a fully transparent Pressable —
-// confirmed via a debug build swapped to a solid `bg-danger`, which rendered
-// fine. NativeWind's opacity modifier apparently can't decompose a var()-based
-// color for RGBA blending; use a literal rgba() instead of the class.
-const EDGE_NAV_BG = { dark: "rgba(28, 25, 21, 0.9)", light: "rgba(255, 255, 255, 0.9)" } as const;
 
 function groupRowsBySurah(pageRows: PageRow[] | null): Map<number, PageRow[]> {
   const bySurah = new Map<number, PageRow[]>();
@@ -164,6 +154,34 @@ export function Reader({
           onChangePageRef.current(pd.nextPage);
         } else if (direction === "backward" && pd.prevPage !== null) {
           onChangePageRef.current(pd.prevPage);
+        }
+      },
+    }),
+  ).current;
+
+  // Swipe-to-turn-surah, List mode's equivalent of the mushaf gesture above
+  // (point 5's prev/next control — swipe only, no visible buttons: floating
+  // chevron buttons over the reading content read as a web-carousel pattern,
+  // not a native one, and were removed). Same PanResponder shape, same
+  // forward/backward semantics, bounded by [MIN_SURAH, MAX_SURAH] instead of
+  // a nullable prevPage/nextPage.
+  const dataRef = useRef(data);
+  dataRef.current = data;
+  const onChangeSurahRef = useRef(onChangeSurah);
+  onChangeSurahRef.current = onChangeSurah;
+  const listPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_evt, gesture) =>
+        Math.abs(gesture.dx) > Math.abs(gesture.dy) && Math.abs(gesture.dx) > MUSHAF_SWIPE_THRESHOLD,
+      onPanResponderRelease: (_evt, gesture) => {
+        const direction = resolveSwipeDirection(gesture.dx, gesture.dy);
+        const surah = dataRef.current?.surah.number;
+        if (!direction || surah == null) return;
+        if (direction === "forward" && surah < MAX_SURAH) {
+          onChangeSurahRef.current(surah + 1);
+        } else if (direction === "backward" && surah > MIN_SURAH) {
+          onChangeSurahRef.current(surah - 1);
         }
       },
     }),
@@ -467,110 +485,6 @@ export function Reader({
     </View>
   ) : null;
 
-  // Edge-pinned chevron pair, absolutely positioned over the reading area
-  // (a sibling of the FlatList inside a `position: relative` wrapper — see
-  // the two call sites below). `disabled` mirrors the old pill row's bounds
-  // logic exactly (mushaf: page 1 / the last page; list: surah 1 / 114).
-  //
-  // History (three device round-trips to root-cause): the button was always
-  // functional (correct tap target, size, and position per the accessibility
-  // tree) but painted NOTHING. Two attempts wrongly assumed a positioning
-  // technique was at fault (NativeWind `top-1/2 -mt-[18px]`, then inline
-  // `top:"50%"`+translateY); a third added zIndex/elevation on the theory the
-  // sibling FlatList's own Android compositing layer was painting over it
-  // (a real, separately-useful fix — this app has 3 other cases of exactly
-  // that, see animated-splash.tsx/navigation-progress.tsx/adhan-stop-card.tsx
-  // — but not what was hiding THIS button). A debug build with a solid
-  // `bg-danger` in place of `bg-surface/90` finally isolated it: NativeWind's
-  // opacity modifier (`/90`) apparently cannot decompose a CSS-custom-
-  // property-based color (`--color-surface`) for RGBA blending, and silently
-  // produces no paint at all rather than an error or a fallback color. Fixed
-  // by resolving the translucent backdrop to a literal rgba() by hand
-  // (EDGE_NAV_BG), same reasoning as TEXT_HEX/TEXT_2_HEX above — those exist
-  // because SVG can't read NativeWind classes; this is a DIFFERENT class of
-  // NativeWind gap (an opacity modifier on a var()-based token), worth
-  // knowing about if a future `bg-<token>/NN` silently vanishes elsewhere.
-  //
-  // Chevron GLYPH direction also needs to flip under RTL, unlike the old
-  // pill row's plain text: a Unicode "‹"/"›" is bidi-mirrored automatically
-  // by the text renderer, but an SVG path is not. `insetInlineStart`/`-End`
-  // already swap which screen edge prev/next sit on for RTL; swapping which
-  // icon each uses keeps the arrow pointing toward the edge it's next to.
-  function EdgeNav({
-    onPrev,
-    onNext,
-    prevDisabled,
-    nextDisabled,
-    prevLabel,
-    nextLabel,
-  }: {
-    onPrev: () => void;
-    onNext: () => void;
-    prevDisabled: boolean;
-    nextDisabled: boolean;
-    prevLabel: string;
-    nextLabel: string;
-  }) {
-    const edgeBg = EDGE_NAV_BG[theme];
-    const PrevIcon = I18nManager.isRTL ? ChevronRightIcon : ChevronLeftIcon;
-    const NextIcon = I18nManager.isRTL ? ChevronLeftIcon : ChevronRightIcon;
-    return (
-      <>
-        <View
-          pointerEvents="box-none"
-          style={{
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            insetInlineStart: 4,
-            justifyContent: "center",
-            zIndex: 20,
-            elevation: 20,
-          }}
-        >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={prevLabel}
-            disabled={prevDisabled}
-            onPress={onPrev}
-            style={{ backgroundColor: edgeBg }}
-            className={cn(
-              "size-12 items-center justify-center rounded-full",
-              prevDisabled && "opacity-0",
-            )}
-          >
-            <PrevIcon color={textColor} size={24} />
-          </Pressable>
-        </View>
-        <View
-          pointerEvents="box-none"
-          style={{
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            insetInlineEnd: 4,
-            justifyContent: "center",
-            zIndex: 20,
-            elevation: 20,
-          }}
-        >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={nextLabel}
-            disabled={nextDisabled}
-            onPress={onNext}
-            style={{ backgroundColor: edgeBg }}
-            className={cn(
-              "size-12 items-center justify-center rounded-full",
-              nextDisabled && "opacity-0",
-            )}
-          >
-            <NextIcon color={textColor} size={24} />
-          </Pressable>
-        </View>
-      </>
-    );
-  }
 
   return (
     <>
@@ -629,14 +543,6 @@ export function Reader({
                   onScrollToIndexFailed={() => undefined}
                   renderItem={renderMushafSegment}
                 />
-                <EdgeNav
-                  onPrev={() => pageData.prevPage !== null && onChangePage(pageData.prevPage)}
-                  onNext={() => pageData.nextPage !== null && onChangePage(pageData.nextPage)}
-                  prevDisabled={pageData.prevPage === null}
-                  nextDisabled={pageData.nextPage === null}
-                  prevLabel={t("quran.prevPage")}
-                  nextLabel={t("quran.nextPage")}
-                />
               </Animated.View>
             </>
           ) : null
@@ -645,7 +551,7 @@ export function Reader({
             <View className="px-4" style={{ paddingTop: insets.top + 12 }}>
               {topBar}
             </View>
-            <View style={{ flex: 1, position: "relative" }}>
+            <View style={{ flex: 1, position: "relative" }} {...listPanResponder.panHandlers}>
               <FlatList<ReaderAyah>
                 ref={listRef}
                 className="flex-1 bg-bg px-4"
@@ -694,18 +600,6 @@ export function Reader({
                     }}
                   />
                 )}
-              />
-              <EdgeNav
-                onPrev={() =>
-                  data.surah.number > MIN_SURAH && onChangeSurah(data.surah.number - 1)
-                }
-                onNext={() =>
-                  data.surah.number < MAX_SURAH && onChangeSurah(data.surah.number + 1)
-                }
-                prevDisabled={data.surah.number <= MIN_SURAH}
-                nextDisabled={data.surah.number >= MAX_SURAH}
-                prevLabel={t("quran.prevSurah")}
-                nextLabel={t("quran.nextSurah")}
               />
             </View>
           </>
