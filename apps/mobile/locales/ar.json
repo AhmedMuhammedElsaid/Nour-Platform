@@ -245,7 +245,10 @@
     "pageN": "صفحة {{number}}",
     "juzN": "الجزء {{number}}",
     "prevPage": "الصفحة السابقة",
-    "nextPage": "الصفحة التالية"
+    "nextPage": "الصفحة التالية",
+    "prevSurah": "السورة السابقة",
+    "nextSurah": "السورة التالية",
+    "surahNOfTotal": "سورة {{number}} من {{total}}"
   },
   "qibla": {
     "title": "اتجاه القبلة",

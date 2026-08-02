@@ -123,6 +123,12 @@ export default function QuranReaderScreen() {
         pageData={isMushaf ? (pageReader.data ?? null) : null}
         entrySurah={surahNumber}
         onChangePage={setCurrentPage}
+        // List mode's prev/next surah control (point 5) — replace, not push, so
+        // a linear next/next/next reading session collapses into one history
+        // frame instead of stacking one per hop; "back" from surah 5 (reached
+        // via 4 taps from surah 1) correctly lands on wherever the reader was
+        // first opened from, not surah 4.
+        onChangeSurah={(next) => router.replace(`/quran/${next}`)}
         editions={editions.data ?? []}
         reciters={reciters.data ?? []}
         locale={locale}

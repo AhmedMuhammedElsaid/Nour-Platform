@@ -51,10 +51,11 @@ jest.mock("@/lib/player-context", () => {
   };
 });
 
+const mockReplace = jest.fn();
 jest.mock("expo-router", () => {
   const react = jest.requireActual("react") as typeof import("react");
   return {
-    useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+    useRouter: () => ({ push: jest.fn(), back: jest.fn(), replace: (...args: unknown[]) => mockReplace(...args) }),
     useLocalSearchParams: () => ({ surah: "1" }),
     usePathname: () => "/quran",
     useFocusEffect: (cb: () => void | (() => void)) => react.useEffect(cb, []),
@@ -161,6 +162,7 @@ describe("QuranReaderScreen", () => {
     jest.mocked(getJson).mockReset();
     mockLoadQueue.mockClear();
     mockToggle.mockClear();
+    mockReplace.mockClear();
     mockCurrentTrack = null;
     await AsyncStorage.clear();
   });
@@ -176,6 +178,13 @@ describe("QuranReaderScreen", () => {
     // Page 1 has no previous page — the control is disabled; next is enabled.
     expect(screen.getByLabelText("Previous page").props.accessibilityState.disabled).toBe(true);
     expect(screen.getByLabelText("Next page").props.accessibilityState.disabled).toBe(false);
+  });
+
+  it("Mushaf mode: shows the current juz as a top-bar chip", async () => {
+    mockApi();
+    renderWith(<QuranReaderScreen />);
+    await waitFor(() => expect(screen.getByTestId("mushaf-ayah-1")).toBeTruthy());
+    expect(screen.getByText("Juz 1")).toBeTruthy();
   });
 
   it("List mode (explicit prefs): renders ayah text and a working play button", async () => {
@@ -196,6 +205,35 @@ describe("QuranReaderScreen", () => {
     const [tracks, startIndex] = mockLoadQueue.mock.calls[0]!;
     expect(tracks[0].id).toBe("quran:1");
     expect(startIndex).toBe(0);
+  });
+
+  it("List mode: surah 1 disables Previous surah, Next surah replaces the route", async () => {
+    await AsyncStorage.setItem(
+      "nour.quran.prefs",
+      JSON.stringify({ ...DEFAULT_QURAN_PREFS, layout: "list" }),
+    );
+    mockApi();
+    renderWith(<QuranReaderScreen />);
+    await waitFor(() => expect(screen.getByText(/In the name of Allah/)).toBeTruthy());
+
+    // Fixture surah is #1 — the first surah, so Previous is disabled.
+    expect(screen.getByLabelText("Previous surah").props.accessibilityState.disabled).toBe(true);
+    expect(screen.getByLabelText("Next surah").props.accessibilityState.disabled).toBe(false);
+
+    fireEvent.press(screen.getByLabelText("Next surah"));
+    expect(mockReplace).toHaveBeenCalledWith("/quran/2");
+  });
+
+  it("List mode: shows the current juz as a top-bar chip and a surah-position footer", async () => {
+    await AsyncStorage.setItem(
+      "nour.quran.prefs",
+      JSON.stringify({ ...DEFAULT_QURAN_PREFS, layout: "list" }),
+    );
+    mockApi();
+    renderWith(<QuranReaderScreen />);
+    await waitFor(() => expect(screen.getByText(/In the name of Allah/)).toBeTruthy());
+    expect(screen.getByText("Juz 1")).toBeTruthy();
+    expect(screen.getByText("Surah 1 of 114")).toBeTruthy();
   });
 
   it("shows skeleton placeholders while the reader data is loading", () => {

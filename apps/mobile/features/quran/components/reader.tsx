@@ -12,6 +12,7 @@ import type {
 } from "@repo/shared-core/schemas/quran";
 import { buildPageRows, type PageRow } from "@repo/shared-core/quran/page-rows";
 
+import { ChevronLeftIcon, ChevronRightIcon, SettingsIcon } from "@/components/icons/player-icons";
 import { Text } from "@/components/ui/text";
 import {
   getQuranBookmarks,
@@ -21,6 +22,7 @@ import {
   type AyahRef,
   type QuranPrefs,
 } from "@/lib/device-local";
+import { useTheme } from "@/lib/theme-context";
 import { cn } from "@/lib/cn";
 import { usePlayerActions, usePlayerTransport } from "@/lib/player-context";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
@@ -43,6 +45,9 @@ export interface ReaderProps {
   // the right autoplay offset within a page that spans multiple surahs.
   entrySurah: number;
   onChangePage: (page: number) => void;
+  // List mode's prev/next surah control (point 5) — mushaf mode pages via
+  // onChangePage instead, since a Madani page can span multiple surahs.
+  onChangeSurah: (surah: number) => void;
   editions: QuranEdition[];
   reciters: QuranReciter[];
   locale: string;
@@ -65,6 +70,14 @@ export interface ReaderProps {
 // absent from the map, so the lookup below yields `undefined` → `null` — never
 // a TRUTHY empty array, which would make MushafSegment render an empty page
 // instead of falling back to its reflow path.
+const MIN_SURAH = 1;
+const MAX_SURAH = 114;
+
+// SVG strokes can't read NativeWind classes (see components/icons/tab-icons.tsx);
+// resolved by hand, same pattern as bottom-tab-bar.tsx.
+const TEXT_HEX = { dark: "#f0e6cc", light: "#13201a" } as const;
+const TEXT_2_HEX = { dark: "#8a7a62", light: "#3f4a44" } as const;
+
 function groupRowsBySurah(pageRows: PageRow[] | null): Map<number, PageRow[]> {
   const bySurah = new Map<number, PageRow[]>();
   for (const row of pageRows ?? []) {
@@ -80,6 +93,7 @@ export function Reader({
   pageData,
   entrySurah,
   onChangePage,
+  onChangeSurah,
   editions,
   reciters,
   locale,
@@ -89,6 +103,9 @@ export function Reader({
   autoStart,
 }: ReaderProps) {
   const { t, i18n } = useTranslation();
+  const { theme } = useTheme();
+  const textColor = TEXT_HEX[theme];
+  const text2Color = TEXT_2_HEX[theme];
   // The local `+24` this screen carried is gone: it was compensating for the
   // OLD useDockSpacing() flat-8dp base, which under-covered the real tab-bar
   // (+ mini-player, when ayah audio has a queue loaded) height everywhere, not
@@ -144,11 +161,17 @@ export function Reader({
   ).current;
 
   // Brief fade-in whenever the page changes (swipe or button) — cheap visual
-  // continuity cue, not required for correctness.
+  // continuity cue, not required for correctness. Also resets scroll to the
+  // top (point 5): a page turn should always land the reader at the START of
+  // the new page, not wherever the previous page happened to be scrolled to.
+  // List mode needs no equivalent here — its surah nav goes through
+  // onChangeSurah, which replaces the route param, remounting this whole
+  // screen with a fresh (already-zero) FlatList.
   useEffect(() => {
     if (!isMushaf) return;
     pageOpacity.setValue(0);
     Animated.timing(pageOpacity, { toValue: 1, duration: 160, useNativeDriver: true }).start();
+    mushafRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, [pageData?.page, isMushaf, pageOpacity]);
 
   const onSelectAyah = useCallback((numberGlobal: number) => {
@@ -365,112 +388,115 @@ export function Reader({
     [activeGlobal, queue, player],
   );
 
-  const listHeader = data ? (
-    <View className="gap-3 pb-4">
-      <View className="flex-row items-center gap-2">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t("common.back")}
-          onPress={onBack}
-          className="-ms-2 size-9 items-center justify-center"
-        >
-          <Text className="text-2xl text-text">‹</Text>
-        </Pressable>
-        <View className="flex-1 flex-row items-baseline justify-between gap-4">
-          <Text variant="display" className="text-2xl text-primary">
-            {data.surah.name.en}
-          </Text>
-          <Text className="font-quran text-2xl text-text" style={{ writingDirection: "rtl" }}>
-            {data.surah.name.ar}
-          </Text>
-        </View>
+  // ---------------------------------------------------------------------
+  // Chrome — "edge chevrons + centre chip" (owner-picked concept A3 from the
+  // design review). One fixed top row (back · juz chip · settings, ~44dp) is
+  // shared by both modes; page/surah turning moves OFF the top row entirely
+  // and onto large edge-pinned chevrons over the reading area itself, closer
+  // to a real page-corner tap. The old mushaf header's second pill row is
+  // gone — every dp it used to cost is now available to the ayahs. Surah
+  // identity (name/meaning/ayah count) and the Bismillah stay inside the
+  // scroll area for the same reason the old comment gave: hoisting them into
+  // fixed chrome costs ~120dp and, in mushaf mode, can caption the WRONG
+  // surah (segments[0] is whoever owns the page's first ayah, not the one
+  // navigated from).
+  const topJuz = isMushaf ? pageData?.juz : data?.ayahs[0]?.juz;
+  const topBar = (
+    <View className="flex-row items-center gap-2">
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t("common.back")}
+        onPress={onBack}
+        className="-ms-2 size-9 items-center justify-center"
+      >
+        <ChevronLeftIcon color={textColor} size={22} />
+      </Pressable>
+      <View className="flex-1 items-center">
+        {topJuz != null && (
+          <View className="rounded-full border border-border px-2.5 py-1">
+            <Text className="text-xs text-text-2" numberOfLines={1}>
+              {t("quran.juzN", { number: localizeDigits(topJuz, i18n.language) })}
+            </Text>
+          </View>
+        )}
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t("quran.settings")}
+        onPress={() => setSettingsOpen(true)}
+        className="-me-1 size-9 items-center justify-center"
+      >
+        <SettingsIcon color={text2Color} size={20} />
+      </Pressable>
+    </View>
+  );
+
+  // Surah identity block — scrolls away with the rest of list-mode content
+  // (it's the FlatList's ListHeaderComponent), unlike topBar above it.
+  const listContentHeader = data ? (
+    <View className="gap-1.5 pb-4">
+      <View className="flex-row items-baseline justify-between gap-4">
+        <Text variant="display" className="text-2xl text-primary">
+          {data.surah.name.en}
+        </Text>
+        <Text className="font-quran text-2xl text-text" style={{ writingDirection: "rtl" }}>
+          {data.surah.name.ar}
+        </Text>
       </View>
       <Text variant="muted">
         {data.surah.meaning} · {data.surah.ayahCount} {t("quran.ayahs")}
       </Text>
-      <View className="flex-row items-center gap-2">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t("quran.settings")}
-          onPress={() => setSettingsOpen(true)}
-          className="ms-auto rounded-md border border-border px-3 py-1.5"
-        >
-          <Text className="text-sm text-text-2">⚙ {t("quran.settings")}</Text>
-        </Pressable>
-      </View>
     </View>
   ) : null;
 
-  // Deliberately minimal, because every dp spent here is a dp the ayahs can't
-  // fill: one row of back + Settings, one row of page pills. The surah name /
-  // meaning / Bismillah live in MushafSegment, inside the scroll area — hoisting
-  // them up here (web's structure) cost ~120dp of permanently-visible chrome and
-  // captioned mid-page surahs with the WRONG name, since `segments[0]` is
-  // whoever owns the page's first ayah, not the surah you navigated from.
-  const mushafHeader = pageData ? (
-    <View className="gap-3 pb-3">
-      <View className="flex-row items-center gap-2">
+  // Edge-pinned chevron pair, absolutely positioned over the reading area
+  // (a sibling of the FlatList inside a `position: relative` wrapper — see
+  // the two call sites below). `disabled` mirrors the old pill row's bounds
+  // logic exactly (mushaf: page 1 / the last page; list: surah 1 / 114).
+  function EdgeNav({
+    onPrev,
+    onNext,
+    prevDisabled,
+    nextDisabled,
+    prevLabel,
+    nextLabel,
+  }: {
+    onPrev: () => void;
+    onNext: () => void;
+    prevDisabled: boolean;
+    nextDisabled: boolean;
+    prevLabel: string;
+    nextLabel: string;
+  }) {
+    return (
+      <>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={t("common.back")}
-          onPress={onBack}
-          className="-ms-2 size-9 items-center justify-center"
-        >
-          <Text className="text-2xl text-text">‹</Text>
-        </Pressable>
-        <View className="flex-1" />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t("quran.settings")}
-          onPress={() => setSettingsOpen(true)}
-          className="rounded-md border border-border px-3 py-1.5"
-        >
-          <Text className="text-sm text-text-2">⚙ {t("quran.settings")}</Text>
-        </Pressable>
-      </View>
-      {/* Labelled pills (web parity) rather than bare chevrons. RN defaults
-          flexShrink to 0 — unlike web — so the long Arabic labels
-          ("الصفحة السابقة"/"الصفحة التالية") would clip off the edges of a
-          411dp screen without the explicit shrink + single-line clamp below.
-          The centre label is plain muted text, NOT variant="label": that
-          variant carries tracking-[3px], which alone adds ~48dp to a 16-char
-          Arabic string and blows the row's width budget. */}
-      <View className="flex-row items-center justify-center gap-2">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t("quran.prevPage")}
-          disabled={pageData.prevPage === null}
-          onPress={() => pageData.prevPage !== null && onChangePage(pageData.prevPage)}
+          accessibilityLabel={prevLabel}
+          disabled={prevDisabled}
+          onPress={onPrev}
           className={cn(
-            "shrink rounded-md border border-border px-3 py-1.5",
-            pageData.prevPage === null && "opacity-30",
+            "absolute top-1/2 -mt-[18px] -start-1 size-9 items-center justify-center rounded-full bg-surface/90",
+            prevDisabled && "opacity-0",
           )}
         >
-          <Text className="text-sm text-text" numberOfLines={1}>
-            {t("quran.prevPage")}
-          </Text>
+          <ChevronLeftIcon color={textColor} size={20} />
         </Pressable>
-        <Text className="shrink text-center text-xs text-text-2" numberOfLines={1}>
-          {t("quran.pageN", { number: localizeDigits(pageData.page, i18n.language) })} ·{" "}
-          {t("quran.juzN", { number: localizeDigits(pageData.juz, i18n.language) })}
-        </Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={t("quran.nextPage")}
-          disabled={pageData.nextPage === null}
-          onPress={() => pageData.nextPage !== null && onChangePage(pageData.nextPage)}
+          accessibilityLabel={nextLabel}
+          disabled={nextDisabled}
+          onPress={onNext}
           className={cn(
-            "shrink rounded-md border border-border px-3 py-1.5",
-            pageData.nextPage === null && "opacity-30",
+            "absolute top-1/2 -mt-[18px] -end-1 size-9 items-center justify-center rounded-full bg-surface/90",
+            nextDisabled && "opacity-0",
           )}
         >
-          <Text className="text-sm text-text" numberOfLines={1}>
-            {t("quran.nextPage")}
-          </Text>
+          <ChevronRightIcon color={textColor} size={20} />
         </Pressable>
-      </View>
-    </View>
-  ) : null;
+      </>
+    );
+  }
 
   return (
     <>
@@ -488,10 +514,10 @@ export function Reader({
                   puts its one gap exactly where it belongs (between content and footer)
                   instead of also opening a gap here, above the content. */}
               <View className="px-4" style={{ paddingTop: insets.top + 12 }}>
-                {mushafHeader}
+                {topBar}
               </View>
               <Animated.View
-                style={{ flex: 1, opacity: pageOpacity }}
+                style={{ flex: 1, opacity: pageOpacity, position: "relative" }}
                 onLayout={(e) => {
                   const { width, height } = e.nativeEvent.layout;
                   setReadingArea((cur) =>
@@ -529,40 +555,82 @@ export function Reader({
                   onScrollToIndexFailed={() => undefined}
                   renderItem={renderMushafSegment}
                 />
+                <EdgeNav
+                  onPrev={() => pageData.prevPage !== null && onChangePage(pageData.prevPage)}
+                  onNext={() => pageData.nextPage !== null && onChangePage(pageData.nextPage)}
+                  prevDisabled={pageData.prevPage === null}
+                  nextDisabled={pageData.nextPage === null}
+                  prevLabel={t("quran.prevPage")}
+                  nextLabel={t("quran.nextPage")}
+                />
               </Animated.View>
             </>
           ) : null
         ) : data ? (
-          <FlatList<ReaderAyah>
-            ref={listRef}
-            className="flex-1 bg-bg px-4"
-            data={data.ayahs}
-            keyExtractor={(a) => String(a.numberGlobal)}
-            ListHeaderComponent={listHeader}
-            contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: dockSpacing }}
-            onScrollToIndexFailed={() => undefined}
-            renderItem={({ item }) => (
-              <AyahRow
-                ayah={item}
-                showTranslation={prefs.showTranslation}
-                translationDir={translationDir}
-                showWordByWord={prefs.showWordByWord}
-                fontScale={prefs.fontScale}
-                isCurrent={activeGlobal === item.numberGlobal}
-                isPlaying={player.isPlaying && activeGlobal === item.numberGlobal}
-                isBookmarked={isAyahBookmarked(bookmarks, {
-                  surah: item.surah,
-                  ayahInSurah: item.ayahInSurah,
-                })}
-                onPlay={onPlayToggle}
-                onToggleBookmark={onToggleBookmark}
-                onOpenTafsir={(ng) => {
-                  const a = data.ayahs.find((x) => x.numberGlobal === ng);
-                  if (a) setTafsirAyah({ numberGlobal: ng, ref: `${a.surah}:${a.ayahInSurah}` });
+          <>
+            <View className="px-4" style={{ paddingTop: insets.top + 12 }}>
+              {topBar}
+            </View>
+            <View style={{ flex: 1, position: "relative" }}>
+              <FlatList<ReaderAyah>
+                ref={listRef}
+                className="flex-1 bg-bg px-4"
+                data={data.ayahs}
+                keyExtractor={(a) => String(a.numberGlobal)}
+                ListHeaderComponent={listContentHeader}
+                ListFooterComponent={
+                  <View className="items-center border-t border-primary/30 pb-6 pt-3">
+                    <Text className="text-sm text-text-2">
+                      {t("quran.surahNOfTotal", {
+                        number: localizeDigits(data.surah.number, i18n.language),
+                        total: localizeDigits(MAX_SURAH, i18n.language),
+                      })}
+                    </Text>
+                  </View>
+                }
+                contentContainerStyle={{
+                  flexGrow: 1,
+                  justifyContent: "space-between",
+                  paddingTop: 4,
+                  paddingBottom: dockSpacing,
                 }}
+                onScrollToIndexFailed={() => undefined}
+                renderItem={({ item }) => (
+                  <AyahRow
+                    ayah={item}
+                    showTranslation={prefs.showTranslation}
+                    translationDir={translationDir}
+                    showWordByWord={prefs.showWordByWord}
+                    fontScale={prefs.fontScale}
+                    isCurrent={activeGlobal === item.numberGlobal}
+                    isPlaying={player.isPlaying && activeGlobal === item.numberGlobal}
+                    isBookmarked={isAyahBookmarked(bookmarks, {
+                      surah: item.surah,
+                      ayahInSurah: item.ayahInSurah,
+                    })}
+                    onPlay={onPlayToggle}
+                    onToggleBookmark={onToggleBookmark}
+                    onOpenTafsir={(ng) => {
+                      const a = data.ayahs.find((x) => x.numberGlobal === ng);
+                      if (a) setTafsirAyah({ numberGlobal: ng, ref: `${a.surah}:${a.ayahInSurah}` });
+                    }}
+                  />
+                )}
               />
-            )}
-          />
+              <EdgeNav
+                onPrev={() =>
+                  data.surah.number > MIN_SURAH && onChangeSurah(data.surah.number - 1)
+                }
+                onNext={() =>
+                  data.surah.number < MAX_SURAH && onChangeSurah(data.surah.number + 1)
+                }
+                prevDisabled={data.surah.number <= MIN_SURAH}
+                nextDisabled={data.surah.number >= MAX_SURAH}
+                prevLabel={t("quran.prevSurah")}
+                nextLabel={t("quran.nextSurah")}
+              />
+            </View>
+          </>
         ) : null}
         {/* Opaque scrim over the status-bar area — hides ayahs scrolled up behind
             the transparent status bar (mirrors app/index.tsx). */}
