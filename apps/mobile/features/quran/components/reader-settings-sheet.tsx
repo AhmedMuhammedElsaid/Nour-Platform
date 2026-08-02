@@ -11,6 +11,7 @@ import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/cn";
 import type { QuranPrefs } from "@/lib/device-local";
 import { useTheme } from "@/lib/theme-context";
+import { DIACRITIC_LINE_RATIO } from "../lib/fit-mushaf-font";
 
 const FONT_MIN = 0.8;
 // Raised 1.6 → 3.0 on owner request: in Mushaf mode the base size is now
@@ -139,7 +140,16 @@ export function ReaderSettingsSheet({
           <View className="items-center gap-2 border-b border-border bg-bg px-4 py-4">
             <Text
               className="text-center font-quran text-text"
-              style={{ fontSize: PREVIEW_BASE_SIZE * draft.fontScale, writingDirection: "rtl" }}
+              style={{
+                fontSize: PREVIEW_BASE_SIZE * draft.fontScale,
+                // Same DIACRITIC_LINE_RATIO the reader itself uses for this
+                // exact font+string (fit-mushaf-font.ts) — without it the line
+                // box defaults too tight for Amiri Quran's diacritic stack,
+                // and at the sheet's larger preview sizes the top of the
+                // Bismillah clips above the sheet's own rounded corner.
+                lineHeight: PREVIEW_BASE_SIZE * draft.fontScale * DIACRITIC_LINE_RATIO,
+                writingDirection: "rtl",
+              }}
             >
               {BISMILLAH_UTHMANI}
             </Text>

@@ -535,11 +535,11 @@ export function Reader({
             onPress={onPrev}
             style={{ backgroundColor: edgeBg }}
             className={cn(
-              "size-9 items-center justify-center rounded-full",
+              "size-12 items-center justify-center rounded-full",
               prevDisabled && "opacity-0",
             )}
           >
-            <PrevIcon color={textColor} size={20} />
+            <PrevIcon color={textColor} size={24} />
           </Pressable>
         </View>
         <View
@@ -561,11 +561,11 @@ export function Reader({
             onPress={onNext}
             style={{ backgroundColor: edgeBg }}
             className={cn(
-              "size-9 items-center justify-center rounded-full",
+              "size-12 items-center justify-center rounded-full",
               nextDisabled && "opacity-0",
             )}
           >
-            <NextIcon color={textColor} size={20} />
+            <NextIcon color={textColor} size={24} />
           </Pressable>
         </View>
       </>
