@@ -80,7 +80,14 @@ void SplashScreen.preventAutoHideAsync();
 // Module-level so the navigator doesn't see a fresh options object on every
 // root render (splashDone / localeReady / onboarding state all re-render it).
 // Every screen renders its own themed header — see components/screen-header.tsx.
-const STACK_SCREEN_OPTIONS = { headerShown: false } as const;
+// `freezeOnBlur` suspends a screen's React subtree once it is no longer the
+// focused route (react-native-screens, already a dep via expo-router). Screens
+// here stay MOUNTED when you leave them — that is what makes tab returns
+// instant — but without this they also keep re-rendering in the background on
+// every context change, playback tick and query settle. Complements the
+// per-component gating in lib/use-screen-active.ts rather than replacing it:
+// that stops timers/animations, this stops renders.
+const STACK_SCREEN_OPTIONS = { headerShown: false, freezeOnBlur: true } as const;
 
 export default function RootLayout() {
   const [queryClient] = useState(
