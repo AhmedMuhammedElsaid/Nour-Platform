@@ -8,16 +8,19 @@
 //     downloaded — it sits in the player's track-load path, and the sync
 //     `File.exists` stat blocks the JS thread on every track change.
 
+import * as React from "react";
 import { act, render } from "@testing-library/react-native";
 import { Text } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { File as FSFile } from "expo-file-system";
+import { usePlaybackState, useProgress } from "react-native-track-player";
 
 import { getLocalPath, downloadTrack } from "@/lib/downloads";
 import {
   PlayerProvider,
   usePlayerActions,
   usePlayerPrefs,
+  usePlayerProgress,
 } from "@/lib/player-context";
 
 describe("usePlayerActions identity stability", () => {
@@ -50,6 +53,57 @@ describe("usePlayerActions identity stability", () => {
     // ...yet every actions object handed out is the very same reference, so a
     // consumer reading ONLY actions is never re-rendered by it.
     expect(new Set(seenActions).size).toBe(1);
+  });
+});
+
+describe("progress tick containment", () => {
+  const progressMock = useProgress as unknown as jest.Mock;
+  const playbackStateMock = usePlaybackState as unknown as jest.Mock;
+  const originalProgress = progressMock.getMockImplementation();
+
+  afterEach(() => {
+    progressMock.mockImplementation(originalProgress);
+  });
+
+  it("re-renders only the progress consumer, not PlayerProvider itself", () => {
+    // Drive the 250ms tick from real state so `act()` can advance it. The
+    // useState lives in whichever component calls useProgress — which is
+    // exactly the boundary under test.
+    let tick: ((p: number) => void) | null = null;
+    progressMock.mockImplementation(() => {
+      const [position, setPosition] = React.useState(0);
+      tick = setPosition;
+      return { position, duration: 100, buffered: 0 };
+    });
+
+    let probeRenders = 0;
+    function ProgressProbe() {
+      probeRenders += 1;
+      const { currentTime } = usePlayerProgress();
+      return <Text>{String(currentTime)}</Text>;
+    }
+
+    render(
+      <PlayerProvider>
+        <ProgressProbe />
+      </PlayerProvider>,
+    );
+
+    // `usePlaybackState` is called from PlayerProvider's own body and nowhere
+    // else, so its call count is a direct probe of "did the provider re-render".
+    const providerRendersBefore = playbackStateMock.mock.calls.length;
+    const probeRendersBefore = probeRenders;
+
+    act(() => {
+      tick?.(42);
+    });
+
+    // The tick must actually have propagated (otherwise this passes vacuously)…
+    expect(probeRenders).toBeGreaterThan(probeRendersBefore);
+    // …while PlayerProvider's body did NOT re-run. Regressing this puts
+    // `useProgress` back in the provider, re-running all five context memos
+    // 4×/sec for the whole of playback and starving navigation on the JS thread.
+    expect(playbackStateMock.mock.calls.length).toBe(providerRendersBefore);
   });
 });
 

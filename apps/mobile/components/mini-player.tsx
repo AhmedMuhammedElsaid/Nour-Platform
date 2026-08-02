@@ -27,6 +27,26 @@ import {
 } from "@/lib/player-context";
 import { useTheme } from "@/lib/theme-context";
 
+// The ONLY subscriber to the 250ms progress tick in this file. The mini-player
+// is mounted globally (bottom-dock.tsx) on every route, so subscribing in
+// MiniPlayerImpl re-rendered its whole transport row 4×/sec during playback on
+// whatever screen you were on — and did so even when the bar is hidden (live
+// stream) or the component renders null, because hooks run before those exits.
+// Keep the subscription down here where the value is actually painted.
+function MiniPlayerProgress() {
+  const { currentTime, duration } = usePlayerProgress();
+  const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  return (
+    <View className="mb-2 h-1 overflow-hidden rounded-full bg-surface-2">
+      <View
+        className="h-full rounded-full bg-primary"
+        style={{ width: `${Math.min(100, progressPct)}%` }}
+      />
+    </View>
+  );
+}
+
 function MiniPlayerImpl({ bottomInset = 0 }: { bottomInset?: number }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -38,11 +58,9 @@ function MiniPlayerImpl({ bottomInset = 0 }: { bottomInset?: number }) {
   const { repeatMode, isShuffled } = usePlayerQueue();
   const { toggle, next, prev, retry, stop, cycleRepeat, toggleShuffle } =
     usePlayerActions();
-  const { currentTime, duration } = usePlayerProgress();
 
   if (!hasQueue || !currentTrack) return null;
 
-  const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
   // Live radio stream: no progress bar, no queue/shuffle/repeat — play/pause only.
   const isLive = currentTrack.isLive ?? false;
 
@@ -54,14 +72,7 @@ function MiniPlayerImpl({ bottomInset = 0 }: { bottomInset?: number }) {
       accessibilityLabel={t("player.miniPlayer")}
     >
       {/* Progress bar — hidden for live streams (no finite progress) */}
-      {!isLive && (
-        <View className="mb-2 h-1 overflow-hidden rounded-full bg-surface-2">
-          <View
-            className="h-full rounded-full bg-primary"
-            style={{ width: `${Math.min(100, progressPct)}%` }}
-          />
-        </View>
-      )}
+      {!isLive && <MiniPlayerProgress />}
 
       <View className="flex-row items-center gap-3">
         {/* Track info — tap to open the full Now Playing screen */}

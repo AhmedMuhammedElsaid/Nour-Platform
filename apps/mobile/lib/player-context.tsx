@@ -189,6 +189,48 @@ export function usePlayerProgress(): PlayerProgressValue {
   return React.useContext(PlayerProgressContext);
 }
 
+// Owns the 250ms tick, so that `useProgress` lives in a LEAF rather than in
+// PlayerProvider's own body. Previously the provider called it directly, which
+// re-rendered the provider — and re-ran all five of its context `useMemo`s —
+// 4×/sec for the entire duration of playback, infinite live radio included,
+// competing with every navigation transition on the JS thread. `children` is a
+// stable element here, so React bails out of the subtree and the churn is
+// contained to this one node.
+//
+// `positionRef` is threaded in rather than kept local because the provider's own
+// 5s resume-position interval reads it (see the persistence effect there).
+const PlayerProgressProvider = React.memo(function PlayerProgressProvider({
+  positionRef,
+  children,
+}: {
+  positionRef: React.RefObject<number>;
+  children: React.ReactNode;
+}) {
+  const progress = useProgress(250);
+  positionRef.current = progress.position;
+
+  const value = React.useMemo<PlayerProgressValue>(
+    () => ({ currentTime: progress.position, duration: progress.duration }),
+    [progress.position, progress.duration],
+  );
+
+  return (
+    <PlayerProgressContext.Provider value={value}>{children}</PlayerProgressContext.Provider>
+  );
+});
+
+// Whether anything is loaded at all — a single boolean on its own context.
+//
+// `usePlayerTransport()` also carries `hasQueue`, but it changes on every
+// play/pause and every track advance. Layout consumers (useDockSpacing → every
+// scrollable screen) need ONLY the boolean, and must not re-render for the rest.
+const PlayerHasQueueContext = React.createContext(false);
+
+/** True when a queue is loaded, i.e. when the mini-player is on screen. */
+export function usePlayerHasQueue(): boolean {
+  return React.useContext(PlayerHasQueueContext);
+}
+
 // ---------------------------------------------------------------------------
 // Device-local prefs + positions (mirrors web's localStorage keys)
 // ---------------------------------------------------------------------------
@@ -525,9 +567,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   queueRef.current = queue;
   currentIndexRef.current = currentIndex;
 
-  // RNTP hooks.
+  // RNTP hooks. NOTE: `useProgress` is deliberately NOT called here — it lives
+  // in <PlayerProgressProvider>, a leaf below, so its 4Hz tick can't re-render
+  // this provider and re-run every context memo. Don't move it back up.
   const playbackState = usePlaybackState();
-  const progress = useProgress(250);
 
   const isPlaying = playbackState.state === RNTPState.Playing;
   const isBuffering =
@@ -663,8 +706,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   // Driven by its OWN 5s interval reading a ref, not by the 250ms `useProgress`
   // tick: as an effect on [progress.position] it re-ran 4×/sec for the entire
   // listening session — including infinite live-radio streams — just to fail a
-  // timestamp check 19 times out of 20.
-  positionRef.current = progress.position;
+  // timestamp check 19 times out of 20. `positionRef` is written by
+  // <PlayerProgressProvider>, which is the only subscriber to that tick.
   React.useEffect(() => {
     const id = setInterval(() => {
       const position = positionRef.current;
@@ -1091,26 +1134,22 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     ],
   );
 
-  // Isolated fast-ticking value — only mini-player + full player subscribe.
-  const progressValue = React.useMemo<PlayerProgressValue>(
-    () => ({ currentTime: progress.position, duration: progress.duration }),
-    [progress.position, progress.duration],
-  );
-
-  // Actions outermost (never changes) → prefs → queue → transport → progress
-  // (fastest). Nesting order doesn't affect correctness, but it reads as the
-  // update-frequency gradient it is.
+  // Actions outermost (never changes) → hasQueue → prefs → queue → transport →
+  // progress (fastest). Nesting order doesn't affect correctness, but it reads
+  // as the update-frequency gradient it is.
   return (
     <PlayerActionsContext.Provider value={actionsValue}>
-      <PlayerPrefsContext.Provider value={prefsValue}>
-        <PlayerQueueContext.Provider value={queueValue}>
-          <PlayerTransportContext.Provider value={transportValue}>
-            <PlayerProgressContext.Provider value={progressValue}>
-              {children}
-            </PlayerProgressContext.Provider>
-          </PlayerTransportContext.Provider>
-        </PlayerQueueContext.Provider>
-      </PlayerPrefsContext.Provider>
+      <PlayerHasQueueContext.Provider value={hasQueue}>
+        <PlayerPrefsContext.Provider value={prefsValue}>
+          <PlayerQueueContext.Provider value={queueValue}>
+            <PlayerTransportContext.Provider value={transportValue}>
+              <PlayerProgressProvider positionRef={positionRef}>
+                {children}
+              </PlayerProgressProvider>
+            </PlayerTransportContext.Provider>
+          </PlayerQueueContext.Provider>
+        </PlayerPrefsContext.Provider>
+      </PlayerHasQueueContext.Provider>
     </PlayerActionsContext.Provider>
   );
 }
