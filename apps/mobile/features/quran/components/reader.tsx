@@ -453,6 +453,18 @@ export function Reader({
   // (a sibling of the FlatList inside a `position: relative` wrapper — see
   // the two call sites below). `disabled` mirrors the old pill row's bounds
   // logic exactly (mushaf: page 1 / the last page; list: surah 1 / 114).
+  //
+  // Vertical centering is done via inline `style` (top: "50%" + a translateY
+  // transform), NOT the `top-1/2 -mt-[18px]` NativeWind combo this shipped
+  // with originally: on-device the button was fully functional (correct tap
+  // target, correct navigation, confirmed via accessibility-tree bounds) but
+  // painted NOTHING — an invisible-but-working button, worse than no button
+  // at all for the exact "make it easier to discover" goal this exists for.
+  // `insetInlineStart`/`insetInlineEnd` are used instead of `-start-1`/
+  // `-end-1` for the same reason — this positioning combination is novel to
+  // the app (no other screen combines `absolute` + a percentage inset), so it
+  // gets the most conservative, RN-native approach rather than another
+  // NativeWind arbitrary-value guess.
   function EdgeNav({
     onPrev,
     onNext,
@@ -475,8 +487,9 @@ export function Reader({
           accessibilityLabel={prevLabel}
           disabled={prevDisabled}
           onPress={onPrev}
+          style={{ position: "absolute", top: "50%", transform: [{ translateY: -18 }], insetInlineStart: 4 }}
           className={cn(
-            "absolute top-1/2 -mt-[18px] -start-1 size-9 items-center justify-center rounded-full bg-surface/90",
+            "size-9 items-center justify-center rounded-full bg-surface/90",
             prevDisabled && "opacity-0",
           )}
         >
@@ -487,8 +500,9 @@ export function Reader({
           accessibilityLabel={nextLabel}
           disabled={nextDisabled}
           onPress={onNext}
+          style={{ position: "absolute", top: "50%", transform: [{ translateY: -18 }], insetInlineEnd: 4 }}
           className={cn(
-            "absolute top-1/2 -mt-[18px] -end-1 size-9 items-center justify-center rounded-full bg-surface/90",
+            "size-9 items-center justify-center rounded-full bg-surface/90",
             nextDisabled && "opacity-0",
           )}
         >
