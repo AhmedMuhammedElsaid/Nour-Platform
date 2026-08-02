@@ -241,7 +241,7 @@
     "tafsirError": "Tafsir unavailable for this ayah.",
     "display": "Display",
     "layout": "Layout",
-    "layoutList": "List",
+    "layoutList": "Ayah",
     "layoutMushaf": "Mushaf",
     "pageN": "Page {{number}}",
     "juzN": "Juz {{number}}",
