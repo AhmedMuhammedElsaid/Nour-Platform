@@ -2569,3 +2569,73 @@ in the same app state. (`dumpsys gfxinfo` remains banned per perf pass #3.)
   Prefix with `MSYS_NO_PATHCONV=1`. Separately, a layer name containing `$_` must be quoted for
   the REMOTE shell (`adb shell "dumpsys SurfaceFlinger --latency '$LAYER'"`) or `$_` expands
   device-side and silently returns no data.
+
+## Owner feedback pass — 9 on-device points, all closed (2026-08-02)
+
+Points 1/3/5/6/7 (+ half of 2) done same-session as perf pass #4 above; the redesign points
+(2, 4) needed a design-gallery step first. Commits `7587d1c`..`4f60f8c`, pushed. OTA'd to
+**both** channels across two publishes: preview `fe745dba`/production `ebb59a66` (points
+1/3/5/6/7 + reader chrome), then preview `6bca8d1c`/production `24a07784` (settings sheet).
+Full monorepo gate 25/25 (exit 0) both times. Gallery artifact (owner review, not shipped
+code): `https://claude.ai/code/artifact/90cf94f2-f3fe-414b-90db-79c2085c162e`.
+
+- **Point 1 — back buttons.** Prayer Times/Adhkar/Quran/Downloads had no way back except the
+  tab bar. New `lib/nav.ts` → `goBackOrHome()` = `router.canGoBack() ? back() : replace("/")`
+  (owner's pick — pop real history when one exists, e.g. Quran index → surah → back correctly
+  lands on the index, not Home). All four screens now render a pinned `<ScreenHeader onBack>`.
+- **Point 3 — Bismillah clipped.** Root cause: `DIACRITIC_LINE_RATIO` (fit-mushaf-font.ts) was
+  1.6, but ordinary printed lines in the SAME font use `LINE_HEIGHT_RATIO` 2.2 — a line box 27%
+  tighter than the font needs, so Android clipped it. Raised to 2.2; it's shared by both render
+  paths and the fit model, so this one edit keeps them in sync (the repo's standing rule).
+- **Point 7 — dock spacing.** `useDockSpacing()` returned a flat 8dp on the premise that the
+  dock is a flex sibling so a screen "could never" render behind it — empirically false,
+  already patched around twice (`prayer-times`/`quran/index` `+88`, see the bottom-dock-overlap
+  entry). Now computes the REAL height from new exported `TAB_BAR_HEIGHT` (bottom-tab-bar.tsx)
+  + `MINI_PLAYER_HEIGHT` (mini-player.tsx) constants + a new `PlayerHasQueueContext` boolean
+  (added in perf pass #4, unused until now). Deleted all three ad-hoc guesses (the reader's
+  `+24` was actually UNDER-covering — it predates the mini-player term entirely). Also fixed a
+  plain bug found in the same sweep: Downloads' FlatList had NO `paddingBottom` at all.
+- **Point 6 — Downloads empty state.** Bare centered muted string → icon (existing
+  `DownloadsIcon`) + title + body + a CTA routing Home. New `downloads.emptyTitle/Body/Cta`
+  keys replace the single `downloads.empty` (no other callers).
+- **Points 2 + 5 — reader chrome + bottom nav, done together (same file).** Owner reviewed 5
+  concepts for the control cluster + 5 for the settings sheet via a published HTML gallery
+  (phone frames rendered in the app's real dark/light tokens). Picked **A3 "edge chevrons +
+  centre chip"**: one fixed top row (back · juz chip · settings, ~44dp, down from the old
+  mushaf header's two rows) + large chevrons pinned to the screen edges over the reading area
+  (`EdgeNav`, absolutely positioned via `top-1/2 -mt-[18px] -start-1`/`-end-1`) instead of a
+  button row — closer to a real page-corner tap. List mode gets prev/next **surah** (it had
+  none before, point 5) via a new `onChangeSurah` prop wired to `router.replace` (not push, so
+  a linear next-next-next session collapses into one history frame) + a new "Surah N of 114"
+  footer mirroring the mushaf page footer. Mushaf page turns now also `scrollToOffset(0)` —
+  list mode needs no equivalent, since a surah change is a route-param change that remounts the
+  screen with an already-fresh FlatList. New `SettingsIcon`/`ChevronLeftIcon`/`ChevronRightIcon`
+  in `player-icons.tsx`, retiring the reader's literal `⚙`/`‹` glyphs.
+- **Point 4 — settings sheet.** Owner picked **B1 "grouped cards"** with **B3's live preview**
+  cloned on top: a `Bismillah` sample pinned between the header and the scrollable cards,
+  reading the STAGED DRAFT (not committed prefs) so it restyles on every tap and reverts for
+  free on Cancel. Font size scales a presentational base constant, deliberately NOT the
+  reader's own `fitMushafFontSize` output — that depends on the current page's measured area,
+  which this sheet has no access to; the preview demonstrates relative scaling only. Settings
+  cluster into `SettingsCard` groups (Display/Layout/Translation/Reciter); staged-draft +
+  Save/Cancel mechanics (point 16, `9.3`/`2df93d9`) are untouched.
+
+⛔ **Retyped the Bismillah literal in the new test file before catching it** — wrote
+`BISMILLAH_UTHMANI`'s value by hand as a local test const instead of importing the real export,
+and the retyped copy was ALSO wrong (didn't match, test failed loudly — this time caught by a
+genuine assertion failure, not a silent corruption). Fixed by importing `BISMILLAH_UTHMANI`
+from `@repo/shared-core/quran/basmala` directly. Reinforces
+[[feedback_quranic_literal_integrity]]: even reaching for the literal in a NEW file is the
+trap — always import the constant, never type the characters.
+
+⚠️ **A72 lock-screen blocks screenshot verification** — `adb input swipe`/`keyevent` alone
+cannot clear a secured (PIN/pattern) keyguard; `dumpsys window | grep mCurrentFocus` showed
+`NotificationShade` and `dumpsys window | grep mDreamingLockscreen` showed `true`. Do not
+attempt to guess/brute the PIN — ask the owner to unlock, or fall back to the update
+state-machine logcat check (`grep "Updates state change:"`) to confirm delivery without pixels.
+That check DID confirm both OTAs landed: first launch `DownloadComplete`/`isUpdatePending=true`,
+second launch `CheckCompleteUnavailable` (already current) — same recipe as perf pass #4.
+
+**A72 pixel/interaction verify: still pending** (blocked by the lock-screen above). Everything
+else — gate, jest (48 suites / 232 tests), literal-integrity grep, OTA delivery via logcat — is
+confirmed. Ask before re-attempting device screenshots; don't try to bypass the keyguard again.
