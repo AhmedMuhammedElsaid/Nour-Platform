@@ -12,6 +12,7 @@ import { localKeyForDate } from "@repo/shared-core/prayer-times/aladhan";
 
 import { Text } from "@/components/ui/text";
 import { getKahfDismissedDate, setKahfDismissedDate } from "@/lib/device-local";
+import { useScreenActive } from "@/lib/use-screen-active";
 
 // Friday Surah Al-Kahf home card — visible Friday 12:00 → midnight unless
 // dismissed for the day (`nour.kahf.dismissed`, cross-surface contract with
@@ -40,11 +41,24 @@ export function KahfFridayCard() {
   // null = AsyncStorage not hydrated yet; "" = never dismissed.
   const [dismissedOn, setDismissedOn] = useState<string | null>(null);
 
+  // Home stays mounted for the whole session, so an ungated interval here ticks
+  // (and re-renders this card) forever behind whatever screen you are actually
+  // on. Only the clock is gated — the dismissed-date read still runs once on
+  // mount, since the card must know whether to show itself at all.
+  const screenActive = useScreenActive();
+
   useEffect(() => {
     void getKahfDismissedDate().then((d) => setDismissedOn(d ?? ""));
+  }, []);
+
+  useEffect(() => {
+    if (!screenActive) return;
+    // Re-sync immediately on refocus: the clock may be stale by up to a minute
+    // (or by hours, if the app was backgrounded) at the moment we resume.
+    setNow(new Date());
     const id = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(id);
-  }, []);
+  }, [screenActive]);
 
   const today = localKeyForDate(now);
   const dismiss = useCallback(() => {
