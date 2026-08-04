@@ -28,6 +28,11 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: `dist/${BROWSER}`,
+      // Bundled extension assets load from disk, not network, so the
+      // modulepreload polyfill/links are dead weight here — and Chrome's
+      // preload scanner flags them as "cross-world resource mismatch" on
+      // extension pages, which is console noise with no functional effect.
+      modulePreload: false,
       rollupOptions: {
         // The non-manifest HTML entry points: offscreen (Chrome) / player tab (Firefox).
       input: (
