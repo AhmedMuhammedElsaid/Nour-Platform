@@ -102,7 +102,11 @@ citing 51 or 47 tests are stale).
     refresh from registry).
 - [ ] **Load-unpacked smoke test**: new tab renders · continue-listening shows no live-radio
   cards · whole-row click plays · close/replay work · popup + options work · AR⇄EN + RTL +
-  light/dark · no SW console errors.
+  light/dark · no SW console errors. ✅ 2026-08-04: the `"A preload for '...modulepreload-polyfill...'
+  is found, but is not used because it is a cross-world extension resource mismatch"` console
+  warning is FIXED (`f4decd8`, `modulePreload: false` in `vite.config.ts` — bundled pages load
+  from disk not network, so the polyfill was dead weight; Chrome's preload scanner just couldn't
+  tell). Was cosmetic only (new-tab/popup/options pages, not the SW), but now gone entirely.
 - [ ] **Chrome Web Store submission** — $5 one-time registration at
   chrome.google.com/webstore/devconsole → upload zip → paste fields from
   `store-assets/LISTING.md` → privacy URL `https://nour-platform-web.vercel.app/privacy` →
@@ -407,7 +411,7 @@ class this project's gate structurally cannot see.
 | Surface | State | What's actually left |
 |---|---|---|
 | **Web** | ✅ Closest to done | 1 mechanical task (manifest screenshots) + 3 owner-manual submissions (GSC/Bing/UptimeRobot); 2 architectural decisions deliberately deferred (LCP hydration cost, no-cache CSP trade-off) |
-| **Extension** | ✅ Code ready, ⚠️ zips stale again | Icon fixed 2026-08-04 (N logo removed) → **zips need one more rebuild** (§A.3–A.4) + screenshots 1&3 recapture (owner-manual) + Chrome/Firefox devconsole submission (owner-manual) |
+| **Extension** | ✅ Code + zips ready | Icon fixed + console-warning fixed + zips rebuilt (671KB each) 2026-08-04, all pushed. Left: screenshots 1&3 recapture (owner-manual) + Chrome/Firefox devconsole submission (owner-manual) |
 | **Android** | ✅ Code ready, ⚠️ process not started | No code blockers, nothing unpushed, EAS env correct, heap re-measured → recommend CLOSE. ✅ Play Console **paid** 2026-08-04 (verify identity-verification completed). Real bottleneck now: first production AAB (never built) + `google-play-key.json` + store assets, none of which exist yet |
 | **iOS** | ❌ Not started | No Apple account; whole separate project phase; runbook already written (`publish_play_store.md` iOS-1→iOS-8) |
 
