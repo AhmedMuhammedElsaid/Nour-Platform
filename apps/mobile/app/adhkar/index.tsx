@@ -14,6 +14,7 @@ import { initialLocale } from "@/lib/i18n";
 import { goBackOrHome } from "@/lib/nav";
 import { adhkarListQuery } from "@/lib/queries";
 import { useDockSpacing } from "@/lib/use-dock-spacing";
+import { useTheme } from "@/lib/theme-context";
 import {
   azkarCompletedCount,
   getAzkarProgress,
@@ -21,12 +22,27 @@ import {
   type AzkarProgress,
 } from "@/lib/device-local";
 
+const KIND_EMOJI: Record<"morning" | "evening" | "other", string> = {
+  morning: "🌅",
+  evening: "🌙",
+  other: "📿",
+};
+
+// NativeWind's `bg-<token>/NN` opacity modifier silently no-ops against a CSS
+// custom-property color (no error) — resolve the tint as a literal rgba() by
+// theme instead (same workaround as tab-icons.tsx's TEXT_HEX maps).
+const ICON_TINT: Record<"dark" | "light", string> = {
+  dark: "rgba(200, 160, 80, 0.12)",
+  light: "rgba(154, 120, 48, 0.12)",
+};
+
 // Adhkar landing — a grid of sets (morning/evening/other), each showing a
 // daily-progress bar driven by device-local AsyncStorage state. Mirrors the
 // web `/adhkar` listing; reads-only here (writes happen in the reader screen).
 export default function AdhkarListScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { theme } = useTheme();
   const locale = initialLocale;
   const dockSpacing = useDockSpacing();
 
@@ -102,6 +118,12 @@ export default function AdhkarListScreen() {
               onPress={() => router.push(`/adhkar/${encodeURIComponent(display.slug)}`)}
             >
               <Card className="gap-2 p-4">
+                <View
+                  className="h-10 w-10 items-center justify-center rounded-xl"
+                  style={{ backgroundColor: ICON_TINT[theme] }}
+                >
+                  <Text className="text-xl">{KIND_EMOJI[item.kind]}</Text>
+                </View>
                 <Text variant="title">{display.title}</Text>
                 <Progress value={value} />
                 <Text variant="muted">
