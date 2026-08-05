@@ -29,11 +29,9 @@
 > D-U-N-S number), which can take days and gates publishing. Confirm the console shows the account
 > fully verified, not just paid, before counting this closed.
 >
-> ⚠️ **Still-unresolved doc conflict (paths):** `PRODUCTION.md` references
-> `apps/mobile/store/listing.md` + `apps/mobile/store/screenshots/`, while other docs say
-> `apps/mobile/store-assets/` — and neither directory currently exists on disk (verified
-> 2026-08-04). Two stale/competing conventions; **owner: pick one** before
-> trusting either claim.
+> ✅ **RESOLVED 2026-08-05: path is `apps/mobile/store/`** (not `store-assets/`) — owner
+> populated `apps/mobile/store/screenshots/` with real captures, settling the doc conflict in
+> favor of `PRODUCTION.md`'s convention.
 
 ---
 
@@ -323,9 +321,10 @@ Roadmap structure preserved from `review_mobile_report_fable.md` (2026-07-15, ve
    see conflict note top of file): `apps/mobile/store/listing.md` — privacy policy URL
    `https://nour.example.com/privacy` → `https://nour-platform-web.vercel.app/privacy`; contact
    email `front@tech-flow.nl` → real support contact.
-7. **Capture store assets**: phone screenshots (min 2), feature graphic (1024×500), hi-res icon
-   (512×512). Path per `PRODUCTION.md`: `apps/mobile/store/screenshots/` currently only has
-   `.gitkeep`.
+7. **Capture store assets**: phone screenshots — ✅ DONE 2026-08-05, `apps/mobile/store/
+   screenshots/screenshot-1..5.jpg` (owner-captured raw device shots, 922×2048, renamed +
+   ordered; `listing.md` updated to match). Still needed: feature graphic (1024×500), hi-res
+   icon (512×512).
 8. **Permission declarations** (top review-rejection risk):
    - `USE_EXACT_ALARM` / `SCHEDULE_EXACT_ALARM` — low risk, justify as "prayer-time alarm app,
      alarms must fire at the exact minute; core functionality."
@@ -421,7 +420,7 @@ class this project's gate structurally cannot see.
 |---|---|---|
 | **Web** | ✅ Closest to done | 1 mechanical task (manifest screenshots) + 3 owner-manual submissions (GSC/Bing/UptimeRobot); 2 architectural decisions deliberately deferred (LCP hydration cost, no-cache CSP trade-off) |
 | **Extension** | ✅ Code + zips + screenshots ready, all pushed | Icon fix + console-warning fix + cursor-pointer parity + zips rebuilt (671KB each) + screenshot set redone (5 shots, no junk cards) — all committed + pushed 2026-08-04. Left: Chrome/Firefox devconsole submission (owner-manual, the only remaining step) |
-| **Android** | ✅ Code ready, ⚠️ process not started | No code blockers, nothing unpushed, EAS env correct, heap re-measured → recommend CLOSE. ✅ Play Console **paid** 2026-08-04 (verify identity-verification completed). Real bottleneck now: first production AAB (never built) + `google-play-key.json` + store assets, none of which exist yet |
+| **Android** | ✅ Code ready, ⚠️ process not started | No code blockers, nothing unpushed, EAS env correct, heap re-measured → recommend CLOSE. ✅ Play Console **paid** 2026-08-04 (verify identity-verification completed). ✅ Screenshots + listing placeholders done 2026-08-05. Real bottleneck now: first production AAB (never built) + `google-play-key.json` + feature graphic + hi-res icon |
 | **iOS** | ❌ Not started | No Apple account; whole separate project phase; runbook already written (`publish_play_store.md` iOS-1→iOS-8) |
 
 ---
@@ -518,14 +517,12 @@ JS-only change — that breaks OTA delivery to installed builds. If nothing nati
 JS-only via `eas update` instead. ⚠️ `eas update` publishes the **WORKING TREE** but captions it with
 the **LAST COMMIT** — the caption lies; verify which bundle a device actually runs.
 
-**B.4 Store listing + assets.** ⚠️ **Path conflict, owner must pick one:** `PRODUCTION.md` used
-`apps/mobile/store/listing.md` + `apps/mobile/store/screenshots/`; other docs used
-`apps/mobile/store-assets/`. **Neither exists on disk** (verified 2026-08-04). Placeholders to fix
-once the path is chosen: privacy URL `https://nour.example.com/privacy` →
-`https://nour-platform-web.vercel.app/privacy`; contact email `front@tech-flow.nl` → real support
-address. Assets needed: phone screenshots (min 2), feature graphic 1024×500, hi-res icon 512×512
-(✅ icon wordmark/watermark FIXED 2026-08-04, see §Extension "Icon wordmark/watermark" above —
-generate the hi-res icon from the current `apps/mobile/assets/icon.png`).
+**B.4 Store listing + assets.** Path is `apps/mobile/store/` (resolved 2026-08-05). ✅ Placeholders
+fixed in `listing.md`: privacy URL → `https://nour-platform-web.vercel.app/privacy`; contact email →
+`ahmed.muhammed.elsaid@gmail.com` (matches `packages/shared-core/src/developer.ts`). ✅ Phone
+screenshots done (`screenshot-1..5.jpg`). Still needed: feature graphic 1024×500, hi-res icon
+512×512 (✅ icon wordmark/watermark FIXED 2026-08-04, see §Extension "Icon wordmark/watermark"
+above — generate the hi-res icon from the current `apps/mobile/assets/icon.png`).
 
 #### B.5 Permission decisions
 

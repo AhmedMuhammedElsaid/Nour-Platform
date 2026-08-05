@@ -29,21 +29,21 @@ This app does not sell or share your personal data. See our privacy policy for d
 Music & Audio
 
 ## Contact email
-front@tech-flow.nl
+ahmed.muhammed.elsaid@gmail.com
 
 ## Privacy policy URL
-https://nour.example.com/privacy
+https://nour-platform-web.vercel.app/privacy
 
 ## Content rating
 General audiences (no ads, appropriate for all ages)
 
 ## Screenshots (minimum 2, max 8)
-Recommended order:
-1. Home screen with playlists
-2. Quran player (verse detail + reciter)
-3. Prayer times screen
-4. Downloads screen
-5. Dark theme variant (home)
+`screenshots/screenshot-1.jpg` … `screenshot-5.jpg`, in order:
+1. Home — prayer-times sun arc + Qibla + reciters row
+2. Home — dhikr of the day + adhkar shelf + library
+3. Home — Qibla + reciters + radio shelf
+4. Quran — surah grid
+5. Adhkar — category list with progress
 
 ## Feature graphic (1024×500)
 Descriptive image of app hero + key feature (e.g. Quran player UI)
