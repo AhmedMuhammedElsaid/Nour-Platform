@@ -1,7 +1,7 @@
 # Chrome Web Store submission collateral — Nour v1.0.0
 
 > Copy-paste source for the devconsole fields (runbook: `apps/mobile/publish_play_store.md` Parts E–F).
-> Assets in this folder: `icon-128.png` (store icon, generated from `public/icons/icon-512.png`); `screenshot-1.png`–`screenshot-4.png` (1280×800, captured via `make-screenshot.ps1`).
+> Assets in this folder: `icon-128.png` (store icon, generated from `public/icons/icon-512.png`); `screenshot-1.png`–`screenshot-5.png` (1280×800, captured via `make-screenshot.ps1`) — 1: Home hero, 2: Home shelf (readers/radio/adhkar), 3: Quran surah grid, 4: Radio page, 5: Adhkar page.
 > Still optional: a promo tile (440×280).
 
 ---

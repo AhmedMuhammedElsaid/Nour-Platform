@@ -91,9 +91,13 @@ citing 51 or 47 tests are stale).
 
 ### Owner-manual steps
 
-- [ ] **Recapture store screenshots 1 & 3** at exactly `1280×800` — current files (all dated
-  Jul 14) still show pre-fix junk cards. **No agent can do this** — driving a browser to
-  screenshot a rendered extension isn't possible from here.
+- [x] ~~Recapture store screenshots 1 & 3~~ — **DONE 2026-08-04.** Owner captured 6 fresh raw
+  shots; agent normalized to `1280×800` via `make-screenshot.ps1` + palette-optimized (34–98 KB
+  each), replacing the whole old 4-shot set (no junk cards in any of the new 5). Now covers
+  Home hero, Home shelf (readers/radio/adhkar), Quran grid, Radio page, Adhkar page —
+  `screenshot-1..5.png`. `LISTING.md` line 4 updated to match. **Uncommitted** — these files
+  are git-tracked (not untracked as older memory claimed; correct going forward), stage +
+  commit before/with the store submission.
   - Recipe: load the built `dist/chrome` (⚠️ **never `pnpm dev` output** — causes `"SW
     registration failed: Status code 3"`), press "Clear" on the continue-listening shelf once,
     play one real playlist track, then capture. `store-assets/make-screenshot.ps1` normalizes a
@@ -417,7 +421,7 @@ class this project's gate structurally cannot see.
 | Surface | State | What's actually left |
 |---|---|---|
 | **Web** | ✅ Closest to done | 1 mechanical task (manifest screenshots) + 3 owner-manual submissions (GSC/Bing/UptimeRobot); 2 architectural decisions deliberately deferred (LCP hydration cost, no-cache CSP trade-off) |
-| **Extension** | ✅ Code + zips ready | Icon fix + console-warning fix + cursor-pointer parity + zips rebuilt (671KB each) 2026-08-04, all pushed. Left: screenshots 1&3 recapture (owner-manual) + Chrome/Firefox devconsole submission (owner-manual) |
+| **Extension** | ✅ Code + zips + screenshots ready | Icon fix + console-warning fix + cursor-pointer parity + zips rebuilt (671KB each) + screenshot set redone (5 shots, no junk cards) 2026-08-04. Zips verified current (icon hash-matches, 0 backslash paths); screenshot changes uncommitted. Left: commit screenshots + Chrome/Firefox devconsole submission (owner-manual) |
 | **Android** | ✅ Code ready, ⚠️ process not started | No code blockers, nothing unpushed, EAS env correct, heap re-measured → recommend CLOSE. ✅ Play Console **paid** 2026-08-04 (verify identity-verification completed). Real bottleneck now: first production AAB (never built) + `google-play-key.json` + store assets, none of which exist yet |
 | **iOS** | ❌ Not started | No Apple account; whole separate project phase; runbook already written (`publish_play_store.md` iOS-1→iOS-8) |
 
