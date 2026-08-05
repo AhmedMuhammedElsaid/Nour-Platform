@@ -2795,3 +2795,8 @@ correctly, repeat-one still repeats, live radio still plays/shows LIVE/still aut
 still rehydrates without restarting the stream. Ships via `eas update` (JS-only, no native
 rebuild) — confirm the target channel matches what the A72 actually tracks (see the EAS
 channel-mismatch trap earlier in this file) before assuming a push landed.
+
+**Merged to `main` + pushed + OTA'd 2026-08-05**: commit `bf4625f`, pushed to `origin/main`.
+Published to the **preview** channel (matches the A72's tracked channel): update group
+`a711087c-807c-41f4-a287-a45c9c033fcc`, runtime `1.1.1`, both platforms. NOT published to
+production this round. Still `⚠️ PENDING`: the A72 device-verify checklist above.
