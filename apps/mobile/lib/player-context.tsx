@@ -6,6 +6,7 @@
 
 import * as React from "react";
 import { getLocalPath } from "@/lib/downloads";
+import { indexOfTrackId, NATIVE_QUEUE_LOOKAHEAD, toNativeTrack, upcomingIndices } from "@/lib/native-queue";
 import { getUserWantsPlayback, setUserWantsPlayback } from "@/lib/playback-intent";
 import TrackPlayer, {
   AppKilledPlaybackBehavior,
@@ -552,9 +553,17 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   // has run, or the empty initial state would clobber a surviving session
   // before we get a chance to read it back.
   const sessionHydratedRef = React.useRef(false);
-  // One-shot: when we adopt a surviving native session on reopen, suppress the
-  // load effect once so it doesn't reset/re-add/replay the already-loaded track.
+  // One-shot: suppresses the load effect's reset/add/play once. Set both when
+  // adopting a surviving native session on reopen (the track is already loaded)
+  // AND when the PlaybackActiveTrackChanged handler advances currentIndex to a
+  // track RNTP has already started playing from its own prebuffered window —
+  // in both cases a reset()+add() here would restart/hiccup the stream.
   const skipNextLoadRef = React.useRef(false);
+  // Ordered list of QUEUE indices (not native positions) currently loaded into
+  // the RNTP native queue since the last loadWindow() reset — an append-only
+  // bookkeeping ref so the ActiveTrackChanged top-up and primeUpcoming() know
+  // exactly which upcoming tracks are already native-side vs. still need adding.
+  const nativeQueueIndicesRef = React.useRef<number[]>([]);
 
   // Mirrors of state that ACTIONS need to read. Reading them through refs is
   // what keeps every callback below on a `[]` dep list, which in turn keeps the
@@ -613,6 +622,25 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       let restoredIndex = session
         ? Math.min(Math.max(session.index, 0), session.queue.length - 1)
         : activeIndex;
+
+      // Prefer resolving the ACTUALLY active native track by id over the
+      // persisted numeric index. The persist effect writes asynchronously, so
+      // a kill landing in the narrow window right after an advance (more
+      // reachable now that the native queue can auto-advance across several
+      // prebuffered tracks without a JS round-trip) could leave session.index
+      // one track stale. Falls back to the numeric index above when the
+      // native track's id isn't found in the session (e.g. a legacy session).
+      if (restoredQueue && restoredQueue.length > 0) {
+        try {
+          const activeTrack = await TrackPlayer.getActiveTrack();
+          if (cancelled) return;
+          const byId = activeTrack ? indexOfTrackId(restoredQueue, activeTrack.id) : -1;
+          if (byId !== -1) restoredIndex = byId;
+        } catch {
+          // Keep the numeric fallback computed above.
+        }
+      }
+
       if (!restoredQueue || restoredQueue.length === 0) {
         // Fallback: rebuild a minimal queue from the native tracks so the user
         // can still see + stop what's playing (loses isLive; rarely reached).
@@ -630,6 +658,24 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       if (cancelled || !restoredQueue || restoredQueue.length === 0) {
         sessionHydratedRef.current = true;
         return;
+      }
+
+      // Seed the native-window bookkeeping from whatever RNTP actually still
+      // has loaded (the native player can survive a kill with its prebuffered
+      // lookahead intact) so the next auto-advance top-up doesn't re-add a
+      // track that's already there. Falls back to "only the current track is
+      // known" — safe, just means one extra top-up on the next advance.
+      try {
+        const nativeQueue = await TrackPlayer.getQueue();
+        const restored = restoredQueue;
+        nativeQueueIndicesRef.current = nativeQueue
+          .map((t) => indexOfTrackId(restored, t.id))
+          .filter((i) => i !== -1);
+      } catch {
+        nativeQueueIndicesRef.current = [restoredIndex];
+      }
+      if (nativeQueueIndicesRef.current.length === 0) {
+        nativeQueueIndicesRef.current = [restoredIndex];
       }
 
       // Adopt without triggering the load effect's reset/add/play.
@@ -720,7 +766,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(id);
   }, []);
 
-  // Handle RNTP track ending — drive our own repeat/shuffle advancement.
+  // Fires only once the WHOLE native queue is exhausted — with the multi-track
+  // lookahead below, PlaybackActiveTrackChanged handles every ordinary
+  // boundary (repeat-off mid-list, repeat-all wrap) without reaching here at
+  // all. This remains the fallback for: the true end of a repeat-off queue
+  // (nothing left to prebuffer), a single-item queue (live radio — never
+  // gets a lookahead), and repeat-one (lookahead is deliberately empty, see
+  // native-queue.ts). `clearStoredPosition` here is a safety net for that
+  // true-end case specifically; ActiveTrackChanged already clears it on every
+  // ordinary advance, so this is a harmless no-op duplicate on those paths.
   useTrackPlayerEvents([Event.PlaybackQueueEnded], () => {
     const idx = currentIndexRef.current;
     const q = queueRef.current;
@@ -761,6 +815,70 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
+  // Fires when RNTP's native queue auto-advances to a track it already had
+  // prebuffered (the whole point of the multi-track native window below) — the
+  // ordinary case for every ayah/track boundary. Maps the native track's id
+  // back to our own queue index, updates React state WITHOUT reloading (the
+  // track is already loaded and playing natively), and tops the window back
+  // up so the boundary after this one is prebuffered too.
+  useTrackPlayerEvents([Event.PlaybackActiveTrackChanged], (event) => {
+    const e = event as {
+      index?: number | null;
+      track?: { id?: unknown } | null;
+      lastTrack?: { id?: unknown } | null;
+    };
+    if (e.index == null) return;
+    const mappedIndex = indexOfTrackId(queueRef.current, e.track?.id);
+    // Unknown track (e.g. an event fired before our queue state caught up) or
+    // a no-op re-fire for the track we're already on — nothing to do.
+    if (mappedIndex === -1 || mappedIndex === currentIndexRef.current) return;
+
+    if (e.lastTrack?.id != null) {
+      void clearStoredPosition(String(e.lastTrack.id));
+    }
+
+    skipNextLoadRef.current = true;
+    setCurrentIndex(mappedIndex);
+
+    // Top up: add whichever upcoming tracks aren't already native-side. In the
+    // steady state this is exactly one track (the window sliding forward by
+    // one), computed by diffing against nativeQueueIndicesRef rather than
+    // assuming a fixed count — a boundary near the end of a repeat-off queue
+    // legitimately has fewer (or zero) new tracks to add, and diffing avoids
+    // re-adding a track that's already in the native queue in that case.
+    void (async () => {
+      const q = queueRef.current;
+      const track = q[mappedIndex];
+      if (!track || track.isLive || repeatModeRef.current === "one" || sleepAtTrackEndRef.current) {
+        return;
+      }
+      const target = upcomingIndices(
+        playOrderRef.current,
+        mappedIndex,
+        repeatModeRef.current,
+        NATIVE_QUEUE_LOOKAHEAD,
+      );
+      const known = new Set(nativeQueueIndicesRef.current);
+      const toAdd = target.filter((i) => !known.has(i));
+      if (toAdd.length === 0) return;
+      const tracksToAdd = toAdd
+        .map((i) => q[i])
+        .filter((t): t is QueueTrack => Boolean(t));
+      if (tracksToAdd.length === 0) return;
+      try {
+        const nativeTracks = await Promise.all(
+          tracksToAdd.map(async (t) => toNativeTrack(t, await getLocalPath(t.id))),
+        );
+        await TrackPlayer.add(nativeTracks);
+        nativeQueueIndicesRef.current = [...nativeQueueIndicesRef.current, ...toAdd];
+      } catch {
+        // Best-effort — a missed top-up just means one future boundary isn't
+        // prebuffered; PlaybackActiveTrackChanged / PlaybackQueueEnded still
+        // recover correctly, just without the gapless benefit that one time.
+      }
+    })();
+  });
+
   // Handle playback errors.
   useTrackPlayerEvents([Event.PlaybackError], (event) => {
     const track = queueRef.current[currentIndexRef.current];
@@ -795,33 +913,48 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     );
   });
 
-  // When currentIndex changes, load the track into RNTP and play.
+  // When currentIndex changes via a MANUAL action (loadQueue/next/prev/goTo/
+  // repeat-one replay/the PlaybackQueueEnded fallback walk), load a fresh
+  // native window and play. PlaybackActiveTrackChanged advances currentIndex
+  // too, but always sets skipNextLoadRef first — the track it points at is
+  // already loaded and playing natively, so this effect must NOT reset/re-add
+  // it (that would restart/hiccup the stream, reintroducing the exact gap
+  // this phase exists to remove).
   React.useEffect(() => {
     if (currentIndex < 0 || currentIndex >= queue.length) return;
     const track = queue[currentIndex];
     if (!track) return;
 
-    // Adopting a surviving native session (see the adopt-on-mount effect): the
-    // track is already loaded and (paused) in the native player, so skip the
-    // reset/add/play that would restart the stream. Consume the one-shot flag.
+    // Adopting a surviving native session (see the adopt-on-mount effect) or
+    // an auto-advance onto an already-native-playing track (see
+    // PlaybackActiveTrackChanged above): consume the one-shot flag and bail.
     if (skipNextLoadRef.current) {
       skipNextLoadRef.current = false;
       return;
     }
 
-    const load = async (): Promise<void> => {
+    const loadWindow = async (): Promise<void> => {
       await setupPlayer();
       await TrackPlayer.reset();
-      // Prefer a locally downloaded file over the remote URL (offline support).
-      const localPath = await getLocalPath(track.id);
-      await TrackPlayer.add({
-        id: track.id,
-        url: localPath ?? track.mediaUrl,
-        title: track.title,
-        artist: track.playlistTitle ?? "",
-        artwork: track.coverUrl,
-        duration: track.durationSecs,
-      });
+
+      // Live streams, repeat-one, and an armed "stop at end of track" sleep
+      // must never get a lookahead — see native-queue.ts / primeUpcoming.
+      const upcoming =
+        !track.isLive && repeatModeRef.current !== "one" && !sleepAtTrackEndRef.current
+          ? upcomingIndices(playOrderRef.current, currentIndex, repeatModeRef.current, NATIVE_QUEUE_LOOKAHEAD)
+          : [];
+      const windowIndices = [currentIndex, ...upcoming];
+      const windowTracks = windowIndices
+        .map((i) => queue[i])
+        .filter((t): t is QueueTrack => Boolean(t));
+
+      // Prefer a locally downloaded file over the remote URL (offline support)
+      // for every track in the window, not just the active one.
+      const nativeTracks = await Promise.all(
+        windowTracks.map(async (t) => toNativeTrack(t, await getLocalPath(t.id))),
+      );
+      await TrackPlayer.add(nativeTracks);
+      nativeQueueIndicesRef.current = windowIndices;
 
       // Apply stored rate — never to a live stream (a saved non-1x rate would
       // stall it at the live edge; live playback is always real-time).
@@ -829,7 +962,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         await TrackPlayer.setRate(playbackRateRef.current);
       }
 
-      // Resume position — live streams always play from the live edge.
+      // Resume position — live streams always play from the live edge. Only
+      // ever applies to the ACTIVE track (native index 0 in the window).
       const saved = track.isLive ? 0 : await getStoredPosition(track.id);
       if (saved >= RESUME_MIN_SECONDS) {
         const dur = track.durationSecs ?? 0;
@@ -850,22 +984,31 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         clearTimeout(liveRetryTimerRef.current);
         liveRetryTimerRef.current = null;
       }
-
-      // Record in recently-played — skip live radio, it has no "recently
-      // played" meaning and would just leave a no-op row in Continue listening.
-      if (!track.isLive) {
-        void recordRecentlyPlayed({
-          trackId: track.id,
-          title: track.title,
-          playlistTitle: track.playlistTitle,
-          playlistSlug: track.playlistSlug,
-          duration: track.durationSecs,
-        });
-      }
     };
 
-    void load().catch(() => {
+    void loadWindow().catch(() => {
       setErrorMessage("Couldn't play this track.");
+    });
+  }, [currentIndex, queue]);
+
+  // Records the active track in recently-played. Split out from the load
+  // effect above because auto-advance (PlaybackActiveTrackChanged) no longer
+  // passes through it — this effect fires for BOTH load-driven and
+  // native-advance-driven index changes. Same [currentIndex, queue] dep shape
+  // as the load effect above; a re-fire from an unrelated same-track queue
+  // identity change is a harmless extra MRU-timestamp bump, not a bug.
+  React.useEffect(() => {
+    if (currentIndex < 0 || currentIndex >= queue.length) return;
+    const track = queue[currentIndex];
+    // Skip live radio — it has no "recently played" meaning and would just
+    // leave a no-op row in Continue listening.
+    if (!track || track.isLive) return;
+    void recordRecentlyPlayed({
+      trackId: track.id,
+      title: track.title,
+      playlistTitle: track.playlistTitle,
+      playlistSlug: track.playlistSlug,
+      duration: track.durationSecs,
     });
   }, [currentIndex, queue]);
 
@@ -965,7 +1108,48 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setQueue([]);
     setCurrentIndex(-1);
     playOrderRef.current = [];
+    nativeQueueIndicesRef.current = [];
     void TrackPlayer.reset();
+  }, []);
+
+  // Re-syncs the native lookahead window with the CURRENT playOrderRef/
+  // repeatModeRef/sleepAtTrackEndRef after any of them change mid-playback —
+  // without this, shuffling, cycling repeat, or arming/cancelling "stop at
+  // end of track" would leave RNTP's prebuffered upcoming tracks pointing at
+  // the STALE order, so the next boundary would auto-advance to the wrong
+  // track. Always trims first (removeUpcomingTracks — the active track is
+  // never removed by that call) then re-adds whatever the fresh window calls
+  // for, so a shrink (e.g. arming end-of-track) and a grow (e.g. cancelling
+  // it) both end up correct. Every caller is a `[]`-dep action, so this stays
+  // `[]` too (all reads go through refs) — keeps actionsValue identity-stable.
+  const primeUpcoming = React.useCallback(async (): Promise<void> => {
+    const idx = currentIndexRef.current;
+    const q = queueRef.current;
+    if (idx < 0 || idx >= q.length) return;
+    const track = q[idx];
+    if (!track) return;
+    try {
+      await TrackPlayer.removeUpcomingTracks();
+    } catch {
+      return;
+    }
+    nativeQueueIndicesRef.current = [idx];
+    if (track.isLive || repeatModeRef.current === "one" || sleepAtTrackEndRef.current) {
+      return;
+    }
+    const upcoming = upcomingIndices(playOrderRef.current, idx, repeatModeRef.current, NATIVE_QUEUE_LOOKAHEAD);
+    if (upcoming.length === 0) return;
+    const tracksToAdd = upcoming.map((i) => q[i]).filter((t): t is QueueTrack => Boolean(t));
+    if (tracksToAdd.length === 0) return;
+    try {
+      const nativeTracks = await Promise.all(
+        tracksToAdd.map(async (t) => toNativeTrack(t, await getLocalPath(t.id))),
+      );
+      await TrackPlayer.add(nativeTracks);
+      nativeQueueIndicesRef.current = [idx, ...upcoming];
+    } catch {
+      // Best-effort, same as the ActiveTrackChanged top-up.
+    }
   }, []);
 
   const cycleRepeat = React.useCallback((): void => {
@@ -973,9 +1157,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const seq: RepeatMode[] = ["off", "all", "one"];
       const next = seq[(seq.indexOf(prev) + 1) % seq.length] as RepeatMode;
       repeatModeRef.current = next;
+      void primeUpcoming();
       return next;
     });
-  }, []);
+  }, [primeUpcoming]);
 
   const toggleShuffle = React.useCallback((): void => {
     setIsShuffled((prev) => {
@@ -986,9 +1171,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         next,
         currentIndexRef.current,
       );
+      void primeUpcoming();
       return next;
     });
-  }, []);
+  }, [primeUpcoming]);
 
   const setPlaybackRate = React.useCallback((rate: number): void => {
     playbackRateRef.current = rate;
@@ -1019,16 +1205,25 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       sleepAtTrackEndRef.current = false;
       setSleepAtTrackEnd(false);
       setSleepTimerEndsAt(null);
+      // Cancelling a previously-armed "end of track" must re-prime the
+      // lookahead — it was trimmed to just the current track while armed.
+      void primeUpcoming();
       return;
     }
     if (option === "end-of-track") {
       sleepAtTrackEndRef.current = true;
       setSleepAtTrackEnd(true);
       setSleepTimerEndsAt(null);
+      // Trim the native window to just the current track so it genuinely
+      // ends there — PlaybackQueueEnded is what "stop at end of track" relies on.
+      void primeUpcoming();
       return;
     }
     sleepAtTrackEndRef.current = false;
     setSleepAtTrackEnd(false);
+    // A numeric countdown doesn't affect end-of-track semantics, but it may
+    // be replacing a previously-armed end-of-track option — re-prime in case.
+    void primeUpcoming();
     const ms = option * 60_000;
     setSleepTimerEndsAt(Date.now() + ms);
     sleepTimeoutRef.current = setTimeout(() => {
@@ -1052,7 +1247,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         }
       }, 200);
     }, ms);
-  }, []);
+  }, [primeUpcoming]);
 
   // Cleanup sleep timeout on unmount.
   React.useEffect(() => {

@@ -2714,3 +2714,84 @@ already documented above; this is a second hit of the same class, worth grepping
 Tailwind opacity suffixes on token colors if it ever needs auditing repo-wide. Commit `283c344`,
 pushed, OTA'd to **preview channel only** (owner chose not to touch production this round) —
 update group `515d3849`, runtime `1.1.1`. Device-verify (both themes) pending.
+
+## Ayah-by-ayah audio gap — RNTP native multi-track queue (2026-08-05, JS-only, ⚠️ device-verify PENDING)
+
+**Bug (owner-reported):** an audible pause before each next ayah loads during Quran recitation —
+not smooth, present on web/extension too but this entry covers the mobile fix only. Full plan:
+`docs/superpowers/plans/2026-08-05-ayah-audio-gapless-playback.md` (Phase 1 of 3; web/extension
+phases are separate sessions).
+
+**Root cause:** `lib/player-context.tsx`'s load effect drove RNTP as a **single-track player** —
+every ayah/track boundary did `TrackPlayer.reset()` → `add(ONE track)` → `play()`, triggered only
+AFTER the previous track's `Event.PlaybackQueueEnded` fired. RNTP/ExoPlayer never had more than one
+track loaded, so it could never prebuffer the next one (`minBuffer:30` in `setupPlayer()` was
+already correct but useless with an empty lookahead). This is the SAME code path used by playlists
+and live radio, not just the Quran reader (`features/quran/lib/ayah-queue.ts` → `player.loadQueue`).
+
+**Fix, all in `lib/player-context.tsx` + new `lib/native-queue.ts`:**
+- New pure `lib/native-queue.ts`: `NATIVE_QUEUE_LOOKAHEAD = 2`, `upcomingIndices(order,
+  currentIndex, repeatMode, count)` (walks the shuffle/play order forward, wraps on repeat-all,
+  empty on repeat-one), `toNativeTrack`, `indexOfTrackId`. 18 unit tests
+  (`__tests__/native-queue.test.ts`), no RNTP import so it's testable without the native mock.
+- The load effect now builds a **window** `[currentIndex, ...upcoming]` and issues ONE
+  `TrackPlayer.add([...])` call with the array — live tracks / repeat-one / an armed "stop at end
+  of track" sleep always get an empty lookahead (never queue ahead of an infinite stream or past a
+  deliberate stop point).
+- **New `Event.PlaybackActiveTrackChanged` handler** — fires when RNTP auto-advances onto a track
+  it already had prebuffered (the ordinary case for every boundary now). Maps the native track's id
+  back to our queue index (`indexOfTrackId`, NOT the native positional index — see the adopt fix
+  below for why id-mapping matters), sets `currentIndex` with the existing `skipNextLoadRef`
+  one-shot suppressing the load effect (so it does NOT reset/re-add the already-playing track —
+  that would reintroduce the exact gap), then tops the window back up by ONE track. The top-up
+  diffs against a new `nativeQueueIndicesRef` (append-only list of queue-indices already native-
+  side since the last reset) rather than assuming a fixed count — a boundary near the end of a
+  repeat-off queue legitimately has fewer new tracks to add, and diffing avoids re-adding a track
+  that's already there (a naive "always add the last upcomingIndices() entry" approach double-adds
+  near that boundary — caught by the "tops up exactly the newly-revealed track" test, see below).
+- `Event.PlaybackQueueEnded` is now purely the **fallback** path — true end of a repeat-off queue,
+  a single-item live-radio queue, and repeat-one (all three deliberately get zero lookahead, so
+  RNTP genuinely exhausts its queue on each of their boundaries). Logic unchanged otherwise.
+- New `primeUpcoming()` re-syncs the native window (`removeUpcomingTracks()` then re-add) whenever
+  `playOrderRef`/`repeatModeRef`/`sleepAtTrackEndRef` change mid-playback — wired into
+  `toggleShuffle`, `cycleRepeat`, and all three `setSleepTimer` branches. Without this a shuffle/
+  repeat-mode change while playing would leave RNTP's prebuffered tracks pointing at the stale
+  order and auto-advance to the wrong track.
+- `recordRecentlyPlayed` moved out of the load effect into its own `[currentIndex, queue]` effect —
+  auto-advance no longer passes through the load effect at all, so leaving it in place would have
+  silently stopped recording ayahs/tracks 2..n in Continue Listening.
+- **Adopt-on-mount session rehydration** (post-app-kill restore) now resolves the actually-active
+  native track via `TrackPlayer.getActiveTrack()` + `indexOfTrackId(session.queue, ...)` rather
+  than trusting the persisted numeric index alone — the persist effect writes asynchronously, so a
+  kill landing in the narrow window right after an auto-advance (more reachable now that advances
+  can happen natively without a JS round-trip) could otherwise leave `session.index` one track
+  stale. Falls back to the old numeric index when the id isn't found. Also seeds
+  `nativeQueueIndicesRef` from `TrackPlayer.getQueue()` on adopt so the first post-reopen top-up
+  doesn't try to re-add a track RNTP already has.
+
+**Accepted trade-off:** manual `next()`/`prev()`/`goTo()` deliberately stay on the OLD full-reload
+path (unchanged) — only auto-advance benefits from the gapless window. Keeps the blast radius of
+this phase to auto-advance only.
+
+**Tests:** `__tests__/native-queue.test.ts` (18, pure helpers) + new
+`__tests__/player-context-queue.test.tsx` (7, provider-level: multi-track window on load, no
+lookahead for live/repeat-one, advance-without-reset regression guard, exact-diff top-up, sleep
+end-of-track trims the window, offline local-path substitution in the window). Full gate green:
+typecheck/lint (0 warnings) clean, **255 tests / 50 suites**, `expo export --platform android`
+compiles. ⚠️ **Gotcha for next session**: this test file needs `await AsyncStorage.clear()` in its
+`beforeEach` (missing it first caused a real cross-test failure — `cycleRepeat`/`toggleShuffle`
+persist prefs to the SAME mocked AsyncStorage instance across tests in a file, so one test's
+repeat-one mode silently hydrated into the next test's fresh `PlayerProvider` mount and broke an
+unrelated assertion). `player-context-session.test.tsx` already does this; a new player-context
+test file that doesn't will intermittently fail depending on test order.
+
+**⚠️ DEVICE-VERIFY REQUIRED, NOT DONE — do not mark this fixed until it is.** Per this file's own
+rule: jest mocks prove the JS calls the right RNTP APIs, they prove NOTHING about ExoPlayer actually
+prebuffering audibly-smoothly on hardware. Needed on the A72 before calling this closed: (1) Al-
+Fatiha autoplay, ayahs 2–7 run together with no audible gap, on mobile data not just Wi-Fi; (2)
+regression sweep — a playlist plays through ≥3 tracks, shuffle mid-playback still advances
+correctly, repeat-one still repeats, live radio still plays/shows LIVE/still auto-retries, sleep
+"end of track" still stops at the boundary, lock-screen next/prev still work, force-close→reopen
+still rehydrates without restarting the stream. Ships via `eas update` (JS-only, no native
+rebuild) — confirm the target channel matches what the A72 actually tracks (see the EAS
+channel-mismatch trap earlier in this file) before assuming a push landed.

@@ -298,6 +298,7 @@ jest.mock("react-native-track-player", () => {
     PlaybackError: "playback-error",
     PlaybackState: "playback-state",
     PlaybackProgressUpdated: "playback-progress-updated",
+    PlaybackActiveTrackChanged: "playback-active-track-changed",
   };
   const Capability = {
     Play: "play",
@@ -334,10 +335,15 @@ jest.mock("react-native-track-player", () => {
       // Default to "cold start, nothing playing" so existing suites are
       // unaffected; the session test overrides these per-case.
       getActiveTrackIndex: jest.fn().mockResolvedValue(undefined),
+      getActiveTrack: jest.fn().mockResolvedValue(undefined),
+      getTrack: jest.fn().mockResolvedValue(undefined),
       getQueue: jest.fn().mockResolvedValue([]),
       getPlaybackState: jest.fn().mockResolvedValue({ state: State.None }),
       skipToNext: jest.fn().mockResolvedValue(undefined),
       skipToPrevious: jest.fn().mockResolvedValue(undefined),
+      skip: jest.fn().mockResolvedValue(undefined),
+      remove: jest.fn().mockResolvedValue(undefined),
+      removeUpcomingTracks: jest.fn().mockResolvedValue(undefined),
       registerPlaybackService: jest.fn(),
       addEventListener: jest.fn(),
     },
