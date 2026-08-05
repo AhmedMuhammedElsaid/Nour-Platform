@@ -2800,3 +2800,13 @@ channel-mismatch trap earlier in this file) before assuming a push landed.
 Published to the **preview** channel (matches the A72's tracked channel): update group
 `a711087c-807c-41f4-a287-a45c9c033fcc`, runtime `1.1.1`, both platforms. NOT published to
 production this round. Still `⚠️ PENDING`: the A72 device-verify checklist above.
+
+## Play Store screenshots + listing placeholders (2026-08-05, `002eeb5`, docs-only)
+
+Owner captured 5 raw device shots; renamed/ordered into
+`apps/mobile/store/screenshots/screenshot-1..5.jpg` (922×2048, no resize needed — within Play's
+portrait limits). `store/listing.md` privacy URL → `https://nour-platform-web.vercel.app/privacy`,
+contact email → `ahmed.muhammed.elsaid@gmail.com` (was placeholder `front@tech-flow.nl`/
+`nour.example.com`). Resolves `RELEASE.md`'s `store/` vs `store-assets/` path-conflict note in
+favor of `store/`. Remaining Android blockers unchanged: production AAB never built,
+`google-play-key.json` missing, feature graphic (1024×500) + hi-res icon (512×512) not made.
