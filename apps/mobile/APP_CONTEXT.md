@@ -2639,3 +2639,78 @@ second launch `CheckCompleteUnavailable` (already current) — same recipe as pe
 **A72 pixel/interaction verify: still pending** (blocked by the lock-screen above). Everything
 else — gate, jest (48 suites / 232 tests), literal-integrity grep, OTA delivery via logcat — is
 confirmed. Ask before re-attempting device screenshots; don't try to bypass the keyguard again.
+
+## Points 2/4 redesign — device-verify fallout, EdgeNav REMOVED, dock-spacing REVERTED (2026-08-02, same day)
+
+Follow-up session to the entry above. The A72 lock-screen cleared (owner re-paired wireless
+debugging mid-session — pairing codes are one-shot, re-pair each time the connection drops).
+Full pixel-verify done; found and fixed 3 real regressions, then the owner rejected the point-2
+redesign's INTERACTION MODEL outright (not a bug — a product call). Commits `3daae12`..`622753b`.
+
+- **EdgeNav (the A3 floating edge-chevron buttons) is GONE.** Owner: floating buttons over the
+  reading content read as "the shitty web app on mobile," not a native pattern. Page/surah
+  navigation is now **swipe-only** on both Mushaf and List mode (`8e9d14a`) — List mode gained
+  a `listPanResponder` mirroring the pre-existing `mushafPanResponder` exactly (same
+  `resolveSwipeDirection`/`MUSHAF_SWIPE_THRESHOLD` helper, bounded by `[MIN_SURAH, MAX_SURAH]`
+  instead of nullable prevPage/nextPage). **If asked to add page/surah nav controls again, ask
+  first — don't default back to a floating button overlay.** The gesture-only interaction is a
+  confirmed, deliberate owner preference, not an oversight.
+- **EdgeNav's debugging saga (kept for the pattern, even though the component is deleted):**
+  shipped 3 times with the button fully functional (correct a11y-tree bounds, correct tap,
+  correct nav) but rendering NOTHING. `top-1/2 -mt-[18px]` (NativeWind) → inline
+  `top:"50%"`+transform → `zIndex`/`elevation` (this app has 3 other overlay-vs-scrollable-
+  sibling cases that needed exactly that: `animated-splash.tsx`/`navigation-progress.tsx`/
+  `adhan-stop-card.tsx` — real, worth keeping in mind for any FUTURE absolutely-positioned
+  overlay near a FlatList/ScrollView) — none of these were the bug. Root cause, found via a
+  debug build swapping `bg-surface/90` for a solid `bg-danger`: **NativeWind's opacity modifier
+  (`/NN`) cannot resolve against a CSS-custom-property-based color token** (`--color-surface`
+  is `var(--color-surface)`, not a static hex NativeWind can decompose for RGBA blending) —
+  silently produces NO paint, no error, no fallback. ⛔ **If a future `bg-<token>/NN` className
+  ever renders invisible on Android, check this first** — resolve a literal `rgba()` by hand
+  instead (same reasoning as the file's `TEXT_HEX`/`TEXT_2_HEX` maps, which exist because SVG
+  can't read NativeWind classes — this is a DIFFERENT NativeWind gap).
+- **dock-spacing REVERTED, supersedes the "real dock height" fix in the perf-pass-4 entry
+  above.** That fix (`TAB_BAR_HEIGHT + MINI_PLAYER_HEIGHT + insets.bottom`, ~150-190dp) was
+  owner-reported as a large empty gap on the bottom of EVERY tab, worst whenever a queue was
+  loaded. Root cause: the dock is a flex SIBLING of `<Stack/>` (`app/_layout.tsx`), not an
+  absolute overlay — it most likely already shrinks the Stack's own `flex:1` area by its real
+  rendered height, the same way any two ordinary flex siblings interact. Re-adding that height
+  as `paddingBottom` on top double-reserved it. `usePlayerHasQueue`/`TAB_BAR_HEIGHT`/
+  `MINI_PLAYER_HEIGHT` exports are UNUSED now (kept, harmless) — `lib/use-dock-spacing.ts` is
+  back to a small flat `16 + insets.bottom`. The historical "content hidden behind the dock"
+  reports (prayer-times/quran-index/adhkar, 2026-07-31) were most likely actually fixed by the
+  bare-Fragment→`<View className="flex-1 bg-bg">` WRAP pattern, a separate real fix, not by the
+  padding amount. ⛔ **If a last-item-hidden-behind-dock report comes back, suspect a missing
+  wrap on that screen first — do NOT re-derive a bigger dockSpacing number from Yoga
+  first-principles reasoning again.** This file's own history (flat 8 → real height → flat 16)
+  is the demonstration of how unreliable that reasoning has been twice now.
+- **Also fixed:** settings-sheet live preview clipped the Bismillah's top (same missing-
+  `lineHeight` class of bug as point 3 — now reuses the exported `DIACRITIC_LINE_RATIO`, not a
+  new constant). RTL chevron mirroring was wrong before EdgeNav was deleted (SVG paths don't
+  auto-mirror the way the old Unicode `‹`/`›` text did — moot now, kept as a note in case a
+  future directional icon needs it elsewhere).
+- **Labels, owner-specified exactly:** `quran.layoutList` "List"→**"Ayah"**, "قائمة"→**"آية"**;
+  `quran.layoutMushaf` EN unchanged **"Mushaf"**, AR "مصحف"→**"صفحة"** (deliberate EN/AR
+  asymmetry, not a translation mismatch). `quran.layout` (section header) "Layout"→
+  **"Mushaf View"**, "تخطيط القراءة"→**"طريقة عرض المصحف"**.
+- All 9 gate runs this session: exit 0, 25/25 tasks. Jest ended at 48 suites / 230 tests
+  (net -2 from the EdgeNav-button tests removed, since gesture state isn't reproducible via a
+  single synthetic RNTL event — matches this app's existing precedent of not
+  integration-testing the mushaf swipe either, only its pure `resolveSwipeDirection` logic in
+  `swipe.test.ts`). OTA'd to both channels every round; final group `5286dd5b`/`f3abd52c`.
+- **A72 verify: DONE this round** (pairing dropped and was re-established twice mid-session —
+  expect to re-pair on every reconnect, codes are one-shot). Owner confirmed final state "it's
+  fine now" after the label round.
+
+## Adhkar set-card icons (2026-08-04)
+
+`app/adhkar/index.tsx` gained a per-kind emoji icon (🌅 morning / 🌙 evening / 📿 other) in a
+tinted rounded box above each set's title — mirrors web's `AdhkarCard`/`KIND_EMOJI` pattern
+(`apps/web/features/adhkar/components/adhkar-card.tsx`), which mobile's list had never picked
+up. `item.kind: AzkarKind` already came through `adhkarListQuery()`/`@repo/shared-core`, no
+schema change needed. Tint uses a literal `rgba()` keyed by `useTheme()`, NOT
+`bg-primary/10` — that NativeWind opacity-modifier-on-CSS-var trap (silent no-op, no error) is
+already documented above; this is a second hit of the same class, worth grepping for `/\d+"`
+Tailwind opacity suffixes on token colors if it ever needs auditing repo-wide. Commit `283c344`,
+pushed, OTA'd to **preview channel only** (owner chose not to touch production this round) —
+update group `515d3849`, runtime `1.1.1`. Device-verify (both themes) pending.
