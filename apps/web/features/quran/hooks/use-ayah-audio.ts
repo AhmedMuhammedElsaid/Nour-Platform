@@ -25,6 +25,11 @@ export interface UseAyahAudioOptions {
   onPlaybackStart?: () => void;
 }
 
+// Elements warmed ahead of the currently-playing one. 2 is enough to keep
+// well ahead of a short ayah on a slow connection without ballooning
+// concurrent connections / resident buffered audio (~145 KB/ayah).
+const PREFETCH_COUNT = 2;
+
 // Warm the browser HTTP cache (and our cross-origin audio service worker
 // cache) for one URL without playing it. Using fetch() with the audio
 // destination doesn't exist, so we trigger a parallel <audio> load.
@@ -35,6 +40,22 @@ function prefetchUrl(el: HTMLAudioElement, url: string): void {
   // load() initiates the download but doesn't play; the SW intercepts it and
   // populates AUDIO_CACHE so the next play() resolves from cache instantly.
   el.load();
+}
+
+// Pure: the next up-to-`count` non-null audio URLs after `index`. Exported so
+// it's directly unit-testable and so the extension's near-identical hook can
+// reuse the exact same algorithm.
+export function lookaheadUrls(
+  ayahs: PlayableAyah[],
+  index: number,
+  count: number,
+): string[] {
+  const urls: string[] = [];
+  for (let i = index + 1; i < ayahs.length && urls.length < count; i += 1) {
+    const url = ayahs[i]?.audioUrl;
+    if (url) urls.push(url);
+  }
+  return urls;
 }
 
 export function useAyahAudio(
@@ -48,15 +69,20 @@ export function useAyahAudio(
   useEffect(() => {
     onPlaybackStartRef.current = opts?.onPlaybackStart;
   });
-  // Hidden secondary element used purely to warm the cache for the next ayah
-  // while the primary one is playing. Browsers happily run two loads in
-  // parallel — this is the standard podcast/audio-app pattern.
-  const prefetchRef = useRef<HTMLAudioElement | null>(null);
+  // Hidden pool of elements used purely to warm the cache for upcoming ayahs
+  // while the primary one is playing. Browsers happily run several loads in
+  // parallel — this is the standard podcast/audio-app pattern. Widened from a
+  // single prefetch element to PREFETCH_COUNT: a short ayah (2-4s, common)
+  // often finishes before one element's fetch completes, so the auto-advance
+  // "ended" handler races the download and loses — a second element ahead
+  // shrinks that race window without needing to change WHICH element plays
+  // (see Step B / the element-handoff commit for that half of the fix).
+  const prefetchPoolRef = useRef<HTMLAudioElement[]>([]);
   const [currentGlobal, setCurrentGlobal] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [repeatAyah, setRepeatAyah] = useState(false);
 
-  // Lazily create both audio elements (client only).
+  // Lazily create the main + prefetch-pool elements (client only).
   if (audioRef.current === null && typeof window !== "undefined") {
     const main = new Audio();
     // Eagerly fetch metadata + buffer so the first play() is responsive; the
@@ -65,10 +91,12 @@ export function useAyahAudio(
     main.crossOrigin = "anonymous";
     audioRef.current = main;
 
-    const pre = new Audio();
-    pre.preload = "auto";
-    pre.crossOrigin = "anonymous";
-    prefetchRef.current = pre;
+    prefetchPoolRef.current = Array.from({ length: PREFETCH_COUNT }, () => {
+      const pre = new Audio();
+      pre.preload = "auto";
+      pre.crossOrigin = "anonymous";
+      return pre;
+    });
   }
 
   const indexByGlobal = useMemo(
@@ -76,14 +104,19 @@ export function useAyahAudio(
     [ayahs],
   );
 
-  // Warm the cache for the ayah after `index`, if one exists with a URL.
-  const warmNext = useCallback(
+  // Warm the pool with the next PREFETCH_COUNT ayahs' URLs, one per element.
+  // Assigns positionally (pool[0] <- nearest upcoming, pool[1] <- next after
+  // that, ...) — `prefetchUrl`'s own `el.src === url` guard means an element
+  // that already holds the URL it's being assigned again just no-ops rather
+  // than restarting an in-flight load.
+  const warmAhead = useCallback(
     (index: number) => {
-      const pre = prefetchRef.current;
-      if (!pre) return;
-      const next = ayahs[index + 1];
-      if (!next?.audioUrl) return;
-      prefetchUrl(pre, next.audioUrl);
+      const pool = prefetchPoolRef.current;
+      const urls = lookaheadUrls(ayahs, index, PREFETCH_COUNT);
+      urls.forEach((url, i) => {
+        const el = pool[i];
+        if (el) prefetchUrl(el, url);
+      });
     },
     [ayahs],
   );
@@ -108,10 +141,10 @@ export function useAyahAudio(
         setIsPlaying(false);
         setCurrentGlobal(null);
       });
-      // Kick off the prefetch for the *next* ayah so auto-advance is instant.
-      warmNext(index);
+      // Kick off the prefetch for the upcoming ayahs so auto-advance is instant.
+      warmAhead(index);
     },
-    [ayahs, warmNext],
+    [ayahs, warmAhead],
   );
 
   const playAyah = useCallback(
