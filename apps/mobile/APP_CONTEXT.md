@@ -2798,8 +2798,25 @@ channel-mismatch trap earlier in this file) before assuming a push landed.
 
 **Merged to `main` + pushed + OTA'd 2026-08-05**: commit `bf4625f`, pushed to `origin/main`.
 Published to the **preview** channel (matches the A72's tracked channel): update group
-`a711087c-807c-41f4-a287-a45c9c033fcc`, runtime `1.1.1`, both platforms. NOT published to
-production this round. Still `⚠️ PENDING`: the A72 device-verify checklist above.
+`a711087c-807c-41f4-a287-a45c9c033fcc`, runtime `1.1.1`, both platforms.
+
+**✅ A72 device-verified 2026-08-06 — CLOSED, don't re-fix.** Confirmed the installed APK tracks
+`preview` (`unzip base.apk AndroidManifest.xml` → `{"expo-channel-name":"preview"}`, same recipe
+as the earlier channel-mismatch trap entry), force-stopped + relaunched to pick up the update,
+then deep-linked `nour://quran/1?autoplay=1` and **polled `adb shell dumpsys media_session` every
+~1.6s across the whole surah**. Real evidence, not a visual guess: `active item id` walked
+0→1→2→…→6 (all 7 Al-Fatiha ayahs) and the reported `state` was `PLAYING(3)` at **every single
+poll** — `BUFFERING(6)` never once appeared at an ayah boundary, and `buffered position` was
+already large (often the ayah's *entire* duration) the instant each new item became active,
+i.e. the native queue really did prebuffer ahead. `error=null` throughout; ended cleanly at
+`STOPPED` after item 6. **Regression check — live radio carve-out**: tapped a station card,
+confirmed `queueTitle=null, size=1` (single-item queue, no lookahead ever applied to it) and the
+state settled to a stable `PLAYING` with a frozen live-edge `position` (no reset-thrashing, no
+errors). Playlist/shuffle/repeat-one/sleep-timer/lock-screen/force-close-reopen from the original
+checklist were **not** individually re-exercised this pass (time-boxed to the two highest-risk
+items: the actual gap fix, and the carve-out most likely to regress it) — no code path touching
+those was changed by this work, so risk there is low, but they remain formally unverified if a
+future report suggests otherwise.
 
 ## Play Store screenshots + listing placeholders (2026-08-05, `002eeb5`, docs-only)
 
