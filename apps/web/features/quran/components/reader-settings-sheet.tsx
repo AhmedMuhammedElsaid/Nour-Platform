@@ -1,11 +1,30 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, usePathname } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import type { QuranEdition, QuranReciter } from "@repo/api/schemas/quran";
+import { BISMILLAH_UTHMANI } from "@repo/shared-core/quran/basmala";
+import { cn } from "@repo/ui/lib/utils";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "@repo/ui/primitives/sheet";
 import { savePrefs, type QuranPrefs, type ReaderLayout } from "../lib/quran-prefs";
+
+const FONT_MIN = 0.8;
+const FONT_MAX = 1.6;
+const FONT_STEP = 0.1;
+
+// Purely presentational base for the live preview's Arabic size — demonstrates
+// relative scaling as fontScale moves, not a prediction of the reader's own
+// on-page size (mirrors the mobile sheet's PREVIEW_BASE_SIZE rationale).
+const PREVIEW_BASE_SIZE = 28;
 
 export interface ReaderSettingsSheetProps {
   prefs: QuranPrefs;
@@ -14,12 +33,48 @@ export interface ReaderSettingsSheetProps {
   reciters: QuranReciter[];
 }
 
-/*
- * Reading settings. Translation/word-by-word/font-size are pure client state
- * (no refetch). Changing the translation or reciter edition requires the server
- * to re-resolve the surah, so those navigate with ?translation= / ?reciter=
- * query params which the reader page reads.
- */
+function Selectable({
+  label,
+  selected,
+  onClick,
+}: {
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onClick}
+      className={cn(
+        "rounded-full border px-3 py-1.5 text-sm",
+        selected ? "border-primary bg-primary/10 text-primary" : "border-border text-text-2",
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
+// The "grouped cards" concept ported from mobile's redesign (`4f60f8c`) — one
+// card per related cluster of settings instead of one flat scroll.
+function SettingsCard({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-surface-2 flex flex-col gap-2 rounded-lg p-3">
+      <span className="text-text-2 text-xs uppercase tracking-wide">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+// Port of apps/mobile/features/quran/components/reader-settings-sheet.tsx.
+// Changes are staged in a local draft and only applied on Save — Cancel
+// discards them. This matters because translation/reciter slugs drive the
+// reader's query key (server refetch), so applying every keystroke would
+// refetch repeatedly; staging defers the navigation to one Save. The live
+// preview below reads the DRAFT, not the committed prefs, so it can restyle
+// as the user adjusts settings without triggering that refetch.
 export function ReaderSettingsSheet({
   prefs,
   onChange,
@@ -28,49 +83,41 @@ export function ReaderSettingsSheet({
 }: ReaderSettingsSheetProps) {
   const t = useTranslations("quran");
   const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Close the dropdown on outside-click or Escape (it's a hand-rolled popover).
+  // Draft seeded from the committed prefs each time the sheet opens.
+  const [draft, setDraft] = useState<QuranPrefs>(prefs);
   useEffect(() => {
-    if (!open) return;
-    const onPointer = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onPointer);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onPointer);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+    if (open) setDraft(prefs);
+  }, [open, prefs]);
 
-  const update = (patch: Partial<QuranPrefs>) => {
-    const next = { ...prefs, ...patch };
-    savePrefs(next);
-    onChange(next);
+  const update = (patch: Partial<QuranPrefs>) => setDraft((d) => ({ ...d, ...patch }));
+
+  const setFont = (delta: number) => {
+    const next = Math.min(FONT_MAX, Math.max(FONT_MIN, Math.round((draft.fontScale + delta) * 10) / 10));
+    update({ fontScale: next });
   };
 
-  const navigateWithParam = (key: string, value: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set(key, value);
-    router.push(`${pathname}?${params.toString()}`);
+  const save = () => {
+    savePrefs(draft);
+    onChange(draft);
+    if (draft.translationSlug !== prefs.translationSlug || draft.reciterSlug !== prefs.reciterSlug) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("translation", draft.translationSlug);
+      params.set("reciter", draft.reciterSlug);
+      router.push(`${pathname}?${params.toString()}`);
+    }
+    setOpen(false);
   };
 
   return (
-    <div className="relative" ref={rootRef}>
+    <Sheet open={open} onOpenChange={setOpen}>
       <button
         type="button"
-        aria-label="Reading settings"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        aria-label={t("settings")}
+        onClick={() => setOpen(true)}
         // min-h-11 (44px) hit area; the gear icon stays size-4.
         className="border-border text-text-2 hover:text-primary inline-flex min-h-11 items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm"
       >
@@ -87,106 +134,137 @@ export function ReaderSettingsSheet({
           <circle cx="12" cy="12" r="3" />
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
         </svg>
-        Settings
+        {t("settings")}
       </button>
 
-      {open ? (
-        <div className="border-border bg-surface-2 absolute end-0 z-10 mt-2 w-72 max-w-[calc(100vw-2rem)] space-y-4 rounded-lg border p-4 shadow-3">
-          <label className="flex items-center justify-between">
-            <span>Show translation</span>
-            <input
-              type="checkbox"
-              aria-label="Show translation"
-              checked={prefs.showTranslation}
-              onChange={(e) => update({ showTranslation: e.target.checked })}
-            />
-          </label>
+      <SheetContent side="bottom" aria-label={t("settings")} className="max-h-[85vh] overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>{t("settings")}</SheetTitle>
+          <SheetDescription className="sr-only">{t("settings")}</SheetDescription>
+        </SheetHeader>
 
-          <label className="flex items-center justify-between">
-            <span>Word-by-word</span>
-            <input
-              type="checkbox"
-              aria-label="Word-by-word"
-              checked={prefs.showWordByWord}
-              onChange={(e) => update({ showWordByWord: e.target.checked })}
-            />
-          </label>
+        {/* Live preview — reads `draft`, so it restyles on every change and
+            reverts for free if the user backs out with Cancel. */}
+        <div className="border-border bg-bg flex flex-col items-center gap-2 rounded-lg border px-4 py-4">
+          <p
+            dir="rtl"
+            className="font-quran text-text text-center leading-relaxed"
+            style={{ fontSize: PREVIEW_BASE_SIZE * draft.fontScale }}
+          >
+            {BISMILLAH_UTHMANI}
+          </p>
+          {draft.showTranslation ? (
+            <p className="text-text-2 text-center text-xs">{t("settingsPreviewTranslation")}</p>
+          ) : null}
+        </div>
 
-          <label className="flex items-center justify-between gap-3">
-            <span>Font size</span>
-            <input
-              type="range"
-              min={0.8}
-              max={1.6}
-              step={0.1}
-              aria-label="Font size"
-              value={prefs.fontScale}
-              onChange={(e) => update({ fontScale: Number(e.target.value) })}
-            />
-          </label>
-
-          <div className="flex items-center justify-between gap-3">
-            <span>{t("layout")}</span>
-            <div className="flex items-center gap-1.5" role="group" aria-label={t("layout")}>
-              {(["list", "mushaf"] as ReaderLayout[]).map((option) => (
+        <div className="flex flex-col gap-3 py-2">
+          <SettingsCard label={t("display")}>
+            <label className="flex items-center justify-between">
+              <span>{t("showTranslation")}</span>
+              <input
+                type="checkbox"
+                aria-label={t("showTranslation")}
+                checked={draft.showTranslation}
+                onChange={(e) => update({ showTranslation: e.target.checked })}
+              />
+            </label>
+            <label className="flex items-center justify-between">
+              <span>{t("wordByWord")}</span>
+              <input
+                type="checkbox"
+                aria-label={t("wordByWord")}
+                checked={draft.showWordByWord}
+                onChange={(e) => update({ showWordByWord: e.target.checked })}
+              />
+            </label>
+            <div className="flex items-center justify-between gap-3">
+              <span>{t("fontSize")}</span>
+              <div className="flex items-center gap-3">
                 <button
-                  key={option}
                   type="button"
-                  aria-pressed={prefs.layout === option}
-                  onClick={() => update({ layout: option })}
-                  className={`rounded-full border px-3 py-1 text-sm ${
-                    prefs.layout === option
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-text-2"
-                  }`}
+                  aria-label={t("fontSmaller")}
+                  onClick={() => setFont(-FONT_STEP)}
+                  className="border-border size-8 rounded-full border text-lg"
                 >
-                  {option === "list" ? t("layoutList") : t("layoutMushaf")}
+                  −
                 </button>
+                <span className="w-10 text-center text-sm tabular-nums">
+                  {Math.round(draft.fontScale * 100)}%
+                </span>
+                <button
+                  type="button"
+                  aria-label={t("fontLarger")}
+                  onClick={() => setFont(FONT_STEP)}
+                  className="border-border size-8 rounded-full border text-lg"
+                >
+                  ＋
+                </button>
+              </div>
+            </div>
+          </SettingsCard>
+
+          <SettingsCard label={t("layout")}>
+            <div className="flex flex-wrap gap-2">
+              {(["list", "mushaf"] as ReaderLayout[]).map((option) => (
+                <Selectable
+                  key={option}
+                  label={option === "list" ? t("layoutList") : t("layoutMushaf")}
+                  selected={draft.layout === option}
+                  onClick={() => update({ layout: option })}
+                />
               ))}
             </div>
-          </div>
+          </SettingsCard>
 
           {editions.length > 0 ? (
-            <label className="flex items-center justify-between gap-3">
-              <span>Translation</span>
-              <select
-                aria-label="Translation edition"
-                value={prefs.translationSlug}
-                onChange={(e) => {
-                  update({ translationSlug: e.target.value });
-                  navigateWithParam("translation", e.target.value);
-                }}
-              >
+            <SettingsCard label={t("translation")}>
+              <div className="flex flex-wrap gap-2">
                 {editions.map((ed) => (
-                  <option key={ed.slug} value={ed.slug}>
-                    {ed.name}
-                  </option>
+                  <Selectable
+                    key={ed.slug}
+                    label={ed.name}
+                    selected={draft.translationSlug === ed.slug}
+                    onClick={() => update({ translationSlug: ed.slug })}
+                  />
                 ))}
-              </select>
-            </label>
+              </div>
+            </SettingsCard>
           ) : null}
 
           {reciters.length > 0 ? (
-            <label className="flex items-center justify-between gap-3">
-              <span>Reciter</span>
-              <select
-                aria-label="Reciter"
-                value={prefs.reciterSlug}
-                onChange={(e) => {
-                  update({ reciterSlug: e.target.value });
-                  navigateWithParam("reciter", e.target.value);
-                }}
-              >
+            <SettingsCard label={t("reciter")}>
+              <div className="flex flex-wrap gap-2">
                 {reciters.map((r) => (
-                  <option key={r.slug} value={r.slug}>
-                    {r.name}
-                  </option>
+                  <Selectable
+                    key={r.slug}
+                    label={r.name}
+                    selected={draft.reciterSlug === r.slug}
+                    onClick={() => update({ reciterSlug: r.slug })}
+                  />
                 ))}
-              </select>
-            </label>
+              </div>
+            </SettingsCard>
           ) : null}
         </div>
-      ) : null}
-    </div>
+
+        <SheetFooter className="mt-0 flex-row gap-3">
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="border-border flex-1 rounded-md border px-4 py-2 text-sm"
+          >
+            {t("cancel")}
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            className="bg-primary text-bg flex-1 rounded-md px-4 py-2 text-sm font-medium"
+          >
+            {t("save")}
+          </button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
