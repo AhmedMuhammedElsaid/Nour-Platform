@@ -124,7 +124,7 @@ function captureAudioInstances(): InstanceType<typeof OriginalAudio>[] {
   return instances;
 }
 
-describe("useAyahAudio prefetch pool (Step A: widened lookahead)", () => {
+describe("useAyahAudio prefetch pool (widened lookahead + element handoff)", () => {
   const fourAyahs = [
     { numberGlobal: 1, audioUrl: "https://x/1.mp3" },
     { numberGlobal: 2, audioUrl: "https://x/2.mp3" },
@@ -136,19 +136,28 @@ describe("useAyahAudio prefetch pool (Step A: widened lookahead)", () => {
     (window as unknown as { Audio: typeof OriginalAudio }).Audio = OriginalAudio;
   });
 
+  // Which pool element is "active" (== audioRef.current) can change identity
+  // across plays (that's the whole point of the handoff), so tests derive the
+  // prefetch set as "every captured instance minus whichever one is active
+  // right now" rather than assuming a fixed index.
+  function prefetchSrcs(
+    instances: InstanceType<typeof OriginalAudio>[],
+    active: HTMLAudioElement | null,
+  ): string[] {
+    return instances.filter((el) => el !== active).map((el) => el.src);
+  }
+
   it("warms the next two ayahs' URLs when an ayah starts playing", async () => {
     const instances = captureAudioInstances();
     const { result } = renderHook(() => useAyahAudio(fourAyahs));
     await act(async () => result.current.playAyah(1));
 
-    // instances[0] is the main (playing) element; the rest are the prefetch
-    // pool, created in the same lazy-init block right after it.
-    const prefetchSrcs = instances.slice(1).map((el) => el.src);
-    expect(prefetchSrcs).toContain(fourAyahs[1]!.audioUrl);
-    expect(prefetchSrcs).toContain(fourAyahs[2]!.audioUrl);
+    const srcs = prefetchSrcs(instances, result.current.audioRef.current);
+    expect(srcs).toContain(fourAyahs[1]!.audioUrl);
+    expect(srcs).toContain(fourAyahs[2]!.audioUrl);
   });
 
-  it("slides the prefetch window forward on auto-advance, never warming the now-consumed ayah", async () => {
+  it("slides the prefetch window forward on auto-advance, never warming the now-active ayah", async () => {
     const instances = captureAudioInstances();
     const { result } = renderHook(() => useAyahAudio(fourAyahs));
     await act(async () => result.current.playAyah(1));
@@ -157,12 +166,51 @@ describe("useAyahAudio prefetch pool (Step A: widened lookahead)", () => {
     });
 
     // Now on ayah 2 — the window should have slid to warm ayahs 3 and 4.
-    const prefetchSrcs = instances.slice(1).map((el) => el.src);
-    expect(prefetchSrcs).toContain(fourAyahs[2]!.audioUrl);
-    expect(prefetchSrcs).toContain(fourAyahs[3]!.audioUrl);
-    // Ayah 2 itself is the ACTIVE track now, played via a direct src
-    // assignment on the main element — it must never end up assigned to a
-    // pool (prefetch) element.
-    expect(prefetchSrcs).not.toContain(fourAyahs[1]!.audioUrl);
+    const srcs = prefetchSrcs(instances, result.current.audioRef.current);
+    expect(srcs).toContain(fourAyahs[2]!.audioUrl);
+    expect(srcs).toContain(fourAyahs[3]!.audioUrl);
+    // Ayah 2 is the ACTIVE track now — it must never also be sitting in the
+    // (non-active) prefetch set.
+    expect(srcs).not.toContain(fourAyahs[1]!.audioUrl);
+  });
+
+  it("hands off to the already-warmed element on auto-advance instead of re-assigning the active one's src", async () => {
+    const instances = captureAudioInstances();
+    const { result } = renderHook(() => useAyahAudio(fourAyahs));
+    await act(async () => result.current.playAyah(1));
+    const firstActive = result.current.audioRef.current;
+    const preWarmedForAyah2 = instances.find((el) => el.src === fourAyahs[1]!.audioUrl) as
+      | (HTMLAudioElement & { load: ReturnType<typeof vi.fn> })
+      | undefined;
+    expect(preWarmedForAyah2).toBeDefined();
+    const loadCallsBeforeAdvance = preWarmedForAyah2!.load.mock.calls.length;
+
+    await act(async () => {
+      result.current.audioRef.current?.dispatchEvent(new Event("ended"));
+    });
+
+    // The element that was already warmed for ayah 2 IS the new active
+    // element — playAt handed off to it rather than re-assigning ayah 2's
+    // URL onto the element that was just playing ayah 1.
+    expect(result.current.audioRef.current).toBe(preWarmedForAyah2);
+    expect(result.current.audioRef.current).not.toBe(firstActive);
+    // And it was NOT reloaded — prefetchUrl's `el.src === url` guard no-ops
+    // since this element already held the target URL from the warm-ahead.
+    expect(preWarmedForAyah2!.load.mock.calls.length).toBe(loadCallsBeforeAdvance);
+  });
+
+  it("pauses the previously-active element on handoff", async () => {
+    captureAudioInstances();
+    const { result } = renderHook(() => useAyahAudio(fourAyahs));
+    await act(async () => result.current.playAyah(1));
+    const firstActive = result.current.audioRef.current as unknown as {
+      pause: ReturnType<typeof vi.fn>;
+    };
+
+    await act(async () => {
+      result.current.audioRef.current?.dispatchEvent(new Event("ended"));
+    });
+
+    expect(firstActive.pause).toHaveBeenCalled();
   });
 });

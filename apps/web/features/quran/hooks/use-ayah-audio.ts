@@ -29,6 +29,12 @@ export interface UseAyahAudioOptions {
 // well ahead of a short ayah on a slow connection without ballooning
 // concurrent connections / resident buffered audio (~145 KB/ayah).
 const PREFETCH_COUNT = 2;
+// Total pool size: the actively-playing element plus PREFETCH_COUNT warming
+// ahead. play() hands off to whichever pool element is already warmed for
+// the target URL instead of re-src-ing/reloading a fixed "main" element —
+// that redundant reload (even though the SW/HTTP cache usually makes it
+// fast) is the last bit of the race this file exists to close.
+const POOL_SIZE = PREFETCH_COUNT + 1;
 
 // Warm the browser HTTP cache (and our cross-origin audio service worker
 // cache) for one URL without playing it. Using fetch() with the audio
@@ -69,34 +75,27 @@ export function useAyahAudio(
   useEffect(() => {
     onPlaybackStartRef.current = opts?.onPlaybackStart;
   });
-  // Hidden pool of elements used purely to warm the cache for upcoming ayahs
-  // while the primary one is playing. Browsers happily run several loads in
-  // parallel — this is the standard podcast/audio-app pattern. Widened from a
-  // single prefetch element to PREFETCH_COUNT: a short ayah (2-4s, common)
-  // often finishes before one element's fetch completes, so the auto-advance
-  // "ended" handler races the download and loses — a second element ahead
-  // shrinks that race window without needing to change WHICH element plays
-  // (see Step B / the element-handoff commit for that half of the fix).
-  const prefetchPoolRef = useRef<HTMLAudioElement[]>([]);
+  // Pool of POOL_SIZE elements. Exactly one is "active" at a time — the one
+  // `audioRef.current` points at — the rest sit warming upcoming ayahs.
+  // Browsers happily run several loads in parallel; this is the standard
+  // podcast/audio-app pattern.
+  const poolRef = useRef<HTMLAudioElement[]>([]);
   const [currentGlobal, setCurrentGlobal] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [repeatAyah, setRepeatAyah] = useState(false);
 
-  // Lazily create the main + prefetch-pool elements (client only).
+  // Lazily create the pool (client only). audioRef starts pointed at pool[0]
+  // — which element is "active" changes over time via playAt's handoff below.
   if (audioRef.current === null && typeof window !== "undefined") {
-    const main = new Audio();
-    // Eagerly fetch metadata + buffer so the first play() is responsive; the
-    // browser still honors a user gesture for the actual playback start.
-    main.preload = "auto";
-    main.crossOrigin = "anonymous";
-    audioRef.current = main;
-
-    prefetchPoolRef.current = Array.from({ length: PREFETCH_COUNT }, () => {
-      const pre = new Audio();
-      pre.preload = "auto";
-      pre.crossOrigin = "anonymous";
-      return pre;
+    poolRef.current = Array.from({ length: POOL_SIZE }, () => {
+      const el = new Audio();
+      // Eagerly fetch metadata + buffer so the first play() is responsive; the
+      // browser still honors a user gesture for the actual playback start.
+      el.preload = "auto";
+      el.crossOrigin = "anonymous";
+      return el;
     });
+    audioRef.current = poolRef.current[0] ?? null;
   }
 
   const indexByGlobal = useMemo(
@@ -104,17 +103,18 @@ export function useAyahAudio(
     [ayahs],
   );
 
-  // Warm the pool with the next PREFETCH_COUNT ayahs' URLs, one per element.
-  // Assigns positionally (pool[0] <- nearest upcoming, pool[1] <- next after
-  // that, ...) — `prefetchUrl`'s own `el.src === url` guard means an element
-  // that already holds the URL it's being assigned again just no-ops rather
-  // than restarting an in-flight load.
+  // Warm the non-active pool elements with the next PREFETCH_COUNT ayahs'
+  // URLs. An element that already holds a still-needed URL is left alone
+  // (never restarts an in-flight/completed load); only elements holding
+  // something no longer needed get reassigned to whatever's still missing.
   const warmAhead = useCallback(
-    (index: number) => {
-      const pool = prefetchPoolRef.current;
-      const urls = lookaheadUrls(ayahs, index, PREFETCH_COUNT);
-      urls.forEach((url, i) => {
-        const el = pool[i];
+    (index: number, active: HTMLAudioElement) => {
+      const others = poolRef.current.filter((el) => el !== active);
+      const urls = lookaheadUrls(ayahs, index, others.length);
+      const stillNeeded = urls.filter((url) => !others.some((el) => el.src === url));
+      const reusable = others.filter((el) => !urls.includes(el.src));
+      stillNeeded.forEach((url, i) => {
+        const el = reusable[i];
         if (el) prefetchUrl(el, url);
       });
     },
@@ -123,26 +123,42 @@ export function useAyahAudio(
 
   const playAt = useCallback(
     (index: number) => {
-      const el = audioRef.current;
       const ayah = ayahs[index];
-      if (!el || !ayah || !ayah.audioUrl) {
+      const pool = poolRef.current;
+      if (!ayah || !ayah.audioUrl || pool.length === 0) {
         setCurrentGlobal(null);
         setIsPlaying(false);
         return;
       }
-      el.src = ayah.audioUrl;
+      const previouslyActive = audioRef.current;
+      // Hand off to whichever pool element is already warmed for this URL
+      // (the common auto-advance case); otherwise reuse any non-active
+      // element (repeat-ayah replays the SAME element, since it's already
+      // "previouslyActive" and already holds the matching src).
+      const chosen =
+        pool.find((el) => el.src === ayah.audioUrl) ??
+        pool.find((el) => el !== previouslyActive) ??
+        pool[0]!;
+      if (chosen !== previouslyActive) {
+        previouslyActive?.pause();
+        audioRef.current = chosen;
+      }
+      // No-op via prefetchUrl's own guard when `chosen` already holds this URL.
+      prefetchUrl(chosen, ayah.audioUrl);
+      // Repeat-ayah replays the same (already-active) element — rewind it.
+      chosen.currentTime = 0;
       onPlaybackStartRef.current?.();
       setCurrentGlobal(ayah.numberGlobal);
       setIsPlaying(true);
       // Surface playback rejections (CSP block, network error, autoplay
       // policy) so a silent failure is diagnosable in the console.
-      el.play().catch((err) => {
+      chosen.play().catch((err) => {
         console.warn("ayah audio play failed", ayah.audioUrl, err);
         setIsPlaying(false);
         setCurrentGlobal(null);
       });
       // Kick off the prefetch for the upcoming ayahs so auto-advance is instant.
-      warmAhead(index);
+      warmAhead(index, chosen);
     },
     [ayahs, warmAhead],
   );
@@ -157,7 +173,9 @@ export function useAyahAudio(
   );
 
   const stop = useCallback(() => {
-    audioRef.current?.pause();
+    // Pause every pool element, not just the active one — a stale handoff
+    // target could otherwise be left mid-buffer/playing in the background.
+    poolRef.current.forEach((el) => el.pause());
     setIsPlaying(false);
     setCurrentGlobal(null);
   }, []);
@@ -175,11 +193,20 @@ export function useAyahAudio(
     }
   }, [isPlaying, currentGlobal]);
 
-  // Auto-advance / repeat when the current ayah's audio ends.
+  // Auto-advance / repeat when the current ayah's audio ends. Attached to
+  // EVERY pool element (their identity never changes) rather than tracking
+  // "whichever one is active right now" — playAt reassigns `audioRef.current`
+  // imperatively via a plain ref mutation, which triggers no re-render on its
+  // own, so an effect that only listened on `audioRef.current` at attach time
+  // could go stale the moment a handoff happens. The `event.target` guard
+  // below is what makes listening on all of them safe: a pool element that's
+  // merely warming (not active) still fires 'ended' if a browser somehow lets
+  // a fully-preloaded-but-unplayed clip reach that state, and this ignores it.
   useEffect(() => {
-    const el = audioRef.current;
-    if (!el) return;
-    const onEnded = () => {
+    const pool = poolRef.current;
+    if (pool.length === 0) return;
+    const onEnded = (event: Event) => {
+      if (event.target !== audioRef.current) return;
       if (currentGlobal === null) return;
       if (repeatAyah) {
         playAyah(currentGlobal);
@@ -195,8 +222,8 @@ export function useAyahAudio(
       }
       playAt(nextIdx);
     };
-    el.addEventListener("ended", onEnded);
-    return () => el.removeEventListener("ended", onEnded);
+    pool.forEach((el) => el.addEventListener("ended", onEnded));
+    return () => pool.forEach((el) => el.removeEventListener("ended", onEnded));
   }, [currentGlobal, repeatAyah, ayahs.length, indexByGlobal, playAt, playAyah]);
 
   return {
