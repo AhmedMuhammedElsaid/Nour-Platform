@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { BISMILLAH_UTHMANI } from "@repo/shared-core/quran/basmala";
+
 import {
   fetchEditions,
   fetchPageReader,
@@ -31,10 +33,51 @@ import { Sheet } from "./ui/sheet";
 import { Skeleton } from "./skeleton";
 import { Settings, SkipBack, SkipForward } from "./ui/icons";
 
-const layoutActive =
-  "rounded-md border border-primary/40 bg-primary/15 px-2.5 py-1 text-xs font-semibold text-primary";
-const layoutInactive =
-  "rounded-md border border-border px-2.5 py-1 text-xs text-text-2 hover:text-text transition-colors";
+const FONT_MIN = 0.8;
+const FONT_MAX = 1.6;
+const FONT_STEP = 0.1;
+
+// Purely presentational base for the live preview's Arabic size — demonstrates
+// relative scaling as fontScale moves, not a prediction of the reader's own
+// on-page size (mirrors the mobile/web sheets' PREVIEW_BASE_SIZE rationale).
+const PREVIEW_BASE_SIZE = 24;
+
+function Selectable({
+  label,
+  selected,
+  onClick,
+}: {
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onClick}
+      className={
+        selected
+          ? "rounded-full border border-primary bg-primary/10 px-3 py-1.5 text-sm text-primary"
+          : "rounded-full border border-border px-3 py-1.5 text-sm text-text-2 hover:text-text"
+      }
+    >
+      {label}
+    </button>
+  );
+}
+
+// The "grouped cards" concept ported from mobile's redesign (`4f60f8c`, later
+// ported to web `2e607dc`) — one card per related cluster of settings instead
+// of a flat checkbox/select stack.
+function SettingsCard({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2 rounded-lg bg-surface-2 p-3">
+      <span className="text-xs uppercase tracking-wide text-text-2">{label}</span>
+      {children}
+    </div>
+  );
+}
 
 type Props = {
   surah: string;
@@ -57,6 +100,15 @@ export function QuranReader({ surah, autoplay, state, send }: Props) {
   const [reciters, setReciters] = useState<QuranReciter[]>([]);
   const [bookmarks, setBookmarks] = useState<AyahRef[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Settings sheet draft — staged separately from the committed `prefs` so
+  // the live preview can restyle on every tap without applying anything
+  // (translation/reciter changes trigger a refetch) until Save. Cancel just
+  // closes the sheet, leaving `prefs` untouched. Ported from the mobile
+  // (`4f60f8c`) / web (`2e607dc`) redesign.
+  const [settingsDraft, setSettingsDraft] = useState<QuranPrefs>(prefs);
+  useEffect(() => {
+    if (settingsOpen) setSettingsDraft(prefs);
+  }, [settingsOpen, prefs]);
   const [tafsirAyah, setTafsirAyah] = useState<{ numberGlobal: number; ref: string } | null>(null);
   const [error, setError] = useState(false);
 
@@ -216,6 +268,23 @@ export function QuranReader({ surah, autoplay, state, send }: Props) {
     });
   }
 
+  function updateDraft(patch: Partial<QuranPrefs>): void {
+    setSettingsDraft((d) => ({ ...d, ...patch }));
+  }
+
+  function setDraftFont(delta: number): void {
+    const next = Math.min(
+      FONT_MAX,
+      Math.max(FONT_MIN, Math.round((settingsDraft.fontScale + delta) * 10) / 10),
+    );
+    updateDraft({ fontScale: next });
+  }
+
+  function saveSettings(): void {
+    updatePrefs(settingsDraft);
+    setSettingsOpen(false);
+  }
+
   function onPlayToggle(numberGlobal: number): void {
     if (audio.currentGlobal === numberGlobal) audio.toggle();
     else audio.playAyah(numberGlobal);
@@ -351,103 +420,150 @@ export function QuranReader({ surah, autoplay, state, send }: Props) {
         </div>
       ) : null}
 
-      {/* Settings sheet */}
+      {/* Settings sheet — grouped cards + live preview + Save/Cancel staging,
+          ported from mobile (`4f60f8c`) / web (`2e607dc`). Everything below
+          reads/writes `settingsDraft`, not `prefs` — nothing applies until
+          Save. `repeatAyah` is the one deliberate deviation from mobile/web:
+          it applies immediately (not staged) and stays in the sheet, because
+          on this surface the reader's own local `useAyahAudio` hook is the
+          ONLY repeat-single-ayah mechanism — mobile/web dropped their
+          equivalent row because a shared player's repeat-one mode already
+          covers it there, which has no counterpart in the extension's
+          architecture (see the file header for the two engines). */}
       <Sheet open={settingsOpen} onClose={() => setSettingsOpen(false)} title={t("quran.settings")}>
-        <div className="space-y-5">
-          <label className="flex items-center justify-between text-sm text-text">
-            {t("quran.showTranslation")}
-            <input
-              type="checkbox"
-              checked={prefs.showTranslation}
-              onChange={(e) => updatePrefs({ showTranslation: e.target.checked })}
-              className="size-4 accent-[var(--color-primary)]"
-            />
-          </label>
-
-          <label className="flex items-center justify-between text-sm text-text">
-            {t("quran.wordByWord")}
-            <input
-              type="checkbox"
-              checked={prefs.showWordByWord}
-              onChange={(e) => updatePrefs({ showWordByWord: e.target.checked })}
-              className="size-4 accent-[var(--color-primary)]"
-            />
-          </label>
-
-          <label className="flex flex-col gap-2 text-sm text-text">
-            {t("quran.fontSize")}
-            <input
-              type="range"
-              min={0.8}
-              max={1.6}
-              step={0.1}
-              value={prefs.fontScale}
-              onChange={(e) => updatePrefs({ fontScale: Number(e.target.value) })}
-              className="h-1 accent-[var(--color-primary)]"
-            />
-          </label>
-
-          <label className="flex items-center justify-between gap-3 text-sm text-text">
-            {t("quran.repeatAyah")}
-            <input
-              type="checkbox"
-              checked={audio.repeatAyah}
-              onChange={(e) => audio.setRepeatAyah(e.target.checked)}
-              className="size-4 accent-[var(--color-primary)]"
-            />
-          </label>
-
-          <div className="flex items-center justify-between gap-3 text-sm text-text">
-            {t("quran.layout")}
-            <div className="flex items-center gap-1.5" role="group" aria-label={t("quran.layout")}>
-              <button
-                type="button"
-                aria-pressed={prefs.layout === "list"}
-                onClick={() => updatePrefs({ layout: "list" })}
-                className={prefs.layout === "list" ? layoutActive : layoutInactive}
-              >
-                {t("quran.layoutList")}
-              </button>
-              <button
-                type="button"
-                aria-pressed={prefs.layout === "mushaf"}
-                onClick={() => updatePrefs({ layout: "mushaf" })}
-                className={prefs.layout === "mushaf" ? layoutActive : layoutInactive}
-              >
-                {t("quran.layoutMushaf")}
-              </button>
-            </div>
+        <div className="flex flex-col gap-3">
+          {/* Live preview — reads the DRAFT, so it restyles on every tap and
+              reverts for free if the user backs out with Cancel. */}
+          <div className="flex flex-col items-center gap-2 rounded-lg border border-border bg-bg px-4 py-4">
+            <p
+              dir="rtl"
+              className="text-center font-quran text-text"
+              style={{ fontSize: PREVIEW_BASE_SIZE * settingsDraft.fontScale }}
+            >
+              {BISMILLAH_UTHMANI}
+            </p>
+            {settingsDraft.showTranslation ? (
+              <p className="text-center text-xs text-text-2">
+                {t("quran.settingsPreviewTranslation")}
+              </p>
+            ) : null}
           </div>
 
-          {editions.length > 0 ? (
-            <label className="flex flex-col gap-1.5 text-sm text-text">
-              {t("quran.translation")}
-              <select
-                value={prefs.translationSlug}
-                onChange={(e) => updatePrefs({ translationSlug: e.target.value })}
-                className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text"
-              >
-                {editions.map((ed) => (
-                  <option key={ed.slug} value={ed.slug}>{ed.name}</option>
-                ))}
-              </select>
+          <SettingsCard label={t("quran.display")}>
+            <label className="flex items-center justify-between text-sm text-text">
+              {t("quran.showTranslation")}
+              <input
+                type="checkbox"
+                checked={settingsDraft.showTranslation}
+                onChange={(e) => updateDraft({ showTranslation: e.target.checked })}
+                className="size-4 accent-[var(--color-primary)]"
+              />
             </label>
+            <label className="flex items-center justify-between text-sm text-text">
+              {t("quran.wordByWord")}
+              <input
+                type="checkbox"
+                checked={settingsDraft.showWordByWord}
+                onChange={(e) => updateDraft({ showWordByWord: e.target.checked })}
+                className="size-4 accent-[var(--color-primary)]"
+              />
+            </label>
+            <div className="flex items-center justify-between gap-3 text-sm text-text">
+              {t("quran.fontSize")}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  aria-label={t("quran.fontSmaller")}
+                  onClick={() => setDraftFont(-FONT_STEP)}
+                  className="size-8 rounded-full border border-border text-lg"
+                >
+                  −
+                </button>
+                <span className="w-10 text-center text-sm tabular-nums">
+                  {Math.round(settingsDraft.fontScale * 100)}%
+                </span>
+                <button
+                  type="button"
+                  aria-label={t("quran.fontLarger")}
+                  onClick={() => setDraftFont(FONT_STEP)}
+                  className="size-8 rounded-full border border-border text-lg"
+                >
+                  ＋
+                </button>
+              </div>
+            </div>
+            <label className="flex items-center justify-between text-sm text-text">
+              {t("quran.repeatAyah")}
+              <input
+                type="checkbox"
+                checked={audio.repeatAyah}
+                onChange={(e) => audio.setRepeatAyah(e.target.checked)}
+                className="size-4 accent-[var(--color-primary)]"
+              />
+            </label>
+          </SettingsCard>
+
+          <SettingsCard label={t("quran.layout")}>
+            <div className="flex flex-wrap gap-2">
+              <Selectable
+                label={t("quran.layoutList")}
+                selected={settingsDraft.layout === "list"}
+                onClick={() => updateDraft({ layout: "list" })}
+              />
+              <Selectable
+                label={t("quran.layoutMushaf")}
+                selected={settingsDraft.layout === "mushaf"}
+                onClick={() => updateDraft({ layout: "mushaf" })}
+              />
+            </div>
+          </SettingsCard>
+
+          {editions.length > 0 ? (
+            <SettingsCard label={t("quran.translation")}>
+              <div className="flex flex-wrap gap-2">
+                {editions.map((ed) => (
+                  <Selectable
+                    key={ed.slug}
+                    label={ed.name}
+                    selected={settingsDraft.translationSlug === ed.slug}
+                    onClick={() => updateDraft({ translationSlug: ed.slug })}
+                  />
+                ))}
+              </div>
+            </SettingsCard>
           ) : null}
 
           {reciters.length > 0 ? (
-            <label className="flex flex-col gap-1.5 text-sm text-text">
-              {t("quran.reciter")}
-              <select
-                value={prefs.reciterSlug}
-                onChange={(e) => updatePrefs({ reciterSlug: e.target.value })}
-                className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text"
-              >
+            <SettingsCard label={t("quran.reciter")}>
+              <div className="flex flex-wrap gap-2">
                 {reciters.map((r) => (
-                  <option key={r.slug} value={r.slug}>{r.name}</option>
+                  <Selectable
+                    key={r.slug}
+                    label={r.name}
+                    selected={settingsDraft.reciterSlug === r.slug}
+                    onClick={() => updateDraft({ reciterSlug: r.slug })}
+                  />
                 ))}
-              </select>
-            </label>
+              </div>
+            </SettingsCard>
           ) : null}
+
+          <div className="flex gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(false)}
+              className="flex-1 rounded-md border border-border px-4 py-2 text-sm text-text"
+            >
+              {t("common.cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={saveSettings}
+              className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-bg"
+            >
+              {t("common.save")}
+            </button>
+          </div>
         </div>
       </Sheet>
 
