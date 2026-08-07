@@ -157,6 +157,24 @@ citing 51 or 47 tests are stale).
   `gecko.data_collection_permissions.required:["none"]` present in the emitted manifest.
   Chrome 29 entries / Firefox 28, ~727 KB each.
 
+### ✅ Rebuilt again 2026-08-07 (includes the ayah-audio gapless-playback fix, `879ba37`)
+
+- [x] Chrome (27 entries) + Firefox (26 entries) zips rebuilt from current `main`, `backslash=0`,
+  `manifest.json` at root, version `1.0.0`, `host_permissions` prod-only, no `localhost`,
+  `geolocation` present, Firefox `data_collection_permissions.required:["none"]` present.
+  **New gotcha caught + fixed**: the `.NET ZipArchive` packing recipe below (§A.4) has a
+  **short-path/long-path substring bug** — `$env:TEMP` on this machine resolves to the Windows
+  8.3 short form (`AHMEDE~1`), but `Get-ChildItem -Recurse`'s `.FullName` resolves to the long
+  form (`Ahmed Elsaid`) — a 4-character length mismatch that corrupts the naive
+  `$file.FullName.Substring($tmp.Length + 1)` relative-path math, silently prefixing every zip
+  entry with a stray 3-char fragment (e.g. `007/manifest.json` instead of `manifest.json` at
+  root — store validators would reject this, or worse, silently mis-extract). **Fix**: resolve
+  `$tmp` to its canonical `.FullName` via `(Get-Item $tmpRaw).FullName` immediately after
+  `Copy-Item`, before computing any substrings against it. The recipe in §A.4 below is updated
+  to include this fix — always assert `rootManifest=True` (not just `backslash=0`) after
+  packing from now on, the same class of bug could resurface on a machine with a different
+  `%TEMP%` resolution.
+
 ### Icon wordmark/watermark — ✅ FIXED 2026-08-04
 
 - [x] ~~Icon carries baked-in text + probable generator watermarks~~ — owner decided: keep the
@@ -323,8 +341,11 @@ Roadmap structure preserved from `review_mobile_report_fable.md` (2026-07-15, ve
    email `front@tech-flow.nl` → real support contact.
 7. **Capture store assets**: phone screenshots — ✅ DONE 2026-08-05, `apps/mobile/store/
    screenshots/screenshot-1..5.jpg` (owner-captured raw device shots, 922×2048, renamed +
-   ordered; `listing.md` updated to match). Still needed: feature graphic (1024×500), hi-res
-   icon (512×512).
+   ordered; `listing.md` updated to match). ✅ Feature graphic + hi-res icon DONE 2026-08-07 —
+   `apps/mobile/store/hi-res-icon-512.png` (512×512, Lanczos downsample of the canonical
+   `apps/mobile/assets/icon.png` source) + `feature-graphic-1024x500.png` (1024×500, plain
+   center-crop of the same art, no text overlay). **All store-listing assets now complete** —
+   nothing left to generate for the Play Console listing page.
 8. **Permission declarations** (top review-rejection risk):
    - `USE_EXACT_ALARM` / `SCHEDULE_EXACT_ALARM` — low risk, justify as "prayer-time alarm app,
      alarms must fire at the exact minute; core functionality."
@@ -420,7 +441,7 @@ class this project's gate structurally cannot see.
 |---|---|---|
 | **Web** | ✅ Closest to done | 1 mechanical task (manifest screenshots) + 3 owner-manual submissions (GSC/Bing/UptimeRobot); 2 architectural decisions deliberately deferred (LCP hydration cost, no-cache CSP trade-off) |
 | **Extension** | ✅ Code + zips + screenshots ready, all pushed | Icon fix + console-warning fix + cursor-pointer parity + zips rebuilt (671KB each) + screenshot set redone (5 shots, no junk cards) — all committed + pushed 2026-08-04. Left: Chrome/Firefox devconsole submission (owner-manual, the only remaining step) |
-| **Android** | ✅ Code ready, ⚠️ process not started | No code blockers, nothing unpushed, EAS env correct, heap re-measured → recommend CLOSE. ✅ Play Console **paid** 2026-08-04 (verify identity-verification completed). ✅ Screenshots + listing placeholders done 2026-08-05. Real bottleneck now: first production AAB (never built) + `google-play-key.json` + feature graphic + hi-res icon |
+| **Android** | ✅ Code ready + all store assets ready, ⚠️ process not started | No code blockers, nothing unpushed, EAS env correct, heap re-measured → recommend CLOSE. ✅ Play Console **paid** 2026-08-04 (verify identity-verification completed). ✅ Screenshots + listing placeholders + feature graphic + hi-res icon all done (2026-08-05/07) — no assets left to generate. Real bottleneck now is purely process: first production AAB (never built) + `google-play-key.json` service-account key + Play Console registration verification |
 | **iOS** | ❌ Not started | No Apple account; whole separate project phase; runbook already written (`publish_play_store.md` iOS-1→iOS-8) |
 
 ---
@@ -460,8 +481,17 @@ verified. It is replaced here by the recipe **actually used and verified on 2026
 (`backslash=0` asserted after packing): explicit `CreateEntry` with `$rel.Replace('\','/')`, loading
 **BOTH** `System.IO.Compression` (for `ZipArchiveMode`) and `System.IO.Compression.FileSystem` —
 loading only the latter fails with "Unable to find type [ZipArchiveMode]". Exclude `.vite/`; put
-`manifest.json` at the zip ROOT. A working copy of the script lives in this session's scratchpad
-(`pack-ext.ps1`). **Always assert `backslash=0` after packing.**
+`manifest.json` at the zip ROOT. A working copy of the script lives in the scratchpad
+(`pack-ext.ps1`). **Always assert `backslash=0` AND `rootManifest=True` after packing** (added
+2026-08-07 — `backslash=0` alone is not sufficient, see the next gotcha).
+⚠️ **Short-path/long-path bug (found + fixed 2026-08-07):** `$env:TEMP` can resolve to the
+Windows 8.3 short form (e.g. `AHMEDE~1`) while `Get-ChildItem -Recurse`'s `.FullName` resolves
+to the long form (`Ahmed Elsaid`) — a silent string-length mismatch that corrupts
+`$file.FullName.Substring($tmp.Length + 1)`, prefixing every entry with a stray fragment of the
+temp folder name instead of stripping it cleanly (symptom: `manifest.json` lands at e.g.
+`007/manifest.json` instead of the zip root). **Fix**: immediately after `Copy-Item`, resolve
+the temp dir to its canonical form — `$tmp = (Get-Item $tmpRaw).FullName` — and use THAT for
+every subsequent substring calculation, never the raw `Join-Path $env:TEMP …` string.
 ⚠️ Delete old zips via Bash `rm -f`, not `Remove-Item -Force` (sandbox-blocked on some paths here).
 
 **A.5 Recapture screenshots.** `apps/extension/store-assets/make-screenshot.ps1` only **normalizes**
@@ -520,9 +550,9 @@ the **LAST COMMIT** — the caption lies; verify which bundle a device actually 
 **B.4 Store listing + assets.** Path is `apps/mobile/store/` (resolved 2026-08-05). ✅ Placeholders
 fixed in `listing.md`: privacy URL → `https://nour-platform-web.vercel.app/privacy`; contact email →
 `ahmed.muhammed.elsaid@gmail.com` (matches `packages/shared-core/src/developer.ts`). ✅ Phone
-screenshots done (`screenshot-1..5.jpg`). Still needed: feature graphic 1024×500, hi-res icon
-512×512 (✅ icon wordmark/watermark FIXED 2026-08-04, see §Extension "Icon wordmark/watermark"
-above — generate the hi-res icon from the current `apps/mobile/assets/icon.png`).
+screenshots done (`screenshot-1..5.jpg`). ✅ **Feature graphic + hi-res icon DONE 2026-08-07**:
+`hi-res-icon-512.png` + `feature-graphic-1024x500.png`, both derived from the watermark-free
+`apps/mobile/assets/icon.png` source (fixed 2026-08-04). **All B.4 assets complete.**
 
 #### B.5 Permission decisions
 
