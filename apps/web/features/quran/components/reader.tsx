@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import type { PageReader, QuranReciter, ReaderAyah, SurahReader } from "@repo/api/schemas/quran";
@@ -8,8 +8,10 @@ import { usePlayer } from "@repo/ui/blocks/player-context";
 import { AyahRow } from "./ayah-row";
 import { MushafPage } from "./mushaf-page";
 import { MushafPageView } from "./mushaf-page-view";
+import { ReaderChrome } from "./reader-chrome";
 import { ReaderSettingsSheet } from "./reader-settings-sheet";
 import { TafsirSheet } from "./tafsir-sheet";
+import { Link } from "@/i18n/navigation";
 import { useAyahAudio } from "../hooks/use-ayah-audio";
 import { groupAyahsByPage } from "../lib/page-groups";
 import { loadPrefs, type QuranPrefs } from "../lib/quran-prefs";
@@ -20,16 +22,23 @@ import {
   type AyahRef,
 } from "../lib/quran-progress";
 
+const MIN_SURAH = 1;
+const MAX_SURAH = 114;
+
 export function Reader({
   data,
   reciters,
   translationDir,
   locale,
+  heading,
+  details,
 }: {
   data: SurahReader;
   reciters: QuranReciter[];
   translationDir: "rtl" | "ltr";
   locale: string;
+  heading: ReactNode;
+  details: ReactNode;
 }) {
   const t = useTranslations("quran");
   const [prefs, setPrefs] = useState<QuranPrefs>(loadPrefs);
@@ -199,15 +208,84 @@ export function Reader({
 
   const editions = data.translationEdition ? [data.translationEdition] : [];
 
-  const pageNav = (
-    <MushafPageNav
-      pageNumber={pageData?.page ?? currentPage}
-      onPrevPage={onPrevPage}
-      onNextPage={onNextPage}
-      prevDisabled={!pageData || pageData.prevPage === null || pageStatus === "loading"}
-      nextDisabled={!pageData || pageData.nextPage === null || pageStatus === "loading"}
-    />
-  );
+  // Chrome — "edge chevrons + centre chip" (concept A3, owner-picked from the
+  // same design gallery as mobile's reader-controls redesign, `4f60f8c`/
+  // `a7f9b4e`). A single top row (back · juz chip · settings) replaces the
+  // old two-row layout; page/surah turning moves onto large edge-pinned
+  // chevrons over the reading area, with a quiet footer label. Ported to web
+  // as the FULL concept (including the edge chevrons mobile itself later
+  // dropped for swipe-only, `8e9d14a`) — mobile's objection was that floating
+  // buttons "read like a web app, not native"; that reasoning doesn't apply
+  // here, and web has no swipe gesture to fall back to. Applies at every
+  // viewport width (owner call), not just small screens.
+  const topJuz = prefs.layout === "mushaf" ? pageData?.juz : data.ayahs[0]?.juz;
+  const prevSurah = data.surah.number > MIN_SURAH ? data.surah.number - 1 : null;
+  const nextSurah = data.surah.number < MAX_SURAH ? data.surah.number + 1 : null;
+
+  const isMushaf = prefs.layout === "mushaf";
+  const prevDisabled = isMushaf
+    ? !pageData || pageData.prevPage === null || pageStatus === "loading"
+    : prevSurah === null;
+  const nextDisabled = isMushaf
+    ? !pageData || pageData.nextPage === null || pageStatus === "loading"
+    : nextSurah === null;
+
+  const EdgeButton = ({
+    direction,
+    onClick,
+    href,
+    disabled,
+  }: {
+    direction: "prev" | "next";
+    onClick?: () => void;
+    href?: string;
+    disabled: boolean;
+  }) => {
+    const label = direction === "prev" ? t("prevPage") : t("nextPage");
+    // Fixed to the VIEWPORT (not the content block) so the button stays
+    // reachable while scrolling a long List-mode surah (e.g. Al-Baqara's 286
+    // ayahs) — an `absolute` position relative to the content would only
+    // appear once, near the top, and vanish on scroll. Horizontally it still
+    // aligns to the reading column's edge, not the raw browser edge, because
+    // the parent wrapper mirrors the page's own `mx-auto max-w-2xl` width.
+    const className =
+      "border-border bg-surface text-text-2 hover:text-primary pointer-events-auto absolute top-1/2 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border shadow-3 disabled:pointer-events-none disabled:opacity-40" +
+      (direction === "prev" ? " start-1" : " end-1");
+    const icon = (
+      <svg
+        viewBox="0 0 24 24"
+        className="size-4 rtl:rotate-180"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d={direction === "prev" ? "M15 18l-6-6 6-6" : "M9 18l6-6-6-6"} />
+      </svg>
+    );
+    if (href && !disabled) {
+      return (
+        <Link href={href} aria-label={label} className={className}>
+          {icon}
+        </Link>
+      );
+    }
+    return (
+      <button type="button" aria-label={label} onClick={onClick} disabled={disabled} className={className}>
+        {icon}
+      </button>
+    );
+  };
+
+  // Mushaf mode: MushafPageView/MushafPage already render their own
+  // "Page N · Juz N" footer inline with the page content — a second one here
+  // would duplicate it. Only List mode needs this quiet footer, since it has
+  // no equivalent per-content indicator.
+  const footerLabel = isMushaf
+    ? null
+    : t("surahNOfTotal", { number: data.surah.number, total: MAX_SURAH });
 
   // Surah-scoped Mushaf fallback groups (SSR + pre-fetch) — the same ayahs by
   // their `page` field (1-604, already on every ReaderAyah) instead of one
@@ -223,8 +301,32 @@ export function Reader({
   // Font scale applies to the Arabic ayah column via a CSS var the rows inherit.
   return (
     <div style={{ ["--quran-scale" as string]: prefs.fontScale }}>
-      <div className="mb-4 flex items-center justify-between gap-2">
-        {prefs.layout === "mushaf" ? pageNav : <div />}
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <Link
+          href="/quran"
+          aria-label={t("back")}
+          className="text-text-2 hover:text-primary -ms-2 inline-flex size-9 items-center justify-center"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="size-5 rtl:rotate-180"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </Link>
+        {topJuz != null ? (
+          <span className="border-border text-text-2 rounded-full border px-2.5 py-1 text-xs">
+            {t("juzN", { number: topJuz })}
+          </span>
+        ) : (
+          <span />
+        )}
         <ReaderSettingsSheet
           prefs={prefs}
           onChange={setPrefs}
@@ -232,31 +334,35 @@ export function Reader({
           reciters={reciters}
         />
       </div>
-      {prefs.layout === "mushaf" ? (
-        pageData ? (
-          <>
+      <ReaderChrome heading={heading} details={details} />
+      <div className="pointer-events-none fixed inset-0 z-10">
+        <div className="relative mx-auto h-full max-w-2xl px-4">
+          <EdgeButton direction="prev" onClick={onPrevPage} href={!isMushaf && prevSurah ? `/quran/${prevSurah}` : undefined} disabled={prevDisabled} />
+          <EdgeButton direction="next" onClick={onNextPage} href={!isMushaf && nextSurah ? `/quran/${nextSurah}` : undefined} disabled={nextDisabled} />
+        </div>
+      </div>
+      <div>
+        {prefs.layout === "mushaf" ? (
+          pageData ? (
             <MushafPageView
               page={pageData}
               activeGlobal={audio.currentGlobal}
               isPlaying={audio.isPlaying}
               onPlay={onPlayToggle}
             />
-            <div className="mt-4 flex justify-center">{pageNav}</div>
-          </>
-        ) : pageStatus === "error" ? (
-          <div className="border-border flex flex-col items-center gap-3 rounded-md border py-10 text-center">
-            <p className="text-text-2 text-sm">{t("pageLoadError")}</p>
-            <button
-              type="button"
-              onClick={() => setRetryToken((n) => n + 1)}
-              className="border-border text-text-2 hover:text-primary rounded-md border px-3 py-1.5 text-sm"
-            >
-              {t("retry")}
-            </button>
-          </div>
-        ) : (
-          fallbackGroup && (
-            <>
+          ) : pageStatus === "error" ? (
+            <div className="border-border flex flex-col items-center gap-3 rounded-md border py-10 text-center">
+              <p className="text-text-2 text-sm">{t("pageLoadError")}</p>
+              <button
+                type="button"
+                onClick={() => setRetryToken((n) => n + 1)}
+                className="border-border text-text-2 hover:text-primary rounded-md border px-3 py-1.5 text-sm"
+              >
+                {t("retry")}
+              </button>
+            </div>
+          ) : (
+            fallbackGroup && (
               <MushafPage
                 key={fallbackGroup.page}
                 group={fallbackGroup}
@@ -264,77 +370,33 @@ export function Reader({
                 isPlaying={audio.isPlaying}
                 onPlay={onPlayToggle}
               />
-              <div className="mt-4 flex justify-center">{pageNav}</div>
-            </>
+            )
           )
-        )
-      ) : (
-        data.ayahs.map((ayah) => (
-          <AyahRow
-            key={ayah.numberGlobal}
-            ayah={ayah}
-            showTranslation={prefs.showTranslation}
-            translationDir={translationDir}
-            showWordByWord={prefs.showWordByWord}
-            isCurrent={audio.currentGlobal === ayah.numberGlobal}
-            isPlaying={audio.isPlaying}
-            isBookmarked={isBookmarked(ayah)}
-            onPlay={onPlayToggle}
-            onToggleBookmark={onToggleBookmark}
-            onOpenTafsir={(ng) => {
-              const a = data.ayahs.find((x) => x.numberGlobal === ng);
-              if (a) setTafsirAyah({ numberGlobal: ng, ref: `${a.surah}:${a.ayahInSurah}` });
-            }}
-          />
-        ))
-      )}
+        ) : (
+          data.ayahs.map((ayah) => (
+            <AyahRow
+              key={ayah.numberGlobal}
+              ayah={ayah}
+              showTranslation={prefs.showTranslation}
+              translationDir={translationDir}
+              showWordByWord={prefs.showWordByWord}
+              isCurrent={audio.currentGlobal === ayah.numberGlobal}
+              isPlaying={audio.isPlaying}
+              isBookmarked={isBookmarked(ayah)}
+              onPlay={onPlayToggle}
+              onToggleBookmark={onToggleBookmark}
+              onOpenTafsir={(ng) => {
+                const a = data.ayahs.find((x) => x.numberGlobal === ng);
+                if (a) setTafsirAyah({ numberGlobal: ng, ref: `${a.surah}:${a.ayahInSurah}` });
+              }}
+            />
+          ))
+        )}
+      </div>
+      {footerLabel ? (
+        <p className="text-text-2 mt-4 text-center text-xs tabular-nums">{footerLabel}</p>
+      ) : null}
       <TafsirSheet ayah={tafsirAyah} locale={locale} onClose={() => setTafsirAyah(null)} />
-    </div>
-  );
-}
-
-interface MushafPageNavProps {
-  pageNumber: number;
-  onPrevPage: () => void;
-  onNextPage: () => void;
-  prevDisabled: boolean;
-  nextDisabled: boolean;
-}
-
-// Prev/page-number/next controls. Rendered once above the page (existing)
-// and once again below it (owner-requested, mobile web: paging forward
-// otherwise means scrolling back up to the top controls every page).
-function MushafPageNav({
-  pageNumber,
-  onPrevPage,
-  onNextPage,
-  prevDisabled,
-  nextDisabled,
-}: MushafPageNavProps) {
-  const t = useTranslations("quran");
-  return (
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        aria-label={t("prevPage")}
-        onClick={onPrevPage}
-        disabled={prevDisabled}
-        // min-h-11 (44px) hit area — this is the core reader paging gesture.
-        className="border-border text-text-2 hover:text-primary min-h-11 rounded-md border px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {t("prevPage")}
-      </button>
-      <span className="text-text-2 text-sm">{t("pageN", { number: pageNumber })}</span>
-      <button
-        type="button"
-        aria-label={t("nextPage")}
-        onClick={onNextPage}
-        disabled={nextDisabled}
-        // min-h-11 (44px) hit area — this is the core reader paging gesture.
-        className="border-border text-text-2 hover:text-primary min-h-11 rounded-md border px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {t("nextPage")}
-      </button>
     </div>
   );
 }

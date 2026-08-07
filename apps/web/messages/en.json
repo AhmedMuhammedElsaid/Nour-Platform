@@ -184,6 +184,7 @@
     "layout": "Layout",
     "layoutList": "List",
     "layoutMushaf": "Mushaf",
+    "surahNOfTotal": "Surah {number} of {total}",
     "pageN": "Page {number}",
     "juzN": "Juz {number}",
     "prevPage": "Previous page",

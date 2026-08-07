@@ -9,9 +9,7 @@ import type { QuranReciter, SurahReader } from "@repo/api/schemas/quran";
 
 export const dynamic = "force-dynamic";
 
-import { Link } from "@/i18n/navigation";
 import { Reader } from "@/features/quran/components/reader";
-import { ReaderChrome } from "@/features/quran/components/reader-chrome";
 
 interface PageProps {
   params: Promise<{ locale: string; surah: string }>;
@@ -62,38 +60,34 @@ export default async function SurahReaderPage({ params, searchParams }: PageProp
   const t = await getTranslations("quran");
   const translationDir = data.translationEdition?.dir ?? "ltr";
 
+  const heading = (
+    <h1 dir="rtl" className="font-quran text-primary text-2xl sm:text-3xl mb-2">
+      {data.surah.name.ar}
+    </h1>
+  );
+  const details = (
+    <>
+      <p className="text-text-2 mt-1 text-sm">
+        {data.surah.name.en} · {data.surah.meaning} · {data.surah.ayahCount} {t("ayahs")}
+      </p>
+      {data.surah.bismillahPre ? (
+        <p dir="rtl" className="font-quran text-text mt-4 text-2xl">
+          {BISMILLAH_UTHMANI}
+        </p>
+      ) : null}
+    </>
+  );
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <Link
-        href="/quran"
-        className="text-text-2 hover:text-primary mb-4 inline-flex items-center gap-1 text-sm"
-      >
-        <span className="inline-block rtl:rotate-180" aria-hidden="true">
-          ←
-        </span>
-        {t("back")}
-      </Link>
-      <ReaderChrome
-        heading={
-          <h1 dir="rtl" className="font-quran text-primary text-2xl sm:text-3xl mb-2">
-            {data.surah.name.ar}
-          </h1>
-        }
-        details={
-          <>
-            <p className="text-text-2 mt-1 text-sm">
-              {data.surah.name.en} · {data.surah.meaning} · {data.surah.ayahCount}{" "}
-              {t("ayahs")}
-            </p>
-            {data.surah.bismillahPre ? (
-              <p dir="rtl" className="font-quran text-text mt-4 text-2xl">
-                {BISMILLAH_UTHMANI}
-              </p>
-            ) : null}
-          </>
-        }
+      <Reader
+        data={data}
+        reciters={reciters}
+        translationDir={translationDir}
+        locale={loc}
+        heading={heading}
+        details={details}
       />
-      <Reader data={data} reciters={reciters} translationDir={translationDir} locale={loc} />
     </div>
   );
 }

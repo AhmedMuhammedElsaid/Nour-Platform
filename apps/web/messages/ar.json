@@ -184,6 +184,7 @@
     "layout": "طريقة العرض",
     "layoutList": "قائمة",
     "layoutMushaf": "مصحف",
+    "surahNOfTotal": "سورة {number} من {total}",
     "pageN": "صفحة {number}",
     "juzN": "جزء {number}",
     "prevPage": "الصفحة السابقة",
