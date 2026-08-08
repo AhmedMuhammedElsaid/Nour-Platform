@@ -22,8 +22,12 @@ function hrefOf(
   if (!data) return null;
   if (data.kind === "kahf-reminder") return `/quran/${KAHF_SURAH}`;
   if (data.kind !== "azkar-reminder") return null;
+  // Reminder content is always the Arabic slug (azan-scheduler.tsx builds
+  // azkarContent from `azkar.<kind>.ar`), independent of the app's current UI
+  // locale — force `locale=ar` on the deep link so the reader queries the
+  // matching document instead of 404ing when the UI is set to English.
   return typeof data.slug === "string" && data.slug
-    ? `/adhkar/${encodeURIComponent(data.slug)}`
+    ? `/adhkar/${encodeURIComponent(data.slug)}?locale=ar`
     : null;
 }
 

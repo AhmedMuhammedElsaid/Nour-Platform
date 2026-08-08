@@ -54,7 +54,7 @@ describe("useAzkarNotificationRouter", () => {
     act(() => getListener()(azkarResponse()));
 
     expect(router.push).toHaveBeenCalledWith(
-      `/adhkar/${encodeURIComponent(SLUG)}`,
+      `/adhkar/${encodeURIComponent(SLUG)}?locale=ar`,
     );
   });
 
@@ -97,7 +97,7 @@ describe("useAzkarNotificationRouter", () => {
 
     expect(router.push).toHaveBeenCalledTimes(1);
     expect(router.push).toHaveBeenCalledWith(
-      `/adhkar/${encodeURIComponent(SLUG)}`,
+      `/adhkar/${encodeURIComponent(SLUG)}?locale=ar`,
     );
   });
 

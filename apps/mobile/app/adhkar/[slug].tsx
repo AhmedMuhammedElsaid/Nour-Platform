@@ -5,6 +5,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { FlatList, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { DhikrItem } from "@repo/shared-core/schemas/azkar";
+import { isLocale } from "@repo/shared-core/schemas/locale";
 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -29,9 +30,16 @@ export default function AdhkarReaderScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const locale = initialLocale;
   const dockSpacing = useDockSpacing();
-  const { slug } = useLocalSearchParams<{ slug: string }>();
+  const { slug, locale: localeParam } = useLocalSearchParams<{
+    slug: string;
+    locale?: string;
+  }>();
+  // Reminder-notification deep links (use-azkar-notification-router.ts) pin an
+  // explicit `?locale=ar` because their slug is always Arabic, independent of
+  // the app's current UI locale — honor it over `initialLocale` when present.
+  const locale =
+    localeParam != null && isLocale(localeParam) ? localeParam : initialLocale;
 
   const detail = useQuery(adhkarDetailQuery(slug ?? "", locale));
   const azkar = detail.data;
