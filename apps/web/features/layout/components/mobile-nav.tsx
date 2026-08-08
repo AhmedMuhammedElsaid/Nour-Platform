@@ -3,9 +3,13 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 
-import { Link } from "@/i18n/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 
 type NavItem = { href: string; label: string; icon: ReactNode };
+
+function isActive(pathname: string, href: string): boolean {
+  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+}
 
 // Mobile-only nav: on phones the inline tab row would exceed the viewport width
 // and give the whole page a horizontal scroll, so the tabs collapse behind a
@@ -18,6 +22,7 @@ export function MobileNav({
   menuLabel: string;
 }) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <div className="relative sm:hidden">
@@ -70,17 +75,23 @@ export function MobileNav({
             aria-label={menuLabel}
             className="absolute end-0 top-full z-50 mt-2 min-w-44 rounded-lg border border-border bg-bg py-1 shadow-up-3"
           >
-            {items.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-text-2 transition-colors hover:bg-surface-2 hover:text-primary"
-              >
-                {item.icon}
-                {item.label}
-              </Link>
-            ))}
+            {items.map((item) => {
+              const active = isActive(pathname, item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors hover:bg-surface-2 hover:text-primary ${
+                    active ? "bg-primary/10 text-primary" : "text-text-2"
+                  }`}
+                >
+                  {item.icon}
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
         </>
       ) : null}

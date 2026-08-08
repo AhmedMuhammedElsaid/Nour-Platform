@@ -1,9 +1,9 @@
 import { getTranslations } from "next-intl/server";
 
-import { Link } from "@/i18n/navigation";
 // import { SearchBox } from "@/features/search/components/search-box";
 import { LocaleSwitcher } from "./locale-switcher";
 import { MobileNav } from "./mobile-nav";
+import { NavLinks } from "./nav-links";
 import { ThemeToggle } from "./theme-toggle";
 
 const ICON_SIZE = 16;
@@ -69,9 +69,6 @@ function QiblaIcon() {
   );
 }
 
-const NAV_LINK_CLASS =
-  "inline-flex items-center gap-1.5 text-sm font-medium text-text-2 hover:text-primary whitespace-nowrap transition-colors";
-
 export async function SiteHeader() {
   const t = await getTranslations("nav");
   const adhkarT = await getTranslations("adhkar");
@@ -95,15 +92,11 @@ export async function SiteHeader() {
         {/* Inline tabs on ≥sm only. On mobile the four tabs would overflow the
             viewport and give the whole page a horizontal scroll, so they collapse
             into the MobileNav hamburger below instead. */}
-        <nav aria-label={t("primary")} className="hidden items-center gap-5 sm:flex">
-          {navItems.map((item) => (
-            <Link key={item.href} href={item.href} className={NAV_LINK_CLASS}>
-              <item.Icon />
-              {item.label}
-            </Link>
-          ))}
-          {/* <SearchBox /> */}
-        </nav>
+        <NavLinks
+          ariaLabel={t("primary")}
+          items={navItems.map(({ href, label, Icon }) => ({ href, label, icon: <Icon /> }))}
+        />
+        {/* <SearchBox /> */}
 
         <div className="ms-auto flex shrink-0 items-center gap-2">
           <LocaleSwitcher />

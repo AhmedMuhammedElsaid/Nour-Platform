@@ -248,8 +248,13 @@ export function Reader({
     // appear once, near the top, and vanish on scroll. Horizontally it still
     // aligns to the reading column's edge, not the raw browser edge, because
     // the parent wrapper mirrors the page's own `mx-auto max-w-2xl` width.
+    // Light theme: surface is near-white, so the default surface/text-2
+    // combo barely registers against the page. Flip to a solid dark chip
+    // (bg-text/text-bg, i.e. the light theme's near-black text color as the
+    // fill) just in light mode via the `[data-theme=light]` ancestor variant
+    // — dark theme already contrasts fine and is left untouched.
     const className =
-      "border-border bg-surface text-text-2 hover:text-primary pointer-events-auto absolute top-1/2 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border shadow-3 disabled:pointer-events-none disabled:opacity-40" +
+      "border-border bg-surface text-text-2 hover:text-primary [[data-theme=light]_&]:bg-text [[data-theme=light]_&]:text-bg [[data-theme=light]_&]:border-text [[data-theme=light]_&]:hover:opacity-90 pointer-events-auto absolute top-1/2 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border shadow-3 disabled:pointer-events-none disabled:opacity-40" +
       (direction === "prev" ? " start-1" : " end-1");
     const icon = (
       <svg
