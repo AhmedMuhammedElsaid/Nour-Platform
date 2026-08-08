@@ -121,7 +121,7 @@ Audio MVP (Waves 0–5) + pre-deploy fixups + hardening sprint + **P2-A Categori
 
 ---
 
-| Header nav: "Home" item replaces "نور" brand link (web+ext) — **uncommitted** | 2026-08-08 | Web `apps/web/features/layout/components/site-header.tsx`: removed brand `<Link>` (نور/Nour text), added `HomeIcon` + `{href:"/", label:t("home")}` as first `navItems` entry; `nav.home` string changed from "Nour — home"/"نور — الرئيسية" (was an aria-label) to plain "Home"/"الرئيسية" in `messages/{en,ar}.json`. Extension `apps/extension/src/components/site-header.tsx`: removed the standalone نور logo button — `NAV` array already had a `nav.home`/`Home` entry (`i18n.ts` unchanged), so no duplicate remained. Not yet committed/pushed. |
+| Header nav: "Home" item replaces "نور" brand link (web+ext) ✅ | `main` (2026-08-08) — `537d935` | Web `apps/web/features/layout/components/site-header.tsx`: removed brand `<Link>` (نور/Nour text), added `HomeIcon` + `{href:"/", label:t("home")}` as first `navItems` entry; `nav.home` string changed from "Nour — home"/"نور — الرئيسية" (was an aria-label) to plain "Home"/"الرئيسية" in `messages/{en,ar}.json`. Extension `apps/extension/src/components/site-header.tsx`: removed the standalone نور logo button — `NAV` array already had a `nav.home`/`Home` entry (`i18n.ts` unchanged), so no duplicate remained. Same commit fixed a pre-existing unrelated red test (`reader-settings-sheet.test.tsx` missing `useLocale` in its `next-intl` mock, from `2e607dc`) that was blocking a clean gate. Pushed → Vercel git-integration auto-deploys `nour-platform-web` from `main`. Extension rebuilt + re-zipped: `apps/extension/nour-extension-{chrome,firefox}-v1.0.0.zip` (gitignored, ready for manual store upload). |
 
 ## Next phase
 
