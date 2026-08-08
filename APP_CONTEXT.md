@@ -121,6 +121,8 @@ Audio MVP (Waves 0–5) + pre-deploy fixups + hardening sprint + **P2-A Categori
 
 ---
 
+| Header nav: "Home" item replaces "نور" brand link (web+ext) — **uncommitted** | 2026-08-08 | Web `apps/web/features/layout/components/site-header.tsx`: removed brand `<Link>` (نور/Nour text), added `HomeIcon` + `{href:"/", label:t("home")}` as first `navItems` entry; `nav.home` string changed from "Nour — home"/"نور — الرئيسية" (was an aria-label) to plain "Home"/"الرئيسية" in `messages/{en,ar}.json`. Extension `apps/extension/src/components/site-header.tsx`: removed the standalone نور logo button — `NAV` array already had a `nav.home`/`Home` entry (`i18n.ts` unchanged), so no duplicate remained. Not yet committed/pushed. |
+
 ## Next phase
 
 **Browser Extension status:** merged to `main`; version bumped to **1.0.0** and Chrome/Firefox store zips built (`apps/extension/*.zip`, gitignored). **Chrome Web Store submission is manual & paid** and NOT yet done — remaining blockers: (a) deploy the web app so `https://nour-platform-web.vercel.app/en/privacy` resolves (store requires a reachable privacy URL for host+notification permissions), (b) $5 one-time dev registration, (c) upload zip + fill single-purpose/permission-justification fields + 128×128 icon + ≥1 1280×800 screenshot. Full runbook: **`apps/mobile/publish_play_store.md` Parts D–F**.

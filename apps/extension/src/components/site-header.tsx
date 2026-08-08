@@ -30,16 +30,6 @@ export function SiteHeader({ activeView }: SiteHeaderProps) {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-surface/90 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-2">
-        {/* Logo */}
-        <button
-          type="button"
-          onClick={() => navigate({ view: "home" })}
-          className="me-2 cursor-pointer font-display text-lg font-bold text-primary focus-visible:outline-none"
-          aria-label={t("common.appName")}
-        >
-          {t("common.appName")}
-        </button>
-
         {/* Nav */}
         <nav aria-label="القائمة الرئيسية" className="hidden items-center gap-1 sm:flex">
           {NAV.map(({ route, labelKey, Icon }) => {

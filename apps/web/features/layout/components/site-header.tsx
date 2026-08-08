@@ -1,4 +1,4 @@
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
 // import { SearchBox } from "@/features/search/components/search-box";
@@ -13,6 +13,15 @@ const ICON_SIZE = 16;
 // icon language. Qibla has no counterpart there (no qibla route in the
 // extension), so it gets a compass — reads as "direction" without inventing
 // new brand iconography.
+function HomeIcon() {
+  return (
+    <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 10.5 12 3l9 7.5" />
+      <path d="M5 9.5V21h14V9.5" />
+    </svg>
+  );
+}
+
 function QuranIcon() {
   return (
     <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -63,11 +72,6 @@ function QiblaIcon() {
 const NAV_LINK_CLASS =
   "inline-flex items-center gap-1.5 text-sm font-medium text-text-2 hover:text-primary whitespace-nowrap transition-colors";
 
-const BRAND: Record<string, { text: string; lang: string }> = {
-  ar: { text: "نور", lang: "ar" },
-  en: { text: "Nour", lang: "en" },
-};
-
 export async function SiteHeader() {
   const t = await getTranslations("nav");
   const adhkarT = await getTranslations("adhkar");
@@ -75,10 +79,9 @@ export async function SiteHeader() {
   const tQuran = await getTranslations("quran");
   const tQibla = await getTranslations("qibla");
   const tRadio = await getTranslations("radio");
-  const locale = await getLocale();
-  const brand = BRAND[locale] ?? BRAND.en!;
 
   const navItems = [
+    { href: "/", label: t("home"), Icon: HomeIcon },
     { href: "/quran", label: tQuran("navLabel"), Icon: QuranIcon },
     { href: "/radio", label: tRadio("nav"), Icon: RadioIcon },
     { href: "/adhkar", label: adhkarT("navLabel"), Icon: AdhkarIcon },
@@ -89,14 +92,6 @@ export async function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 w-full bg-bg/85 backdrop-blur-lg border-b border-border">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3 sm:gap-6">
-        <Link
-          href="/"
-          className="shrink-0 font-display text-xl font-bold leading-none text-primary hover:text-primary/80 transition-colors"
-          aria-label={t("home")}
-        >
-          <span lang={brand.lang}>{brand.text}</span>
-        </Link>
-
         {/* Inline tabs on ≥sm only. On mobile the four tabs would overflow the
             viewport and give the whole page a horizontal scroll, so they collapse
             into the MobileNav hamburger below instead. */}

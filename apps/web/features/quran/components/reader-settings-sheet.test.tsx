@@ -15,6 +15,7 @@ vi.mock("next/navigation", () => ({
 // readers-shelf.test.tsx).
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
+  useLocale: () => "en",
 }));
 
 import { ReaderSettingsSheet } from "./reader-settings-sheet";
