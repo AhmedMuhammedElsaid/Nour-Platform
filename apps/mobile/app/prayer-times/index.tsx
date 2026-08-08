@@ -27,6 +27,11 @@ import { useAzkarReminderSettings } from "@/features/prayer-times/hooks/use-azka
 import { scheduleTestKahf } from "@/features/quran/hooks/use-kahf-reminder";
 import { useKahfReminderSettings } from "@/features/quran/hooks/use-kahf-reminder-settings";
 import { usePrayerSettings } from "@/features/prayer-times/hooks/use-prayer-settings";
+import {
+  isPinShortcutSupported,
+  requestPinShortcut,
+  type PinnableShortcutId,
+} from "@/lib/shortcuts-native";
 import { cityLabel } from "@/features/prayer-times/data/cities";
 import { initialLocale } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme-context";
@@ -60,6 +65,10 @@ export default function PrayerTimesScreen() {
   const [now, setNow] = useState(() => new Date());
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [notifGranted, setNotifGranted] = useState(false);
+  // True only on a build that bundles the nour-shortcuts native module AND on a
+  // device where the launcher supports pinning (Android 8+). Gates the "Add to
+  // Home screen" buttons below — absent on iOS / a pre-rebuild install.
+  const [pinSupported, setPinSupported] = useState(false);
   // Gates the arc's corona pulse — this screen stays mounted after you leave it.
   const screenActive = useScreenActive();
 
@@ -82,6 +91,24 @@ export default function PrayerTimesScreen() {
       setNotifGranted(status === "granted");
     });
   }, []);
+
+  useEffect(() => {
+    void isPinShortcutSupported().then(setPinSupported);
+  }, []);
+
+  // Requests the OS "Add to Home screen?" dialog for an already-registered
+  // launcher shortcut (use-adhkar-quick-actions.ts). A cancelled/dismissed
+  // dialog isn't an error — only an unexpected native failure is surfaced.
+  const pinShortcut = useCallback(
+    async (id: PinnableShortcutId) => {
+      try {
+        await requestPinShortcut(id);
+      } catch {
+        // Non-fatal — the button is a convenience, long-press-and-drag still works.
+      }
+    },
+    [],
+  );
 
   // Aladhan-sourced day; falls back to local adhan-js when offline.
   const day = usePrayerDay(location.lat, location.lng, prefs.method, prefs.madhab, now);
@@ -348,6 +375,24 @@ export default function PrayerTimesScreen() {
                 onPress={() => void runTestAzkar()}
               />
             ) : null}
+            {pinSupported && notifGranted && azkar.enabled ? (
+              <View className="flex-row gap-2">
+                <Button
+                  label={t("prayer.azkar.pinSabah")}
+                  variant="ghost"
+                  size="sm"
+                  className="flex-1"
+                  onPress={() => void pinShortcut("sabah")}
+                />
+                <Button
+                  label={t("prayer.azkar.pinMasaa")}
+                  variant="ghost"
+                  size="sm"
+                  className="flex-1"
+                  onPress={() => void pinShortcut("masaa")}
+                />
+              </View>
+            ) : null}
           </View>
 
           {/* Friday Surah Al-Kahf reminder toggle — fixed Friday 12:00 local */}
@@ -379,6 +424,14 @@ export default function PrayerTimesScreen() {
                 label={t("prayer.kahf.test")}
                 variant="ghost"
                 onPress={() => void runTestKahf()}
+              />
+            ) : null}
+            {pinSupported && notifGranted && kahf.enabled ? (
+              <Button
+                label={t("prayer.kahf.pin")}
+                variant="ghost"
+                size="sm"
+                onPress={() => void pinShortcut("kahf")}
               />
             ) : null}
           </View>

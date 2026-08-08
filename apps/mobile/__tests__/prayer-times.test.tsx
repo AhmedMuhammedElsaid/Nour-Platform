@@ -51,4 +51,19 @@ describe("PrayerTimesScreen", () => {
       ),
     ).toBeTruthy();
   });
+
+  it("does not render the home-screen pin buttons when the native module is absent", async () => {
+    // Under jest, requireOptionalNativeModule("NourShortcuts") resolves null
+    // (no native module compiled), so isPinShortcutSupported() stays false and
+    // the pin buttons must never render, regardless of toggle/permission state.
+    renderWith(<PrayerTimesScreen />);
+    await waitFor(() =>
+      expect(screen.getByText(/Adhkar reminder|تذكير الأذكار/)).toBeTruthy(),
+    );
+    expect(screen.queryByText(/Add Sabah icon to Home screen|إضافة أيقونة الصباح/)).toBeNull();
+    expect(screen.queryByText(/Add Masaa icon to Home screen|إضافة أيقونة المساء/)).toBeNull();
+    expect(
+      screen.queryByText(/Add Al-Kahf icon to Home screen|إضافة أيقونة سورة الكهف/),
+    ).toBeNull();
+  });
 });

@@ -1394,6 +1394,30 @@ Sabah/Masaa and Kahf notification timing already work correctly — this was ico
 scheduling fix needed. Device-verify pending (A72): long-press → 3rd Arabic item → pin → tap →
 Surah 18.
 
+**One-tap "Add to Home screen" (2026-08-08, ADR 0017, REBUILD-GATED).** New local Expo
+native module `modules/nour-shortcuts/` (3rd after `nour-adhan`/`nour-compass`, mirrors
+`nour-compass`'s minimal structure — no receivers/services). `NourShortcutsModule.kt`:
+`isPinSupported()` (API 26+ check) + `requestPin(id)` — looks the shortcut up **by id**
+from `shortcutManager.dynamicShortcuts` (already published by `expo-quick-actions`'
+`setItems()`, confirmed by reading `ExpoQuickActionsModule.kt:221-248` — it sets real
+`ShortcutInfo` with title/icon/intent but never calls `requestPinShortcut` itself, no JS
+API for it) and hands the existing object straight to `requestPinShortcut()`. Android-only
+(no iOS equivalent, same as the `NourHome` widget). JS bridge `lib/shortcuts-native.ts`
+(`requireOptionalNativeModule`, no-op `false` when absent — no jest mock needed, same as
+`adhan-native.ts`/`compass-native.ts`). Wired into `app/prayer-times/index.tsx`: 3 ghost
+buttons (Sabah/Masaa on the Adhkar card, Kahf on its own card) gated on
+`pinSupported && notifGranted && <reminder>.enabled`; new locale keys `prayer.azkar.pinSabah`/
+`pinMasaa`/`prayer.kahf.pin`. **Deliberately NOT in onboarding** — `requestPinShortcut` isn't
+a checkable permission (every call pops its own dialog; 3 of them stacked into first-launch
+would be too heavy) — decided with the owner, see ADR 0017. `version` 1.1.1→1.1.2,
+`versionCode` 10→11. Once accepted, the pinned icon is **permanent** — no API to un-pin it
+later (Android platform limit, not a gap in this feature). `__tests__/prayer-times.test.tsx`
+gained a negative-path case (buttons absent when the native module isn't compiled — true
+under jest). Full gate green (mobile 50 suites/256 tests); `expo-modules-autolinking search -p
+android` confirms `NourShortcuts` discovery. Device-verify pending (A72, needs the vC11
+build): tap each pin button → OS "Add to Home screen?" dialog → Add → icon lands → tap →
+opens the right reader/surah.
+
 ## Global top progress bar (2026-07-17, `25fc77a`)
 
 `components/navigation-progress.tsx` mounted next to `<Stack>` in `_layout.tsx` — thin

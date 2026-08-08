@@ -196,7 +196,9 @@
       },
       "test": "Test Adhkar reminder (1 min)",
       "testTitle": "Test Adhkar reminder",
-      "testScheduled": "Reminder scheduled for {{time}}. Wait for it to fire, then tap it."
+      "testScheduled": "Reminder scheduled for {{time}}. Wait for it to fire, then tap it.",
+      "pinSabah": "Add Sabah icon to Home screen",
+      "pinMasaa": "Add Masaa icon to Home screen"
     },
     "kahf": {
       "title": "Friday Surah Al-Kahf",
@@ -206,7 +208,8 @@
       "notifBody": "It's Friday — tap to read Surah Al-Kahf.",
       "test": "Test Al-Kahf reminder (1 min)",
       "testTitle": "Test Al-Kahf reminder",
-      "testScheduled": "Reminder scheduled for {{time}}. Wait for it to fire, then tap it."
+      "testScheduled": "Reminder scheduled for {{time}}. Wait for it to fire, then tap it.",
+      "pin": "Add Al-Kahf icon to Home screen"
     }
   },
   "playlist": {
