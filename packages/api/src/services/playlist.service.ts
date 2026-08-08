@@ -2,7 +2,7 @@ import { revalidateTag } from "next/cache";
 
 import { requireSession } from "../auth/require-session";
 import { PLAYLISTS_HOME, playlistTag } from "../cache/tags";
-import { CONTENT_TTL_SECONDS, cachedRead, reviveDates } from "../cache/cached";
+import { CONTENT_TTL_SECONDS, cachedRead, cachedReadNullable, reviveDates } from "../cache/cached";
 import {
   createPlaylist as repoCreatePlaylist,
   deletePlaylistById,
@@ -132,8 +132,12 @@ export async function getPlaylistBySlug(
    * in the same call, so subscribing to PLAYLISTS_HOME strictly covers them.
    * Track mutations, which emit ONLY playlistTag(id), do not alter this
    * payload (tracks are fetched separately by track.service, uncached).
+   *
+   * A miss is never cached (see cachedReadNullable) — otherwise a playlist
+   * hit right after being published/re-slugged in one locale would keep
+   * 404ing in that locale for up to CONTENT_TTL_SECONDS.
    */
-  const dto = await cachedRead(
+  const dto = await cachedReadNullable(
     ["playlist", "by-slug", locale, slug],
     [PLAYLISTS_HOME],
     CONTENT_TTL_SECONDS,

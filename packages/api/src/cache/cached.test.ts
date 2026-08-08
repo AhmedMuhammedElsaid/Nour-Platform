@@ -32,6 +32,7 @@ vi.mock("next/cache", () => ({
 
 const {
   cachedRead,
+  cachedReadNullable,
   reviveDates,
   CONTENT_TTL_SECONDS,
   IMMUTABLE_TTL_SECONDS,
@@ -63,6 +64,31 @@ describe("cachedRead", () => {
     expect(CONTENT_TTL_SECONDS).toBe(300);
     expect(IMMUTABLE_TTL_SECONDS).toBe(86_400);
     expect(IMMUTABLE_TTL_SECONDS).toBeGreaterThan(CONTENT_TTL_SECONDS);
+  });
+});
+
+describe("cachedReadNullable", () => {
+  it("returns the value on a hit, forwarding to unstable_cache like cachedRead", async () => {
+    const result = await cachedReadNullable(["a"], ["tag-x"], 42, async () => "value");
+
+    expect(result).toBe("value");
+    expect(cacheMock.calls).toEqual([
+      { keyParts: ["a"], tags: ["tag-x"], revalidate: 42 },
+    ]);
+  });
+
+  it("resolves to null on a miss instead of throwing or caching the null", async () => {
+    const result = await cachedReadNullable(["a"], ["tag-x"], 1, async () => null);
+
+    expect(result).toBeNull();
+  });
+
+  it("still propagates a genuine error (not a miss) to the caller", async () => {
+    await expect(
+      cachedReadNullable(["a"], ["tag-x"], 1, async () => {
+        throw new Error("boom");
+      }),
+    ).rejects.toThrow("boom");
   });
 });
 

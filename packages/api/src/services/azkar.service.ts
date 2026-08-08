@@ -2,7 +2,7 @@ import { revalidateTag } from "next/cache";
 
 import { requireSession } from "../auth/require-session";
 import { ADHKAR, azkarTag } from "../cache/tags";
-import { CONTENT_TTL_SECONDS, cachedRead, reviveDates } from "../cache/cached";
+import { CONTENT_TTL_SECONDS, cachedRead, cachedReadNullable, reviveDates } from "../cache/cached";
 import {
   createAzkar as repoCreate,
   deleteAzkarById as repoDelete,
@@ -133,9 +133,12 @@ export async function getAzkarBySlug(locale: Locale, slug: string): Promise<Azka
    * emits azkarTag(id) (updateAzkar, deleteAzkar, publishAzkar, unpublishAzkar)
    * emits ADHKAR in the same call.
    *
-   * NotFound is thrown outside the cache so the miss is never cached.
+   * The miss itself is never cached (cachedReadNullable throws inside the
+   * wrapped callback rather than resolving to null) — otherwise a slug that
+   * 404s once right after being published/re-slugged would keep 404ing for
+   * up to CONTENT_TTL_SECONDS even after the document exists.
    */
-  const dto = await cachedRead(
+  const dto = await cachedReadNullable(
     ["azkar", "by-slug", locale, slug],
     [ADHKAR],
     CONTENT_TTL_SECONDS,

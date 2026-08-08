@@ -63,6 +63,40 @@ export function cachedRead<T>(
 }
 
 /*
+ * For by-slug lookups where a `null` result means "not found yet" — a
+ * `unstable_cache`-wrapped callback that resolves to `null` on a miss gets
+ * that `null` PERSISTED as a valid cache entry for the full TTL, because
+ * Next's cacheNewResult() runs unconditionally on whatever the callback
+ * resolves to. A slug that briefly 404s right after being created or having
+ * its locale content edited would then keep 404ing for up to `revalidate`
+ * seconds even once the document exists — worse than the content-staleness
+ * tradeoff this cache is meant to make (see CONTENT_TTL_SECONDS above).
+ * Throwing from inside the callback instead of returning `null` sidesteps
+ * this: `cacheNewResult()` is only reached after `await cb(...)` resolves, so
+ * a rejection short-circuits before anything is written — the miss is
+ * re-checked against Atlas on every request until it becomes a hit.
+ */
+class CacheMiss extends Error {}
+
+export async function cachedReadNullable<T>(
+  keyParts: readonly string[],
+  tags: readonly string[],
+  revalidate: number,
+  read: () => Promise<T | null>,
+): Promise<T | null> {
+  try {
+    return await cachedRead(keyParts, tags, revalidate, async () => {
+      const result = await read();
+      if (result === null) throw new CacheMiss();
+      return result;
+    });
+  } catch (err) {
+    if (err instanceof CacheMiss) return null;
+    throw err;
+  }
+}
+
+/*
  * `new Date(x)` accepts both a `Date` (cache miss) and the ISO string a cache
  * hit yields, and is idempotent over the former — so this runs safely on both
  * paths and normalises the return shape.
