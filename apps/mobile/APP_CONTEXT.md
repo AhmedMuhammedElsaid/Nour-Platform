@@ -1313,6 +1313,38 @@ fns; NEW `__tests__/azkar-notification-router.test.tsx` (4 cases). Extension cou
 notification click now opens the built-in new-tab reader (root APP_CONTEXT). Ships via OTA;
 **tap-routing + multi-day firing device-verify pending (A72)**.
 
+**Bug fix: notification tap → "Something went wrong" (2026-08-08).** User report: tapping the
+Adhkar al-Masaa reminder on the A72 opened a generic error screen. Two real bugs found, both in
+`use-azkar-notification-router.ts`, both A72-verified fixed via the real fired-notification tap
+(not synthetic `nour://` intents — see gotcha below):
+1. **Locale mismatch** (`ee05e67`): the reminder content is always the Arabic slug
+  (`azan-scheduler.tsx` builds it from `azkar.<kind>.ar`), but `app/adhkar/[slug].tsx` looked it
+  up scoped to `initialLocale` — on an English-UI device the Arabic slug 404s against the
+  `en.slug` field. Fix: the reader now accepts an explicit `?locale=` search param, honored over
+  `initialLocale` when present.
+2. **The actual crash** (`90a7186`): `hrefOf()` built a hand-concatenated string href
+  (`` `/adhkar/${encodeURIComponent(slug)}?locale=ar` ``) and `router.push(string)`'d it. For a
+  Unicode slug this silently threw during navigation — caught by the root `ErrorBoundary`
+  (`app/_layout.tsx`) before the reader ever mounted, so the query-error UI (which looks
+  *identical*, same `common.error`/`common.retry` strings) was never reached. Fix: object-form
+  `router.push({ pathname: "/adhkar/[slug]", params: { slug, locale: "ar" } })` — expo-router
+  serializes params itself, no manual percent-encoding.
+- ⚠️ **Diagnostic gotcha**: `adb shell am start -a VIEW -d "nour://..."` exercises Android's
+  Linking/URL-parser path, NOT the real notification-tap path (`router.push()` from JS). Testing
+  the fix via synthetic `nour://` intents was a red herring for most of this session — it
+  reproduces a **separate, still-open** Unicode-path-segment crash in expo-router's Linking
+  parser (cold *and* warm) that has nothing to do with locale. The **home-screen widget**
+  (`features/adhkar/widget/build-adhkar-row.ts`) builds `nour:///adhkar/<arabic-slug>` URIs for
+  its tap targets and DOES go through that Linking path — its Arabic-slug adhkar rows (Sabah/
+  Masaa) are suspected to hit the same crash. Not fixed this session; needs its own repro sweep.
+- ⚠️ **On-device UI-automation gotcha**: `adb exec-out screencap` returns full physical-pixel
+  PNGs (1080×2400 on the A72) but images render to the tool at ~0.83× (900×2000) — every tap
+  coordinate read off a screenshot must be **multiplied by 1.2** before `adb shell input tap`.
+  Skipping this caused several mis-taps this session (once flipping the device's UI language by
+  accident, corrected by session end). `adb shell uiautomator dump` reliably fails
+  ("could not get idle state") while the SunArc/corona Reanimated loop is mounted anywhere in
+  the tree (even off-screen) — works fine on the notification shade or a static settings screen.
+
 ## Quran surah list — mirrored web's illuminated grid + progress ring (2026-07-16, JS-only)
 
 Mirrors the web redesign (root `APP_CONTEXT.md` + memory). `features/quran/components/surah-index.tsx`: `SurahRow` (single-column `FlatList` row) → `SurahCard`; `app/quran/index.tsx`'s `FlatList` switched to a 2-col grid (`numColumns={2}`, `columnWrapperStyle={{gap:12}}`, each card `flex-1 mb-3`). RN has no CSS `conic-gradient`, so the reading-progress ring is a `react-native-svg` `Circle` with `strokeDasharray`/`strokeDashoffset` (same "SVG stands in for a missing CSS feature" pattern as `sun-arc.tsx` / `station-card.tsx`'s `GlowHalo`), colors hardcoded to `--color-primary`/`--color-border` (dark) — same precedent as `station-card.tsx`'s `GOLD` constant. Corner-bracket ornament is two absolutely-positioned plain `View`s (RN has no pseudo-elements). Progress is read ONCE at the screen level via the same `["quran-last-read"]` query key `ContinueReading` already uses (`getQuranLastRead`), matched against `surahs.data` to compute one surah's `ayahInSurah/ayahCount` percentage — every other card gets `progressPct=null` (plain badge), not a fabricated 0%, same rule as web. NEW `__tests__/surah-card.test.tsx` (2 cases). Existing `__tests__/quran.test.tsx` untouched, still green. Full mobile suite 30/30 (`home-screen.test.tsx` flake reconfirmed pre-existing under full-monorepo-gate load, passes 4/4 in isolation — not a regression). **Visual layout NOT device/simulator-verified this session** — only unit tests + typecheck/lint confirmed; verify on A72 before treating this as fully shipped. Extension mirror still pending (root APP_CONTEXT tracks it).
