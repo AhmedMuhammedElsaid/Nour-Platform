@@ -26,7 +26,7 @@ describe("useAdhkarQuickActions", () => {
 
     expect(QuickActions.setItems).toHaveBeenCalledTimes(1);
     const items = jest.mocked(QuickActions.setItems).mock.calls[0]![0]!;
-    expect(items).toHaveLength(2);
+    expect(items).toHaveLength(3);
     expect(items[0]).toMatchObject({
       id: "sabah",
       title: "أذكار الصباح",
@@ -36,6 +36,11 @@ describe("useAdhkarQuickActions", () => {
       id: "masaa",
       title: "أذكار المساء",
       params: { href: `/adhkar/${encodeURIComponent("أذكار-المساء")}` },
+    });
+    expect(items[2]).toMatchObject({
+      id: "kahf",
+      title: "سورة الكهف",
+      params: { href: "/quran/18" },
     });
   });
 

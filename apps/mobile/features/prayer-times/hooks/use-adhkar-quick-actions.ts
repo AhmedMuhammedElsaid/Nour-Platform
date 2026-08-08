@@ -1,7 +1,8 @@
 // Registers launcher quick actions (long-press the app icon) for the Sabah and
-// Masaa adhkar readers. The user can drag either item onto the home screen as a
-// standalone icon. Taps route through expo-quick-actions' router integration,
-// which pushes `params.href` on warm AND cold starts.
+// Masaa adhkar readers, plus the Friday Al-Kahf reminder. The user can drag any
+// item onto the home screen as a standalone icon. Taps route through
+// expo-quick-actions' router integration, which pushes `params.href` on warm
+// AND cold starts.
 
 import { useEffect } from "react";
 import { Platform } from "react-native";
@@ -40,6 +41,12 @@ export function useAdhkarQuickActions(): void {
         title: t("prayer.azkar.masaa.title", { lng: "ar" }),
         icon: ICON,
         params: { href: `/adhkar/${encodeURIComponent(masaaSlug)}` },
+      },
+      {
+        id: "kahf",
+        title: t("home.kahfTitle", { lng: "ar" }),
+        icon: ICON,
+        params: { href: "/quran/18" },
       },
     ]).catch(() => {});
   }, [hydrated, t, sabahSlug, masaaSlug]);

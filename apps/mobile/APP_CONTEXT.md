@@ -1383,6 +1383,17 @@ OTA**: `version` 1.0.0→1.1.0 + `versionCode` 8→9 (runtimeVersion=appVersion 
 pin → tap cold+warm → correct reader; also check label truncation (fallback: shorten titles
 to "الصباح"/"المساء").
 
+**Al-Kahf item added (2026-08-08, JS-only → OTA-eligible, no app.json change).** Same
+`use-adhkar-quick-actions.ts`/`<AdhkarQuickActions />` now sets a 3rd static item: `id:"kahf"`,
+title `t("home.kahfTitle",{lng:"ar"})` = "سورة الكهف", `href:"/quran/18"` (matches
+`use-azkar-notification-router.ts`'s `kind:"kahf-reminder"` routing). No slug/hydration
+dependency (static route) — added unconditionally in the same `setItems` call, reuses the
+existing `shortcut_adhkar` icon key (no new drawable). `__tests__/adhkar-quick-actions.test.tsx`
+updated to expect 3 items. Full gate green (mobile 50 suites/255 tests). User confirmed both
+Sabah/Masaa and Kahf notification timing already work correctly — this was icon-only, no
+scheduling fix needed. Device-verify pending (A72): long-press → 3rd Arabic item → pin → tap →
+Surah 18.
+
 ## Global top progress bar (2026-07-17, `25fc77a`)
 
 `components/navigation-progress.tsx` mounted next to `<Stack>` in `_layout.tsx` — thin
