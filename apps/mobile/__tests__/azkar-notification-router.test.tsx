@@ -53,9 +53,10 @@ describe("useAzkarNotificationRouter", () => {
 
     act(() => getListener()(azkarResponse()));
 
-    expect(router.push).toHaveBeenCalledWith(
-      `/adhkar/${encodeURIComponent(SLUG)}?locale=ar`,
-    );
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: "/adhkar/[slug]",
+      params: { slug: SLUG, locale: "ar" },
+    });
   });
 
   it("routes a kahf-reminder tap to the Quran reader at Surah Al-Kahf", async () => {
@@ -66,7 +67,10 @@ describe("useAzkarNotificationRouter", () => {
       getListener()(response("nour-kahf-weekly", { kind: "kahf-reminder" })),
     );
 
-    expect(router.push).toHaveBeenCalledWith("/quran/18");
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: "/quran/[surah]",
+      params: { surah: "18" },
+    });
   });
 
   it("ignores taps on other notifications (azan)", async () => {
@@ -96,9 +100,10 @@ describe("useAzkarNotificationRouter", () => {
     act(() => getListener()(tap));
 
     expect(router.push).toHaveBeenCalledTimes(1);
-    expect(router.push).toHaveBeenCalledWith(
-      `/adhkar/${encodeURIComponent(SLUG)}?locale=ar`,
-    );
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: "/adhkar/[slug]",
+      params: { slug: SLUG, locale: "ar" },
+    });
   });
 
   it("navigates again for a later reminder that reuses the identifier", async () => {

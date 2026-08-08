@@ -8,26 +8,33 @@
 
 import { useEffect, useRef } from "react";
 import * as Notifications from "expo-notifications";
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 
 import { KAHF_SURAH } from "@repo/shared-core/prayer-times/schedule";
 
+// Object-form hrefs (pathname + params) instead of a hand-built string with
+// `encodeURIComponent` + a `?locale=` suffix — expo-router serializes the
+// params itself, so a Unicode slug (e.g. "أذكار-الصباح") never round-trips
+// through manual percent-encoding, which was silently breaking navigation
+// (root ErrorBoundary, no query even reached) on both cold and warm taps.
 function hrefOf(
   response: Notifications.NotificationResponse,
-): string | null {
+): Href | null {
   const data = response.notification.request.content.data as
     | Record<string, unknown>
     | null
     | undefined;
   if (!data) return null;
-  if (data.kind === "kahf-reminder") return `/quran/${KAHF_SURAH}`;
+  if (data.kind === "kahf-reminder") {
+    return { pathname: "/quran/[surah]", params: { surah: String(KAHF_SURAH) } };
+  }
   if (data.kind !== "azkar-reminder") return null;
   // Reminder content is always the Arabic slug (azan-scheduler.tsx builds
   // azkarContent from `azkar.<kind>.ar`), independent of the app's current UI
-  // locale — force `locale=ar` on the deep link so the reader queries the
-  // matching document instead of 404ing when the UI is set to English.
+  // locale — force locale=ar so the reader queries the matching document
+  // instead of 404ing when the UI is set to English.
   return typeof data.slug === "string" && data.slug
-    ? `/adhkar/${encodeURIComponent(data.slug)}?locale=ar`
+    ? { pathname: "/adhkar/[slug]", params: { slug: data.slug, locale: "ar" } }
     : null;
 }
 
